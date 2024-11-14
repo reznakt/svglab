@@ -1,0 +1,38 @@
+name: check
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: Set up poetry
+        uses: abatilo/actions-poetry@v3
+        with:
+          poetry-version: 1.8.4
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run linter
+        run: poetry run poe lint
+
+      - name: Run formatter
+        run: poetry run poe format
+
+      - name: Run type checking
+        run: poetry run poe typecheck
+
+      - name: Run tests
+        run: poetry run poe test

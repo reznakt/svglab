@@ -11,7 +11,7 @@ def add(a: int, b: int) -> int:
 
 def main() -> None:
     result = add(1, 2)
-    print(result)
+    print(result)  # noqa: T201
 
 
 if __name__ == "__main__":
