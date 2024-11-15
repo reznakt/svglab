@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "charliermarsh.ruff",
+    "EditorConfig.EditorConfig",
+    "ms-python.debugpy",
+    "ms-python.python"
+  ]
+}
