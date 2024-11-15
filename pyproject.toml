@@ -30,10 +30,7 @@ typecheck = "mypy"
 start = "poetry run svglab"
 
 [tool.pytest.ini_options]
-addopts = [
-  "--doctest-modules",
-  "--doctest-continue-on-failure"
-]
+addopts = ["--doctest-modules", "--doctest-continue-on-failure"]
 
 [tool.mypy]
 disallow_any_explicit = true
@@ -56,29 +53,28 @@ target-version = "py312"
 select = ["ALL"]
 fixable = ["ALL"]
 ignore = [
-    # conflicts
-    "D211", # No blank lines allowed before class docstring
-    "D213", # Multi-line docstring summary should start at the second line
-    "COM812", # Missing trailing comma in a tuple
-    "D203", # 1 blank line required before class docstring
-    "ISC001", # Use of `is` with a literal
+  # conflicts
+  "D211",   # No blank lines allowed before class docstring
+  "D213",   # Multi-line docstring summary should start at the second line
+  "COM812", # Missing trailing comma in a tuple
+  "D203",   # 1 blank line required before class docstring
+  "ISC001", # Use of `is` with a literal
 
-    # missing docstrings
-    "D100", # Missing docstring in public module
-    "D101", # Missing docstring in public class
-    "D102", # Missing docstring in public method
-    "D103", # Missing docstring in public function
-    "D104", # Missing docstring in public package
-    "D105", # Missing docstring in magic method
-    "D106", # Missing docstring in public nested class
-    "D107", # Missing docstring in __init__
+  # missing docstrings
+  "D100", # Missing docstring in public module
+  "D101", # Missing docstring in public class
+  "D102", # Missing docstring in public method
+  "D103", # Missing docstring in public function
+  "D104", # Missing docstring in public package
+  "D105", # Missing docstring in magic method
+  "D106", # Missing docstring in public nested class
+  "D107", # Missing docstring in __init__
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*" = [
-  "S101" # Use of assert detected
+  "S101", # Use of assert detected
 ]
 
 [tool.ruff.format]
 docstring-code-format = true
-
