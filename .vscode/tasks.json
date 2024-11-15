@@ -26,6 +26,14 @@
       ]
     },
     {
+      "label": "typecheck",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "typecheck"
+      ]
+    },
+    {
       "label": "lint",
       "type": "shell",
       "command": "poe",
