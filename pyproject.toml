@@ -19,11 +19,15 @@ poethepoet = "^0.30.0"
 pytest = "^8.3.3"
 mypy = "^1.13.0"
 
+[tool.poetry.scripts]
+svglab = "svglab.__main__:main"
+
 [tool.poe.tasks]
 lint = "ruff check"
 format = "ruff format"
 test = "pytest"
 typecheck = "mypy"
+start = "poetry run svglab"
 
 [tool.pytest.ini_options]
 addopts = [
