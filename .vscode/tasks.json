@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "install",
+      "type": "shell",
+      "command": "poetry",
+      "args": [
+        "install"
+      ]
+    },
+    {
+      "label": "start",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "start"
+      ]
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "test"
+      ]
+    },
+    {
+      "label": "lint",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "lint"
+      ]
+    },
+    {
+      "label": "lint-fix",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "lint-fix"
+      ]
+    },
+    {
+      "label": "format",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "format"
+      ]
+    },
+    {
+      "label": "format-fix",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "format-fix"
+      ]
+    }
+  ]
+}
