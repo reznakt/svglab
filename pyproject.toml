@@ -24,7 +24,9 @@ svglab = "svglab.__main__:main"
 
 [tool.poe.tasks]
 lint = "ruff check"
-format = "ruff format"
+lint-fix = "ruff check --fix"
+format = "ruff format --diff"
+format-fix = "ruff format"
 test = "pytest"
 typecheck = "mypy"
 start = "poetry run svglab"
