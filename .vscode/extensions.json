@@ -2,6 +2,7 @@
   "recommendations": [
     "charliermarsh.ruff",
     "EditorConfig.EditorConfig",
+    "matangover.mypy",
     "ms-python.debugpy",
     "ms-python.python",
     "SanaAjani.taskrunnercode"
