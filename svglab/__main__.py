@@ -1,17 +1,39 @@
-def add(a: int, b: int) -> int:
-    """Add two numbers together.
+from __future__ import annotations
 
-    >>> add(2, 3)
-    5
-    >>> add(-1, 1)
-    0
-    """
-    return a + b
+from typing import TYPE_CHECKING
+
+from atomicwrites import atomic_write
+from bs4 import BeautifulSoup as _BeautifulSoup
+
+if TYPE_CHECKING:
+    from os import PathLike
+
+    from _typeshed import SupportsRead
+
+
+class BeautifulSoup(_BeautifulSoup):
+    def __init__(
+        self, markup: str | bytes | SupportsRead[str] | SupportsRead[bytes] = ""
+    ) -> None:
+        super().__init__(markup=markup, features="lxml-xml")
+
+
+def parse_svg(
+    markup: str | bytes | SupportsRead[str] | SupportsRead[bytes],
+) -> BeautifulSoup:
+    return BeautifulSoup(markup)
+
+
+def write_svg(soup: BeautifulSoup, path: str | PathLike[str]) -> None:
+    path = str(path)
+
+    with atomic_write(path, overwrite=True) as file:
+        file.write(soup.prettify())
 
 
 def main() -> None:
-    result = add(1, 2)
-    print(result)  # noqa: T201
+    soup = parse_svg("<foo></foo>")
+    print(soup.prettify())
 
 
 if __name__ == "__main__":
