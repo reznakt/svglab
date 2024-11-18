@@ -1,4 +1,4 @@
 from .element import Element
-from .text_element import Comment
+from .text_element import CData, Comment, Text
 
-__all__ = ["Comment", "Element"]
+__all__ = ["CData", "Text", "Element", "Comment"]
