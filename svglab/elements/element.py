@@ -1,33 +1,28 @@
 from abc import ABCMeta, abstractmethod
+from collections.abc import Hashable
+from typing import Self
 
-from bs4 import BeautifulSoup, PageElement
+import bs4
 
-__all__ = ["Element"]
+from svglab.utils import Repr
 
+__all__ = ["Element", "AnyElement"]
 
-class Repr:
-    def __repr__(self) -> str:
-        name = self.__class__.__name__
-        attrs = ", ".join(f"{key}={value!r}" for key, value in self.__dict__.items())
-
-        return f"{name}({attrs})"
+type AnyElement = Element[bs4.PageElement]
 
 
-class Element[T: PageElement](Repr, metaclass=ABCMeta):
-    def __init__(self, backend: T | None = None) -> None:
-        self._backend = backend if backend is not None else self._default_backend
+class Element[T: bs4.PageElement](Repr, Hashable, metaclass=ABCMeta):
+    def __init__(self, *, _backend: T | None = None) -> None:
+        self._backend = _backend if _backend is not None else self._default_backend
 
     @property
     @abstractmethod
     def _default_backend(self) -> T: ...
 
     def __str__(self) -> str:
-        soup = BeautifulSoup()
+        soup = bs4.BeautifulSoup()
         soup.append(self._backend)
         return soup.prettify().strip()
-
-    @abstractmethod
-    def __hash__(self) -> int: ...
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
@@ -37,3 +32,14 @@ class Element[T: PageElement](Repr, metaclass=ABCMeta):
             return True
 
         return hash(self) == hash(other)
+
+    # expose the backend so that we can join them together
+    # when adding children to a tag
+    @property
+    def backend(self) -> T:
+        return self._backend
+
+    # TODO: restrict the type of element based allowed children
+    def replace_with(self, element: AnyElement) -> Self:
+        self._backend.replace_with(element.backend)
+        return self

@@ -2,16 +2,14 @@ from abc import ABCMeta
 from contextlib import suppress
 from typing import cast, final
 
-from bs4 import CData as _CData
-from bs4 import Comment as _Comment
-from bs4 import NavigableString
+import bs4
 
 from .element import Element
 
 __all__ = ["Comment", "CData", "Text"]
 
 
-class TextElement[T: _Comment | _CData | NavigableString](
+class TextElement[T: bs4.Comment | bs4.CData | bs4.NavigableString](
     Element[T], metaclass=ABCMeta
 ):
     def __init__(
@@ -19,9 +17,9 @@ class TextElement[T: _Comment | _CData | NavigableString](
         content: str | None = None,
         /,
         *,
-        backend: T | None = None,
+        _backend: T | None = None,
     ) -> None:
-        super().__init__(backend=backend)
+        super().__init__(_backend=_backend)
 
         if content is not None:
             self.content = content
@@ -51,7 +49,7 @@ class TextElement[T: _Comment | _CData | NavigableString](
 
 
 @final
-class Comment(TextElement[_Comment]):
+class Comment(TextElement[bs4.Comment]):
     """Represents an XML/HTML comment.
 
     Example:
@@ -62,12 +60,12 @@ class Comment(TextElement[_Comment]):
     """
 
     @property
-    def _default_backend(self) -> _Comment:
-        return _Comment("")
+    def _default_backend(self) -> bs4.Comment:
+        return bs4.Comment("")
 
 
 @final
-class CData(TextElement[_CData]):
+class CData(TextElement[bs4.CData]):
     """Represents an XML/HTML CDATA section.
 
     Example:
@@ -78,12 +76,12 @@ class CData(TextElement[_CData]):
     """
 
     @property
-    def _default_backend(self) -> _CData:
-        return _CData("")
+    def _default_backend(self) -> bs4.CData:
+        return bs4.CData("")
 
 
 @final
-class Text(TextElement[NavigableString]):
+class Text(TextElement[bs4.NavigableString]):
     """Represents an XML/HTML text section.
 
     Example:
@@ -94,5 +92,5 @@ class Text(TextElement[NavigableString]):
     """
 
     @property
-    def _default_backend(self) -> NavigableString:
-        return NavigableString("")
+    def _default_backend(self) -> bs4.NavigableString:
+        return bs4.NavigableString("")
