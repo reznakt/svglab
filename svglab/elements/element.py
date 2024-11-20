@@ -15,25 +15,19 @@ class Repr:
 
 class Element[T: PageElement](Repr, metaclass=ABCMeta):
     def __init__(self, backend: T | None = None) -> None:
-        self._backend = backend if backend is not None else self._backend_type()
+        self._backend = backend if backend is not None else self._default_backend
 
     @property
     @abstractmethod
-    def _backend_type(self) -> type[T]: ...
+    def _default_backend(self) -> T: ...
 
     def __str__(self) -> str:
-        return self.to_str(pretty=False)
+        soup = BeautifulSoup()
+        soup.append(self._backend)
+        return soup.prettify().strip()
 
     @abstractmethod
     def __hash__(self) -> int: ...
-
-    def to_str(self, *, pretty: bool = True) -> str:
-        if pretty:
-            soup = BeautifulSoup()
-            soup.append(self._backend)
-            return soup.prettify()
-
-        return str(self._backend)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):

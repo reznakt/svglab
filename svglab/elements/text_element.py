@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from contextlib import suppress
 from typing import cast, final
 
@@ -17,6 +17,8 @@ class TextElement[T: _Comment | _CData | NavigableString](
     def __init__(
         self,
         content: str | None = None,
+        /,
+        *,
         backend: T | None = None,
     ) -> None:
         super().__init__(backend=backend)
@@ -40,33 +42,57 @@ class TextElement[T: _Comment | _CData | NavigableString](
         # TODO: figure out a way for mypy to eat this without the cast
         self._backend = cast(T, comment)
 
-    def __str__(self) -> str:
-        return self.content
-
     def __hash__(self) -> int:
         return hash(self.content)
 
     @property
-    @abstractmethod
-    def _backend_type(self) -> type[T]: ...
+    def _backend_type(self) -> type[T]:
+        return type(self._default_backend)
 
 
 @final
 class Comment(TextElement[_Comment]):
+    """Represents an XML/HTML comment.
+
+    Example:
+    >>> comment = Comment("foo")
+    >>> print(comment)
+    <!--foo-->
+
+    """
+
     @property
-    def _backend_type(self) -> type[_Comment]:
-        return _Comment
+    def _default_backend(self) -> _Comment:
+        return _Comment("")
 
 
 @final
 class CData(TextElement[_CData]):
+    """Represents an XML/HTML CDATA section.
+
+    Example:
+    >>> cdata = CData("foo")
+    >>> print(cdata)
+    <![CDATA[foo]]>
+
+    """
+
     @property
-    def _backend_type(self) -> type[_CData]:
-        return _CData
+    def _default_backend(self) -> _CData:
+        return _CData("")
 
 
 @final
 class Text(TextElement[NavigableString]):
+    """Represents an XML/HTML text section.
+
+    Example:
+    >>> text = Text("foo")
+    >>> print(text)
+    foo
+
+    """
+
     @property
-    def _backend_type(self) -> type[NavigableString]:
-        return NavigableString
+    def _default_backend(self) -> NavigableString:
+        return NavigableString("")
