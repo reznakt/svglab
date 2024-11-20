@@ -39,7 +39,7 @@ class Element[T: bs4.PageElement](Repr, Hashable, metaclass=ABCMeta):
     def backend(self) -> T:
         return self._backend
 
-    # TODO: restrict the type of element based allowed children
+    # TODO: restrict the type of element based on allowed children
     def replace_with(self, element: AnyElement) -> Self:
         self._backend.replace_with(element.backend)
         return self
