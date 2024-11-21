@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import Hashable, Iterable
 from contextlib import suppress
-from typing import Final, Self, Union, cast, final
+from typing import ClassVar, Self, Union, cast, final
 from warnings import warn
 
 import bs4
@@ -167,8 +167,8 @@ class Text(TextElement[bs4.NavigableString]):
 
 
 class Tag(Element[bs4.Tag], metaclass=ABCMeta):
-    name: str
-    paired: bool = NotImplemented
+    name: ClassVar[str]
+    paired: ClassVar[bool]
 
     def __hash__(self) -> int:
         return hash(self._backend)
@@ -212,21 +212,21 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
 
 
 class UnpairedTag(Tag, metaclass=ABCMeta):
-    paired = False
+    paired: ClassVar = False
 
 
 @final
 class Rect(UnpairedTag):
-    name: Final = "rect"
+    name: ClassVar = "rect"
 
 
 # use Union because the new syntax doesn't seem to work well
 # with recursive types
 @final
 class G(PairedTag[Union[AnyTextElement, "G", Rect]]):
-    name: Final = "g"
+    name: ClassVar = "g"
 
 
 @final
 class Svg(PairedTag[AnyElement]):
-    name: Final = "svg"
+    name: ClassVar = "svg"
