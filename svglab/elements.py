@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Hashable, Iterable
 from contextlib import suppress
 from typing import Final, Self, cast, final
+from warnings import warn
 
 import bs4
 
@@ -19,7 +20,7 @@ __all__ = [
 type AnyElement = Element[bs4.PageElement]
 
 
-def backend_to_element(backend: bs4.PageElement) -> AnyElement:
+def backend_to_element(backend: bs4.PageElement) -> AnyElement | None:
     match backend:
         case bs4.Tag():
             if backend.is_empty_element:
@@ -32,8 +33,8 @@ def backend_to_element(backend: bs4.PageElement) -> AnyElement:
         case bs4.NavigableString():
             return Text(_backend=backend)
         case _:
-            msg = f"Unsupported backend type: {type(backend)}"
-            raise ValueError(msg)
+            warn(f"Unknown backend type: {type(backend)}", stacklevel=1)
+            return None
 
 
 class Element[T: bs4.PageElement](Repr, Hashable, metaclass=ABCMeta):
@@ -68,6 +69,11 @@ class Element[T: bs4.PageElement](Repr, Hashable, metaclass=ABCMeta):
     def replace_with(self, element: AnyElement) -> Self:
         self._backend.replace_with(element.backend)
         return self
+
+    @property
+    def parent(self) -> AnyElement | None:
+        parent = self._backend.parent
+        return backend_to_element(parent) if parent is not None else None
 
 
 class TextElement[T: bs4.Comment | bs4.CData | bs4.NavigableString](
@@ -183,10 +189,19 @@ class PairedTag(Tag, metaclass=ABCMeta):
         return SizedIterable(self.__children())
 
     def __children(self) -> Iterable[AnyElement]:
-        return map(backend_to_element, self._backend.children)
+        for child in self._backend.children:
+            element = backend_to_element(child)
+
+            if element is not None:
+                yield element
 
     def add_child(self, child: AnyElement) -> Self:
         self._backend.append(child.backend)
+        return self
+
+    def add_children(self, children: Iterable[AnyElement]) -> Self:
+        # use extend() because it's faster than multiple calls to add_child()
+        self._backend.extend(child.backend for child in children)
         return self
 
 
