@@ -1,6 +1,6 @@
-from svglab.elements.tag import G, Rect
+# ruff: noqa: T201
 
-from .elements import CData, Comment, Text
+from .elements import CData, Comment, G, Rect, Text
 from .io import parse_svg
 
 
