@@ -30,8 +30,7 @@ type AnyTextElement = TextElement[TextBackend]
 def get_tag_class(tag_name: str) -> type[Tag] | None:
     classes = {
         cls.name: cls
-        for tag_cls in Tag.__subclasses__()
-        for cls in tag_cls.__subclasses__()
+        for cls in UnpairedTag.__subclasses__() + PairedTag.__subclasses__()
     }
 
     def inner() -> type[Tag] | None:
