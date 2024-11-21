@@ -1,6 +1,6 @@
 # ruff: noqa: T201
 
-from .elements import CData, Comment, G, Rect, Text
+from .elements import CData, Comment, G, Rect, Svg, Text
 from .io import parse_svg
 
 
@@ -8,7 +8,7 @@ def main() -> None:
     soup = parse_svg("<foo></foo>")
     print(soup.prettify())
 
-    group = (
+    group = Svg(
         G()
         .add_child(Rect())
         .add_child(Comment("This is an example comment"))
@@ -18,12 +18,14 @@ def main() -> None:
     )
     print(group)
 
-    group2 = G(
-        Rect(),
-        Comment("This is an example comment"),
-        CData("foo { background-color: red; }"),
-        Text("baz"),
-        G(Rect(), Rect()),
+    group2 = Svg(
+        G(
+            Rect(),
+            Comment("This is an example comment"),
+            CData("foo { background-color: red; }"),
+            Text("baz"),
+            G(Rect(), Rect()),
+        )
     )
     print(group2)
 
