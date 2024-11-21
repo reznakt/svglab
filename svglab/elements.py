@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
 from collections.abc import Hashable, Iterable
 from contextlib import suppress
@@ -25,12 +27,29 @@ type AnyElement = Element[Backend]
 type AnyTextElement = TextElement[TextBackend]
 
 
+def get_tag_class(tag_name: str) -> type[Tag] | None:
+    classes = {
+        cls.name: cls
+        for tag_cls in Tag.__subclasses__()
+        for cls in tag_cls.__subclasses__()
+    }
+
+    def inner() -> type[Tag] | None:
+        return classes.get(tag_name)
+
+    return inner()
+
+
 def backend_to_element(backend: Backend) -> AnyElement | None:
     match backend:
         case bs4.Tag():
-            if backend.is_empty_element:
-                return UnpairedTag(_backend=backend)
-            return PairedTag(_backend=backend)
+            tag_cls = get_tag_class(backend.name)
+
+            if tag_cls is None:
+                warn(f"Unknown tag: {backend.name}", stacklevel=1)
+                return None
+
+            return tag_cls(_backend=backend)
         case bs4.Comment():
             return Comment(_backend=backend)
         case bs4.CData():

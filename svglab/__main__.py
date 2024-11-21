@@ -28,6 +28,8 @@ def main() -> None:
         )
     )
     print(group2)
+    print(group == group2)
+    print(len(group.children))
 
 
 if __name__ == "__main__":

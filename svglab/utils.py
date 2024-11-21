@@ -5,7 +5,27 @@ from typing import Final
 __all__ = ["SizedIterable", "Repr"]
 
 
-class SizedIterable[T](Sized, Iterable[T]):
+class Repr:
+    """Mixin to provide a sensible __repr__ implementation.
+
+    Example:
+    >>> class Foo(Repr):
+    ...     def __init__(self, bar: str) -> None:
+    ...         self.bar = bar
+    >>> foo = Foo("baz")
+    >>> repr(foo)
+    "Foo(bar='baz')"
+
+    """
+
+    def __repr__(self) -> str:
+        name = self.__class__.__name__
+        attrs = ", ".join(f"{key}={value!r}" for key, value in self.__dict__.items())
+
+        return f"{name}({attrs})"
+
+
+class SizedIterable[T](Sized, Iterable[T], Repr):
     """An iterable with a length.
 
     Example:
@@ -36,23 +56,3 @@ class SizedIterable[T](Sized, Iterable[T]):
 
     def __bool__(self) -> bool:
         return len(self) > 0
-
-
-class Repr:
-    """Mixin to provide a sensible __repr__ implementation.
-
-    Example:
-    >>> class Foo(Repr):
-    ...     def __init__(self, bar: str) -> None:
-    ...         self.bar = bar
-    >>> foo = Foo("baz")
-    >>> repr(foo)
-    "Foo(bar='baz')"
-
-    """
-
-    def __repr__(self) -> str:
-        name = self.__class__.__name__
-        attrs = ", ".join(f"{key}={value!r}" for key, value in self.__dict__.items())
-
-        return f"{name}({attrs})"
