@@ -5,8 +5,6 @@ from bs4 import BeautifulSoup as _BeautifulSoup
 
 from .types import SupportsRead
 
-__all__ = ["parse_svg", "write_svg"]
-
 
 class BeautifulSoup(_BeautifulSoup):
     def __init__(
@@ -19,9 +17,6 @@ def parse_svg(
     markup: str | bytes | SupportsRead[str] | SupportsRead[bytes],
 ) -> BeautifulSoup:
     return BeautifulSoup(markup)
-
-
-__all__ = ["write_svg"]
 
 
 def write_svg(soup: BeautifulSoup, path: str | PathLike[str]) -> None:

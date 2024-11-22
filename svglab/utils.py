@@ -2,8 +2,6 @@ from collections.abc import Iterable, Iterator, Sized
 from functools import reduce
 from typing import Final
 
-__all__ = ["SizedIterable", "Repr"]
-
 
 class Repr:
     """Mixin to provide a sensible __repr__ implementation.

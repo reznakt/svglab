@@ -1,7 +1,5 @@
 from typing import Protocol, runtime_checkable
 
-__all__ = ["SupportsRead"]
-
 
 @runtime_checkable
 class SupportsRead[T: str | bytes](Protocol):

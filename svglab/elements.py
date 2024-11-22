@@ -10,16 +10,6 @@ import bs4
 
 from .utils import Repr, SizedIterable
 
-__all__ = [
-    "Comment",
-    "CData",
-    "Text",
-    "Tag",
-    "Rect",
-    "G",
-    "Svg",
-]
-
 type Backend = bs4.PageElement
 type TextBackend = bs4.Comment | bs4.CData | bs4.NavigableString
 
