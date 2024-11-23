@@ -3,12 +3,16 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from collections.abc import Hashable, Iterable
 from contextlib import suppress
-from typing import ClassVar, Self, cast, final
+from typing import TYPE_CHECKING, ClassVar, Self, cast, final
 from warnings import warn
 
 import bs4
+from atomicwrites import atomic_write
 
 from .utils import Repr, SizedIterable
+
+if TYPE_CHECKING:
+    from os import PathLike
 
 type Backend = bs4.PageElement
 type TextBackend = bs4.Comment | bs4.CData | bs4.NavigableString
@@ -268,3 +272,9 @@ class Svg(PairedTag[SvgChildren]):
     @property
     def allowed_children(self) -> set[type[SvgChildren]]:
         return {Text, G, Rect, Comment, CData, Svg}
+
+    def save(self, path: str | PathLike[str]) -> None:
+        path = str(path)
+
+        with atomic_write(path, overwrite=True) as file:
+            file.write(str(self))
