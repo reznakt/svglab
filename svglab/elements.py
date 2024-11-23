@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from collections.abc import Hashable, Iterable
 from contextlib import suppress
-from typing import ClassVar, Self, Union, cast, final
+from typing import ClassVar, Self, cast, final
 from warnings import warn
 
 import bs4
@@ -191,31 +191,51 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
 
     def __init__(self, *children: T, _backend: bs4.Tag | None = None) -> None:
         super().__init__(_backend=_backend)
-
-        for child in children:
-            self.add_child(child)
+        self.add_children(children)
 
     @property
     def children(self) -> SizedIterable[T]:
         return SizedIterable(self.__children())
 
+    @property
+    @abstractmethod
+    def allowed_children(self) -> set[type[T]]: ...
+
     def __children(self) -> Iterable[T]:
         for child in self._backend.children:
             element = backend_to_element(child)
 
-            if element is not None:
-                # there is no way to statically ensure that the
-                # element is of the correct type, so we have to cast
-                # TODO: make sure this is correctly handled at runtime
-                yield cast(T, element)
+            if element is None:
+                continue
+
+            cls = type(element)
+
+            if cls not in self.allowed_children:
+                warn(
+                    f"Element {cls} is not allowed as a child of {self.__class__}",
+                    stacklevel=1,
+                )
+                continue
+
+            # there is no way to statically ensure that the
+            # element is of the correct type, so we have to cast
+            # TODO: make sure this is correctly handled at runtime
+            yield cast(T, element)
 
     def add_child(self, child: T) -> Self:
+        child_type = type(child)
+
+        if child_type not in self.allowed_children:
+            msg = f"Element {child_type} is not allowed as a child of {type(self)}"
+            raise TypeError(msg)
+
         self._backend.append(child.backend)
         return self
 
     def add_children(self, children: Iterable[T]) -> Self:
-        # use extend() because it's faster than multiple calls to add_child()
-        self._backend.extend(child.backend for child in children)
+        for child in children:
+            self.add_child(child)
+
         return self
 
 
@@ -228,13 +248,23 @@ class Rect(UnpairedTag):
     name: ClassVar = "rect"
 
 
-# use Union because the new syntax doesn't seem to work well
-# with recursive types
+type GChildren = AnyTextElement | G | Rect
+type SvgChildren = AnyElement
+
+
 @final
-class G(PairedTag[Union[AnyTextElement, "G", Rect]]):
+class G(PairedTag[GChildren]):
     name: ClassVar = "g"
 
+    @property
+    def allowed_children(self) -> set[type[GChildren]]:
+        return {Text, G, Rect, Comment, CData}
+
 
 @final
-class Svg(PairedTag[AnyElement]):
+class Svg(PairedTag[SvgChildren]):
     name: ClassVar = "svg"
+
+    @property
+    def allowed_children(self) -> set[type[SvgChildren]]:
+        return {Text, G, Rect, Comment, CData, Svg}
