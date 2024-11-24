@@ -54,3 +54,8 @@ class SizedIterable[T](Sized, Iterable[T], Repr):
 
     def __bool__(self) -> bool:
         return len(self) > 0
+
+    def __str__(self) -> str:
+        name = self.__class__.__name__
+        contents = ", ".join(repr(item) for item in self)
+        return f"{name}({contents})"

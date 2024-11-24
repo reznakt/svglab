@@ -14,8 +14,8 @@ def main() -> None:
                 <![CDATA[foo { background-color: red; }]]>
                 baz
                 <g>
-                    <rect />
-                    <rect />
+                    <rect id="foo"/>
+                    <rect class="bar" />
                 </g>
             </g>
         </svg>
@@ -46,6 +46,10 @@ def main() -> None:
 
     print(svg2 == svg3)
     print(len(svg.children))
+
+    print(svg["g>g>rect"])
+    print(svg["rect#foo"])
+    print(svg["rect.bar"])
 
 
 if __name__ == "__main__":

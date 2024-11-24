@@ -189,6 +189,14 @@ class Tag(Element[bs4.Tag], metaclass=ABCMeta):
     def _default_backend(self) -> bs4.Tag:
         return bs4.Tag(name=self.name, can_be_empty_element=not self.paired)
 
+    @property
+    def namespace(self) -> str | None:
+        return self._backend.namespace
+
+    @namespace.setter
+    def namespace(self, namespace: str | None) -> None:
+        self._backend.namespace = namespace
+
 
 class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
     paired = True
@@ -241,6 +249,25 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
             self.add_child(child)
 
         return self
+
+    def select(
+        self,
+        query: str,
+        namespaces: Iterable[str] | None = None,
+        limit: int | None = None,
+        *,
+        flags: int = 0,
+        custom: dict[str, str] | None = None,
+    ) -> SizedIterable[T]:
+        matches = self._backend.select(
+            query, namespaces=namespaces, limit=limit, flags=flags, custom=custom
+        )
+
+        # TODO: remove cast and unify with __children()
+        return SizedIterable(cast(T, backend_to_element(match)) for match in matches)
+
+    def __getitem__(self, query: str) -> SizedIterable[T]:
+        return self.select(query)
 
 
 class UnpairedTag(Tag, metaclass=ABCMeta):
