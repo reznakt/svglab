@@ -127,15 +127,15 @@ class TextElement[T: TextBackend](Element[T], metaclass=ABCMeta):
 
     @content.setter
     def content(self, content: str) -> None:
-        comment = self._backend_type(content)
+        new_backend = self._backend_type(content)
 
         # replace_with() fails if the backend is not part of a tree,
         # which is fine if we are not attached to a soup
         with suppress(ValueError):
-            self._backend.replace_with(comment)
+            self._backend.replace_with(new_backend)
 
         # TODO: figure out a way for mypy to eat this without the cast
-        self._backend = cast(T, comment)
+        self._backend = cast(T, new_backend)
 
     def __hash__(self) -> int:
         return hash(self.content)
