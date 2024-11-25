@@ -334,3 +334,4 @@ class Svg(PairedTag[SvgChildren]):
                     pass
 
             file.write(self._to_str(indent=indent))
+            file.write("\n")
