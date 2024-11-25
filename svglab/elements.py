@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from collections.abc import Hashable, Iterable
-from contextlib import suppress
-from typing import TYPE_CHECKING, ClassVar, Self, cast, final
+from contextlib import ExitStack, suppress
+from functools import cache
+from os import PathLike
+from typing import ClassVar, Self, cast, final
 from warnings import warn
 
 import bs4
 from atomicwrites import atomic_write
+from bs4.formatter import XMLFormatter
 
+from .types import SupportsWrite
 from .utils import Repr, SizedIterable
-
-if TYPE_CHECKING:
-    from os import PathLike
 
 type Backend = bs4.PageElement
 type TextBackend = bs4.Comment | bs4.CData | bs4.NavigableString
@@ -54,6 +55,14 @@ def backend_to_element(backend: Backend) -> AnyElement | None:
             return None
 
 
+@cache
+def get_formatter(indent: int) -> XMLFormatter:
+    if indent < 0:
+        raise ValueError("Indent must be a non-negative integer")
+
+    return XMLFormatter(indent=indent)
+
+
 class Element[T: Backend](Repr, Hashable, metaclass=ABCMeta):
     def __init__(self, *, _backend: T | None = None) -> None:
         self._backend = _backend if _backend is not None else self._default_backend
@@ -62,10 +71,16 @@ class Element[T: Backend](Repr, Hashable, metaclass=ABCMeta):
     @abstractmethod
     def _default_backend(self) -> T: ...
 
-    def __str__(self) -> str:
+    def _to_str(self, indent: int = 2) -> str:
+        formatter = get_formatter(indent)
+
         soup = bs4.BeautifulSoup()
         soup.append(self._backend)
-        return soup.prettify().strip()
+
+        return soup.prettify(formatter=formatter).strip()
+
+    def __str__(self) -> str:
+        return self._to_str()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
@@ -300,8 +315,22 @@ class Svg(PairedTag[SvgChildren]):
     def allowed_children(self) -> set[type[SvgChildren]]:
         return {Text, G, Rect, Comment, CData, Svg}
 
-    def save(self, path: str | PathLike[str]) -> None:
-        path = str(path)
+    def save(
+        self,
+        path_or_file: str | PathLike[str] | SupportsWrite[str],
+        /,
+        *,
+        indent: int = 2,
+    ) -> None:
+        with ExitStack() as stack:
+            file: SupportsWrite[str]
 
-        with atomic_write(path, overwrite=True) as file:
-            file.write(str(self))
+            match path_or_file:
+                case str() | PathLike() as path:
+                    file = stack.enter_context(
+                        atomic_write(path, mode="w", overwrite=True)
+                    )
+                case SupportsWrite() as file:
+                    pass
+
+            file.write(self._to_str(indent=indent))

@@ -1,5 +1,7 @@
 # ruff: noqa: T201
 
+from sys import stdout
+
 from .elements import CData, Comment, G, Rect, Svg, Text
 from .parse import parse_svg
 
@@ -50,6 +52,8 @@ def main() -> None:
     print(svg["g>g>rect"])
     print(svg["rect#foo"])
     print(svg["rect.bar"])
+
+    svg.save(stdout, indent=4)
 
 
 if __name__ == "__main__":
