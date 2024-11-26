@@ -39,25 +39,37 @@ def get_formatter(indent: int) -> XMLFormatter:
     return XMLFormatter(indent=indent)
 
 
-def backend_to_element(backend: Backend) -> AnyElement | None:
+def backend_to_element[T: Backend](backend: T) -> Element[T]:
+    result: AnyElement
+
     match backend:
         case bs4.Tag():
             tag_cls = get_tag_class(backend.name)
 
             if tag_cls is None:
-                warn(f"Unknown tag: {backend.name}", stacklevel=1)
-                return None
+                msg = f"Unknown tag: {backend.name}"
+                raise ValueError(msg)
 
-            return tag_cls(_backend=backend)
+            result = tag_cls(_backend=backend)
         case bs4.Comment():
-            return Comment(_backend=backend)
+            result = Comment(_backend=backend)
         case bs4.CData():
-            return CData(_backend=backend)
+            result = CData(_backend=backend)
         case bs4.NavigableString():
-            return Text(_backend=backend)
+            result = Text(_backend=backend)
         case _:
-            warn(f"Unknown backend type: {type(backend)}", stacklevel=1)
-            return None
+            msg = f"Unknown backend type: {type(backend)}"
+            raise ValueError(msg)
+
+    return cast(Element[T], result)
+
+
+def backends_to_elements[T: Backend](backends: Iterable[T]) -> Iterable[Element[T]]:
+    for backend in backends:
+        try:
+            yield backend_to_element(backend)
+        except ValueError as e:
+            warn(str(e), stacklevel=1)
 
 
 class Element[T: Backend](Repr, Hashable, metaclass=ABCMeta):
@@ -261,25 +273,16 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
     def allowed_children(self) -> set[type[T]]: ...
 
     def __children(self) -> Iterable[T]:
-        for child in self._backend.children:
-            element = backend_to_element(child)
+        children = backends_to_elements(self._backend.children)
 
-            if element is None:
-                continue
+        for child in children:
+            child_type = type(child)
 
-            cls = type(element)
+            if child_type not in self.allowed_children:
+                msg = f"Element {child_type} is not allowed as a child of {type(self)}"
+                raise TypeError(msg)
 
-            if cls not in self.allowed_children:
-                warn(
-                    f"Element {cls} is not allowed as a child of {self.__class__}",
-                    stacklevel=1,
-                )
-                continue
-
-            # there is no way to statically ensure that the
-            # element is of the correct type, so we have to cast
-            # TODO: make sure this is correctly handled at runtime
-            yield cast(T, element)
+            yield cast(T, child)
 
     def add_child(self, child: T) -> Self:
         child_type = type(child)
@@ -299,7 +302,7 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
 
     def select(
         self,
-        query: str,
+        selector: str,
         namespaces: Iterable[str] | None = None,
         limit: int | None = None,
         *,
@@ -307,11 +310,31 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
         custom: dict[str, str] | None = None,
     ) -> SizedIterable[T]:
         matches = self._backend.select(
-            query, namespaces=namespaces, limit=limit, flags=flags, custom=custom
+            selector=selector,
+            namespaces=namespaces,
+            limit=limit,
+            flags=flags,
+            custom=custom,
         )
 
-        # TODO: remove cast and unify with __children()
-        return SizedIterable(cast(T, backend_to_element(match)) for match in matches)
+        return SizedIterable(cast(Iterable[T], backends_to_elements(matches)))
+
+    def select_one(
+        self,
+        selector: str,
+        namespaces: Iterable[str] | None = None,
+        *,
+        flags: int = 0,
+        custom: dict[str, str] | None = None,
+    ) -> T | None:
+        match = self._backend.select_one(
+            selector=selector, namespaces=namespaces, flags=flags, custom=custom
+        )
+
+        if match is None:
+            return None
+
+        return cast(T, backend_to_element(match))
 
     def __getitem__(self, query: str) -> SizedIterable[T]:
         return self.select(query)
