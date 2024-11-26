@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from collections.abc import Hashable, Iterable
+from collections.abc import Callable, Hashable, Iterable
 from contextlib import ExitStack, suppress
 from functools import cache
 from itertools import chain
 from os import PathLike
+from re import Pattern
 from typing import ClassVar, Final, Self, cast, final
 from warnings import warn
 
@@ -20,6 +21,18 @@ type TextBackend = bs4.Comment | bs4.CData | bs4.NavigableString
 
 type AnyElement = Element[Backend]
 type AnyTextElement = TextElement[TextBackend]
+
+type _SimpleStrainable = (
+    str
+    | bool
+    | None
+    | bytes
+    | Pattern[str]
+    | Callable[[str], bool]
+    | Callable[[bs4.Tag], bool]
+)
+
+type Strainable = _SimpleStrainable | Iterable[_SimpleStrainable]
 
 
 @cache
@@ -272,26 +285,24 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
     @abstractmethod
     def allowed_children(self) -> set[type[T]]: ...
 
-    def __children(self) -> Iterable[T]:
-        children = backends_to_elements(self._backend.children)
-
-        for child in children:
-            child_type = type(child)
-
-            if child_type not in self.allowed_children:
-                msg = f"Element {child_type} is not allowed as a child of {type(self)}"
-                raise TypeError(msg)
-
-            yield cast(T, child)
-
-    def add_child(self, child: T) -> Self:
+    def __check_allowed_child(self, child: AnyElement) -> None:
         child_type = type(child)
 
         if child_type not in self.allowed_children:
             msg = f"Element {child_type} is not allowed as a child of {type(self)}"
             raise TypeError(msg)
 
+    def __children(self) -> Iterable[T]:
+        children = backends_to_elements(self._backend.children)
+
+        for child in children:
+            self.__check_allowed_child(child)
+            yield cast(T, child)
+
+    def add_child(self, child: T) -> Self:
+        self.__check_allowed_child(child)
         self._backend.append(child.backend)
+
         return self
 
     def add_children(self, children: Iterable[T]) -> Self:
@@ -338,6 +349,66 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
 
     def __getitem__(self, query: str) -> SizedIterable[T]:
         return self.select(query)
+
+    def clear(self) -> Self:
+        self._backend.clear()
+        return self
+
+    def child_index(self, element: T) -> int:
+        return self._backend.index(element.backend)
+
+    def insert_child(self, index: int, element: T) -> Self:
+        self.__check_allowed_child(element)
+        self._backend.insert(index, element.backend)
+
+        return self
+
+    @property
+    def prefix(self) -> str | None:
+        return self._backend.prefix
+
+    @prefix.setter
+    def prefix(self, prefix: str | None) -> None:
+        self._backend.prefix = prefix
+
+    def find_all(
+        self,
+        name: Strainable = None,
+        *,
+        attrs: Strainable | dict[str, Strainable] = None,
+        recursive: bool = True,
+        string: Strainable = None,
+        limit: int | None = None,
+        **kwargs: Strainable,
+    ) -> SizedIterable[T]:
+        matches = self._backend.find_all(
+            name=name,
+            attrs=attrs,
+            recursive=recursive,
+            string=string,
+            limit=limit,
+            **kwargs,
+        )
+
+        return SizedIterable(cast(Iterable[T], backends_to_elements(matches)))
+
+    def find(
+        self,
+        name: Strainable = None,
+        *,
+        attrs: Strainable | dict[str, Strainable] = None,
+        recursive: bool = True,
+        string: Strainable = None,
+        **kwargs: Strainable,
+    ) -> T | None:
+        match = self._backend.find(
+            name=name, attrs=attrs, recursive=recursive, string=string, **kwargs
+        )
+
+        if match is None:
+            return None
+
+        return cast(T, backend_to_element(match))
 
 
 class UnpairedTag(Tag, metaclass=ABCMeta):

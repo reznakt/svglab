@@ -63,6 +63,8 @@ def main() -> None:
     print(svg.attrs)
     print(svg.extra_attrs)
 
+    print(svg.find_all("rect"))
+
 
 if __name__ == "__main__":
     main()
