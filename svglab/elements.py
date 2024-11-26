@@ -4,6 +4,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Hashable, Iterable
 from contextlib import ExitStack, suppress
 from functools import cache
+from itertools import chain
 from os import PathLike
 from typing import ClassVar, Final, Self, cast, final
 from warnings import warn
@@ -21,16 +22,21 @@ type AnyElement = Element[Backend]
 type AnyTextElement = TextElement[TextBackend]
 
 
+@cache
 def get_tag_class(tag_name: str) -> type[Tag] | None:
-    classes = {
-        cls.name: cls
-        for cls in UnpairedTag.__subclasses__() + PairedTag.__subclasses__()
-    }
+    classes: Iterable[type[Tag]] = chain(
+        PairedTag.__subclasses__(), UnpairedTag.__subclasses__()
+    )
 
-    def inner() -> type[Tag] | None:
-        return classes.get(tag_name)
+    return next((cls for cls in classes if cls.name == tag_name), None)
 
-    return inner()
+
+@cache
+def get_formatter(indent: int) -> XMLFormatter:
+    if indent < 0:
+        raise ValueError("Indent must be a non-negative integer")
+
+    return XMLFormatter(indent=indent)
 
 
 def backend_to_element(backend: Backend) -> AnyElement | None:
@@ -52,14 +58,6 @@ def backend_to_element(backend: Backend) -> AnyElement | None:
         case _:
             warn(f"Unknown backend type: {type(backend)}", stacklevel=1)
             return None
-
-
-@cache
-def get_formatter(indent: int) -> XMLFormatter:
-    if indent < 0:
-        raise ValueError("Indent must be a non-negative integer")
-
-    return XMLFormatter(indent=indent)
 
 
 class Element[T: Backend](Repr, Hashable, metaclass=ABCMeta):
