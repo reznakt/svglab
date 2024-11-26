@@ -1,9 +1,10 @@
+#!/usr/bin/env python3
+
 # ruff: noqa: T201
 
 from sys import stdout
 
-from .elements import CData, Comment, G, Rect, Svg, Text
-from .parse import parse_svg
+from svglab import CData, Comment, G, Rect, Svg, Text, parse_svg
 
 
 def main() -> None:

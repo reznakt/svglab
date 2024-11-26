@@ -4,7 +4,7 @@ import bs4
 
 from svglab.elements import Svg
 
-from .types import SupportsRead
+from .utils import SupportsRead
 
 
 class BeautifulSoup(bs4.BeautifulSoup):

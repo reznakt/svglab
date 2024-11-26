@@ -1,6 +1,6 @@
 from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sized
 from functools import reduce
-from typing import Final, final
+from typing import Final, Protocol, final, runtime_checkable
 
 
 class Repr:
@@ -93,3 +93,37 @@ class MappingFilterWrapper[K, V](MutableMapping[K, V]):
 
     def __repr__(self) -> str:
         return repr(dict(self))
+
+
+@runtime_checkable
+class SupportsRead[T: str | bytes](Protocol):
+    """Protocol for objects that support reading.
+
+    This exists because using `SupportsRead` from `typeshed` causes problems.
+
+    Example:
+    >>> from io import StringIO
+    >>> buf = StringIO()
+    >>> isinstance(buf, SupportsRead)
+    True
+
+    """
+
+    def read(self, size: int | None = None, /) -> T: ...
+
+
+@runtime_checkable
+class SupportsWrite[T: str | bytes](Protocol):
+    """Protocol for objects that support writing.
+
+    This exists because using `SupportsWrite` from `typeshed` causes problems.
+
+    Example:
+    >>> from io import StringIO
+    >>> buf = StringIO()
+    >>> isinstance(buf, SupportsWrite)
+    True
+
+    """
+
+    def write(self, data: T, /) -> int: ...

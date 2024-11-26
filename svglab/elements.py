@@ -12,8 +12,7 @@ import bs4
 from atomicwrites import atomic_write
 from bs4.formatter import XMLFormatter
 
-from .types import SupportsWrite
-from .utils import MappingFilterWrapper, Repr, SizedIterable
+from .utils import MappingFilterWrapper, Repr, SizedIterable, SupportsWrite
 
 type Backend = bs4.PageElement
 type TextBackend = bs4.Comment | bs4.CData | bs4.NavigableString
