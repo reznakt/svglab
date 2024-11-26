@@ -5,7 +5,7 @@ from collections.abc import Hashable, Iterable
 from contextlib import ExitStack, suppress
 from functools import cache
 from os import PathLike
-from typing import ClassVar, Self, cast, final
+from typing import ClassVar, Final, Self, cast, final
 from warnings import warn
 
 import bs4
@@ -13,7 +13,7 @@ from atomicwrites import atomic_write
 from bs4.formatter import XMLFormatter
 
 from .types import SupportsWrite
-from .utils import Repr, SizedIterable
+from .utils import MappingFilterWrapper, Repr, SizedIterable
 
 type Backend = bs4.PageElement
 type TextBackend = bs4.Comment | bs4.CData | bs4.NavigableString
@@ -196,6 +196,18 @@ class Text(TextElement[bs4.NavigableString]):
 class Tag(Element[bs4.Tag], metaclass=ABCMeta):
     name: ClassVar[str]
     paired: ClassVar[bool]
+    allowed_attrs: ClassVar[frozenset[str]]
+
+    def __init__(self, *, _backend: bs4.Tag | None = None) -> None:
+        super().__init__(_backend=_backend)
+
+        self.attrs: Final = MappingFilterWrapper(
+            self._backend.attrs, key_filter=lambda key: key in self.allowed_attrs
+        )
+
+        self.extra_attrs: Final = MappingFilterWrapper(
+            self._backend.attrs, key_filter=lambda key: key not in self.allowed_attrs
+        )
 
     def __hash__(self) -> int:
         return hash(self._backend)
@@ -211,6 +223,29 @@ class Tag(Element[bs4.Tag], metaclass=ABCMeta):
     @namespace.setter
     def namespace(self, namespace: str | None) -> None:
         self._backend.namespace = namespace
+
+    def __getattribute__(self, name: str) -> object:
+        __getattribute__ = super().__getattribute__
+
+        if name in type(self).allowed_attrs:
+            backend: bs4.Tag = __getattribute__("_backend")
+            return backend.attrs.get(name)
+
+        return __getattribute__(name)
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if name in type(self).allowed_attrs:
+            self._backend.attrs[name] = value
+            return
+
+        super().__setattr__(name, value)
+
+    def __delattr__(self, name: str) -> None:
+        if name in type(self).allowed_attrs:
+            del self._backend.attrs[name]
+            return
+
+        super().__delattr__(name)
 
 
 class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
@@ -292,6 +327,12 @@ class UnpairedTag(Tag, metaclass=ABCMeta):
 @final
 class Rect(UnpairedTag):
     name: ClassVar = "rect"
+    allowed_attrs: ClassVar = frozenset(("x", "y", "width", "height"))
+
+    x: str | None
+    y: str | None
+    width: str | None
+    height: str | None
 
 
 type GChildren = AnyTextElement | G | Rect
@@ -301,6 +342,7 @@ type SvgChildren = AnyElement
 @final
 class G(PairedTag[GChildren]):
     name: ClassVar = "g"
+    allowed_attrs: ClassVar = frozenset()
 
     @property
     def allowed_children(self) -> set[type[GChildren]]:
@@ -310,6 +352,10 @@ class G(PairedTag[GChildren]):
 @final
 class Svg(PairedTag[SvgChildren]):
     name: ClassVar = "svg"
+    allowed_attrs: ClassVar = frozenset(("xmlns", "viewBox"))
+
+    xmlns: str | None
+    viewBox: str | None  # noqa: N815
 
     @property
     def allowed_children(self) -> set[type[SvgChildren]]:

@@ -9,9 +9,9 @@ from .parse import parse_svg
 def main() -> None:
     svg = parse_svg(
         """
-        <svg>
+        <svg xmlns="http://www.w3.org/2000/svg" foo="bar" viewBox="0 0 100 100">
             <g>
-                <rect />
+                <rect x="0" y="0" width="100" height="100"/>
                 <!-- This is an example comment -->
                 <![CDATA[foo { background-color: red; }]]>
                 baz
@@ -54,6 +54,13 @@ def main() -> None:
     print(svg["rect.bar"])
 
     svg.save(stdout, indent=4)
+
+    print(svg.xmlns)
+    svg.xmlns = "http://example.com"
+    print(svg.xmlns)
+
+    print(svg.attrs)
+    print(svg.extra_attrs)
 
 
 if __name__ == "__main__":
