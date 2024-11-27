@@ -7,14 +7,18 @@ from functools import cache
 from itertools import chain
 from os import PathLike
 from re import Pattern
-from typing import ClassVar, Final, Self, cast, final
+from typing import TYPE_CHECKING, ClassVar, Final, Literal, Self, cast, final
 from warnings import warn
 
 import bs4
 from atomicwrites import atomic_write
 from bs4.formatter import XMLFormatter
 
+from .attrs import attr_from_str, attr_to_str, is_normalized_name, normalized_to_attr
 from .utils import MappingFilterWrapper, Repr, SizedIterable, SupportsWrite
+
+if TYPE_CHECKING:
+    from .attrs import AttributeName
 
 type Backend = bs4.PageElement
 type TextBackend = bs4.Comment | bs4.CData | bs4.NavigableString
@@ -34,9 +38,74 @@ type _SimpleStrainable = (
 
 type Strainable = _SimpleStrainable | Iterable[_SimpleStrainable]
 
+type TagName = Literal[
+    "a",
+    "animate",
+    "animateMotion",
+    "animateTransform",
+    "circle",
+    "clipPath",
+    "defs",
+    "desc",
+    "ellipse",
+    "feBlend",
+    "feColorMatrix",
+    "feComponentTransfer",
+    "feComposite",
+    "feConvolveMatrix",
+    "feDiffuseLighting",
+    "feDisplacementMap",
+    "feDistantLight",
+    "feDropShadow",
+    "feFlood",
+    "feFuncA",
+    "feFuncB",
+    "feFuncG",
+    "feFuncR",
+    "feGaussianBlur",
+    "feImage",
+    "feMerge",
+    "feMergeNode",
+    "feMorphology",
+    "feOffset",
+    "fePointLight",
+    "feSpecularLighting",
+    "feSpotLight",
+    "feTile",
+    "feTurbulence",
+    "filter",
+    "foreignObject",
+    "g",
+    "image",
+    "line",
+    "linearGradient",
+    "marker",
+    "mask",
+    "metadata",
+    "path",
+    "pattern",
+    "polygon",
+    "polyline",
+    "radialGradient",
+    "rect",
+    "script",
+    "set",
+    "stop",
+    "style",
+    "svg",
+    "switch",
+    "symbol",
+    "text",
+    "textPath",
+    "title",
+    "tspan",
+    "use",
+    "view",
+]
+
 
 @cache
-def get_tag_class(tag_name: str) -> type[Tag] | None:
+def get_tag_class(tag_name: TagName) -> type[Tag] | None:
     classes: Iterable[type[Tag]] = chain(
         PairedTag.__subclasses__(), UnpairedTag.__subclasses__()
     )
@@ -216,19 +285,16 @@ class Text(TextElement[bs4.NavigableString]):
 
 
 class Tag(Element[bs4.Tag], metaclass=ABCMeta):
-    name: ClassVar[str]
+    name: ClassVar[TagName]
     paired: ClassVar[bool]
-    allowed_attrs: ClassVar[frozenset[str]]
+    allowed_attrs: ClassVar[frozenset[AttributeName]]
 
     def __init__(self, *, _backend: bs4.Tag | None = None) -> None:
         super().__init__(_backend=_backend)
 
-        self.attrs: Final = MappingFilterWrapper(
-            self._backend.attrs, key_filter=lambda key: key in self.allowed_attrs
-        )
-
-        self.extra_attrs: Final = MappingFilterWrapper(
-            self._backend.attrs, key_filter=lambda key: key not in self.allowed_attrs
+        self.extra_attrs: Final[MappingFilterWrapper[str, str]] = MappingFilterWrapper(
+            self._backend.attrs,
+            key_filter=lambda key: key not in self.allowed_attrs,
         )
 
     def __hash__(self) -> int:
@@ -249,16 +315,24 @@ class Tag(Element[bs4.Tag], metaclass=ABCMeta):
     def __getattribute__(self, name: str) -> object:
         __getattribute__ = super().__getattribute__
 
-        if name in type(self).allowed_attrs:
-            backend: bs4.Tag = __getattribute__("_backend")
-            return backend.attrs.get(name)
+        if is_normalized_name(name):
+            attr = normalized_to_attr(name)
+
+            if attr in type(self).allowed_attrs:
+                backend: bs4.Tag = __getattribute__("_backend")
+                value = backend.attrs.get(attr)
+
+                return None if value is None else attr_from_str(attr, value)
 
         return __getattribute__(name)
 
     def __setattr__(self, name: str, value: object) -> None:
-        if name in type(self).allowed_attrs:
-            self._backend.attrs[name] = value
-            return
+        if is_normalized_name(name):
+            attr = normalized_to_attr(name)
+
+            if attr in type(self).allowed_attrs:
+                self._backend.attrs[attr] = attr_to_str(attr, value)
+                return
 
         super().__setattr__(name, value)
 
@@ -420,10 +494,10 @@ class Rect(UnpairedTag):
     name: ClassVar = "rect"
     allowed_attrs: ClassVar = frozenset(("x", "y", "width", "height"))
 
-    x: str | None
-    y: str | None
-    width: str | None
-    height: str | None
+    x: float | None
+    y: float | None
+    width: float | None
+    height: float | None
 
 
 type GChildren = AnyTextElement | G | Rect
@@ -433,7 +507,9 @@ type SvgChildren = AnyElement
 @final
 class G(PairedTag[GChildren]):
     name: ClassVar = "g"
-    allowed_attrs: ClassVar = frozenset()
+    allowed_attrs: ClassVar = frozenset(("class",))
+
+    class_: str | None
 
     @property
     def allowed_children(self) -> set[type[GChildren]]:
@@ -446,7 +522,7 @@ class Svg(PairedTag[SvgChildren]):
     allowed_attrs: ClassVar = frozenset(("xmlns", "viewBox"))
 
     xmlns: str | None
-    viewBox: str | None  # noqa: N815
+    viewBox: tuple[float, float, float, float] | None  # noqa: N815
 
     @property
     def allowed_children(self) -> set[type[SvgChildren]]:

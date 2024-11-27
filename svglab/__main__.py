@@ -60,8 +60,15 @@ def main() -> None:
     svg.xmlns = "http://example.com"
     print(svg.xmlns)
 
-    print(svg.attrs)
     print(svg.extra_attrs)
+
+    print(svg.viewBox)
+    svg.viewBox = (0, 0, 200, 200)
+    print(svg.viewBox)
+
+    g = G()
+    g.class_ = "foo"
+    print(g)
 
     print(svg.find_all("rect"))
 
