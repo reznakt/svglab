@@ -80,10 +80,33 @@ class SizedIterable[T](Sized, Iterable[T], Repr):
 
 @final
 class MappingFilterWrapper[K, V](MutableMapping[K, V]):
+    """A wrapper around a mutable mapping that filters keys.
+
+    Example:
+    >>> mapping = MappingFilterWrapper(
+    ...     {"foo": 1, "bar": 2},
+    ...     key_filter=lambda key: key == "foo",
+    ... )
+    >>> mapping["foo"]
+    1
+    >>> mapping["bar"]
+    Traceback (most recent call last):
+        ...
+    KeyError: 'bar'
+
+    """
+
     def __init__(
-        self, attr_dict: MutableMapping[K, V], /, *, key_filter: Callable[[K], bool]
+        self, mapping: MutableMapping[K, V], /, *, key_filter: Callable[[K], bool]
     ) -> None:
-        self.__attr_dict: Final = attr_dict
+        """Initialize the wrapper.
+
+        Args:
+            mapping: The mapping to wrap.
+            key_filter: A predicate that determines whether a key should be allowed.
+
+        """
+        self.__mapping: Final = mapping
         self.__key_filter: Final = key_filter
 
     def __check_key(self, key: K) -> None:
@@ -92,18 +115,18 @@ class MappingFilterWrapper[K, V](MutableMapping[K, V]):
 
     def __getitem__(self, key: K) -> V:
         self.__check_key(key)
-        return self.__attr_dict[key]
+        return self.__mapping[key]
 
     def __setitem__(self, key: K, value: V) -> None:
         self.__check_key(key)
-        self.__attr_dict[key] = value
+        self.__mapping[key] = value
 
     def __delitem__(self, key: K) -> None:
         self.__check_key(key)
-        del self.__attr_dict[key]
+        del self.__mapping[key]
 
     def __iter__(self) -> Iterator[K]:
-        return filter(self.__key_filter, self.__attr_dict)
+        return filter(self.__key_filter, self.__mapping)
 
     def __len__(self) -> int:
         return reduce(lambda acc, _: acc + 1, self, 0)
