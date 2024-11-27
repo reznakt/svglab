@@ -93,7 +93,7 @@ class Element[T: Backend](Repr, Hashable, metaclass=ABCMeta):
     @abstractmethod
     def _default_backend(self) -> T: ...
 
-    def _to_str(self, indent: int = 2) -> str:
+    def to_str(self, indent: int = 2) -> str:
         formatter = get_formatter(indent)
 
         soup = bs4.BeautifulSoup()
@@ -102,7 +102,7 @@ class Element[T: Backend](Repr, Hashable, metaclass=ABCMeta):
         return soup.prettify(formatter=formatter).strip()
 
     def __str__(self) -> str:
-        return self._to_str()
+        return self.to_str()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):
@@ -470,5 +470,5 @@ class Svg(PairedTag[SvgChildren]):
                 case SupportsWrite() as file:
                     pass
 
-            file.write(self._to_str(indent=indent))
+            file.write(self.to_str(indent=indent))
             file.write("\n")

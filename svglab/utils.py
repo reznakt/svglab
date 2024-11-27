@@ -1,9 +1,11 @@
 from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sized
-from functools import reduce
+from functools import cached_property, reduce
+from reprlib import recursive_repr
+from reprlib import repr as _repr
 from typing import Final, Protocol, final, runtime_checkable
 
 
-class Repr:
+class Repr(Protocol):
     """Mixin to provide a sensible __repr__ implementation.
 
     Example:
@@ -16,9 +18,12 @@ class Repr:
 
     """
 
+    @recursive_repr()
     def __repr__(self) -> str:
         name = self.__class__.__name__
-        attrs = ", ".join(f"{key}={value!r}" for key, value in self.__dict__.items())
+        attrs = ", ".join(
+            f"{key}={_repr(value)}" for key, value in self.__dict__.items()
+        )
 
         return f"{name}({attrs})"
 
@@ -48,16 +53,28 @@ class SizedIterable[T](Sized, Iterable[T], Repr):
     def __iter__(self) -> Iterator[T]:
         return iter(self.__source)
 
+    @cached_property
+    def __len(self) -> int:
+        return reduce(lambda acc, _: acc + 1, self, 0)
+
     def __len__(self) -> int:
-        _iter = iter(self.__source)
-        return reduce(lambda acc, _: acc + 1, _iter, 0)
+        return self.__len
+
+    @cached_property
+    def __bool(self) -> bool:
+        try:
+            next(iter(self))
+        except StopIteration:
+            return False
+        else:
+            return True
 
     def __bool__(self) -> bool:
-        return len(self) > 0
+        return self.__bool
 
     def __str__(self) -> str:
-        name = self.__class__.__name__
-        contents = ", ".join(repr(item) for item in self)
+        name = type(self).__name__
+        contents = ", ".join(str(item) for item in self)
         return f"{name}({contents})"
 
 
