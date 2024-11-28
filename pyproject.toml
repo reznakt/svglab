@@ -16,6 +16,7 @@ beautifulsoup4 = "^4.12.3"
 lxml = "^5.3.0"
 atomicwrites = "^1.4.1"
 bidict = "^0.23.1"
+html5lib = "^1.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.8.0"
@@ -25,6 +26,7 @@ mypy = "^1.13.0"
 pre-commit = "^4.0.1"
 types-beautifulsoup4 = "^4.12.0.20241020"
 types-atomicwrites = "^1.4.5.1"
+hypothesis = "^6.121.0"
 
 [tool.poetry.scripts]
 svglab = "svglab.__main__:main"
@@ -91,7 +93,8 @@ ignore = [
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*" = [
-  "S101", # Use of assert detected
+  "S101",   # Use of assert detected
+  "PLR200", # Magic value used in comparison
 ]
 
 [tool.ruff.format]
