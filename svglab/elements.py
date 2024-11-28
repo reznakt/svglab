@@ -6,12 +6,12 @@ from contextlib import ExitStack, suppress
 from functools import cache
 from itertools import chain
 from os import PathLike
+from pathlib import Path
 from re import Pattern
 from typing import TYPE_CHECKING, ClassVar, Final, Literal, Self, cast, final
 from warnings import warn
 
 import bs4
-from atomicwrites import atomic_write
 from bs4.formatter import XMLFormatter
 
 from .attrs import attr_from_str, attr_to_str, is_normalized_name, normalized_to_attr
@@ -536,15 +536,14 @@ class Svg(PairedTag[SvgChildren]):
         indent: int = 2,
     ) -> None:
         with ExitStack() as stack:
+            output = self.to_str(indent=indent)
             file: SupportsWrite[str]
 
             match path_or_file:
                 case str() | PathLike() as path:
-                    file = stack.enter_context(
-                        atomic_write(path, mode="w", overwrite=True)
-                    )
+                    file = stack.enter_context(Path(path).open("w"))
                 case SupportsWrite() as file:
                     pass
 
-            file.write(self.to_str(indent=indent))
+            file.write(output)
             file.write("\n")
