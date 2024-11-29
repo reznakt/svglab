@@ -20,7 +20,7 @@ class Repr(Protocol):
 
     @recursive_repr()
     def __repr__(self) -> str:
-        name = self.__class__.__name__
+        name = type(self).__name__
         attrs = ", ".join(
             f"{key}={_repr(value)}" for key, value in self.__dict__.items()
         )

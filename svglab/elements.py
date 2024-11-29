@@ -174,7 +174,7 @@ class Element[T: Backend](Repr, Hashable, metaclass=ABCMeta):
         return self.to_str()
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, self.__class__):
+        if not isinstance(other, type(self)):
             return False
 
         if self is other:
