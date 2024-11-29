@@ -64,6 +64,14 @@
       "args": [
         "format-fix"
       ]
+    },
+    {
+      "label": "versioncheck",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "versioncheck"
+      ]
     }
   ]
 }

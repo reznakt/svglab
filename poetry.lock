@@ -829,6 +829,17 @@ files = [
 ]
 
 [[package]]
+name = "vermin"
+version = "1.6.0"
+description = "Concurrently detect the minimum Python versions needed to run code"
+optional = false
+python-versions = ">=3.0"
+files = [
+    {file = "vermin-1.6.0-py2.py3-none-any.whl", hash = "sha256:f1fa9ee40f59983dc40e0477eb2b1fa8061a3df4c3b2bcf349add462a5610efb"},
+    {file = "vermin-1.6.0.tar.gz", hash = "sha256:6266ca02f55d1c2aa189a610017c132eb2d1934f09e72a955b1eb3820ee6d4ef"},
+]
+
+[[package]]
 name = "virtualenv"
 version = "20.28.0"
 description = "Virtual Python Environment builder"
@@ -862,4 +873,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "10c79dbde6460fff90913d2da321523fbc1d8cdf55d53142d9794f8844cc353c"
+content-hash = "f78544e3a8397bbd97fae41a29fbbd29a69ff75ed36cb20a1301f4722becef1f"
