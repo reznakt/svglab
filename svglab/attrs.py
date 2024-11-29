@@ -1,9 +1,9 @@
 from keyword import iskeyword
-from typing import Final, Literal, TypeGuard
+from typing import Final, Literal, TypeAlias, TypeGuard
 
 from bidict import frozenbidict
 
-type AttributeName = Literal[
+AttributeName: TypeAlias = Literal[
     "alignment-baseline",
     "attributeName",
     "attributeType",

@@ -1,18 +1,30 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from collections.abc import Callable, Hashable, Iterable
+from collections.abc import Callable, Iterable
 from contextlib import ExitStack, suppress
 from functools import cache
 from itertools import chain
 from os import PathLike
 from pathlib import Path
 from re import Pattern
-from typing import TYPE_CHECKING, ClassVar, Final, Literal, Self, cast, final
+from typing import (
+    TYPE_CHECKING,
+    ClassVar,
+    Final,
+    Generic,
+    Literal,
+    TypeAlias,
+    TypeVar,
+    Union,
+    cast,
+    final,
+)
 from warnings import warn
 
 import bs4
 from bs4.formatter import XMLFormatter
+from typing_extensions import Self
 
 from .attrs import attr_from_str, attr_to_str, is_normalized_name, normalized_to_attr
 from .utils import MappingFilterWrapper, Repr, SizedIterable, SupportsWrite
@@ -20,13 +32,18 @@ from .utils import MappingFilterWrapper, Repr, SizedIterable, SupportsWrite
 if TYPE_CHECKING:
     from .attrs import AttributeName
 
-type Backend = bs4.PageElement
-type TextBackend = bs4.Comment | bs4.CData | bs4.NavigableString
+_BT = TypeVar("_BT", bound=bs4.PageElement)
+_BT_co = TypeVar("_BT_co", bound=bs4.PageElement, covariant=True)
 
-type AnyElement = Element[Backend]
-type AnyTextElement = TextElement[TextBackend]
+_TBT_co = TypeVar(
+    "_TBT_co", bound=bs4.Comment | bs4.CData | bs4.NavigableString, covariant=True
+)
 
-type _SimpleStrainable = (
+_ET = TypeVar("_ET", bound="AnyElement")
+_ET_co = TypeVar("_ET_co", bound="AnyElement", covariant=True)
+
+
+_SimpleStrainable: TypeAlias = (
     str
     | bool
     | None
@@ -36,9 +53,9 @@ type _SimpleStrainable = (
     | Callable[[bs4.Tag], bool]
 )
 
-type Strainable = _SimpleStrainable | Iterable[_SimpleStrainable]
+Strainable: TypeAlias = _SimpleStrainable | Iterable[_SimpleStrainable]
 
-type TagName = Literal[
+TagName: TypeAlias = Literal[
     "a",
     "animate",
     "animateMotion",
@@ -121,7 +138,7 @@ def get_formatter(indent: int) -> XMLFormatter:
     return XMLFormatter(indent=indent)
 
 
-def backend_to_element[T: Backend](backend: T) -> Element[T]:
+def backend_to_element(backend: _BT) -> Element[_BT]:
     result: AnyElement
 
     match backend:
@@ -143,24 +160,24 @@ def backend_to_element[T: Backend](backend: T) -> Element[T]:
             msg = f"Unknown backend type: {type(backend)}"
             raise ValueError(msg)
 
-    return cast(Element[T], result)
+    return cast(Element[_BT], result)
 
 
-def backends_to_elements[T: Backend](backends: Iterable[T]) -> Iterable[Element[T]]:
+def backends_to_elements(backends: Iterable[_BT_co]) -> Iterable[Element[_BT_co]]:
     for backend in backends:
         try:
             yield backend_to_element(backend)
-        except ValueError as e:
+        except ValueError as e:  # noqa: PERF203
             warn(str(e), stacklevel=1)
 
 
-class Element[T: Backend](Repr, Hashable, metaclass=ABCMeta):
-    def __init__(self, *, _backend: T | None = None) -> None:
+class Element(Repr, Generic[_BT_co], metaclass=ABCMeta):
+    def __init__(self, *, _backend: _BT_co | None = None) -> None:
         self._backend = _backend if _backend is not None else self._default_backend
 
     @property
     @abstractmethod
-    def _default_backend(self) -> T: ...
+    def _default_backend(self) -> _BT_co: ...
 
     def to_str(self, indent: int = 2) -> str:
         formatter = get_formatter(indent)
@@ -185,7 +202,7 @@ class Element[T: Backend](Repr, Hashable, metaclass=ABCMeta):
     # expose the backend so that we can join them together
     # when adding children to a tag
     @property
-    def backend(self) -> T:
+    def backend(self) -> _BT_co:
         return self._backend
 
     # TODO: restrict the type of element based on allowed children
@@ -199,13 +216,16 @@ class Element[T: Backend](Repr, Hashable, metaclass=ABCMeta):
         return backend_to_element(parent) if parent is not None else None
 
 
-class TextElement[T: TextBackend](Element[T], metaclass=ABCMeta):
+AnyElement: TypeAlias = Element[bs4.PageElement]
+
+
+class TextElement(Element[_TBT_co], metaclass=ABCMeta):
     def __init__(
         self,
         content: str | None = None,
         /,
         *,
-        _backend: T | None = None,
+        _backend: _TBT_co | None = None,
     ) -> None:
         super().__init__(_backend=_backend)
 
@@ -226,14 +246,17 @@ class TextElement[T: TextBackend](Element[T], metaclass=ABCMeta):
             self._backend.replace_with(new_backend)
 
         # TODO: figure out a way for mypy to eat this without the cast
-        self._backend = cast(T, new_backend)
+        self._backend = cast(_TBT_co, new_backend)
 
     def __hash__(self) -> int:
         return hash(self.content)
 
     @property
-    def _backend_type(self) -> type[T]:
+    def _backend_type(self) -> type[_TBT_co]:
         return type(self._default_backend)
+
+
+AnyTextElement = TextElement[bs4.NavigableString]
 
 
 @final
@@ -344,20 +367,20 @@ class Tag(Element[bs4.Tag], metaclass=ABCMeta):
         super().__delattr__(name)
 
 
-class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
+class PairedTag(Tag, Generic[_ET_co], metaclass=ABCMeta):
     paired = True
 
-    def __init__(self, *children: T, _backend: bs4.Tag | None = None) -> None:
+    def __init__(self, *children: _ET_co, _backend: bs4.Tag | None = None) -> None:
         super().__init__(_backend=_backend)
         self.add_children(children)
 
     @property
-    def children(self) -> SizedIterable[T]:
+    def children(self) -> SizedIterable[_ET_co]:
         return SizedIterable(self.__children())
 
     @property
     @abstractmethod
-    def allowed_children(self) -> set[type[T]]: ...
+    def allowed_children(self) -> set[type[_ET_co]]: ...
 
     def __check_allowed_child(self, child: AnyElement) -> None:
         child_type = type(child)
@@ -366,20 +389,20 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
             msg = f"Element {child_type} is not allowed as a child of {type(self)}"
             raise TypeError(msg)
 
-    def __children(self) -> Iterable[T]:
+    def __children(self) -> Iterable[_ET_co]:
         children = backends_to_elements(self._backend.children)
 
         for child in children:
             self.__check_allowed_child(child)
-            yield cast(T, child)
+            yield cast(_ET_co, child)
 
-    def add_child(self, child: T) -> Self:
+    def add_child(self, child: _ET) -> Self:
         self.__check_allowed_child(child)
         self._backend.append(child.backend)
 
         return self
 
-    def add_children(self, children: Iterable[T]) -> Self:
+    def add_children(self, children: Iterable[_ET_co]) -> Self:
         for child in children:
             self.add_child(child)
 
@@ -393,7 +416,7 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
         *,
         flags: int = 0,
         custom: dict[str, str] | None = None,
-    ) -> SizedIterable[T]:
+    ) -> SizedIterable[_ET_co]:
         matches = self._backend.select(
             selector=selector,
             namespaces=namespaces,
@@ -402,7 +425,7 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
             custom=custom,
         )
 
-        return SizedIterable(cast(Iterable[T], backends_to_elements(matches)))
+        return SizedIterable(cast(Iterable[_ET_co], backends_to_elements(matches)))
 
     def select_one(
         self,
@@ -411,7 +434,7 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
         *,
         flags: int = 0,
         custom: dict[str, str] | None = None,
-    ) -> T | None:
+    ) -> _ET_co | None:
         match = self._backend.select_one(
             selector=selector, namespaces=namespaces, flags=flags, custom=custom
         )
@@ -419,19 +442,19 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
         if match is None:
             return None
 
-        return cast(T, backend_to_element(match))
+        return cast(_ET_co, backend_to_element(match))
 
-    def __getitem__(self, query: str) -> SizedIterable[T]:
+    def __getitem__(self, query: str) -> SizedIterable[_ET_co]:
         return self.select(query)
 
     def clear(self) -> Self:
         self._backend.clear()
         return self
 
-    def child_index(self, element: T) -> int:
+    def child_index(self, element: _ET) -> int:
         return self._backend.index(element.backend)
 
-    def insert_child(self, index: int, element: T) -> Self:
+    def insert_child(self, index: int, element: _ET) -> Self:
         self.__check_allowed_child(element)
         self._backend.insert(index, element.backend)
 
@@ -454,7 +477,7 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
         string: Strainable = None,
         limit: int | None = None,
         **kwargs: Strainable,
-    ) -> SizedIterable[T]:
+    ) -> SizedIterable[_ET_co]:
         matches = self._backend.find_all(
             name=name,
             attrs=attrs,
@@ -464,7 +487,7 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
             **kwargs,
         )
 
-        return SizedIterable(cast(Iterable[T], backends_to_elements(matches)))
+        return SizedIterable(cast(Iterable[_ET_co], backends_to_elements(matches)))
 
     def find(
         self,
@@ -474,7 +497,7 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
         recursive: bool = True,
         string: Strainable = None,
         **kwargs: Strainable,
-    ) -> T | None:
+    ) -> _ET_co | None:
         match = self._backend.find(
             name=name, attrs=attrs, recursive=recursive, string=string, **kwargs
         )
@@ -482,7 +505,7 @@ class PairedTag[T: AnyElement](Tag, metaclass=ABCMeta):
         if match is None:
             return None
 
-        return cast(T, backend_to_element(match))
+        return cast(_ET_co, backend_to_element(match))
 
 
 class UnpairedTag(Tag, metaclass=ABCMeta):
@@ -500,8 +523,8 @@ class Rect(UnpairedTag):
     height: float | None
 
 
-type GChildren = AnyTextElement | G | Rect
-type SvgChildren = AnyElement
+GChildren: TypeAlias = Union[AnyTextElement, "G", Rect]
+SvgChildren: TypeAlias = AnyElement
 
 
 @final

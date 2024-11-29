@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Literal
+from typing import Literal, TypeAlias
 
 import bs4
 from bs4 import BeautifulSoup
@@ -8,7 +8,7 @@ from svglab.elements import Svg
 
 from .utils import SupportsRead
 
-type Parser = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
+Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
 
 
 def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:

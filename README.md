@@ -49,7 +49,7 @@ graph TD
 
 ## System Requirements
 
-- [CPython](https://www.python.org/) $\geq$ 3.12
+- [CPython](https://www.python.org/) $\geq$ 3.10
 - [Poetry](https://python-poetry.org/) (development only)
 
 ## Installation

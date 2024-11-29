@@ -1,8 +1,21 @@
-from collections.abc import Callable, Iterable, Iterator, MutableMapping, Sized
+from collections.abc import (
+    Callable,
+    Hashable,
+    Iterable,
+    Iterator,
+    MutableMapping,
+    Sized,
+)
 from functools import cached_property, reduce
 from reprlib import recursive_repr
 from reprlib import repr as _repr
-from typing import Final, Protocol, final, runtime_checkable
+from typing import Final, Protocol, TypeVar, final, runtime_checkable
+
+_T = TypeVar("_T")
+_KT = TypeVar("_KT", bound=Hashable)
+_VT = TypeVar("_VT", bound=Hashable)
+_AnyStr_contra = TypeVar("_AnyStr_contra", str, bytes, contravariant=True)
+_AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
 
 
 class Repr(Protocol):
@@ -28,7 +41,7 @@ class Repr(Protocol):
         return f"{name}({attrs})"
 
 
-class SizedIterable[T](Sized, Iterable[T], Repr):
+class SizedIterable(Sized, Iterable[_T], Repr):
     """An iterable with a length.
 
     Example:
@@ -47,10 +60,10 @@ class SizedIterable[T](Sized, Iterable[T], Repr):
 
     """
 
-    def __init__(self, source: Iterable[T]) -> None:
+    def __init__(self, source: Iterable[_T]) -> None:
         self.__source: Final = source
 
-    def __iter__(self) -> Iterator[T]:
+    def __iter__(self) -> Iterator[_T]:
         return iter(self.__source)
 
     @cached_property
@@ -79,7 +92,7 @@ class SizedIterable[T](Sized, Iterable[T], Repr):
 
 
 @final
-class MappingFilterWrapper[K, V](MutableMapping[K, V]):
+class MappingFilterWrapper(MutableMapping[_KT, _VT]):
     """A wrapper around a mutable mapping that filters keys.
 
     Example:
@@ -97,7 +110,7 @@ class MappingFilterWrapper[K, V](MutableMapping[K, V]):
     """
 
     def __init__(
-        self, mapping: MutableMapping[K, V], /, *, key_filter: Callable[[K], bool]
+        self, mapping: MutableMapping[_KT, _VT], /, *, key_filter: Callable[[_KT], bool]
     ) -> None:
         """Initialize the wrapper.
 
@@ -109,23 +122,23 @@ class MappingFilterWrapper[K, V](MutableMapping[K, V]):
         self.__mapping: Final = mapping
         self.__key_filter: Final = key_filter
 
-    def __check_key(self, key: K) -> None:
+    def __check_key(self, key: _KT) -> None:
         if not self.__key_filter(key):
             raise KeyError(key)
 
-    def __getitem__(self, key: K) -> V:
+    def __getitem__(self, key: _KT) -> _VT:
         self.__check_key(key)
         return self.__mapping[key]
 
-    def __setitem__(self, key: K, value: V) -> None:
+    def __setitem__(self, key: _KT, value: _VT) -> None:
         self.__check_key(key)
         self.__mapping[key] = value
 
-    def __delitem__(self, key: K) -> None:
+    def __delitem__(self, key: _KT) -> None:
         self.__check_key(key)
         del self.__mapping[key]
 
-    def __iter__(self) -> Iterator[K]:
+    def __iter__(self) -> Iterator[_KT]:
         return filter(self.__key_filter, self.__mapping)
 
     def __len__(self) -> int:
@@ -136,7 +149,7 @@ class MappingFilterWrapper[K, V](MutableMapping[K, V]):
 
 
 @runtime_checkable
-class SupportsRead[T: str | bytes](Protocol):
+class SupportsRead(Protocol[_AnyStr_co]):
     """Protocol for objects that support reading.
 
     This exists because using `SupportsRead` from `typeshed` causes problems.
@@ -149,11 +162,11 @@ class SupportsRead[T: str | bytes](Protocol):
 
     """
 
-    def read(self, size: int | None = None, /) -> T: ...
+    def read(self, size: int | None = None, /) -> _AnyStr_co: ...
 
 
 @runtime_checkable
-class SupportsWrite[T: str | bytes](Protocol):
+class SupportsWrite(Protocol[_AnyStr_contra]):
     """Protocol for objects that support writing.
 
     This exists because using `SupportsWrite` from `typeshed` causes problems.
@@ -166,4 +179,4 @@ class SupportsWrite[T: str | bytes](Protocol):
 
     """
 
-    def write(self, data: T, /) -> int: ...
+    def write(self, data: _AnyStr_contra, /) -> int: ...
