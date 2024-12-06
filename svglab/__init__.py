@@ -1,7 +1,7 @@
-from importlib import metadata
-from typing import Final
+import importlib.metadata
+import typing
 
-__version__: Final = metadata.version(__name__)
+__version__: typing.Final = importlib.metadata.version(__name__)
 
 from pydantic_extra_types.color import Color
 
