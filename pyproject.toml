@@ -16,6 +16,8 @@ beautifulsoup4 = "^4.12.3"
 lxml = "^5.3.0"
 bidict = "^0.23.1"
 html5lib = "^1.1"
+pydantic = "^2.10.2"
+pydantic-extra-types = "^2.10.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.8.0"
@@ -43,9 +45,15 @@ versioncheck = "vermin ."
 
 [tool.pytest.ini_options]
 addopts = ["--cov", "--doctest-continue-on-failure", "--doctest-modules"]
+filterwarnings = [
+  # https://bugs.launchpad.net/beautifulsoup/+bug/2076897
+  "ignore:The 'strip_cdata' option of HTMLParser\\(\\) has never done anything and will eventually be removed.",
+]
 
 [tool.mypy]
-disallow_any_explicit = true
+disable_error_code = "prop-decorator" # https://github.com/python/mypy/issues/1362
+packages = ["svglab", "tests"]
+plugins = ["pydantic.mypy"]
 pretty = true
 python_version = "3.10"
 show_column_numbers = true
@@ -56,7 +64,6 @@ warn_redundant_casts = true
 warn_return_any = true
 warn_unreachable = true
 warn_unused_ignores = true
-packages = ["svglab", "tests"]
 
 [tool.ruff]
 target-version = "py310"
@@ -90,11 +97,15 @@ ignore = [
   "FIX002", # Line contains TODO
   "TD002",  # Missing author in TODO
   "TD003",  # Missing issue link on the line following this TODO
+
+  # misc
+  "S101",  # Use of assert detected
+  "TC002", # Move third-party import into a type-checking block
+  "TC003", # Move standard library import into a type-checking block
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*" = [
-  "S101",   # Use of assert detected
   "PLR200", # Magic value used in comparison
 ]
 

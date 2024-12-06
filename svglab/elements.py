@@ -1,572 +1,502 @@
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
-from collections.abc import Callable, Iterable
-from contextlib import ExitStack, suppress
-from functools import cache
-from itertools import chain
-from os import PathLike
-from pathlib import Path
-from re import Pattern
-from typing import (
-    TYPE_CHECKING,
-    ClassVar,
-    Final,
-    Generic,
-    Literal,
-    TypeAlias,
-    TypeVar,
-    Union,
-    cast,
-    final,
-)
-from warnings import warn
+import collections
+import contextlib
+import itertools
+import os
+import pathlib
+import reprlib
+import sys
+from collections.abc import Iterable, Mapping
+from typing import Final, Literal, SupportsIndex, cast, final, overload
 
+import bidict
 import bs4
-from bs4.formatter import XMLFormatter
+import pydantic
+import pydantic_extra_types.color as pydantic_color
 from typing_extensions import Self
 
-from .attrs import attr_from_str, attr_to_str, is_normalized_name, normalized_to_attr
-from .utils import MappingFilterWrapper, Repr, SizedIterable, SupportsWrite
-
-if TYPE_CHECKING:
-    from .attrs import AttributeName
-
-_BT = TypeVar("_BT", bound=bs4.PageElement)
-_BT_co = TypeVar("_BT_co", bound=bs4.PageElement, covariant=True)
-
-_TBT_co = TypeVar(
-    "_TBT_co", bound=bs4.Comment | bs4.CData | bs4.NavigableString, covariant=True
-)
-
-_ET = TypeVar("_ET", bound="AnyElement")
-_ET_co = TypeVar("_ET_co", bound="AnyElement", covariant=True)
+from svglab import attrs, constants, models, types, utils
 
 
-_SimpleStrainable: TypeAlias = (
-    str
-    | bool
-    | None
-    | bytes
-    | Pattern[str]
-    | Callable[[str], bool]
-    | Callable[[bs4.Tag], bool]
-)
+class Element(models.BaseModel):
+    """The base class of the SVG element hierarchy."""
 
-Strainable: TypeAlias = _SimpleStrainable | Iterable[_SimpleStrainable]
+    parent: Element | None = pydantic.Field(default=None, init=False)
 
-TagName: TypeAlias = Literal[
-    "a",
-    "animate",
-    "animateMotion",
-    "animateTransform",
-    "circle",
-    "clipPath",
-    "defs",
-    "desc",
-    "ellipse",
-    "feBlend",
-    "feColorMatrix",
-    "feComponentTransfer",
-    "feComposite",
-    "feConvolveMatrix",
-    "feDiffuseLighting",
-    "feDisplacementMap",
-    "feDistantLight",
-    "feDropShadow",
-    "feFlood",
-    "feFuncA",
-    "feFuncB",
-    "feFuncG",
-    "feFuncR",
-    "feGaussianBlur",
-    "feImage",
-    "feMerge",
-    "feMergeNode",
-    "feMorphology",
-    "feOffset",
-    "fePointLight",
-    "feSpecularLighting",
-    "feSpotLight",
-    "feTile",
-    "feTurbulence",
-    "filter",
-    "foreignObject",
-    "g",
-    "image",
-    "line",
-    "linearGradient",
-    "marker",
-    "mask",
-    "metadata",
-    "path",
-    "pattern",
-    "polygon",
-    "polyline",
-    "radialGradient",
-    "rect",
-    "script",
-    "set",
-    "stop",
-    "style",
-    "svg",
-    "switch",
-    "symbol",
-    "text",
-    "textPath",
-    "title",
-    "tspan",
-    "use",
-    "view",
-]
+    @overload
+    def to_xml(self, *, pretty: Literal[False]) -> str: ...
 
+    @overload
+    def to_xml(
+        self, *, pretty: bool = True, indent: int = constants.DEFAULT_INDENT
+    ) -> str: ...
 
-@cache
-def get_tag_class(tag_name: TagName) -> type[Tag] | None:
-    classes: Iterable[type[Tag]] = chain(
-        PairedTag.__subclasses__(), UnpairedTag.__subclasses__()
-    )
+    def to_xml(
+        self,
+        *,
+        pretty: bool = True,
+        indent: int = constants.DEFAULT_INDENT,
+    ) -> str:
+        """Convert the element to XML.
 
-    return next((cls for cls in classes if cls.name == tag_name), None)
+        Args:
+        pretty: Whether to produce pretty-printed XML.
+        indent: The number of spaces to indent each level of the document.
 
+        Returns:
+        The XML representation of the element.
 
-@cache
-def get_formatter(indent: int) -> XMLFormatter:
-    if indent < 0:
-        raise ValueError("Indent must be a non-negative integer")
+        Examples:
+        >>> rect = Rect(id="foo", width=100, height=100)
+        >>> rect.to_xml()
+        '<rect height="100.0" id="foo" width="100.0"/>'
 
-    return XMLFormatter(indent=indent)
-
-
-def backend_to_element(backend: _BT) -> Element[_BT]:
-    result: AnyElement
-
-    match backend:
-        case bs4.Tag():
-            tag_cls = get_tag_class(backend.name)
-
-            if tag_cls is None:
-                msg = f"Unknown tag: {backend.name}"
-                raise ValueError(msg)
-
-            result = tag_cls(_backend=backend)
-        case bs4.Comment():
-            result = Comment(_backend=backend)
-        case bs4.CData():
-            result = CData(_backend=backend)
-        case bs4.NavigableString():
-            result = Text(_backend=backend)
-        case _:
-            msg = f"Unknown backend type: {type(backend)}"
-            raise ValueError(msg)
-
-    return cast(Element[_BT], result)
-
-
-def backends_to_elements(backends: Iterable[_BT_co]) -> Iterable[Element[_BT_co]]:
-    for backend in backends:
-        try:
-            yield backend_to_element(backend)
-        except ValueError as e:  # noqa: PERF203
-            warn(str(e), stacklevel=1)
-
-
-class Element(Repr, Generic[_BT_co], metaclass=ABCMeta):
-    def __init__(self, *, _backend: _BT_co | None = None) -> None:
-        self._backend = _backend if _backend is not None else self._default_backend
-
-    @property
-    @abstractmethod
-    def _default_backend(self) -> _BT_co: ...
-
-    def to_str(self, indent: int = 2) -> str:
-        formatter = get_formatter(indent)
-
-        soup = bs4.BeautifulSoup()
-        soup.append(self._backend)
-
-        return soup.prettify(formatter=formatter).strip()
+        """
+        soup = self.to_beautifulsoup_object()
+        return utils.beautifulsoup_to_str(soup, pretty=pretty, indent=indent)
 
     def __str__(self) -> str:
-        return self.to_str()
+        return self.to_xml(pretty=False)
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, type(self)):
-            return False
+    def to_beautifulsoup_object(self) -> bs4.PageElement:
+        match self:
+            case TextElement():
+                cls = BS_TO_TEXT_ELEMENT.inverse[type(self)]
+                return cls(self.content)
+            case Tag():
+                tag = bs4.Tag(
+                    name=self.name,
+                    can_be_empty_element=not isinstance(self, PairedTag),
+                    prefix=self.prefix,
+                    is_xml=True,
+                )
 
-        if self is other:
-            return True
+                for key, value in self.all_attrs().items():
+                    tag[key] = str(value)
 
-        return hash(self) == hash(other)
+                if isinstance(self, PairedTag):
+                    for child in self.children:
+                        tag.append(child.to_beautifulsoup_object())
 
-    # expose the backend so that we can join them together
-    # when adding children to a tag
+                return tag
+            case _:
+                msg = f"Unable to convert {type(self)} to a BeautifulSoup object."
+                raise TypeError(msg)
+
+
+class TextElement(Element):
+    """The base class of text-based elements.
+
+    Text-based elements are elements that are represented by a single string.
+
+    Common examples of text-based elements in XML are:
+    - `CDATA` sections (`CData`)
+    - comments (`Comment`)
+    - text (`Text`)
+    - processing instructions (for example, `<?xml version="1.0"?>`)
+    - Document Type Definitions (DTDs; for example, `<!DOCTYPE html>`)
+    """
+
+    content: str = pydantic.Field(frozen=True, min_length=1)
+
+    def __repr__(self) -> str:
+        name = type(self).__name__
+        return f"{name}({self.content!r})"
+
+
+class CData(TextElement):
+    """A `CDATA` section.
+
+    A `CDATA` section is a block of text that is not parsed by the XML parser,
+    but is interpreted verbatim.
+
+    `CDATA` sections are used to include text that contains characters
+    that would otherwise be interpreted as XML markup.
+
+    Example: `<![CDATA[<g id="foo"></g>]]>`
+    """
+
+    def __init__(self, content: str, /) -> None:
+        super().__init__(content=content)
+
+
+class Comment(TextElement):
+    """A comment.
+
+    A comment is a block of text that is not parsed by the XML parser,
+    but is ignored.
+
+    Comments are used to include notes and other information that is not
+    intended to be displayed to the user.
+
+    Example: `<!-- This is a comment -->`
+    """
+
+    def __init__(self, content: str, /) -> None:
+        super().__init__(content=content)
+
+
+class Text(TextElement):
+    """A text node.
+
+    A text node is a block of text that is parsed by the XML parser.
+
+    Text nodes are used to include text that is intended to be displayed to the user.
+
+    Example: `Hello, world!`
+    """
+
+    def __init__(self, content: str, /) -> None:
+        super().__init__(content=content)
+
+
+class Tag(Element):
+    """A tag.
+
+    A tag is an element that has a name and a set of attributes.
+
+    Tags can be of two types:
+    - paired tags, which have children (for example, `<g></g>`; see `PairedTag`)
+    - unpaired tags, which do not have children (for example, `<rect />`)
+
+    Tags can have standard attributes (for example, `id`, `class`, `color`) and
+    non-standard user-defined attributes.
+
+    Example: `<rect id="foo" class="bar" color="red" />`
+
+    Usage:
+    ```
+    >>> tag = Rect(id="foo", class_="bar", color="red")
+    >>> tag.id
+    'foo'
+    >>> tag.color
+    Color('red', rgb=(255, 0, 0))
+
+    ```
+    """
+
+    model_config = pydantic.ConfigDict(
+        extra="allow",
+        alias_generator=lambda name: attrs.ATTR_TO_NORMALIZED.inverse.get(name, name),
+    )
+
+    prefix: str | None = None
+
+    @pydantic.computed_field
     @property
-    def backend(self) -> _BT_co:
-        return self._backend
+    def name(self) -> str:
+        return type(self).__name__.lower()
 
-    # TODO: restrict the type of element based on allowed children
-    def replace_with(self, element: AnyElement) -> Self:
-        self._backend.replace_with(element.backend)
+    @pydantic.model_validator(mode="after")
+    def __validate_extra(self) -> Tag:
+        # model_extra cannot be None because extra is set to "allow"
+        assert self.model_extra is not None
+
+        for key, value in self.model_extra.items():
+            if not isinstance(value, str):
+                msg = (
+                    f"Non-standard attribute {key!r} must be of type str,"
+                    f" got {type(value).__name__}"
+                )
+                raise TypeError(msg)
+
         return self
 
-    @property
-    def parent(self) -> AnyElement | None:
-        parent = self._backend.parent
-        return backend_to_element(parent) if parent is not None else None
+    def __getitem__(self, key: str) -> str:
+        assert self.model_extra is not None
+        value: str = self.model_extra[key]
+        return value
 
+    def __setitem__(self, key: str, value: str) -> None:
+        assert self.model_extra is not None
+        self.model_extra[key] = value
 
-AnyElement: TypeAlias = Element[bs4.PageElement]
+    def __delitem__(self, key: str) -> None:
+        assert self.model_extra is not None
+        del self.model_extra[key]
 
+    def extra_attrs(self) -> Mapping[str, str]:
+        assert self.model_extra is not None
+        return self.model_extra
 
-class TextElement(Element[_TBT_co], metaclass=ABCMeta):
-    def __init__(
-        self,
-        content: str | None = None,
-        /,
-        *,
-        _backend: _TBT_co | None = None,
-    ) -> None:
-        super().__init__(_backend=_backend)
-
-        if content is not None:
-            self.content = content
-
-    @property
-    def content(self) -> str:
-        return self._backend.get_text()
-
-    @content.setter
-    def content(self, content: str) -> None:
-        new_backend = self._backend_type(content)
-
-        # replace_with() fails if the backend is not part of a tree,
-        # which is fine if we are not attached to a soup
-        with suppress(ValueError):
-            self._backend.replace_with(new_backend)
-
-        # TODO: figure out a way for mypy to eat this without the cast
-        self._backend = cast(_TBT_co, new_backend)
-
-    def __hash__(self) -> int:
-        return hash(self.content)
-
-    @property
-    def _backend_type(self) -> type[_TBT_co]:
-        return type(self._default_backend)
-
-
-AnyTextElement = TextElement[bs4.NavigableString]
-
-
-@final
-class Comment(TextElement[bs4.Comment]):
-    """Represents an XML/HTML comment.
-
-    Example:
-    >>> comment = Comment("foo")
-    >>> print(comment)
-    <!--foo-->
-
-    """
-
-    @property
-    def _default_backend(self) -> bs4.Comment:
-        return bs4.Comment("")
-
-
-@final
-class CData(TextElement[bs4.CData]):
-    """Represents an XML/HTML CDATA section.
-
-    Example:
-    >>> cdata = CData("foo")
-    >>> print(cdata)
-    <![CDATA[foo]]>
-
-    """
-
-    @property
-    def _default_backend(self) -> bs4.CData:
-        return bs4.CData("")
-
-
-@final
-class Text(TextElement[bs4.NavigableString]):
-    """Represents an XML/HTML text section.
-
-    Example:
-    >>> text = Text("foo")
-    >>> print(text)
-    foo
-
-    """
-
-    @property
-    def _default_backend(self) -> bs4.NavigableString:
-        return bs4.NavigableString("")
-
-
-class Tag(Element[bs4.Tag], metaclass=ABCMeta):
-    name: ClassVar[TagName]
-    paired: ClassVar[bool]
-    allowed_attrs: ClassVar[frozenset[AttributeName]]
-
-    def __init__(self, *, _backend: bs4.Tag | None = None) -> None:
-        super().__init__(_backend=_backend)
-
-        self.extra_attrs: Final[MappingFilterWrapper[str, str]] = MappingFilterWrapper(
-            self._backend.attrs,
-            key_filter=lambda key: key not in self.allowed_attrs,
+    def standard_attrs(self) -> Mapping[types.AttributeName, object]:
+        dump = self.model_dump(
+            by_alias=True,
+            exclude_defaults=True,
+            exclude_unset=True,
+            exclude_none=True,
         )
 
-    def __hash__(self) -> int:
-        return hash(self._backend)
+        return {
+            cast(types.AttributeName, key): value
+            for key, value in dump.items()
+            if key in constants.ATTRIBUTE_NAMES
+        }
 
+    def all_attrs(self) -> Mapping[str, object]:
+        standard = cast(Mapping[str, object], self.standard_attrs())
+        extra = self.extra_attrs()
+
+        return {**standard, **extra}
+
+    @reprlib.recursive_repr()
+    def __repr__(self) -> str:
+        name = type(self).__name__
+        attrs = dict(self.all_attrs())
+
+        if isinstance(self, PairedTag):
+            attrs["children"] = [type(child) for child in self.children]
+
+        attr_repr = ", ".join(f"{key}={value!r}" for key, value in attrs.items())
+
+        return f"{name}({attr_repr})"
+
+
+class PairedTag(Tag):
+    """A paired tag.
+
+    A paired tag is a tag that can have children.
+
+    Example: `<g><rect /></g>`
+
+    Usage:
+    ```
+    >>> g = G().add_child(Rect())
+    >>> for child in g.children:
+    ...     print(type(child).__name__)
+    Rect
+
+    ```
+    """
+
+    __children: list[Element] = pydantic.PrivateAttr(default_factory=list)
+
+    @pydantic.computed_field
     @property
-    def _default_backend(self) -> bs4.Tag:
-        return bs4.Tag(name=self.name, can_be_empty_element=not self.paired)
+    def children(self) -> Iterable[Element]:
+        return iter(self.__children)
 
+    @pydantic.computed_field
     @property
-    def namespace(self) -> str | None:
-        return self._backend.namespace
+    def descendants(self) -> Iterable[Element]:
+        queue = collections.deque(self.children)
 
-    @namespace.setter
-    def namespace(self, namespace: str | None) -> None:
-        self._backend.namespace = namespace
+        while queue:
+            child = queue.popleft()
+            yield child
 
-    def __getattribute__(self, name: str) -> object:
-        __getattribute__ = super().__getattribute__
+            if isinstance(child, PairedTag):
+                queue.extend(child.children)
 
-        if is_normalized_name(name):
-            attr = normalized_to_attr(name)
+    @pydantic.computed_field
+    @property
+    def parents(self) -> Iterable[Element]:
+        curr = self.parent
 
-            if attr in type(self).allowed_attrs:
-                backend: bs4.Tag = __getattribute__("_backend")
-                value = backend.attrs.get(attr)
+        while curr is not None:
+            yield curr
+            curr = curr.parent
 
-                return None if value is None else attr_from_str(attr, value)
-
-        return __getattribute__(name)
-
-    def __setattr__(self, name: str, value: object) -> None:
-        if is_normalized_name(name):
-            attr = normalized_to_attr(name)
-
-            if attr in type(self).allowed_attrs:
-                self._backend.attrs[attr] = attr_to_str(attr, value)
-                return
-
-        super().__setattr__(name, value)
-
-    def __delattr__(self, name: str) -> None:
-        if name in type(self).allowed_attrs:
-            del self._backend.attrs[name]
+    @pydantic.computed_field
+    @property
+    def next_siblings(self) -> Iterable[Element]:
+        if self.parent is None or not isinstance(self.parent, PairedTag):
             return
 
-        super().__delattr__(name)
+        should_yield = False
 
+        for sibling in self.parent.children:
+            if should_yield:
+                yield sibling
+            elif sibling is self:
+                should_yield = True
 
-class PairedTag(Tag, Generic[_ET_co], metaclass=ABCMeta):
-    paired = True
-
-    def __init__(self, *children: _ET_co, _backend: bs4.Tag | None = None) -> None:
-        super().__init__(_backend=_backend)
-        self.add_children(children)
-
+    @pydantic.computed_field
     @property
-    def children(self) -> SizedIterable[_ET_co]:
-        return SizedIterable(self.__children())
+    def prev_siblings(self) -> Iterable[Element]:
+        if self.parent is None or not isinstance(self.parent, PairedTag):
+            return
 
-    @property
-    @abstractmethod
-    def allowed_children(self) -> set[type[_ET_co]]: ...
+        for sibling in self.parent.children:
+            if sibling is self:
+                return
 
-    def __check_allowed_child(self, child: AnyElement) -> None:
-        child_type = type(child)
+            yield sibling
 
-        if child_type not in self.allowed_children:
-            msg = f"Element {child_type} is not allowed as a child of {type(self)}"
-            raise TypeError(msg)
+    def add_child(self, child: Element, /, *, index: int | None = None) -> Self:
+        if child is self:
+            raise ValueError("Cannot add a tag as a child of itself.")
 
-    def __children(self) -> Iterable[_ET_co]:
-        children = backends_to_elements(self._backend.children)
+        if child.parent is not None:
+            raise ValueError("Cannot add a child that already has a parent.")
 
-        for child in children:
-            self.__check_allowed_child(child)
-            yield cast(_ET_co, child)
+        if index is None:
+            self.__children.append(child)
+        else:
+            self.__children.insert(index, child)
 
-    def add_child(self, child: _ET) -> Self:
-        self.__check_allowed_child(child)
-        self._backend.append(child.backend)
+        child.parent = self
 
         return self
 
-    def add_children(self, children: Iterable[_ET_co]) -> Self:
+    def add_children(self, *children: Element) -> Self:
         for child in children:
             self.add_child(child)
 
         return self
 
-    def select(
+    def remove_child(self, child: Element, /) -> Element:
+        self.__children.remove(child)
+        child.parent = None
+
+        return child
+
+    def pop_child(self, index: SupportsIndex = -1, /) -> Element:
+        child = self.__children.pop(index)
+        child.parent = None
+
+        return child
+
+    def clear_children(self) -> None:
+        for child in self.__children:
+            child.parent = None
+
+        self.__children.clear()
+
+    def get_child(self, index: SupportsIndex = -1, /) -> Element:
+        return self.__children[index]
+
+    def get_child_index(
         self,
-        selector: str,
-        namespaces: Iterable[str] | None = None,
-        limit: int | None = None,
-        *,
-        flags: int = 0,
-        custom: dict[str, str] | None = None,
-    ) -> SizedIterable[_ET_co]:
-        matches = self._backend.select(
-            selector=selector,
-            namespaces=namespaces,
-            limit=limit,
-            flags=flags,
-            custom=custom,
-        )
-
-        return SizedIterable(cast(Iterable[_ET_co], backends_to_elements(matches)))
-
-    def select_one(
-        self,
-        selector: str,
-        namespaces: Iterable[str] | None = None,
-        *,
-        flags: int = 0,
-        custom: dict[str, str] | None = None,
-    ) -> _ET_co | None:
-        match = self._backend.select_one(
-            selector=selector, namespaces=namespaces, flags=flags, custom=custom
-        )
-
-        if match is None:
-            return None
-
-        return cast(_ET_co, backend_to_element(match))
-
-    def __getitem__(self, query: str) -> SizedIterable[_ET_co]:
-        return self.select(query)
-
-    def clear(self) -> Self:
-        self._backend.clear()
-        return self
-
-    def child_index(self, element: _ET) -> int:
-        return self._backend.index(element.backend)
-
-    def insert_child(self, index: int, element: _ET) -> Self:
-        self.__check_allowed_child(element)
-        self._backend.insert(index, element.backend)
-
-        return self
-
-    @property
-    def prefix(self) -> str | None:
-        return self._backend.prefix
-
-    @prefix.setter
-    def prefix(self, prefix: str | None) -> None:
-        self._backend.prefix = prefix
-
-    def find_all(
-        self,
-        name: Strainable = None,
-        *,
-        attrs: Strainable | dict[str, Strainable] = None,
-        recursive: bool = True,
-        string: Strainable = None,
-        limit: int | None = None,
-        **kwargs: Strainable,
-    ) -> SizedIterable[_ET_co]:
-        matches = self._backend.find_all(
-            name=name,
-            attrs=attrs,
-            recursive=recursive,
-            string=string,
-            limit=limit,
-            **kwargs,
-        )
-
-        return SizedIterable(cast(Iterable[_ET_co], backends_to_elements(matches)))
-
-    def find(
-        self,
-        name: Strainable = None,
-        *,
-        attrs: Strainable | dict[str, Strainable] = None,
-        recursive: bool = True,
-        string: Strainable = None,
-        **kwargs: Strainable,
-    ) -> _ET_co | None:
-        match = self._backend.find(
-            name=name, attrs=attrs, recursive=recursive, string=string, **kwargs
-        )
-
-        if match is None:
-            return None
-
-        return cast(_ET_co, backend_to_element(match))
+        child: Element,
+        /,
+        start: SupportsIndex = 0,
+        stop: SupportsIndex = sys.maxsize,
+    ) -> int:
+        return self.__children.index(child, start, stop)
 
 
-class UnpairedTag(Tag, metaclass=ABCMeta):
-    paired: ClassVar = False
+class CommonAttrs(pydantic.BaseModel):
+    id: models.Attr[str] = None
+    class_: models.Attr[str] = None
+    color: models.Attr[pydantic_color.Color] = None
+
+
+class GeometricAttrs(pydantic.BaseModel):
+    x: models.Attr[float] = None
+    y: models.Attr[float] = None
+    width: models.Attr[float] = None
+    height: models.Attr[float] = None
 
 
 @final
-class Rect(UnpairedTag):
-    name: ClassVar = "rect"
-    allowed_attrs: ClassVar = frozenset(("x", "y", "width", "height"))
-
-    x: float | None
-    y: float | None
-    width: float | None
-    height: float | None
-
-
-GChildren: TypeAlias = Union[AnyTextElement, "G", Rect]
-SvgChildren: TypeAlias = AnyElement
+class Rect(CommonAttrs, GeometricAttrs, Tag):
+    pass
 
 
 @final
-class G(PairedTag[GChildren]):
-    name: ClassVar = "g"
-    allowed_attrs: ClassVar = frozenset(("class",))
-
-    class_: str | None
-
-    @property
-    def allowed_children(self) -> set[type[GChildren]]:
-        return {Text, G, Rect, Comment, CData}
+class G(CommonAttrs, PairedTag):
+    pass
 
 
 @final
-class Svg(PairedTag[SvgChildren]):
-    name: ClassVar = "svg"
-    allowed_attrs: ClassVar = frozenset(("xmlns", "viewBox"))
+class Svg(CommonAttrs, PairedTag):
+    xmlns: models.Attr[str] = constants.DEFAULT_XMLNS
 
-    xmlns: str | None
-    viewBox: tuple[float, float, float, float] | None  # noqa: N815
+    @overload
+    def save(
+        self,
+        path: str | os.PathLike[str],
+        /,
+        *,
+        pretty: Literal[False],
+        trailing_newline: bool = True,
+    ) -> None: ...
 
-    @property
-    def allowed_children(self) -> set[type[SvgChildren]]:
-        return {Text, G, Rect, Comment, CData, Svg}
+    @overload
+    def save(
+        self,
+        file: types.SupportsWrite[str],
+        /,
+        *,
+        pretty: Literal[False],
+        trailing_newline: bool = True,
+    ) -> None: ...
+
+    @overload
+    def save(
+        self,
+        path: str | os.PathLike[str],
+        /,
+        *,
+        pretty: bool = True,
+        indent: int = constants.DEFAULT_INDENT,
+        trailing_newline: bool = True,
+    ) -> None: ...
+
+    @overload
+    def save(
+        self,
+        file: types.SupportsWrite[str],
+        /,
+        *,
+        pretty: bool = True,
+        indent: int = constants.DEFAULT_INDENT,
+        trailing_newline: bool = True,
+    ) -> None: ...
 
     def save(
         self,
-        path_or_file: str | PathLike[str] | SupportsWrite[str],
+        path_or_file: str | os.PathLike[str] | types.SupportsWrite[str],
         /,
         *,
-        indent: int = 2,
+        pretty: bool = True,
+        indent: int = constants.DEFAULT_INDENT,
+        trailing_newline: bool = True,
     ) -> None:
-        with ExitStack() as stack:
-            output = self.to_str(indent=indent)
-            file: SupportsWrite[str]
+        """Convert the SVG document fragment to XML and write it to a file.
+
+        Args:
+        path_or_file: The path to the file to save the XML to, or a file-like object.
+        pretty: Whether to produce pretty-printed XML.
+        indent: The number of spaces to indent each level of the document.
+        trailing_newline: Whether to add a trailing newline to the file.
+
+        Examples:
+        >>> svg = Svg(id="foo").add_child(Rect())
+        >>> svg.save(sys.stdout, pretty=True, indent=4, trailing_newline=False)
+        <svg id="foo">
+            <rect/>
+        </svg>
+
+        """
+        with contextlib.ExitStack() as stack:
+            output = self.to_xml(pretty=pretty, indent=indent)
+            file: types.SupportsWrite[str]
 
             match path_or_file:
-                case str() | PathLike() as path:
-                    file = stack.enter_context(Path(path).open("w"))
-                case SupportsWrite() as file:
+                case str() | os.PathLike() as path:
+                    file = stack.enter_context(pathlib.Path(path).open("w"))
+                case types.SupportsWrite() as file:
                     pass
 
             file.write(output)
-            file.write("\n")
+
+            if trailing_newline:
+                file.write("\n")
+
+
+BS_TO_TEXT_ELEMENT: Final = bidict.frozenbidict(
+    {
+        bs4.CData: CData,
+        bs4.Comment: Comment,
+        bs4.NavigableString: Text,
+    }
+)
+
+
+TAG_NAME_TO_CLASS: Final = {
+    cls().name: cls
+    for cls in itertools.chain(Tag.__subclasses__(), PairedTag.__subclasses__())
+}

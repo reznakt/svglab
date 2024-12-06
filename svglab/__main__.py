@@ -2,75 +2,43 @@
 
 # ruff: noqa: T201
 
-from sys import stdout
+import sys
 
-from svglab import CData, Comment, G, Rect, Svg, Text, parse_svg
+from svglab import CData, Comment, G, Rect, Text, parse_svg
 
 
 def main() -> None:
+    # Parse an existing SVG file
     svg = parse_svg(
         """
-        <svg xmlns="http://www.w3.org/2000/svg" foo="bar" viewBox="0 0 100 100">
+        <svg xmlns="http://www.w3.org/2000/svg">
             <g>
-                <rect x="0" y="0" width="100" height="100"/>
-                <!-- This is an example comment -->
-                <![CDATA[foo { background-color: red; }]]>
-                baz
-                <g>
-                    <rect id="foo"/>
-                    <rect class="bar" />
-                </g>
+                <rect id="background" width="100" height="100"/>
+                <!-- This is a comment -->
+                <![CDATA[.background { fill: blue; }]]>
+                Hello SVG!
             </g>
         </svg>
     """
     )
-    print(svg)
 
-    svg2 = Svg(
-        G()
-        .add_child(Rect())
-        .add_child(Comment("This is an example comment"))
-        .add_child(CData("foo { background-color: red; }"))
-        .add_child(Text("baz"))
-        .add_child(G().add_child(Rect()).add_child(Rect()))
+    # Create an element programmatically
+    group = G().add_children(
+        Rect(),
+        Comment("This is a comment"),
+        CData(".background { fill: blue; }"),
+        Text("Hello SVG!"),
     )
-    print(svg2)
 
-    svg3 = Svg(
-        G(
-            Rect(),
-            Comment("This is an example comment"),
-            CData("foo { background-color: red; }"),
-            Text("baz"),
-            G(Rect(), Rect()),
-        )
-    )
-    print(svg3)
+    # Add the element to the SVG
+    svg.add_child(group)
 
-    print(svg2 == svg3)
-    print(len(svg.children))
-
-    print(svg["g>g>rect"])
-    print(svg["rect#foo"])
-    print(svg["rect.bar"])
-
-    svg.save(stdout, indent=4)
-
-    print(svg.xmlns)
+    # Manipulate attributes
+    print(svg.xmlns)  # http://www.w3.org/2000/svg
     svg.xmlns = "http://example.com"
-    print(svg.xmlns)
 
-    print(svg.extra_attrs)
-
-    print(svg.viewBox)
-    svg.viewBox = (0, 0, 200, 200)
-    print(svg.viewBox)
-
-    g = G()
-    g.class_ = "foo"
-    print(g)
-
-    print(svg.find_all("rect"))
+    # Save to a file
+    svg.save(sys.stdout, indent=4)
 
 
 if __name__ == "__main__":

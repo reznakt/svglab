@@ -3,9 +3,9 @@ from typing import Final
 
 __version__: Final = metadata.version(__name__)
 
+from pydantic_extra_types.color import Color
+
 from .elements import (
-    AnyElement,
-    AnyTextElement,
     CData,
     Comment,
     Element,
@@ -18,9 +18,8 @@ from .elements import (
 from .parse import parse_svg
 
 __all__ = [
-    "AnyElement",
-    "AnyTextElement",
     "CData",
+    "Color",
     "Comment",
     "Element",
     "G",

@@ -6,13 +6,12 @@ A manipulation and optimization library for Scalable Vector Graphics (SVG).
 
 - Strong type safety:
   - One class per distinct SVG element
-  - Types of children elements are statically checked
   - Typed attributes
-- Parse and manipulate SVG files
-- Create SVG elements programmatically
-- Support for common SVG elements (`rect`, `g`, etc.)
+- Runtime validation thanks to [Pydantic](https://pypi.org/project/pydantic/)
+- Attributes are parsed into native Python types for easy manipulation
+- SVG parsing, manipulation, and writing
+- Support for common SVG tags (`rect`, `g`, etc.)
 - Support for special XML elements (`CDATA`, comments, text)
-- CSS selector support for finding elements
 - Pretty printing with configurable indentation
 
 ```mermaid
@@ -24,16 +23,15 @@ graph TD
   Element:::abc --> TextElement
   Element --> Tag
 
-  Tag:::abc --> UnpairedTag
-  Tag --> PairedTag
+  Tag:::abc --> PairedTag
 
   PairedTag:::abc --> G
   PairedTag --> Svg
   PairedTag --> etc1[...]
 
-  UnpairedTag:::abc --> Rect
-  UnpairedTag --> Circle
-  UnpairedTag --> etc2[...]
+  Tag --> Rect
+  Tag --> Circle
+  Tag --> etc2[...]
 
   TextElement:::abc --> Text
   TextElement --> Comment
@@ -67,11 +65,11 @@ pip install git+ssh://github.com/reznakt/svglab.git
 ## Quick Start
 
 ```python
-from svglab import Svg, G, Rect, Text, Comment, CData, parse_svg
+from svglab import CData, Comment, G, Rect, Text, parse_svg
 
 # Parse an existing SVG file
 svg = parse_svg(
-  """
+    """
     <svg xmlns="http://www.w3.org/2000/svg">
         <g>
             <rect id="background" width="100" height="100"/>
@@ -80,17 +78,15 @@ svg = parse_svg(
             Hello SVG!
         </g>
     </svg>
-  """
+"""
 )
 
 # Create an element programmatically
-group = Svg(
-    G(
-        Rect(),
-        Comment("This is a comment"),
-        CData(".background { fill: blue; }"),
-        Text("Hello SVG!")
-    )
+group = G().add_children(
+    Rect(),
+    Comment("This is a comment"),
+    CData(".background { fill: blue; }"),
+    Text("Hello SVG!"),
 )
 
 # Add the element to the SVG
@@ -100,11 +96,8 @@ svg.add_child(group)
 print(svg.xmlns)  # http://www.w3.org/2000/svg
 svg.xmlns = "http://example.com"
 
-# Find elements using CSS selectors
-background = svg["rect#background"]
-
 # Save to a file
-svg.save("output.svg", indent=2)
+svg.save("example.svg", indent=4)
 ```
 
 ## Development

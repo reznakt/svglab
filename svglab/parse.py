@@ -1,18 +1,34 @@
-from collections import deque
-from typing import Literal, TypeAlias
+import collections
 
 import bs4
-from bs4 import BeautifulSoup
 
-from svglab.elements import Svg
-
-from .utils import SupportsRead
-
-Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
+from svglab import constants, elements, types, utils
 
 
 def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
-    queue = deque([soup])
+    """Find all root SVG fragments in the given BeautifulSoup object.
+
+    The function performs a breadth-first search until it finds an SVG fragment.
+    It then returns a list of all SVG fragments found in the same depth of the tree.
+    This allows us to consider an SVG fragment as a root element when using HTML
+    parsers that implicitly wrap the document in certain HTML tags (e.g., <html>).
+
+    Args:
+        soup: A BeautifulSoup tag object representing the root of the document.
+
+    Returns:
+        A list of SVG fragments found in the document.
+
+    Examples:
+        >>> soup = bs4.BeautifulSoup("<svg><rect/></svg>", features="lxml-xml")
+        >>> get_root_svg_fragments(soup)
+        [<svg><rect/></svg>]
+        >>> soup = bs4.BeautifulSoup("<svg><rect/></svg>", features="html.parser")
+        >>> get_root_svg_fragments(soup)
+        [<svg><rect></rect></svg>]
+
+    """
+    queue: collections.deque[bs4.Tag] = collections.deque([soup])
 
     while queue:
         node = queue.popleft()
@@ -27,12 +43,64 @@ def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
+def convert_element(backend: bs4.PageElement) -> elements.Element | None:
+    """Convert a BeautifulSoup element to an `Element` instance.
+
+    Args:
+        backend: A BeautifulSoup element to convert.
+
+    Returns:
+        An `Element` instance representing the given BeautifulSoup element.
+
+    Raises:
+        TypeError: If the given element cannot be converted.
+
+    """
+    match backend:
+        case bs4.NavigableString():
+            cls = elements.BS_TO_TEXT_ELEMENT.get(type(backend))
+
+            if cls is None:
+                return None
+
+            text = backend.get_text(strip=True)
+
+            if not text:
+                return None
+
+            return cls(text)
+        case bs4.Tag():
+            tag_class = elements.TAG_NAME_TO_CLASS[backend.name]
+
+            tag = tag_class.model_validate(
+                {
+                    "prefix": backend.prefix,
+                    **backend.attrs,
+                },
+                strict=False,
+            )
+
+            if isinstance(tag, elements.PairedTag):
+                for child in backend.children:
+                    grandchild = convert_element(child)
+
+                    if grandchild is not None:
+                        tag.add_child(grandchild)
+            elif not utils.is_empty(backend.contents):
+                msg = f"Unpaired tag {tag.name!r} cannot have children."
+                raise TypeError(msg)
+
+            return tag
+        case _:
+            return None
+
+
 def parse_svg(
-    markup: str | bytes | SupportsRead[str] | SupportsRead[bytes],
+    markup: str | bytes | types.SupportsRead[str] | types.SupportsRead[bytes],
     /,
     *,
-    parser: Parser = "lxml-xml",
-) -> Svg:
+    parser: types.Parser = constants.DEFAULT_PARSER,
+) -> elements.Svg:
     """Parse an SVG document.
 
     The document must be a valid XML document containing a single SVG document fragment.
@@ -51,11 +119,9 @@ def parse_svg(
         >>> svg = parse_svg("<svg><rect/></svg>")
         >>> type(svg).__name__
         'Svg'
-        >>> len(svg.children)
-        1
 
     """
-    soup = BeautifulSoup(markup, features=parser)
+    soup = bs4.BeautifulSoup(markup, features=parser)
 
     svg_fragments = get_root_svg_fragments(soup)
 
@@ -67,4 +133,10 @@ def parse_svg(
 
         raise ValueError(msg)
 
-    return Svg(_backend=svg_fragments[0])
+    svg = convert_element(svg_fragments[0])
+
+    if not isinstance(svg, elements.Svg):
+        msg = f"Expected an <svg> element, found {type(svg).__name__}."
+        raise TypeError(msg)
+
+    return svg
