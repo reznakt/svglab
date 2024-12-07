@@ -1,0 +1,7 @@
+%import common.WS
+%import common.SIGNED_NUMBER
+
+%ignore WS
+
+start: number ("em"i | "ex"i | "px"i | "in"i | "cm"i | "mm"i | "pt"i | "pc"i | "%")?
+number: SIGNED_NUMBER

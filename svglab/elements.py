@@ -17,6 +17,7 @@ import pydantic_extra_types.color as pydantic_color
 from typing_extensions import Self
 
 from svglab import attrs, constants, models, types, utils
+from svglab.attrparse import length
 
 
 class Element(models.BaseModel):
@@ -48,9 +49,9 @@ class Element(models.BaseModel):
         The XML representation of the element.
 
         Examples:
-        >>> rect = Rect(id="foo", width=100, height=100)
+        >>> rect = Rect(id="foo", x=100, y=100)
         >>> rect.to_xml()
-        '<rect height="100.0" id="foo" width="100.0"/>'
+        '<rect id="foo" x="100.0" y="100.0"/>'
 
         """
         soup = self.to_beautifulsoup_object()
@@ -226,8 +227,8 @@ class Tag(Element):
         )
 
         return {
-            cast(types.AttributeName, key): value
-            for key, value in dump.items()
+            cast(types.AttributeName, key): getattr(self, key)
+            for key, _ in dump.items()
             if key in constants.ATTRIBUTE_NAMES
         }
 
@@ -383,8 +384,8 @@ class CommonAttrs(pydantic.BaseModel):
 class GeometricAttrs(pydantic.BaseModel):
     x: models.Attr[float] = None
     y: models.Attr[float] = None
-    width: models.Attr[float] = None
-    height: models.Attr[float] = None
+    width: models.Attr[length.LengthType] = None
+    height: models.Attr[length.LengthType] = None
 
 
 @final

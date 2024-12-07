@@ -5,6 +5,7 @@
 import sys
 
 from svglab import CData, Comment, G, Rect, Text, parse_svg
+from svglab.attrparse.length import Length
 
 
 def main() -> None:
@@ -13,7 +14,7 @@ def main() -> None:
         """
         <svg xmlns="http://www.w3.org/2000/svg">
             <g>
-                <rect id="background" width="100" height="100"/>
+                <rect id="background" width="100cm" height="100%"/>
                 <!-- This is a comment -->
                 <![CDATA[.background { fill: blue; }]]>
                 Hello SVG!
@@ -24,7 +25,7 @@ def main() -> None:
 
     # Create an element programmatically
     group = G().add_children(
-        Rect(),
+        Rect(x=1, width=Length(15, "px"), height=Length(20)),
         Comment("This is a comment"),
         CData(".background { fill: blue; }"),
         Text("Hello SVG!"),

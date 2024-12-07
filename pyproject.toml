@@ -18,6 +18,7 @@ bidict = "^0.23.1"
 html5lib = "^1.1"
 pydantic = "^2.10.2"
 pydantic-extra-types = "^2.10.1"
+lark = "^1.2.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.8.0"
@@ -100,6 +101,7 @@ ignore = [
 
   # misc
   "S101",  # Use of assert detected
+  "TC001", # Move application import `svglab.attrparse.length` into a type-checking block
   "TC002", # Move third-party import into a type-checking block
   "TC003", # Move standard library import into a type-checking block
 ]
