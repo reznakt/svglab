@@ -59,7 +59,7 @@ Currently, the library does not have a PyPI release. However, you can install it
 pip install git+https://github.com/reznakt/svglab.git
 
 # Via SSH
-pip install git+ssh://github.com/reznakt/svglab.git
+pip install git+ssh://git@github.com/reznakt/svglab.git
 ```
 
 ## Quick Start
