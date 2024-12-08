@@ -6,6 +6,7 @@ import sys
 
 from svglab import CData, Comment, G, Rect, Text, parse_svg
 from svglab.attrparse.length import Length
+from svglab.attrparse.transform import SkewX, Translate
 
 
 def main() -> None:
@@ -13,19 +14,24 @@ def main() -> None:
     svg = parse_svg(
         """
         <svg xmlns="http://www.w3.org/2000/svg">
-            <g>
-                <rect id="background" width="100cm" height="100%"/>
-                <!-- This is a comment -->
-                <![CDATA[.background { fill: blue; }]]>
-                Hello SVG!
-            </g>
+          <g>
+              <rect id="background" width="100cm" height="100%" transform="rotate(45)"/>
+              <!-- This is a comment -->
+              <![CDATA[.background { fill: blue; }]]>
+              Hello SVG!
+          </g>
         </svg>
     """
     )
 
     # Create an element programmatically
     group = G().add_children(
-        Rect(x=1, width=Length(15, "px"), height=Length(20)),
+        Rect(
+            x=1,
+            width=Length(15, "px"),
+            height=Length(20),
+            transform=[SkewX(45), Translate(10, 20)],
+        ),
         Comment("This is a comment"),
         CData(".background { fill: blue; }"),
         Text("Hello SVG!"),

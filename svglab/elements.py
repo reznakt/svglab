@@ -16,8 +16,9 @@ import pydantic
 import pydantic_extra_types.color as pydantic_color
 from typing_extensions import Self
 
+import svglab.attrparse.length
+import svglab.attrparse.transform
 from svglab import attrs, constants, models, types, utils
-from svglab.attrparse import length
 
 
 class Element(models.BaseModel):
@@ -384,8 +385,9 @@ class CommonAttrs(pydantic.BaseModel):
 class GeometricAttrs(pydantic.BaseModel):
     x: models.Attr[float] = None
     y: models.Attr[float] = None
-    width: models.Attr[length.LengthType] = None
-    height: models.Attr[length.LengthType] = None
+    width: models.Attr[svglab.attrparse.length.LengthType] = None
+    height: models.Attr[svglab.attrparse.length.LengthType] = None
+    transform: models.Attr[svglab.attrparse.transform.TransformType] = None
 
 
 @final

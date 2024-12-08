@@ -108,7 +108,8 @@ ignore = [
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*" = [
-  "PLR200", # Magic value used in comparison
+  "PLR200",  # Magic value used in comparison
+  "PLR0913", # Too many arguments in function definition
 ]
 
 [tool.ruff.format]
