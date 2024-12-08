@@ -2,6 +2,7 @@ from typing import Annotated, TypeAlias
 
 import lark
 import pydantic
+from typing_extensions import Self
 
 from svglab.attrparse import utils
 
@@ -48,12 +49,19 @@ class Rotate:
     cx: float | None = None
     cy: float | None = None
 
+    @pydantic.model_validator(mode="after")
+    def __check_cx_cy(self) -> Self:
+        cx_is_none = self.cx is None
+        cy_is_none = self.cy is None
+
+        if cx_is_none != cy_is_none:
+            raise ValueError("Both cx and cy must either be provided or omitted")
+
+        return self
+
     def __str__(self) -> str:
         if self.cx is None:
             return f"rotate({self.angle})"
-
-        if self.cy is None:
-            return f"rotate({self.angle} {self.cx})"
 
         return f"rotate({self.angle} {self.cx} {self.cy})"
 

@@ -183,3 +183,10 @@ def test_invalid_transform(text: str) -> None:
         ValueError, match="Failed to parse text with grammar 'transform'"
     ):
         parse.parse_svg(f"<svg><rect transform='{text}'/></svg>")
+
+
+def test_invalid_rotate() -> None:
+    with pytest.raises(
+        ValueError, match="Both cx and cy must either be provided or omitted"
+    ):
+        transform.Rotate(1, 2)
