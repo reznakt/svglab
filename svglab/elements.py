@@ -56,9 +56,6 @@ class Element(models.BaseModel):
         soup = self.to_beautifulsoup_object()
         return utils.beautifulsoup_to_str(soup, pretty=pretty, indent=indent)
 
-    def __str__(self) -> str:
-        return self.to_xml(pretty=False)
-
     def to_beautifulsoup_object(self) -> bs4.PageElement:
         match self:
             case TextElement():
@@ -246,7 +243,7 @@ class Tag(Element):
         attrs = dict(self.all_attrs())
 
         if isinstance(self, PairedTag):
-            attrs["children"] = [type(child) for child in self.children]
+            attrs["children"] = list(self.children)
 
         attr_repr = ", ".join(f"{key}={value!r}" for key, value in attrs.items())
 
