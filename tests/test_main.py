@@ -156,6 +156,8 @@ def test_valid_transform_sequence() -> None:
         "skewX(45)": transform.SkewX(45),
         "skewY(45)": transform.SkewY(45),
         "matrix(1, 0, 0, 1, 0, 0)": transform.Matrix(1, 0, 0, 1, 0, 0),
+        "skewX(1e+04)": transform.SkewX(1e4),
+        "skewX(1e-04)": transform.SkewX(1e-4),
     }
 
     for sep in ",", " ":
