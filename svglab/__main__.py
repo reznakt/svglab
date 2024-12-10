@@ -5,8 +5,12 @@
 import sys
 
 from svglab import CData, Comment, G, Rect, Text, parse_svg
+from svglab.attrparse.color import Color
 from svglab.attrparse.length import Length
 from svglab.attrparse.transform import SkewX, Translate
+from svglab.serialize import Formatter, set_formatter
+
+set_formatter(Formatter(indent=4, max_precision=2, color_mode="rgb"))
 
 
 def main() -> None:
@@ -16,6 +20,7 @@ def main() -> None:
         <svg xmlns="http://www.w3.org/2000/svg">
           <g>
               <rect id="background" width="100cm" height="100%" transform="rotate(45)"/>
+              <rect color="hsl(0, 100%, 100%)"/>
               <!-- This is a comment -->
               <![CDATA[.background { fill: blue; }]]>
               Hello SVG!
@@ -30,7 +35,8 @@ def main() -> None:
             x=1,
             width=Length(15, "px"),
             height=Length(20),
-            transform=[SkewX(45), Translate(10, 20)],
+            transform=[SkewX(45.123), Translate(10, 20)],
+            color=Color("#ff0000"),
         ),
         Comment("This is a comment"),
         CData(".background { fill: blue; }"),
@@ -45,7 +51,7 @@ def main() -> None:
     svg.xmlns = "http://example.com"
 
     # Save to a file
-    svg.save(sys.stdout, indent=4)
+    svg.save(sys.stdout)
 
 
 if __name__ == "__main__":

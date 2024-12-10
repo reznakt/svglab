@@ -1,5 +1,5 @@
 import reprlib
-from typing import Annotated, TypeAlias, TypeVar
+from typing import Annotated, Final, TypeAlias, TypeVar
 
 import pydantic
 from pydantic import Field
@@ -7,19 +7,25 @@ from typing_extensions import Self
 
 _T_co = TypeVar("_T_co", covariant=True)
 
-Attr: TypeAlias = Annotated[_T_co | None, Field(kw_only=True)]
+KwOnly: TypeAlias = Annotated[_T_co, Field(kw_only=True)]
+""" Pydantic field for a keyword-only argument. """
+
+Attr: TypeAlias = KwOnly[_T_co | None]
 """ Pydantic field for an attribute. """
 
 
+MODEL_CONFIG: Final = pydantic.ConfigDict(
+    allow_inf_nan=False,
+    extra="forbid",
+    strict=True,
+    validate_assignment=True,
+    validate_default=True,
+    validate_return=True,
+)
+
+
 class BaseModel(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(
-        allow_inf_nan=False,
-        extra="forbid",
-        strict=True,
-        validate_assignment=True,
-        validate_default=True,
-        validate_return=True,
-    )
+    model_config = MODEL_CONFIG
 
     def __copy__(self) -> Self:
         return self.model_copy(deep=False)

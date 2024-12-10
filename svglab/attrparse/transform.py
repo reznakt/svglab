@@ -1,14 +1,17 @@
-from typing import Annotated, TypeAlias
+from typing import Annotated, Generic, TypeAlias, TypeVar, cast
 
 import lark
 import pydantic
 from typing_extensions import Self
 
+from svglab import serialize
 from svglab.attrparse import utils
 
 __all__ = [
     "Matrix",
     "Rotate",
+    "RotateWithCenter",
+    "RotateWithoutCenter",
     "Scale",
     "SkewX",
     "SkewY",
@@ -18,6 +21,8 @@ __all__ = [
     "Translate",
 ]
 
+_T_opt_float = TypeVar("_T_opt_float", float, None)
+
 
 @pydantic.dataclasses.dataclass
 class Translate:
@@ -25,10 +30,14 @@ class Translate:
     y: float | None = None
 
     def __str__(self) -> str:
-        if self.y is None:
-            return f"translate({self.x})"
+        x = serialize.format_number(self.x)
 
-        return f"translate({self.x}, {self.y})"
+        if self.y is None:
+            return f"translate({x})"
+
+        y = serialize.format_number(self.y)
+
+        return f"translate({x}, {y})"
 
 
 @pydantic.dataclasses.dataclass
@@ -37,17 +46,21 @@ class Scale:
     y: float | None = None
 
     def __str__(self) -> str:
-        if self.y is None:
-            return f"scale({self.x})"
+        x = serialize.format_number(self.x)
 
-        return f"scale({self.x}, {self.y})"
+        if self.y is None:
+            return f"scale({x})"
+
+        y = serialize.format_number(self.y)
+
+        return f"scale({x}, {y})"
 
 
 @pydantic.dataclasses.dataclass
-class Rotate:
+class Rotate(Generic[_T_opt_float]):
     angle: float
-    cx: float | None = None
-    cy: float | None = None
+    cx: _T_opt_float = cast(_T_opt_float, None)
+    cy: _T_opt_float = cast(_T_opt_float, None)
 
     @pydantic.model_validator(mode="after")
     def __check_cx_cy(self) -> Self:
@@ -60,10 +73,14 @@ class Rotate:
         return self
 
     def __str__(self) -> str:
-        if self.cx is None:
-            return f"rotate({self.angle})"
+        angle = serialize.format_number(self.angle)
 
-        return f"rotate({self.angle} {self.cx} {self.cy})"
+        if self.cx is None:
+            return f"rotate({angle})"
+
+        cx, cy = serialize.format_number(self.cx, self.cy)
+
+        return f"rotate({angle} {cx} {cy})"
 
 
 @pydantic.dataclasses.dataclass
@@ -71,7 +88,9 @@ class SkewX:
     angle: float
 
     def __str__(self) -> str:
-        return f"skewX({self.angle})"
+        angle = serialize.format_number(self.angle)
+
+        return f"skewX({angle})"
 
 
 @pydantic.dataclasses.dataclass
@@ -79,7 +98,9 @@ class SkewY:
     angle: float
 
     def __str__(self) -> str:
-        return f"skewY({self.angle})"
+        angle = serialize.format_number(self.angle)
+
+        return f"skewY({angle})"
 
 
 @pydantic.dataclasses.dataclass
@@ -92,10 +113,20 @@ class Matrix:
     f: float
 
     def __str__(self) -> str:
-        return f"matrix({self.a}, {self.b}, {self.c}, {self.d}, {self.e}, {self.f})"
+        a, b, c, d, e, f = map(
+            serialize.format_number, (self.a, self.b, self.c, self.d, self.e, self.f)
+        )
+
+        return f"matrix({a} {b} {c} {d} {e} {f})"
 
 
-TransformAction: TypeAlias = Translate | Scale | Rotate | SkewX | SkewY | Matrix
+RotateWithoutCenter: TypeAlias = Rotate[None]
+RotateWithCenter: TypeAlias = Rotate[float]
+
+TransformAction: TypeAlias = (
+    Translate | Scale | RotateWithoutCenter | RotateWithCenter | SkewX | SkewY | Matrix
+)
+
 Transform: TypeAlias = list[TransformAction]
 
 

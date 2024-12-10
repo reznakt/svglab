@@ -8,17 +8,17 @@ import pathlib
 import reprlib
 import sys
 from collections.abc import Iterable, Mapping
-from typing import Final, Literal, SupportsIndex, cast, final, overload
+from typing import Final, SupportsIndex, cast, final, overload
 
 import bidict
 import bs4
 import pydantic
-import pydantic_extra_types.color as pydantic_color
 from typing_extensions import Self
 
+import svglab.attrparse.color
 import svglab.attrparse.length
 import svglab.attrparse.transform
-from svglab import attrs, constants, models, types, utils
+from svglab import attrs, constants, models, serialize, types, utils
 
 
 class Element(models.BaseModel):
@@ -26,25 +26,18 @@ class Element(models.BaseModel):
 
     parent: Element | None = pydantic.Field(default=None, init=False)
 
-    @overload
-    def to_xml(self, *, pretty: Literal[False]) -> str: ...
-
-    @overload
-    def to_xml(
-        self, *, pretty: bool = True, indent: int = constants.DEFAULT_INDENT
-    ) -> str: ...
-
     def to_xml(
         self,
         *,
         pretty: bool = True,
-        indent: int = constants.DEFAULT_INDENT,
+        formatter: serialize.Formatter | None = None,
     ) -> str:
         """Convert the element to XML.
 
         Args:
         pretty: Whether to produce pretty-printed XML.
         indent: The number of spaces to indent each level of the document.
+        formatter: The formatter to use for serialization.
 
         Returns:
         The XML representation of the element.
@@ -55,8 +48,13 @@ class Element(models.BaseModel):
         '<rect id="foo" x="100.0" y="100.0"/>'
 
         """
-        soup = self.to_beautifulsoup_object()
-        return utils.beautifulsoup_to_str(soup, pretty=pretty, indent=indent)
+        formatter = formatter or serialize.get_current_formatter()
+
+        with formatter:
+            soup = self.to_beautifulsoup_object()
+            return utils.beautifulsoup_to_str(
+                soup, pretty=pretty, indent=formatter.indent
+            )
 
     def to_beautifulsoup_object(self) -> bs4.PageElement:
         match self:
@@ -379,7 +377,7 @@ class PairedTag(Tag):
 class CommonAttrs(pydantic.BaseModel):
     id: models.Attr[str] = None
     class_: models.Attr[str] = None
-    color: models.Attr[pydantic_color.Color] = None
+    color: models.Attr[svglab.attrparse.color.ColorType] = None
 
 
 class GeometricAttrs(pydantic.BaseModel):
@@ -410,29 +408,9 @@ class Svg(CommonAttrs, PairedTag):
         path: str | os.PathLike[str],
         /,
         *,
-        pretty: Literal[False],
-        trailing_newline: bool = True,
-    ) -> None: ...
-
-    @overload
-    def save(
-        self,
-        file: types.SupportsWrite[str],
-        /,
-        *,
-        pretty: Literal[False],
-        trailing_newline: bool = True,
-    ) -> None: ...
-
-    @overload
-    def save(
-        self,
-        path: str | os.PathLike[str],
-        /,
-        *,
         pretty: bool = True,
-        indent: int = constants.DEFAULT_INDENT,
         trailing_newline: bool = True,
+        formatter: serialize.Formatter | None = None,
     ) -> None: ...
 
     @overload
@@ -442,8 +420,8 @@ class Svg(CommonAttrs, PairedTag):
         /,
         *,
         pretty: bool = True,
-        indent: int = constants.DEFAULT_INDENT,
         trailing_newline: bool = True,
+        formatter: serialize.Formatter | None = None,
     ) -> None: ...
 
     def save(
@@ -452,8 +430,8 @@ class Svg(CommonAttrs, PairedTag):
         /,
         *,
         pretty: bool = True,
-        indent: int = constants.DEFAULT_INDENT,
         trailing_newline: bool = True,
+        formatter: serialize.Formatter | None = None,
     ) -> None:
         """Convert the SVG document fragment to XML and write it to a file.
 
@@ -462,17 +440,21 @@ class Svg(CommonAttrs, PairedTag):
         pretty: Whether to produce pretty-printed XML.
         indent: The number of spaces to indent each level of the document.
         trailing_newline: Whether to add a trailing newline to the file.
+        formatter: The formatter to use for serialization.
 
         Examples:
         >>> svg = Svg(id="foo").add_child(Rect())
-        >>> svg.save(sys.stdout, pretty=True, indent=4, trailing_newline=False)
+        >>> formatter = serialize.Formatter(indent=4)
+        >>> svg.save(
+        ...     sys.stdout, pretty=True, trailing_newline=False, formatter=formatter
+        ... )
         <svg id="foo">
             <rect/>
         </svg>
 
         """
         with contextlib.ExitStack() as stack:
-            output = self.to_xml(pretty=pretty, indent=indent)
+            output = self.to_xml(pretty=pretty, formatter=formatter)
             file: types.SupportsWrite[str]
 
             match path_or_file:

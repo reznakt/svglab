@@ -875,6 +875,17 @@ files = [
 ]
 
 [[package]]
+name = "readable-number"
+version = "0.1.3"
+description = "A Python library to print numbers in human readable format"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "readable_number-0.1.3-py2.py3-none-any.whl", hash = "sha256:902680e70fac3433d0cdc4a72fd3dbbdd05eb4cea516014f509bd28d58f9611a"},
+    {file = "readable_number-0.1.3.tar.gz", hash = "sha256:75b6849ad0177d63e5ae8ba735d29c776853d1fe9a0678ea7a3e32d0b7464961"},
+]
+
+[[package]]
 name = "ruff"
 version = "0.8.2"
 description = "An extremely fast Python linter and code formatter, written in Rust."
@@ -1056,4 +1067,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "39e1dcca9e1979d2f35e01baf263a95e49e6bc0a977cf4c3268e7be79b01ea1e"
+content-hash = "6785c9c55b5db0783826f4820dff4ce9306c9e9f6106cd3aeb86232c6d054d14"
