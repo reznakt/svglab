@@ -1,5 +1,5 @@
 import reprlib
-from typing import Annotated, Final, TypeAlias, TypeVar
+from typing import Annotated, TypeAlias, TypeVar
 
 import pydantic
 from pydantic import Field
@@ -14,18 +14,15 @@ Attr: TypeAlias = KwOnly[_T_co | None]
 """ Pydantic field for an attribute. """
 
 
-MODEL_CONFIG: Final = pydantic.ConfigDict(
-    allow_inf_nan=False,
-    extra="forbid",
-    strict=True,
-    validate_assignment=True,
-    validate_default=True,
-    validate_return=True,
-)
-
-
 class BaseModel(pydantic.BaseModel):
-    model_config = MODEL_CONFIG
+    model_config = pydantic.ConfigDict(
+        allow_inf_nan=False,
+        extra="forbid",
+        strict=True,
+        validate_assignment=True,
+        validate_default=True,
+        validate_return=True,
+    )
 
     def __copy__(self) -> Self:
         return self.model_copy(deep=False)

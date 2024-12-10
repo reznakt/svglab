@@ -33,7 +33,7 @@ class Formatter(models.BaseModel):
 
     """
 
-    model_config = pydantic.ConfigDict(frozen=True, **models.MODEL_CONFIG)
+    model_config = pydantic.ConfigDict(frozen=True)
 
     max_precision: models.KwOnly[int | None] = pydantic.Field(default=None, ge=0)
     color_mode: models.KwOnly[ColorSerializationMode] = "auto"

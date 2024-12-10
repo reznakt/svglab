@@ -130,6 +130,7 @@ AttributeName: TypeAlias = Literal[
     "text-rendering",
     "textLength",
     "to",
+    "transform",
     "unicode-bidi",
     "values",
     "viewBox",
