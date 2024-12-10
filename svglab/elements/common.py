@@ -1,24 +1,27 @@
 from __future__ import annotations
 
+import abc
 import collections
-import contextlib
-import itertools
-import os
-import pathlib
 import reprlib
 import sys
 from collections.abc import Iterable, Mapping
-from typing import Final, SupportsIndex, cast, final, overload
+from typing import SupportsIndex, cast
 
-import bidict
 import bs4
 import pydantic
 from typing_extensions import Self
 
-from svglab import attrs, constants, models, serialize, types, utils
+from svglab import attrs, models, serialize, utils
+
+__all__ = [
+    "Element",
+    "PairedTag",
+    "Tag",
+    "TextElement",
+]
 
 
-class Element(models.BaseModel):
+class Element(models.BaseModel, abc.ABC):
     """The base class of the SVG element hierarchy."""
 
     parent: Element | None = pydantic.Field(default=None, init=False)
@@ -40,6 +43,7 @@ class Element(models.BaseModel):
         The XML representation of the element.
 
         Examples:
+        >>> from svglab import Rect
         >>> rect = Rect(id="foo", x=100, y=100)
         >>> rect.to_xml()
         '<rect id="foo" x="100.0" y="100.0"/>'
@@ -53,33 +57,11 @@ class Element(models.BaseModel):
                 soup, pretty=pretty, indent=formatter.indent
             )
 
-    def to_beautifulsoup_object(self) -> bs4.PageElement:
-        match self:
-            case TextElement():
-                cls = BS_TO_TEXT_ELEMENT.inverse[type(self)]
-                return cls(self.content)
-            case Tag():
-                tag = bs4.Tag(
-                    name=self.name,
-                    can_be_empty_element=not isinstance(self, PairedTag),
-                    prefix=self.prefix,
-                    is_xml=True,
-                )
-
-                for key, value in self.all_attrs().items():
-                    tag[key] = str(value)
-
-                if isinstance(self, PairedTag):
-                    for child in self.children:
-                        tag.append(child.to_beautifulsoup_object())
-
-                return tag
-            case _:
-                msg = f"Unable to convert {type(self)} to a BeautifulSoup object."
-                raise TypeError(msg)
+    @abc.abstractmethod
+    def to_beautifulsoup_object(self) -> bs4.PageElement: ...
 
 
-class TextElement(Element):
+class TextElement(Element, abc.ABC):
     """The base class of text-based elements.
 
     Text-based elements are elements that are represented by a single string.
@@ -99,53 +81,7 @@ class TextElement(Element):
         return f"{name}({self.content!r})"
 
 
-class CData(TextElement):
-    """A `CDATA` section.
-
-    A `CDATA` section is a block of text that is not parsed by the XML parser,
-    but is interpreted verbatim.
-
-    `CDATA` sections are used to include text that contains characters
-    that would otherwise be interpreted as XML markup.
-
-    Example: `<![CDATA[<g id="foo"></g>]]>`
-    """
-
-    def __init__(self, content: str, /) -> None:
-        super().__init__(content=content)
-
-
-class Comment(TextElement):
-    """A comment.
-
-    A comment is a block of text that is not parsed by the XML parser,
-    but is ignored.
-
-    Comments are used to include notes and other information that is not
-    intended to be displayed to the user.
-
-    Example: `<!-- This is a comment -->`
-    """
-
-    def __init__(self, content: str, /) -> None:
-        super().__init__(content=content)
-
-
-class Text(TextElement):
-    """A text node.
-
-    A text node is a block of text that is parsed by the XML parser.
-
-    Text nodes are used to include text that is intended to be displayed to the user.
-
-    Example: `Hello, world!`
-    """
-
-    def __init__(self, content: str, /) -> None:
-        super().__init__(content=content)
-
-
-class Tag(Element):
+class Tag(Element, abc.ABC):
     """A tag.
 
     A tag is an element that has a name and a set of attributes.
@@ -158,15 +94,6 @@ class Tag(Element):
     non-standard user-defined attributes.
 
     Example: `<rect id="foo" class="bar" color="red" />`
-
-    Usage:
-    ```
-    >>> tag = Rect(id="foo", class_="bar", color="red")
-    >>> tag.id
-    'foo'
-    >>> tag.color
-    Color('red', rgb=(255, 0, 0))
-
     ```
     """
 
@@ -246,22 +173,26 @@ class Tag(Element):
 
         return f"{name}({attr_repr})"
 
+    def to_beautifulsoup_object(self) -> bs4.Tag:
+        tag = bs4.Tag(
+            name=self.name,
+            can_be_empty_element=True,
+            prefix=self.prefix,
+            is_xml=True,
+        )
 
-class PairedTag(Tag):
+        for key, value in self.all_attrs().items():
+            tag[key] = str(value)
+
+        return tag
+
+
+class PairedTag(Tag, abc.ABC):
     """A paired tag.
 
     A paired tag is a tag that can have children.
 
     Example: `<g><rect /></g>`
-
-    Usage:
-    ```
-    >>> g = G().add_child(Rect())
-    >>> for child in g.children:
-    ...     print(type(child).__name__)
-    Rect
-
-    ```
     """
 
     __children: list[Element] = pydantic.PrivateAttr(default_factory=list)
@@ -370,112 +301,11 @@ class PairedTag(Tag):
     ) -> int:
         return self.__children.index(child, start, stop)
 
+    def to_beautifulsoup_object(self) -> bs4.Tag:
+        tag = super().to_beautifulsoup_object()
+        tag.can_be_empty_element = False
 
-class CommonAttrs(pydantic.BaseModel):
-    id: models.Attr[str] = None
-    class_: models.Attr[str] = None
-    color: models.Attr[attrs.ColorType] = None
+        for child in self.children:
+            tag.append(child.to_beautifulsoup_object())
 
-
-class GeometricAttrs(pydantic.BaseModel):
-    x: models.Attr[float] = None
-    y: models.Attr[float] = None
-    width: models.Attr[attrs.LengthType] = None
-    height: models.Attr[attrs.LengthType] = None
-    transform: models.Attr[attrs.TransformType] = None
-
-
-@final
-class Rect(CommonAttrs, GeometricAttrs, Tag):
-    pass
-
-
-@final
-class G(CommonAttrs, PairedTag):
-    pass
-
-
-@final
-class Svg(CommonAttrs, PairedTag):
-    xmlns: models.Attr[str] = constants.DEFAULT_XMLNS
-
-    @overload
-    def save(
-        self,
-        path: str | os.PathLike[str],
-        /,
-        *,
-        pretty: bool = True,
-        trailing_newline: bool = True,
-        formatter: serialize.Formatter | None = None,
-    ) -> None: ...
-
-    @overload
-    def save(
-        self,
-        file: types.SupportsWrite[str],
-        /,
-        *,
-        pretty: bool = True,
-        trailing_newline: bool = True,
-        formatter: serialize.Formatter | None = None,
-    ) -> None: ...
-
-    def save(
-        self,
-        path_or_file: str | os.PathLike[str] | types.SupportsWrite[str],
-        /,
-        *,
-        pretty: bool = True,
-        trailing_newline: bool = True,
-        formatter: serialize.Formatter | None = None,
-    ) -> None:
-        """Convert the SVG document fragment to XML and write it to a file.
-
-        Args:
-        path_or_file: The path to the file to save the XML to, or a file-like object.
-        pretty: Whether to produce pretty-printed XML.
-        indent: The number of spaces to indent each level of the document.
-        trailing_newline: Whether to add a trailing newline to the file.
-        formatter: The formatter to use for serialization.
-
-        Examples:
-        >>> svg = Svg(id="foo").add_child(Rect())
-        >>> formatter = serialize.Formatter(indent=4)
-        >>> svg.save(
-        ...     sys.stdout, pretty=True, trailing_newline=False, formatter=formatter
-        ... )
-        <svg id="foo">
-            <rect/>
-        </svg>
-
-        """
-        with contextlib.ExitStack() as stack:
-            output = self.to_xml(pretty=pretty, formatter=formatter)
-            file: types.SupportsWrite[str]
-
-            match path_or_file:
-                case str() | os.PathLike() as path:
-                    file = stack.enter_context(pathlib.Path(path).open("w"))
-                case types.SupportsWrite() as file:
-                    pass
-
-            file.write(output)
-
-            if trailing_newline:
-                file.write("\n")
-
-
-BS_TO_TEXT_ELEMENT: Final = bidict.frozenbidict(
-    {
-        bs4.CData: CData,
-        bs4.Comment: Comment,
-        bs4.NavigableString: Text,
-    }
-)
-
-
-TAG_NAME_TO_CLASS: Final = {
-    cls().name: cls
-    for cls in itertools.chain(Tag.__subclasses__(), PairedTag.__subclasses__())
-}
+        return tag

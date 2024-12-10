@@ -1,8 +1,28 @@
 import collections
+import itertools
+from typing import Final
 
 import bs4
 
 from svglab import constants, elements, types, utils
+
+TAG_NAME_TO_CLASS: Final = {
+    cls().name: cls
+    for cls in itertools.chain(
+        elements.Tag.__subclasses__(), elements.PairedTag.__subclasses__()
+    )
+}
+
+BS_TO_TEXT_ELEMENT: Final[
+    dict[
+        type[bs4.NavigableString],
+        type[elements.CData | elements.Comment | elements.Text],
+    ]
+] = {
+    bs4.CData: elements.CData,
+    bs4.Comment: elements.Comment,
+    bs4.NavigableString: elements.Text,
+}
 
 
 def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
@@ -58,7 +78,7 @@ def convert_element(backend: bs4.PageElement) -> elements.Element | None:
     """
     match backend:
         case bs4.NavigableString():
-            cls = elements.BS_TO_TEXT_ELEMENT.get(type(backend))
+            cls = BS_TO_TEXT_ELEMENT.get(type(backend))
 
             if cls is None:
                 return None
@@ -70,7 +90,7 @@ def convert_element(backend: bs4.PageElement) -> elements.Element | None:
 
             return cls(text)
         case bs4.Tag():
-            tag_class = elements.TAG_NAME_TO_CLASS[backend.name]
+            tag_class = TAG_NAME_TO_CLASS[backend.name]
 
             tag = tag_class.model_validate(
                 {
