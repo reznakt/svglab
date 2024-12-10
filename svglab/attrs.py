@@ -11,7 +11,15 @@ def is_valid_identifier(name: str) -> bool:
 
 
 def normalize_attr_name(name: types.AttributeName) -> str:
-    normalized = name.replace("-", "_")
+    normalized: str = name
+
+    substitutions = {
+        "-": "_",
+        ":": "_",
+    }
+
+    for old, new in substitutions.items():
+        normalized = normalized.replace(old, new)
 
     if not is_valid_identifier(normalized):
         normalized = f"{normalized}_"
