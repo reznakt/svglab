@@ -4,7 +4,11 @@ from typing import Final
 
 import bs4
 
-from svglab import constants, elements, types, utils
+from svglab import elements, types, utils
+
+DEFAULT_PARSER: Final[types.Parser] = "lxml-xml"
+"""The default parser to use when parsing SVG documents."""
+
 
 TAG_NAME_TO_CLASS: Final = {
     cls().name: cls
@@ -119,7 +123,7 @@ def parse_svg(
     markup: str | bytes | types.SupportsRead[str] | types.SupportsRead[bytes],
     /,
     *,
-    parser: types.Parser = constants.DEFAULT_PARSER,
+    parser: types.Parser = DEFAULT_PARSER,
 ) -> elements.Svg:
     """Parse an SVG document.
 

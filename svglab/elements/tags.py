@@ -5,7 +5,7 @@ from typing import final, overload
 
 import pydantic
 
-from svglab import attrs, constants, models, serialize, types
+from svglab import attrs, models, serialize, types
 from svglab.elements import common
 
 __all__ = ["G", "Rect", "Svg"]
@@ -37,7 +37,7 @@ class G(CommonAttrs, common.PairedTag):
 
 @final
 class Svg(CommonAttrs, common.PairedTag):
-    xmlns: models.Attr[str] = constants.DEFAULT_XMLNS
+    xmlns: models.Attr[str] = "http://www.w3.org/2000/svg"
 
     @overload
     def save(
