@@ -15,9 +15,6 @@ import bs4
 import pydantic
 from typing_extensions import Self
 
-import svglab.attrparse.color
-import svglab.attrparse.length
-import svglab.attrparse.transform
 from svglab import attrs, constants, models, serialize, types, utils
 
 
@@ -217,7 +214,7 @@ class Tag(Element):
         assert self.model_extra is not None
         return self.model_extra
 
-    def standard_attrs(self) -> Mapping[types.AttributeName, object]:
+    def standard_attrs(self) -> Mapping[attrs.AttributeName, object]:
         dump = self.model_dump(
             by_alias=True,
             exclude_defaults=True,
@@ -226,9 +223,9 @@ class Tag(Element):
         )
 
         return {
-            cast(types.AttributeName, key): getattr(self, key)
+            cast(attrs.AttributeName, key): getattr(self, key)
             for key, _ in dump.items()
-            if key in constants.ATTRIBUTE_NAMES
+            if key in attrs.ATTRIBUTE_NAMES
         }
 
     def all_attrs(self) -> Mapping[str, object]:
@@ -377,15 +374,15 @@ class PairedTag(Tag):
 class CommonAttrs(pydantic.BaseModel):
     id: models.Attr[str] = None
     class_: models.Attr[str] = None
-    color: models.Attr[svglab.attrparse.color.ColorType] = None
+    color: models.Attr[attrs.ColorType] = None
 
 
 class GeometricAttrs(pydantic.BaseModel):
     x: models.Attr[float] = None
     y: models.Attr[float] = None
-    width: models.Attr[svglab.attrparse.length.LengthType] = None
-    height: models.Attr[svglab.attrparse.length.LengthType] = None
-    transform: models.Attr[svglab.attrparse.transform.TransformType] = None
+    width: models.Attr[attrs.LengthType] = None
+    height: models.Attr[attrs.LengthType] = None
+    transform: models.Attr[attrs.TransformType] = None
 
 
 @final

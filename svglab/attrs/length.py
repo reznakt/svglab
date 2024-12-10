@@ -5,9 +5,9 @@ from typing import Annotated, Literal, TypeAlias
 import lark
 import pydantic
 
-from svglab.attrparse import utils
+from svglab.attrs import utils
 
-__all__ = ["Length", "LengthType"]
+__all__ = ["Length", "LengthType", "LengthUnit"]
 
 
 LengthUnit: TypeAlias = Literal["em", "ex", "px", "in", "cm", "mm", "pt", "pc", "%"]

@@ -5,9 +5,7 @@
 import sys
 
 from svglab import CData, Comment, G, Rect, Text, parse_svg
-from svglab.attrparse.color import Color
-from svglab.attrparse.length import Length
-from svglab.attrparse.transform import SkewX, Translate
+from svglab.attrs import Color, Length, SkewX, Translate
 from svglab.serialize import Formatter, set_formatter
 
 set_formatter(Formatter(indent=4, max_precision=2, color_mode="rgb"))

@@ -5,6 +5,8 @@ from typing import Final, Literal, TypeAlias, TypeVar
 import lark
 import pydantic
 
+__all__ = ["get_validator"]
+
 GRAMMARS_DIR: Final = pathlib.Path(__file__).parent / "grammars"
 GAMMAR_EXT: Final = ".lark"
 

@@ -5,7 +5,7 @@ import pydantic
 from typing_extensions import Self
 
 from svglab import serialize
-from svglab.attrparse import utils
+from svglab.attrs import utils
 
 __all__ = [
     "Matrix",

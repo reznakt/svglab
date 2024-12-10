@@ -1,4 +1,3 @@
-import typing
 from typing import Final
 
 from svglab import types
@@ -9,8 +8,3 @@ DEFAULT_PARSER: Final[types.Parser] = "lxml-xml"
 
 DEFAULT_XMLNS: Final = "http://www.w3.org/2000/svg"
 """The default XML namespace for SVG documents."""
-
-ATTRIBUTE_NAMES: Final[frozenset[types.AttributeName]] = frozenset(
-    typing.get_args(types.AttributeName)
-)
-"""A set of all valid SVG attribute names."""

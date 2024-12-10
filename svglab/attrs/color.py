@@ -4,6 +4,8 @@ from pydantic_extra_types import color
 
 from svglab import serialize
 
+__all__ = ["Color", "ColorType"]
+
 
 class Color(color.Color):
     def __str__(self) -> str:

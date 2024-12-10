@@ -6,7 +6,7 @@ import hypothesis.strategies as st
 import pytest
 
 from svglab import elements, parse, types
-from svglab.attrparse import length, transform
+from svglab.attrs import length, transform
 
 numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
 
