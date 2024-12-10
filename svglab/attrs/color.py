@@ -1,13 +1,13 @@
 from typing import TypeAlias
 
-from pydantic_extra_types import color
+import pydantic_extra_types.color
 
 from svglab import serialize
 
 __all__ = ["Color", "ColorType"]
 
 
-class Color(color.Color):
+class Color(pydantic_extra_types.color.Color):
     def __str__(self) -> str:
         formatter = serialize.get_current_formatter()
         result: str
@@ -34,6 +34,9 @@ class Color(color.Color):
                 result = self.as_hsl()
 
         return result
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.original()!r})"
 
 
 ColorType: TypeAlias = Color
