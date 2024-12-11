@@ -37,7 +37,7 @@ svglab = "svglab.__main__:main"
 
 [tool.poe.tasks]
 lint = "ruff check"
-lint-fix = "ruff check --fix"
+lint-fix = "ruff check --fix --show-fixes"
 format = "ruff format --diff"
 format-fix = "ruff format"
 test = "pytest"
