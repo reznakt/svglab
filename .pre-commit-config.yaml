@@ -7,8 +7,21 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-illegal-windows-names
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-toml
       - id: check-yaml
+      - id: detect-private-key
       - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: name-tests-test
+        args: ["--pytest-test-first"]
       - id: trailing-whitespace
   - repo: https://github.com/python-poetry/poetry
     rev: 1.8.4
@@ -16,3 +29,35 @@ repos:
       - id: poetry-check
       - id: poetry-lock
       - id: poetry-install
+  - repo: local
+    hooks:
+      - id: lint
+        name: lint
+        entry: poe lint-fix
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: format
+        name: format
+        entry: poe format-fix
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: versioncheck
+        name: versioncheck
+        entry: poe versioncheck
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: typecheck
+        name: typecheck
+        entry: poe typecheck
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: test
+        name: test
+        entry: poe test
+        language: system
+        types: [python]
+        pass_filenames: false
