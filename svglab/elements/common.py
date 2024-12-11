@@ -46,7 +46,7 @@ class Element(models.BaseModel, abc.ABC):
         >>> from svglab import Rect
         >>> rect = Rect(id="foo", x=100, y=100)
         >>> rect.to_xml()
-        '<rect id="foo" x="100.0" y="100.0"/>'
+        '<rect id="foo" x="100" y="100"/>'
 
         """
         formatter = formatter or serialize.get_current_formatter()
@@ -58,7 +58,8 @@ class Element(models.BaseModel, abc.ABC):
             )
 
     @abc.abstractmethod
-    def to_beautifulsoup_object(self) -> bs4.PageElement: ...
+    def to_beautifulsoup_object(self) -> bs4.PageElement:
+        """Convert the element to a corresponding `BeautifulSoup` object."""
 
 
 class TextElement(Element, abc.ABC):
@@ -182,7 +183,7 @@ class Tag(Element, abc.ABC):
         )
 
         for key, value in self.all_attrs().items():
-            tag[key] = str(value)
+            tag[key] = serialize.serialize_attr(value)
 
         return tag
 

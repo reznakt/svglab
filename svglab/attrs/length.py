@@ -4,7 +4,9 @@ from typing import Annotated, Literal, TypeAlias
 
 import lark
 import pydantic
+from typing_extensions import override
 
+from svglab import serialize
 from svglab.attrs import utils
 
 __all__ = ["Length", "LengthType", "LengthUnit"]
@@ -14,7 +16,7 @@ LengthUnit: TypeAlias = Literal["em", "ex", "px", "in", "cm", "mm", "pt", "pc", 
 
 
 @pydantic.dataclasses.dataclass
-class Length:
+class Length(serialize.Serializable):
     """Represents the SVG `<length>` type.
 
     A length is a number optionally followed by a unit. Available units are:
@@ -33,8 +35,10 @@ class Length:
     value: float
     unit: LengthUnit | None = None
 
-    def __str__(self) -> str:
-        return f"{self.value}{self.unit or ''}"
+    @override
+    def serialize(self) -> str:
+        value = serialize.format_number(self.value)
+        return f"{value}{self.unit or ''}"
 
 
 @lark.v_args(inline=True)

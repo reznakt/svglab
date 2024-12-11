@@ -1,8 +1,8 @@
-from typing import Annotated, Generic, TypeAlias, TypeVar, cast
+from typing import Annotated, Generic, TypeAlias, TypeVar, cast, final
 
 import lark
 import pydantic
-from typing_extensions import Self
+from typing_extensions import Self, override
 
 from svglab import serialize
 from svglab.attrs import utils
@@ -24,12 +24,14 @@ __all__ = [
 _T_opt_float = TypeVar("_T_opt_float", float, None)
 
 
+@final
 @pydantic.dataclasses.dataclass
-class Translate:
+class Translate(serialize.Serializable):
     x: float
     y: float | None = None
 
-    def __str__(self) -> str:
+    @override
+    def serialize(self) -> str:
         x = serialize.format_number(self.x)
 
         if self.y is None:
@@ -40,12 +42,14 @@ class Translate:
         return f"translate({x}, {y})"
 
 
+@final
 @pydantic.dataclasses.dataclass
-class Scale:
+class Scale(serialize.Serializable):
     x: float
     y: float | None = None
 
-    def __str__(self) -> str:
+    @override
+    def serialize(self) -> str:
         x = serialize.format_number(self.x)
 
         if self.y is None:
@@ -57,7 +61,7 @@ class Scale:
 
 
 @pydantic.dataclasses.dataclass
-class Rotate(Generic[_T_opt_float]):
+class Rotate(serialize.Serializable, Generic[_T_opt_float]):
     angle: float
     cx: _T_opt_float = cast(_T_opt_float, None)
     cy: _T_opt_float = cast(_T_opt_float, None)
@@ -72,7 +76,8 @@ class Rotate(Generic[_T_opt_float]):
 
         return self
 
-    def __str__(self) -> str:
+    @override
+    def serialize(self) -> str:
         angle = serialize.format_number(self.angle)
 
         if self.cx is None:
@@ -83,28 +88,33 @@ class Rotate(Generic[_T_opt_float]):
         return f"rotate({angle} {cx} {cy})"
 
 
+@final
 @pydantic.dataclasses.dataclass
-class SkewX:
+class SkewX(serialize.Serializable):
     angle: float
 
-    def __str__(self) -> str:
+    @override
+    def serialize(self) -> str:
         angle = serialize.format_number(self.angle)
 
         return f"skewX({angle})"
 
 
+@final
 @pydantic.dataclasses.dataclass
-class SkewY:
+class SkewY(serialize.Serializable):
     angle: float
 
-    def __str__(self) -> str:
+    @override
+    def serialize(self) -> str:
         angle = serialize.format_number(self.angle)
 
         return f"skewY({angle})"
 
 
+@final
 @pydantic.dataclasses.dataclass
-class Matrix:
+class Matrix(serialize.Serializable):
     a: float
     b: float
     c: float
@@ -112,7 +122,8 @@ class Matrix:
     e: float
     f: float
 
-    def __str__(self) -> str:
+    @override
+    def serialize(self) -> str:
         a, b, c, d, e, f = map(
             serialize.format_number, (self.a, self.b, self.c, self.d, self.e, self.f)
         )

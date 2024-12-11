@@ -1,14 +1,16 @@
 from typing import TypeAlias
 
 import pydantic_extra_types.color
+from typing_extensions import override
 
 from svglab import serialize
 
 __all__ = ["Color", "ColorType"]
 
 
-class Color(pydantic_extra_types.color.Color):
-    def __str__(self) -> str:
+class Color(pydantic_extra_types.color.Color, serialize.Serializable):
+    @override
+    def serialize(self) -> str:
         formatter = serialize.get_current_formatter()
         result: str
 
@@ -35,6 +37,7 @@ class Color(pydantic_extra_types.color.Color):
 
         return result
 
+    @override
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.original()!r})"
 
