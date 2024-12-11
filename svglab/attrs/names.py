@@ -6,7 +6,7 @@ import bidict
 
 __all__ = [
     "ATTRIBUTE_NAMES",
-    "ATTR_TO_NORMALIZED",
+    "ATTR_NAME_TO_NORMALIZED",
     "AttributeName",
     "normalize_attr_name",
 ]
@@ -222,7 +222,7 @@ ATTRIBUTE_NAMES: Final[frozenset[AttributeName]] = frozenset(
 """A set of all valid SVG attribute names."""
 
 
-ATTR_TO_NORMALIZED: Final = bidict.frozenbidict(
+ATTR_NAME_TO_NORMALIZED: Final = bidict.frozenbidict(
     {attr: normalize_attr_name(attr) for attr in ATTRIBUTE_NAMES}
 )
 """A bidirectional mapping of SVG attribute names to normalized Python identifiers."""

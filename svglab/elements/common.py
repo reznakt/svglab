@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import functools
 import reprlib
 import sys
 from collections.abc import Iterable, Mapping
@@ -12,6 +13,7 @@ import pydantic
 from typing_extensions import Self, override
 
 from svglab import attrs, models, serialize, utils
+from svglab.elements import names
 
 __all__ = [
     "Element",
@@ -101,15 +103,17 @@ class Tag(Element, abc.ABC):
 
     model_config = pydantic.ConfigDict(
         extra="allow",
-        alias_generator=lambda name: attrs.ATTR_TO_NORMALIZED.inverse.get(name, name),
+        alias_generator=lambda name: attrs.ATTR_NAME_TO_NORMALIZED.inverse.get(
+            name, name
+        ),
     )
 
     prefix: str | None = None
 
     @pydantic.computed_field
-    @property
-    def name(self) -> str:
-        return type(self).__name__.lower()
+    @functools.cached_property
+    def name(self) -> names.TagName:
+        return names.TAG_NAME_TO_NORMALIZED.inverse[type(self).__name__]
 
     @pydantic.model_validator(mode="after")
     def __validate_extra(self) -> Tag:

@@ -1,6 +1,6 @@
 import collections
 import itertools
-from typing import Final
+from typing import Final, cast
 
 import bs4
 
@@ -12,20 +12,23 @@ DEFAULT_PARSER: Final[types.Parser] = "lxml-xml"
 
 TAG_NAME_TO_CLASS: Final = {
     cls().name: cls
-    for cls in itertools.chain(
-        elements.Tag.__subclasses__(), elements.PairedTag.__subclasses__()
+    for cls in set(
+        itertools.chain(
+            elements.Tag.__subclasses__(), elements.PairedTag.__subclasses__()
+        )
     )
+    - {elements.PairedTag}
 }
 
 BS_TO_TEXT_ELEMENT: Final[
     dict[
         type[bs4.NavigableString],
-        type[elements.CData | elements.Comment | elements.Text],
+        type[elements.CData | elements.Comment | elements.RawText],
     ]
 ] = {
     bs4.CData: elements.CData,
     bs4.Comment: elements.Comment,
-    bs4.NavigableString: elements.Text,
+    bs4.NavigableString: elements.RawText,
 }
 
 
@@ -94,7 +97,7 @@ def convert_element(backend: bs4.PageElement) -> elements.Element | None:
 
             return cls(text)
         case bs4.Tag():
-            tag_class = TAG_NAME_TO_CLASS[backend.name]
+            tag_class = TAG_NAME_TO_CLASS[cast(elements.TagName, backend.name)]
 
             tag = tag_class.model_validate(
                 {

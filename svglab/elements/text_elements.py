@@ -5,7 +5,7 @@ from typing_extensions import override
 
 from svglab.elements import common
 
-__all__ = ["CData", "Comment", "Text"]
+__all__ = ["CData", "Comment", "RawText"]
 
 
 @final
@@ -51,7 +51,7 @@ class Comment(common.TextElement):
 
 
 @final
-class Text(common.TextElement):
+class RawText(common.TextElement):
     """A text node.
 
     A text node is a block of text that is parsed by the XML parser.

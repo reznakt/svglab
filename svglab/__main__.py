@@ -4,7 +4,7 @@
 
 import sys
 
-from svglab import CData, Comment, G, Rect, Text, parse_svg
+from svglab import CData, Comment, G, RawText, Rect, parse_svg
 from svglab.attrs import Color, Length, SkewX, Translate
 from svglab.serialize import Formatter, set_formatter
 
@@ -38,7 +38,7 @@ def main() -> None:
         ),
         Comment("This is a comment"),
         CData(".background { fill: blue; }"),
-        Text("Hello SVG!"),
+        RawText("Hello SVG!"),
     )
 
     # Add the element to the SVG
