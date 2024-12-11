@@ -5,8 +5,8 @@ import collections
 import functools
 import reprlib
 import sys
-from collections.abc import Iterable, Mapping
-from typing import SupportsIndex, cast
+from collections.abc import Iterable, Iterator, Mapping
+from typing import SupportsIndex, TypeAlias, cast
 
 import bs4
 import pydantic
@@ -21,6 +21,36 @@ __all__ = [
     "Tag",
     "TextElement",
 ]
+
+TagSearch: TypeAlias = names.TagName | type["Tag"]
+"""Type for searching tags. A tag name or a tag class."""
+
+
+def match_tag(tag: Tag, /, *, search: TagSearch) -> bool:
+    """Check if a tag matches the given search criteria.
+
+    Args:
+    tag: The tag to check.
+    search: The search criteria. Can be a tag name or a tag class.
+
+    Returns:
+    `True` if the tag matches the search criteria, `False` otherwise.
+
+    Examples:
+    >>> from svglab import Rect
+    >>> rect = Rect()
+    >>> match_tag(rect, search="rect")
+    True
+    >>> match_tag(rect, search=Rect)
+    True
+    >>> match_tag(rect, search="circle")
+    False
+
+    """
+    if isinstance(search, type):
+        return isinstance(tag, search)
+
+    return tag.name == search
 
 
 class Element(models.BaseModel, abc.ABC):
@@ -257,6 +287,12 @@ class PairedTag(Tag, abc.ABC):
 
             yield sibling
 
+    @pydantic.computed_field
+    @property
+    def siblings(self) -> Iterable[Element]:
+        yield from self.prev_siblings
+        yield from self.next_siblings
+
     def add_child(self, child: Element, /, *, index: int | None = None) -> Self:
         if child is self:
             raise ValueError("Cannot add a tag as a child of itself.")
@@ -318,3 +354,57 @@ class PairedTag(Tag, abc.ABC):
             tag.append(child.to_beautifulsoup_object())
 
         return tag
+
+    def find_all(self, *tags: TagSearch, recursive: bool = True) -> Iterator[Tag]:
+        """Find all tags that match the given search criteria.
+
+        Args:
+        tags: The tags to search for. Can be tag names or tag classes.
+        recursive: If `False`, only search the direct children of the tag,
+        otherwise search all descendants.
+
+        Returns:
+        An iterator over all tags that match the search criteria.
+
+        Examples:
+        >>> from svglab import G, Rect
+        >>> g = G().add_children(Rect(), G().add_child(Rect()))
+        >>> list(g.find_all("rect"))
+        [Rect(), Rect()]
+        >>> list(g.find_all(G))
+        [G(children=[Rect()])]
+        >>> list(g.find_all(Rect, recursive=False))
+        [Rect()]
+        >>> list(g.find_all(G, "rect"))
+        [Rect(), G(children=[Rect()]), Rect()]
+
+        """
+        for child in self.descendants if recursive else self.children:
+            if isinstance(child, Tag) and any(
+                match_tag(child, search=tag) for tag in tags
+            ):
+                yield child
+
+    def find(self, *tags: TagSearch, recursive: bool = True) -> Tag | None:
+        """Find the first tag that matches the given search criteria.
+
+        Args:
+        tags: The tags to search for. Can be tag names or tag classes.
+        recursive: If `False`, only search the direct children of the tag,
+        otherwise search all descendants.
+
+        Returns:
+        The first tag that matches the search criteria, or `None` if no tag is found.
+
+        Examples:
+        >>> from svglab import G, Rect
+        >>> g = G().add_children(Rect(id="foo"), G().add_child(Rect(id="bar")))
+        >>> g.find("rect")
+        Rect(id='foo')
+        >>> g.find(G)
+        G(children=[Rect(id='bar')])
+        >>> g.find("circle") is None
+        True
+
+        """
+        return next(iter(self.find_all(*tags, recursive=recursive)), None)

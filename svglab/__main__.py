@@ -51,6 +51,8 @@ def main() -> None:
     # Save to a file
     svg.save(sys.stdout)
 
+    print(*svg.find_all(Rect), sep="\n")
+
 
 if __name__ == "__main__":
     main()
