@@ -1,9 +1,8 @@
-import importlib.metadata
-import typing
+import importlib.metadata as _importlib_metadata
+import typing as _typing
 
-__version__: typing.Final = importlib.metadata.version(__name__)
+__version__: _typing.Final = _importlib_metadata.version(__name__)
 
-from pydantic_extra_types.color import Color
 
 from .elements import (
     A,
