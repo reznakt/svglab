@@ -1,6 +1,7 @@
 from typing import final
 
 import bs4
+from typing_extensions import override
 
 from svglab.elements import common
 
@@ -23,6 +24,7 @@ class CData(common.TextElement):
     def __init__(self, content: str, /) -> None:
         super().__init__(content=content)
 
+    @override
     def to_beautifulsoup_object(self) -> bs4.CData:
         return bs4.CData(self.content)
 
@@ -43,6 +45,7 @@ class Comment(common.TextElement):
     def __init__(self, content: str, /) -> None:
         super().__init__(content=content)
 
+    @override
     def to_beautifulsoup_object(self) -> bs4.Comment:
         return bs4.Comment(self.content)
 
@@ -61,5 +64,6 @@ class Text(common.TextElement):
     def __init__(self, content: str, /) -> None:
         super().__init__(content=content)
 
+    @override
     def to_beautifulsoup_object(self) -> bs4.NavigableString:
         return bs4.NavigableString(self.content)

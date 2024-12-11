@@ -9,7 +9,7 @@ from typing import SupportsIndex, cast
 
 import bs4
 import pydantic
-from typing_extensions import Self
+from typing_extensions import Self, override
 
 from svglab import attrs, models, serialize, utils
 
@@ -77,6 +77,7 @@ class TextElement(Element, abc.ABC):
 
     content: str = pydantic.Field(frozen=True, min_length=1)
 
+    @override
     def __repr__(self) -> str:
         name = type(self).__name__
         return f"{name}({self.content!r})"
@@ -163,6 +164,7 @@ class Tag(Element, abc.ABC):
         return {**standard, **extra}
 
     @reprlib.recursive_repr()
+    @override
     def __repr__(self) -> str:
         name = type(self).__name__
         attrs = dict(self.all_attrs())
@@ -174,6 +176,7 @@ class Tag(Element, abc.ABC):
 
         return f"{name}({attr_repr})"
 
+    @override
     def to_beautifulsoup_object(self) -> bs4.Tag:
         tag = bs4.Tag(
             name=self.name,
@@ -302,6 +305,7 @@ class PairedTag(Tag, abc.ABC):
     ) -> int:
         return self.__children.index(child, start, stop)
 
+    @override
     def to_beautifulsoup_object(self) -> bs4.Tag:
         tag = super().to_beautifulsoup_object()
         tag.can_be_empty_element = False
