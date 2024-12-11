@@ -5,7 +5,7 @@ import collections
 import functools
 import reprlib
 import sys
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Generator, Mapping
 from typing import SupportsIndex, TypeAlias, cast
 
 import bs4
@@ -237,12 +237,12 @@ class PairedTag(Tag, abc.ABC):
 
     @pydantic.computed_field
     @property
-    def children(self) -> Iterable[Element]:
-        return iter(self.__children)
+    def children(self) -> Generator[Element, None, None]:
+        yield from self.__children
 
     @pydantic.computed_field
     @property
-    def descendants(self) -> Iterable[Element]:
+    def descendants(self) -> Generator[Element, None, None]:
         queue = collections.deque(self.children)
 
         while queue:
@@ -254,7 +254,7 @@ class PairedTag(Tag, abc.ABC):
 
     @pydantic.computed_field
     @property
-    def parents(self) -> Iterable[Element]:
+    def parents(self) -> Generator[Element, None, None]:
         curr = self.parent
 
         while curr is not None:
@@ -263,7 +263,7 @@ class PairedTag(Tag, abc.ABC):
 
     @pydantic.computed_field
     @property
-    def next_siblings(self) -> Iterable[Element]:
+    def next_siblings(self) -> Generator[Element, None, None]:
         if self.parent is None or not isinstance(self.parent, PairedTag):
             return
 
@@ -277,7 +277,7 @@ class PairedTag(Tag, abc.ABC):
 
     @pydantic.computed_field
     @property
-    def prev_siblings(self) -> Iterable[Element]:
+    def prev_siblings(self) -> Generator[Element, None, None]:
         if self.parent is None or not isinstance(self.parent, PairedTag):
             return
 
@@ -289,7 +289,7 @@ class PairedTag(Tag, abc.ABC):
 
     @pydantic.computed_field
     @property
-    def siblings(self) -> Iterable[Element]:
+    def siblings(self) -> Generator[Element, None, None]:
         yield from self.prev_siblings
         yield from self.next_siblings
 
@@ -355,7 +355,9 @@ class PairedTag(Tag, abc.ABC):
 
         return tag
 
-    def find_all(self, *tags: TagSearch, recursive: bool = True) -> Iterator[Tag]:
+    def find_all(
+        self, *tags: TagSearch, recursive: bool = True
+    ) -> Generator[Tag, None, None]:
         """Find all tags that match the given search criteria.
 
         Args:
@@ -407,4 +409,4 @@ class PairedTag(Tag, abc.ABC):
         True
 
         """
-        return next(iter(self.find_all(*tags, recursive=recursive)), None)
+        return next(self.find_all(*tags, recursive=recursive), None)
