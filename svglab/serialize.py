@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from types import TracebackType
 from typing import Final, Literal, Protocol, TypeAlias, overload, runtime_checkable
 
@@ -73,6 +74,9 @@ class Formatter(models.BaseModel):
     `list_separator`: The separator to use when serializing lists of values.
     `spaces_around_attrs`: Whether to add spaces around attribute values. For example,
     `fill=" red "` instead of `fill="red"`.
+    `spaces_around_function_args`: Whether to add spaces around function arguments.
+    `spaces_around_function_args`: Whether to add spaces around function arguments.
+    For example, `rotate( 45 )` instead of `rotate(45)`.
 
     """
 
@@ -95,6 +99,7 @@ class Formatter(models.BaseModel):
     indent: models.KwOnly[int] = pydantic.Field(default=2, ge=0)
     list_separator: models.KwOnly[ListSeparator] = ", "
     spaces_around_attrs: models.KwOnly[bool] = False
+    spaces_around_function_args: models.KwOnly[bool] = False
 
     __original_formatter: Formatter | None = pydantic.PrivateAttr(default=None)
 
@@ -192,7 +197,17 @@ def _serialize_attr(value: object, /) -> str:
 
     match value:
         case Serializable():
-            return value.serialize()
+            result = value.serialize()
+
+            if (
+                formatter.spaces_around_function_args
+                and (fn_call := extract_function_name_and_args(result)) is not None
+            ):
+                fn, args = fn_call
+                return f"{fn}( {args} )"
+
+            return result
+
         case list() | tuple():
             return formatter.list_separator.join(
                 _serialize_attr(item) for item in value
@@ -230,3 +245,36 @@ def serialize_attr(value: object, /) -> str:
         result = f" {result} "
 
     return result
+
+
+def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
+    """Extract the function name and arguments from a function-call-like attribute.
+
+    An attribute is considered to be a function call if it has the form `name(args)`.
+    This function extracts the name and the arguments from such an attribute.
+    If the attribute is not a function call, `None` is returned.
+
+    Args:
+    attr: The attribute to extract the function name and arguments from.
+
+    Returns:
+    A tuple containing the function name and the arguments, or `None` if the attribute
+    is not a function call.
+
+    Examples:
+    >>> extract_function_name_and_args("foo()") is None  # no arguments
+    True
+    >>> extract_function_name_and_args("foo(42)")
+    ('foo', '42')
+    >>> extract_function_name_and_args("foo(42, 'bar')")
+    ('foo', "42, 'bar'")
+    >>> extract_function_name_and_args("bar") is None  # not a function call
+    True
+
+    """
+    match = re.match(r"^([^\(\)]+)\(([^\(\)]+)\)$", attr)
+
+    if match is None:
+        return None
+
+    return match.group(1), match.group(2)
