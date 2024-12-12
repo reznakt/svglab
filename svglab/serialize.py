@@ -53,12 +53,13 @@ class Formatter(models.BaseModel):
     can be used to customize the serialization of SVG elements.
 
     Attributes:
+    `color_mode`: The color serialization mode (`hsl`, `rgb`, ...)
+    to use when serializing colors.
+
     `show_decimal_part_if_int`: Whether to show the decimal part of a number
     even if it is an integer. For example, `1.0` instead of `1`.
     `max_precision`: The maximum number of significant digits
     after the decimal point to use when serializing numbers.
-    color_mode: The color serialization mode (`hsl`, `rgb`, ...)
-    to use when serializing colors.
     `small_number_scientific_threshold`: The magnitude threshold below which
     numbers are serialized using scientific notation.
     For example, `1e-06` instead of `0.000001`. If `None`, scientific notation
@@ -68,8 +69,10 @@ class Formatter(models.BaseModel):
     For example, `1e+06` instead of `1000000`. If `None`, scientific notation
     is not used for large numbers.
 
-    indent: The number of spaces to use for indentation in the resulting SVG document.
-    list_separator: The separator to use when serializing lists of values.
+    `indent`: The number of spaces to use for indentation in the resulting SVG document.
+    `list_separator`: The separator to use when serializing lists of values.
+    `spaces_around_attrs`: Whether to add spaces around attribute values. For example,
+    `fill=" red "` instead of `fill="red"`.
 
     """
 
@@ -91,6 +94,7 @@ class Formatter(models.BaseModel):
     # misc
     indent: models.KwOnly[int] = pydantic.Field(default=2, ge=0)
     list_separator: models.KwOnly[ListSeparator] = ", "
+    spaces_around_attrs: models.KwOnly[bool] = False
 
     __original_formatter: Formatter | None = pydantic.PrivateAttr(default=None)
 
@@ -183,6 +187,22 @@ def format_number(*numbers: float) -> str | tuple[str, ...]:
     return result[0] if len(result) == 1 else result
 
 
+def _serialize_attr(value: object, /) -> str:
+    formatter = get_current_formatter()
+
+    match value:
+        case Serializable():
+            return value.serialize()
+        case list() | tuple():
+            return formatter.list_separator.join(
+                _serialize_attr(item) for item in value
+            )
+        case int() | float():
+            return format_number(value)
+        case _:
+            return str(value)
+
+
 def serialize_attr(value: object, /) -> str:
     """Serialize an attribute value into its SVG representation.
 
@@ -204,13 +224,9 @@ def serialize_attr(value: object, /) -> str:
 
     """
     formatter = get_current_formatter()
+    result = _serialize_attr(value)
 
-    match value:
-        case Serializable():
-            return value.serialize()
-        case list() | tuple():
-            return formatter.list_separator.join(serialize_attr(item) for item in value)
-        case int() | float():
-            return format_number(value)
-        case _:
-            return str(value)
+    if formatter.spaces_around_attrs:
+        result = f" {result} "
+
+    return result
