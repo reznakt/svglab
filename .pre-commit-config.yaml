@@ -27,7 +27,7 @@ repos:
     rev: 1.8.4
     hooks:
       - id: poetry-check
-      - id: poetry-lock
+        args: ["--lock"]
       - id: poetry-install
   - repo: local
     hooks:
