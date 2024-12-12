@@ -37,7 +37,7 @@ svglab = "svglab.__main__:main"
 
 [tool.poe.tasks]
 lint = "ruff check"
-lint-fix = "ruff check --fix --show-fixes"
+lint-fix = "ruff check --fix"
 format = "ruff format --diff"
 format-fix = "ruff format"
 test = "pytest"
@@ -73,6 +73,7 @@ ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py310"
+show-fixes = true
 
 [tool.ruff.lint]
 select = ["ALL"]
