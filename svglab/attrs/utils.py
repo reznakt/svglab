@@ -62,7 +62,12 @@ def get_validator(
 ) -> pydantic.BeforeValidator:
     def validator(value: object) -> object:
         if isinstance(value, str):
-            return parse(value, grammar=grammar, transformer=transformer, **kwargs)
+            return parse(
+                value,
+                grammar=grammar,
+                transformer=transformer,
+                **kwargs,
+            )
 
         return value
 

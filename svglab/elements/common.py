@@ -121,7 +121,8 @@ class Tag(Element, abc.ABC):
     A tag is an element that has a name and a set of attributes.
 
     Tags can be of two types:
-    - paired tags, which have children (for example, `<g></g>`; see `PairedTag`)
+    - paired tags, which have children
+      (for example, `<g></g>`; see `PairedTag`)
     - unpaired tags, which do not have children (for example, `<rect />`)
 
     Tags can have standard attributes (for example, `id`, `class`, `color`) and
@@ -206,7 +207,9 @@ class Tag(Element, abc.ABC):
         if isinstance(self, PairedTag):
             attrs["children"] = list(self.children)
 
-        attr_repr = ", ".join(f"{key}={value!r}" for key, value in attrs.items())
+        attr_repr = ", ".join(
+            f"{key}={value!r}" for key, value in attrs.items()
+        )
 
         return f"{name}({attr_repr})"
 
@@ -293,12 +296,16 @@ class PairedTag(Tag, abc.ABC):
         yield from self.prev_siblings
         yield from self.next_siblings
 
-    def add_child(self, child: Element, /, *, index: int | None = None) -> Self:
+    def add_child(
+        self, child: Element, /, *, index: int | None = None
+    ) -> Self:
         if child is self:
             raise ValueError("Cannot add a tag as a child of itself.")
 
         if child.parent is not None:
-            raise ValueError("Cannot add a child that already has a parent.")
+            raise ValueError(
+                "Cannot add a child that already has a parent."
+            )
 
         if index is None:
             self.__children.append(child)
@@ -396,11 +403,14 @@ class PairedTag(Tag, abc.ABC):
         otherwise search all descendants.
 
         Returns:
-        The first tag that matches the search criteria, or `None` if no tag is found.
+        The first tag that matches the search criteria,
+        or `None` if no tag is found.
 
         Examples:
         >>> from svglab import G, Rect
-        >>> g = G().add_children(Rect(id="foo"), G().add_child(Rect(id="bar")))
+        >>> g = G().add_children(
+        ...     Rect(id="foo"), G().add_child(Rect(id="bar"))
+        ... )
         >>> g.find("rect")
         Rect(id='foo')
         >>> g.find(G)

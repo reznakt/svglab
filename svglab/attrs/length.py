@@ -12,7 +12,9 @@ from svglab.attrs import utils
 __all__ = ["Length", "LengthType", "LengthUnit"]
 
 
-LengthUnit: TypeAlias = Literal["em", "ex", "px", "in", "cm", "mm", "pt", "pc", "%"]
+LengthUnit: TypeAlias = Literal[
+    "em", "ex", "px", "in", "cm", "mm", "pt", "pc", "%"
+]
 
 
 @pydantic.dataclasses.dataclass
@@ -48,5 +50,6 @@ class Transformer(lark.Transformer[object, Length]):
 
 
 LengthType: TypeAlias = Annotated[
-    Length, utils.get_validator(grammar="length", transformer=Transformer())
+    Length,
+    utils.get_validator(grammar="length", transformer=Transformer()),
 ]

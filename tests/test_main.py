@@ -45,9 +45,12 @@ def test_get_root_svg_fragments_simple(fragment_count: int) -> None:
 
 
 @hypothesis.given(
-    st.integers(min_value=0, max_value=100), st.integers(min_value=1, max_value=100)
+    st.integers(min_value=0, max_value=100),
+    st.integers(min_value=1, max_value=100),
 )
-def test_get_root_svg_fragments_nested(fragment_count: int, nesting_level: int) -> None:
+def test_get_root_svg_fragments_nested(
+    fragment_count: int, nesting_level: int
+) -> None:
     elem: bs4.Tag = bs4.BeautifulSoup()
 
     for _ in range(nesting_level):
@@ -90,14 +93,17 @@ def test_valid_length(value: float) -> None:
 def test_invalid_length(value: str) -> None:
     xml = f"<svg><rect width='{value}'/></svg>"
 
-    with pytest.raises(ValueError, match="Failed to parse text with grammar 'length'"):
+    with pytest.raises(
+        ValueError, match="Failed to parse text with grammar 'length'"
+    ):
         parse.parse_svg(xml)
 
 
 @hypothesis.given(numbers, st.one_of(numbers, st.none()))
 def test_valid_scale(x: float, y: float | None) -> None:
     util_test_transform(
-        f"scale({x}, {y})" if y is not None else f"scale({x})", [transform.Scale(x, y)]
+        f"scale({x}, {y})" if y is not None else f"scale({x})",
+        [transform.Scale(x, y)],
     )
 
 
@@ -129,7 +135,8 @@ def test_valid_matrix(
     a: float, b: float, c: float, d: float, e: float, f: float
 ) -> None:
     util_test_transform(
-        f"matrix({a}, {b}, {c}, {d}, {e}, {f})", [transform.Matrix(a, b, c, d, e, f)]
+        f"matrix({a}, {b}, {c}, {d}, {e}, {f})",
+        [transform.Matrix(a, b, c, d, e, f)],
     )
 
 
@@ -182,13 +189,15 @@ def test_valid_transform_sequence() -> None:
 )
 def test_invalid_transform(text: str) -> None:
     with pytest.raises(
-        ValueError, match="Failed to parse text with grammar 'transform'"
+        ValueError,
+        match="Failed to parse text with grammar 'transform'",
     ):
         parse.parse_svg(f"<svg><rect transform='{text}'/></svg>")
 
 
 def test_invalid_rotate() -> None:
     with pytest.raises(
-        ValueError, match="Both cx and cy must either be provided or omitted"
+        ValueError,
+        match="Both cx and cy must either be provided or omitted",
     ):
         transform.Rotate(1, 2)

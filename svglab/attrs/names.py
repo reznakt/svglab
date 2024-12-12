@@ -151,7 +151,7 @@ AttributeName: TypeAlias = Literal[
 
 
 def is_valid_identifier(name: str) -> bool:
-    """Check if a string is a valid Python identifier and not a reserved keyword.
+    """Check if a string is a valid identifier and not a reserved keyword.
 
     Args:
         name: The string to check.
@@ -225,4 +225,7 @@ ATTRIBUTE_NAMES: Final[frozenset[AttributeName]] = frozenset(
 ATTR_NAME_TO_NORMALIZED: Final = bidict.frozenbidict(
     {attr: normalize_attr_name(attr) for attr in ATTRIBUTE_NAMES}
 )
-"""A bidirectional mapping of SVG attribute names to normalized Python identifiers."""
+"""
+A bidirectional mapping of SVG attribute names to normalized
+Python identifiers.
+"""

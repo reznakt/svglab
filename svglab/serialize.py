@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import re
 from types import TracebackType
-from typing import Final, Literal, Protocol, TypeAlias, overload, runtime_checkable
+from typing import (
+    Final,
+    Literal,
+    Protocol,
+    TypeAlias,
+    overload,
+    runtime_checkable,
+)
 
 import pydantic
 import readable_number
@@ -21,14 +28,18 @@ ColorSerializationMode: TypeAlias = Literal[
 """ Mode for serializing colors.
 
 - `named`: Serialize colors using their named representation, if possible.
-           Falls back to `hex-short`.
-- `hex-short`: Serialize colors using the short hex format (for example, `#fff`).
-- `hex-long`: Serialize colors using the long hex format (for example, `#ffffff`).
-- `rgb`: Serialize colors using the RGB format (for example, `rgb(255, 255, 255)`).
-- `hsl`: Serialize colors using the HSL format (for example, `hsl(0, 0%, 100%)`).
+            Falls back to `hex-short`.
+- `hex-short`: Serialize colors using the short hex format
+            (for example, `#fff`).
+- `hex-long`: Serialize colors using the long hex format
+            (for example, `#ffffff`).
+- `rgb`: Serialize colors using the RGB format
+            (for example, `rgb(255, 255, 255)`).
+- `hsl`: Serialize colors using the HSL format
+            (for example, `hsl(0, 0%, 100%)`).
 - `auto`: Automatically choose the most appropriate serialization mode.
-- `original`: Serialize colors using their original representation, if possible.
-              Falls back to `auto`.
+- `original`: Serialize colors using their original representation,
+            if possible. Falls back to `auto`.
 """
 
 ListSeparator: TypeAlias = Literal[", ", ",", " "]
@@ -70,13 +81,13 @@ class Formatter(models.BaseModel):
     For example, `1e+06` instead of `1000000`. If `None`, scientific notation
     is not used for large numbers.
 
-    `indent`: The number of spaces to use for indentation in the resulting SVG document.
+    `indent`: The number of spaces to use for indentation in the resulting
+    SVG document.
     `list_separator`: The separator to use when serializing lists of values.
-    `spaces_around_attrs`: Whether to add spaces around attribute values. For example,
-    `fill=" red "` instead of `fill="red"`.
-    `spaces_around_function_args`: Whether to add spaces around function arguments.
-    `spaces_around_function_args`: Whether to add spaces around function arguments.
-    For example, `rotate( 45 )` instead of `rotate(45)`.
+    `spaces_around_attrs`: Whether to add spaces around attribute values.
+    For example, `fill=" red "` instead of `fill="red"`.
+    `spaces_around_function_args`: Whether to add spaces around function
+    arguments. For example, `rotate( 45 )` instead of `rotate(45)`.
 
     """
 
@@ -87,12 +98,14 @@ class Formatter(models.BaseModel):
 
     # numbers
     show_decimal_part_if_int: models.KwOnly[bool] = False
-    max_precision: models.KwOnly[int | None] = pydantic.Field(default=None, ge=0)
-    small_number_scientific_threshold: models.KwOnly[float | None] = pydantic.Field(
-        default=1e-6, ge=0
+    max_precision: models.KwOnly[int | None] = pydantic.Field(
+        default=None, ge=0
     )
-    large_number_scientific_threshold: models.KwOnly[float | None] = pydantic.Field(
-        default=1e6, ge=0
+    small_number_scientific_threshold: models.KwOnly[float | None] = (
+        pydantic.Field(default=1e-6, ge=0)
+    )
+    large_number_scientific_threshold: models.KwOnly[float | None] = (
+        pydantic.Field(default=1e6, ge=0)
     )
 
     # misc
@@ -101,7 +114,9 @@ class Formatter(models.BaseModel):
     spaces_around_attrs: models.KwOnly[bool] = False
     spaces_around_function_args: models.KwOnly[bool] = False
 
-    __original_formatter: Formatter | None = pydantic.PrivateAttr(default=None)
+    __original_formatter: Formatter | None = pydantic.PrivateAttr(
+        default=None
+    )
 
     def __enter__(self) -> None:
         self.__original_formatter = get_current_formatter()
@@ -117,9 +132,10 @@ class Formatter(models.BaseModel):
 
         if self.__original_formatter is None:
             msg = (
-                "Cannot exit unentered context manager."
-                f" Call `__enter__` first or use `with {type(self).__name__}()`."
+                "Cannot exit unentered context manager.",
+                " Call `__enter__` first",
             )
+
             raise RuntimeError(msg)
 
         set_formatter(self.__original_formatter)
@@ -179,11 +195,13 @@ def format_number(*numbers: float) -> str | tuple[str, ...]:
         digit_group_delimiter="",  # group separators are not allowed in SVG
         significant_figures_after_decimal_point=formatter.max_precision,
         show_decimal_part_if_integer=formatter.show_decimal_part_if_int,
-        use_exponent_for_small_numbers=formatter.small_number_scientific_threshold
-        is not None,
+        use_exponent_for_small_numbers=(
+            formatter.small_number_scientific_threshold is not None
+        ),
         small_number_threshold=formatter.small_number_scientific_threshold,
-        use_exponent_for_large_numbers=formatter.large_number_scientific_threshold
-        is not None,
+        use_exponent_for_large_numbers=(
+            formatter.large_number_scientific_threshold is not None
+        ),
         large_number_threshold=formatter.large_number_scientific_threshold,
     )
 
@@ -201,7 +219,8 @@ def _serialize_attr(value: object, /) -> str:
 
             if (
                 formatter.spaces_around_function_args
-                and (fn_call := extract_function_name_and_args(result)) is not None
+                and (fn_call := extract_function_name_and_args(result))
+                is not None
             ):
                 fn, args = fn_call
                 return f"{fn}( {args} )"
@@ -247,19 +266,21 @@ def serialize_attr(value: object, /) -> str:
     return result
 
 
-def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
-    """Extract the function name and arguments from a function-call-like attribute.
+def extract_function_name_and_args(
+    attr: str,
+) -> tuple[str, str] | None:
+    """Extract function name and arguments from a function-call-like attribute.
 
-    An attribute is considered to be a function call if it has the form `name(args)`.
-    This function extracts the name and the arguments from such an attribute.
-    If the attribute is not a function call, `None` is returned.
+    An attribute is considered to be a function call if it has the form
+    `name(args)`. This function extracts the name and the arguments from such
+    an attribute. If the attribute is not a function call, `None` is returned.
 
     Args:
     attr: The attribute to extract the function name and arguments from.
 
     Returns:
-    A tuple containing the function name and the arguments, or `None` if the attribute
-    is not a function call.
+    A tuple containing the function name and the arguments,
+    or `None` if the attribute is not a function call.
 
     Examples:
     >>> extract_function_name_and_args("foo()") is None  # no arguments
@@ -268,7 +289,9 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     ('foo', '42')
     >>> extract_function_name_and_args("foo(42, 'bar')")
     ('foo', "42, 'bar'")
-    >>> extract_function_name_and_args("bar") is None  # not a function call
+    >>> extract_function_name_and_args(
+    ...     "bar"
+    ... ) is None  # not a function call
     True
 
     """

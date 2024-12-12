@@ -125,4 +125,6 @@ def normalize_tag_name(name: TagName, /) -> str:
 TAG_NAME_TO_NORMALIZED: Final = bidict.frozenbidict(
     {tag: normalize_tag_name(tag) for tag in TAG_NAMES}
 )
-"""A bidirectional mapping from SVG tag names to normalized Python identifiers."""
+"""
+A bidirectional mapping from SVG tag names to normalized Python identifiers.
+"""

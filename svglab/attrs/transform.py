@@ -72,7 +72,9 @@ class Rotate(serialize.Serializable, Generic[_T_opt_float]):
         cy_is_none = self.cy is None
 
         if cx_is_none != cy_is_none:
-            raise ValueError("Both cx and cy must either be provided or omitted")
+            raise ValueError(
+                "Both cx and cy must either be provided or omitted"
+            )
 
         return self
 
@@ -125,7 +127,8 @@ class Matrix(serialize.Serializable):
     @override
     def serialize(self) -> str:
         a, b, c, d, e, f = map(
-            serialize.format_number, (self.a, self.b, self.c, self.d, self.e, self.f)
+            serialize.format_number,
+            (self.a, self.b, self.c, self.d, self.e, self.f),
         )
 
         return f"matrix({a} {b} {c} {d} {e} {f})"
@@ -135,7 +138,13 @@ RotateWithoutCenter: TypeAlias = Rotate[None]
 RotateWithCenter: TypeAlias = Rotate[float]
 
 TransformAction: TypeAlias = (
-    Translate | Scale | RotateWithoutCenter | RotateWithCenter | SkewX | SkewY | Matrix
+    Translate
+    | Scale
+    | RotateWithoutCenter
+    | RotateWithCenter
+    | SkewX
+    | SkewY
+    | Matrix
 )
 
 Transform: TypeAlias = list[TransformAction]

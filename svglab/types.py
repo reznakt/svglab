@@ -1,4 +1,10 @@
-from typing import Literal, Protocol, TypeAlias, TypeVar, runtime_checkable
+from typing import (
+    Literal,
+    Protocol,
+    TypeAlias,
+    TypeVar,
+    runtime_checkable,
+)
 
 _AnyStr_contra = TypeVar("_AnyStr_contra", str, bytes, contravariant=True)
 _AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)

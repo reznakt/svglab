@@ -56,7 +56,8 @@ class RawText(common.TextElement):
 
     A text node is a block of text that is parsed by the XML parser.
 
-    Text nodes are used to include text that is intended to be displayed to the user.
+    Text nodes are used to include text that is intended to be displayed
+    to the user.
 
     Example: `Hello, world!`
     """

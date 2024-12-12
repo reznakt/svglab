@@ -494,7 +494,8 @@ class Svg(CommonAttrs, common.PairedTag):
         """Convert the SVG document fragment to XML and write it to a file.
 
         Args:
-        path_or_file: The path to the file to save the XML to, or a file-like object.
+        path_or_file: The path to the file to save the XML to,
+        or a file-like object.
         pretty: Whether to produce pretty-printed XML.
         indent: The number of spaces to indent each level of the document.
         trailing_newline: Whether to add a trailing newline to the file.
@@ -505,7 +506,10 @@ class Svg(CommonAttrs, common.PairedTag):
         >>> svg = Svg(id="foo").add_child(Rect())
         >>> formatter = serialize.Formatter(indent=4)
         >>> svg.save(
-        ...     sys.stdout, pretty=True, trailing_newline=False, formatter=formatter
+        ...     sys.stdout,
+        ...     pretty=True,
+        ...     trailing_newline=False,
+        ...     formatter=formatter,
         ... )
         <svg id="foo">
             <rect/>
@@ -518,7 +522,9 @@ class Svg(CommonAttrs, common.PairedTag):
 
             match path_or_file:
                 case str() | os.PathLike() as path:
-                    file = stack.enter_context(pathlib.Path(path).open("w"))
+                    file = stack.enter_context(
+                        pathlib.Path(path).open("w")
+                    )
                 case types.SupportsWrite() as file:
                     pass
 

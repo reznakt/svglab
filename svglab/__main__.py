@@ -17,7 +17,12 @@ def main() -> None:
         """
         <svg xmlns="http://www.w3.org/2000/svg">
           <g>
-              <rect id="background" width="100cm" height="100%" transform="rotate(45)"/>
+              <rect
+                id="background"
+                width="100cm"
+                height="100%"
+                transform="rotate(45)"
+              />
               <rect color="hsl(0, 100%, 100%)"/>
               <!-- This is a comment -->
               <![CDATA[.background { fill: blue; }]]>

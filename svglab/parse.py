@@ -14,7 +14,8 @@ TAG_NAME_TO_CLASS: Final = {
     cls().name: cls
     for cls in set(
         itertools.chain(
-            elements.Tag.__subclasses__(), elements.PairedTag.__subclasses__()
+            elements.Tag.__subclasses__(),
+            elements.PairedTag.__subclasses__(),
         )
     )
     - {elements.PairedTag}
@@ -35,10 +36,11 @@ BS_TO_TEXT_ELEMENT: Final[
 def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     """Find all root SVG fragments in the given BeautifulSoup object.
 
-    The function performs a breadth-first search until it finds an SVG fragment.
-    It then returns a list of all SVG fragments found in the same depth of the tree.
-    This allows us to consider an SVG fragment as a root element when using HTML
-    parsers that implicitly wrap the document in certain HTML tags (e.g., <html>).
+    The function performs a breadth-first search until it finds an
+    SVG fragment. It then returns a list of all SVG fragments found in the same
+    depth of the tree. This allows us to consider an SVG fragment as a root
+    element when using HTML parsers that implicitly wrap the document in
+    certain HTML tags (e.g., <html>).
 
     Args:
         soup: A BeautifulSoup tag object representing the root of the document.
@@ -50,7 +52,9 @@ def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
         >>> soup = bs4.BeautifulSoup("<svg><rect/></svg>", features="lxml-xml")
         >>> get_root_svg_fragments(soup)
         [<svg><rect/></svg>]
-        >>> soup = bs4.BeautifulSoup("<svg><rect/></svg>", features="html.parser")
+        >>> soup = bs4.BeautifulSoup(
+        ...     "<svg><rect/></svg>", features="html.parser"
+        ... )
         >>> get_root_svg_fragments(soup)
         [<svg><rect></rect></svg>]
 
@@ -65,12 +69,16 @@ def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
         if svg_fragments:
             return svg_fragments
 
-        queue.extend(child for child in node.children if isinstance(child, bs4.Tag))
+        queue.extend(
+            child for child in node.children if isinstance(child, bs4.Tag)
+        )
 
     return []
 
 
-def convert_element(backend: bs4.PageElement) -> elements.Element | None:
+def convert_element(
+    backend: bs4.PageElement,
+) -> elements.Element | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
@@ -97,7 +105,9 @@ def convert_element(backend: bs4.PageElement) -> elements.Element | None:
 
             return cls(text)
         case bs4.Tag():
-            tag_class = TAG_NAME_TO_CLASS[cast(elements.TagName, backend.name)]
+            tag_class = TAG_NAME_TO_CLASS[
+                cast(elements.TagName, backend.name)
+            ]
 
             tag = tag_class.model_validate(
                 {
@@ -123,24 +133,30 @@ def convert_element(backend: bs4.PageElement) -> elements.Element | None:
 
 
 def parse_svg(
-    markup: str | bytes | types.SupportsRead[str] | types.SupportsRead[bytes],
+    markup: str
+    | bytes
+    | types.SupportsRead[str]
+    | types.SupportsRead[bytes],
     /,
     *,
     parser: types.Parser = DEFAULT_PARSER,
 ) -> elements.Svg:
     """Parse an SVG document.
 
-    The document must be a valid XML document containing a single SVG document fragment.
+    The document must be a valid XML document containing a single SVG
+    document fragment.
 
     Args:
-        markup: A string or a file-like object representing markup to be parsed.
+        markup: A string or a file-like object representing markup
+        to be parsed.
         parser: The name of the parser to use. Defaults to 'lxml-xml'.
 
     Returns:
         The parsed SVG document in the form of an `Svg` instance.
 
     Raises:
-        ValueError: If the markup does not contain a single SVG document fragment
+        ValueError: If the markup does not contain a single SVG
+        document fragment
 
     Examples:
         >>> svg = parse_svg("<svg><rect/></svg>")
