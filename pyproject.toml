@@ -106,7 +106,7 @@ ignore = [
 
   # misc
   "S101",  # Use of assert detected
-  "TC001", # Move application import `svglab.attrparse.length` into a type-checking block
+  "TC001", # Move application import into a type-checking block
   "TC002", # Move third-party import into a type-checking block
   "TC003", # Move standard library import into a type-checking block
 ]
