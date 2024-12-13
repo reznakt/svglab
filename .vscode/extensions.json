@@ -6,6 +6,7 @@
     "matangover.mypy",
     "ms-python.debugpy",
     "ms-python.python",
-    "SanaAjani.taskrunnercode"
+    "SanaAjani.taskrunnercode",
+    "tamasfe.even-better-toml",
   ]
 }
