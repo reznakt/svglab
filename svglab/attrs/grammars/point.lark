@@ -1,0 +1,8 @@
+%import common.WS
+%import common.SIGNED_NUMBER
+
+%ignore WS
+
+start: number "," number
+
+number: SIGNED_NUMBER

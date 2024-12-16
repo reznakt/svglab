@@ -210,33 +210,6 @@ def format_number(*numbers: float) -> str | tuple[str, ...]:
     return result[0] if len(result) == 1 else result
 
 
-def _serialize_attr(value: object, /) -> str:
-    formatter = get_current_formatter()
-
-    match value:
-        case Serializable():
-            result = value.serialize()
-
-            if (
-                formatter.spaces_around_function_args
-                and (fn_call := extract_function_name_and_args(result))
-                is not None
-            ):
-                fn, args = fn_call
-                return f"{fn}( {args} )"
-
-            return result
-
-        case list() | tuple():
-            return formatter.list_separator.join(
-                _serialize_attr(item) for item in value
-            )
-        case int() | float():
-            return format_number(value)
-        case _:
-            return str(value)
-
-
 def serialize_attr(value: object, /) -> str:
     """Serialize an attribute value into its SVG representation.
 
@@ -258,7 +231,7 @@ def serialize_attr(value: object, /) -> str:
 
     """
     formatter = get_current_formatter()
-    result = _serialize_attr(value)
+    result = serialize(value)
 
     if formatter.spaces_around_attrs:
         result = f" {result} "
@@ -301,3 +274,44 @@ def extract_function_name_and_args(
         return None
 
     return match.group(1), match.group(2)
+
+
+@overload
+def serialize(value: object, /) -> str: ...
+
+
+@overload
+def serialize(*values: object) -> tuple[str, ...]: ...
+
+
+def serialize(*values: object) -> str | tuple[str, ...]:
+    """Return an SVG-friendly string representation of the given value(s)."""
+    result = tuple(_serialize(value) for value in values)
+    return result[0] if len(result) == 1 else result
+
+
+def _serialize(value: object) -> str:
+    formatter = get_current_formatter()
+
+    match value:
+        case Serializable():
+            result = value.serialize()
+
+            if (
+                formatter.spaces_around_function_args
+                and (fn_call := extract_function_name_and_args(result))
+                is not None
+            ):
+                fn, args = fn_call
+                return f"{fn}( {args} )"
+
+            return result
+
+        case list() | tuple():
+            return formatter.list_separator.join(serialize(*value))
+        case int() | float():
+            return format_number(value)
+        case bool():
+            return "1" if value else "0"
+        case _:
+            return str(value)

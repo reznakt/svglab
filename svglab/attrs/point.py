@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import final
+from typing import Annotated, TypeAlias, final
 
+import lark
 import pydantic
 from typing_extensions import override
 
 from svglab import serialize
+from svglab.attrs import utils
 
 
 @final
@@ -67,3 +69,18 @@ class Point(serialize.Serializable):
 
     def __truediv__(self, scalar: float) -> Point:
         return Point(self.x / scalar, self.y / scalar)
+
+    @classmethod
+    def zero(cls) -> Point:
+        return cls(0, 0)
+
+
+@lark.v_args(inline=True)
+class Transformer(lark.Transformer[object, Point]):
+    number = float
+    start = Point
+
+
+PointType: TypeAlias = Annotated[
+    Point, utils.get_validator(grammar="point", transformer=Transformer())
+]

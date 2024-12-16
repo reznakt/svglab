@@ -10,7 +10,10 @@ __all__ = ["get_validator"]
 GRAMMARS_DIR: Final = pathlib.Path(__file__).parent / "grammars"
 GAMMAR_EXT: Final = ".lark"
 
-GrammarName: TypeAlias = Literal["transform", "length"]
+GrammarName: TypeAlias = Literal["transform", "length", "point"]
+
+_Leaf_T = TypeVar("_Leaf_T")
+_Return_T = TypeVar("_Return_T")
 
 
 def get_grammar_path(name: GrammarName) -> pathlib.Path:
@@ -23,10 +26,6 @@ def load_grammar(name: GrammarName) -> str:
 
     with path.open("r") as file:
         return file.read()
-
-
-_Leaf_T = TypeVar("_Leaf_T")
-_Return_T = TypeVar("_Return_T")
 
 
 def parse(
