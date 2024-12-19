@@ -3,7 +3,9 @@
 
 %ignore WS
 
-start: number unit?
+?start: length
+
+length: number unit?
 
 ?!unit: "em"i | "ex"i | "px"i | "in"i | "cm"i | "mm"i | "pt"i | "pc"i | "%"
 

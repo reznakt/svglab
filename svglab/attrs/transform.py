@@ -161,7 +161,7 @@ class Transformer(lark.Transformer[object, Transform]):
     skew_y = SkewY
     matrix = Matrix
 
-    def start(self, *actions: TransformAction) -> Transform:
+    def transform_(self, *actions: TransformAction) -> Transform:
         return list(actions)
 
 

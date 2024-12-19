@@ -3,6 +3,8 @@
 
 %ignore WS
 
-start: number "," number
+?start: point
+
+point: number "," number
 
 number: SIGNED_NUMBER

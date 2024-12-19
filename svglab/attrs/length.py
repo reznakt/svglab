@@ -46,7 +46,7 @@ class Length(serialize.Serializable):
 @lark.v_args(inline=True)
 class Transformer(lark.Transformer[object, Length]):
     number = float
-    start = Length
+    length = Length
 
 
 LengthType: TypeAlias = Annotated[

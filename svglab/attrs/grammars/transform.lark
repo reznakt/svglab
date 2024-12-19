@@ -3,14 +3,17 @@
 
 %ignore WS
 
-start: transform (","? transform)*
+?start: transform_
 
-?transform: translate
-          | scale
-          | rotate
-          | skew_x
-          | skew_y
-          | matrix
+// avoid name conflict with lark.Transformer.transform
+transform_: transform_action (","? transform_action)*
+
+?transform_action: translate
+                | scale
+                | rotate
+                | skew_x
+                | skew_y
+                | matrix
 
 number: SIGNED_NUMBER
 

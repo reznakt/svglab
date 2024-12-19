@@ -78,7 +78,7 @@ class Point(serialize.Serializable):
 @lark.v_args(inline=True)
 class Transformer(lark.Transformer[object, Point]):
     number = float
-    start = Point
+    point = Point
 
 
 PointType: TypeAlias = Annotated[
