@@ -9,11 +9,11 @@
 transform_: transform_action (","? transform_action)*
 
 ?transform_action: translate
-                | scale
-                | rotate
-                | skew_x
-                | skew_y
-                | matrix
+                 | scale
+                 | rotate
+                 | skew_x
+                 | skew_y
+                 | matrix
 
 number: SIGNED_NUMBER
 
