@@ -91,5 +91,6 @@ class Transformer(lark.Transformer[object, Point]):
 
 
 PointType: TypeAlias = Annotated[
-    Point, utils.get_validator(grammar="point", transformer=Transformer())
+    Point,
+    utils.get_validator(grammar="point.lark", transformer=Transformer()),
 ]

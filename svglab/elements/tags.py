@@ -413,12 +413,12 @@ class Pattern(CommonAttrs, common.PairedTag):
 
 @final
 class Polygon(CommonAttrs, common.Tag):
-    pass
+    points: models.Attr[attrs.PointsType] = None
 
 
 @final
 class Polyline(CommonAttrs, common.Tag):
-    pass
+    points: models.Attr[attrs.PointsType] = None
 
 
 @final

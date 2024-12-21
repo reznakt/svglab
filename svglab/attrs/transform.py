@@ -161,11 +161,12 @@ class Transformer(lark.Transformer[object, Transform]):
     skew_y = SkewY
     matrix = Matrix
 
-    def transform_(self, *actions: TransformAction) -> Transform:
-        return list(actions)
+    transform_ = utils.v_args_to_list
 
 
 TransformType: TypeAlias = Annotated[
     Transform,
-    utils.get_validator(grammar="transform", transformer=Transformer()),
+    utils.get_validator(
+        grammar="transform.lark", transformer=Transformer()
+    ),
 ]

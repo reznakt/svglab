@@ -94,7 +94,7 @@ def test_invalid_length(value: str) -> None:
     xml = f"<svg><rect width='{value}'/></svg>"
 
     with pytest.raises(
-        ValueError, match="Failed to parse text with grammar 'length'"
+        ValueError, match="Failed to parse text with grammar 'length.lark'"
     ):
         parse.parse_svg(xml)
 
@@ -190,7 +190,7 @@ def test_valid_transform_sequence() -> None:
 def test_invalid_transform(text: str) -> None:
     with pytest.raises(
         ValueError,
-        match="Failed to parse text with grammar 'transform'",
+        match="Failed to parse text with grammar 'transform.lark'",
     ):
         parse.parse_svg(f"<svg><rect transform='{text}'/></svg>")
 

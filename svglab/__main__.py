@@ -4,7 +4,16 @@
 
 import sys
 
-from svglab import CData, Comment, G, Path, RawText, Rect, parse_svg
+from svglab import (
+    CData,
+    Comment,
+    G,
+    Path,
+    Polyline,
+    RawText,
+    Rect,
+    parse_svg,
+)
 from svglab.attrs import (
     Color,
     CubicBezierTo,
@@ -38,6 +47,7 @@ def main() -> None:
               <![CDATA[.background { fill: blue; }]]>
               Hello SVG!
               <path d="M 10,10 L 100,100 Q 100,100 50,50"/>
+              <polygon points="0,0 100,0 100,100 0,100"/>
           </g>
         </svg>
     """
@@ -63,6 +73,14 @@ def main() -> None:
                     Point(100, 100), Point(50, 50), Point(25, 25)
                 ),
             )
+        ),
+        Polyline(
+            points=[
+                Point(0, 0),
+                Point(100, 0),
+                Point(100, 100),
+                Point(0, 100),
+            ]
         ),
     )
 

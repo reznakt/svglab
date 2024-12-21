@@ -3,8 +3,9 @@
 
 %ignore WS
 
-?start: point
+?start: points
 
+points: point (","? point)*
 point: number ","? number
 
 number: SIGNED_NUMBER

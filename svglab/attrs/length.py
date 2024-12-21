@@ -51,5 +51,5 @@ class Transformer(lark.Transformer[object, Length]):
 
 LengthType: TypeAlias = Annotated[
     Length,
-    utils.get_validator(grammar="length", transformer=Transformer()),
+    utils.get_validator(grammar="length.lark", transformer=Transformer()),
 ]

@@ -16,6 +16,7 @@ from .names import (
     normalize_attr_name,
 )
 from .point import Point, PointType
+from .points import Points, PointsType
 from .transform import (
     Matrix,
     Rotate,
@@ -46,6 +47,8 @@ __all__ = [
     "PathCommandBase",
     "Point",
     "PointType",
+    "Points",
+    "PointsType",
     "QuadraticBezierTo",
     "Rotate",
     "Scale",
