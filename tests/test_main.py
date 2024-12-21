@@ -5,7 +5,7 @@ import hypothesis
 import hypothesis.strategies as st
 import pytest
 
-from svglab import elements, parse, types
+from svglab import elements, parse
 from svglab.attrs import length, transform
 
 numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
@@ -28,7 +28,7 @@ def test_get_root_svg_fragments(markup: str, fragment_count: int) -> None:
 
 
 @pytest.mark.parametrize("parser", ["lxml", "lxml-xml", "html5lib"])
-def test_get_root_svg_fragments_parser(parser: types.Parser) -> None:
+def test_get_root_svg_fragments_parser(parser: parse.Parser) -> None:
     soup = bs4.BeautifulSoup("<svg></svg>", features=parser)
 
     assert len(parse.get_root_svg_fragments(soup)) == 1
