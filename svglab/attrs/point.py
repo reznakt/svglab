@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, TypeAlias, final
+from typing import Annotated, SupportsComplex, TypeAlias, final
 
 import lark
 import pydantic
@@ -9,10 +9,12 @@ from typing_extensions import override
 from svglab import serialize
 from svglab.attrs import utils
 
+__all__ = ["Point", "PointType"]
+
 
 @final
 @pydantic.dataclasses.dataclass
-class Point(serialize.Serializable):
+class Point(SupportsComplex, serialize.Serializable):
     """A point in a 2D plane.
 
     Attributes:
@@ -69,6 +71,13 @@ class Point(serialize.Serializable):
 
     def __truediv__(self, scalar: float) -> Point:
         return Point(self.x / scalar, self.y / scalar)
+
+    def __complex__(self) -> complex:
+        return complex(self.x, self.y)
+
+    @classmethod
+    def from_complex(cls, value: complex, /) -> Point:
+        return cls(value.real, value.imag)
 
     @classmethod
     def zero(cls) -> Point:

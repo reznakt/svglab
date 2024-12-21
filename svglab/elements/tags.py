@@ -403,7 +403,7 @@ class Mpath(CommonAttrs, common.Tag):
 
 @final
 class Path(CommonAttrs, common.Tag):
-    pass
+    d: models.Attr[attrs.DType] = None
 
 
 @final

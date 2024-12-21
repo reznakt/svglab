@@ -1,4 +1,13 @@
 from .color import Color, ColorType
+from .d import (
+    ArcTo,
+    CubicBezierTo,
+    D,
+    DType,
+    LineTo,
+    PathCommandBase,
+    QuadraticBezierTo,
+)
 from .length import Length, LengthType, LengthUnit
 from .names import (
     ATTR_NAME_TO_NORMALIZED,
@@ -6,6 +15,7 @@ from .names import (
     AttributeName,
     normalize_attr_name,
 )
+from .point import Point, PointType
 from .transform import (
     Matrix,
     Rotate,
@@ -21,13 +31,22 @@ from .transform import (
 __all__ = [
     "ATTRIBUTE_NAMES",
     "ATTR_NAME_TO_NORMALIZED",
+    "ArcTo",
     "AttributeName",
     "Color",
     "ColorType",
+    "CubicBezierTo",
+    "D",
+    "DType",
     "Length",
     "LengthType",
     "LengthUnit",
+    "LineTo",
     "Matrix",
+    "PathCommandBase",
+    "Point",
+    "PointType",
+    "QuadraticBezierTo",
     "Rotate",
     "Scale",
     "SkewX",

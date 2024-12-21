@@ -110,7 +110,7 @@ class Formatter(models.BaseModel):
 
     # misc
     indent: models.KwOnly[int] = pydantic.Field(default=2, ge=0)
-    list_separator: models.KwOnly[ListSeparator] = ", "
+    list_separator: models.KwOnly[ListSeparator] = " "
     spaces_around_attrs: models.KwOnly[bool] = False
     spaces_around_function_args: models.KwOnly[bool] = False
 
@@ -227,7 +227,7 @@ def serialize_attr(value: object, /) -> str:
     >>> serialize_attr("foo")
     'foo'
     >>> serialize_attr(["foo", "bar"])
-    'foo, bar'
+    'foo bar'
 
     """
     formatter = get_current_formatter()
@@ -308,10 +308,12 @@ def _serialize(value: object) -> str:
             return result
 
         case list() | tuple():
-            return formatter.list_separator.join(serialize(*value))
+            return formatter.list_separator.join(
+                _serialize(v) for v in value
+            )
+        case bool():  # needs to be before int (bool is a subclass of int)
+            return "1" if value else "0"
         case int() | float():
             return format_number(value)
-        case bool():
-            return "1" if value else "0"
         case _:
             return str(value)

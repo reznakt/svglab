@@ -4,8 +4,18 @@
 
 import sys
 
-from svglab import CData, Comment, G, RawText, Rect, parse_svg
-from svglab.attrs import Color, Length, SkewX, Translate
+from svglab import CData, Comment, G, Path, RawText, Rect, parse_svg
+from svglab.attrs import (
+    Color,
+    CubicBezierTo,
+    D,
+    Length,
+    LineTo,
+    Point,
+    QuadraticBezierTo,
+    SkewX,
+    Translate,
+)
 from svglab.serialize import Formatter, set_formatter
 
 set_formatter(Formatter(indent=4, max_precision=2, color_mode="rgb"))
@@ -27,6 +37,7 @@ def main() -> None:
               <!-- This is a comment -->
               <![CDATA[.background { fill: blue; }]]>
               Hello SVG!
+              <path d="M 10,10 L 100,100 Q 100,100 50,50"/>
           </g>
         </svg>
     """
@@ -44,6 +55,15 @@ def main() -> None:
         Comment("This is a comment"),
         CData(".background { fill: blue; }"),
         RawText("Hello SVG!"),
+        Path(
+            d=D(
+                LineTo(Point(100, 100)),
+                QuadraticBezierTo(Point(100, 100), Point(50, 50)),
+                CubicBezierTo(
+                    Point(100, 100), Point(50, 50), Point(25, 25)
+                ),
+            )
+        ),
     )
 
     # Add the element to the SVG
