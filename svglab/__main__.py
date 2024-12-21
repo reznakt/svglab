@@ -41,6 +41,7 @@ def main() -> None:
                 width="100cm"
                 height="100%"
                 transform="rotate(45)"
+                stroke="red"
               />
               <rect color="hsl(0, 100%, 100%)"/>
               <!-- This is a comment -->
@@ -56,7 +57,7 @@ def main() -> None:
     # Create an element programmatically
     group = G().add_children(
         Rect(
-            x=1,
+            x=Length(10, "in"),
             width=Length(15, "px"),
             height=Length(20),
             transform=[SkewX(45.123), Translate(10, 20)],
@@ -80,7 +81,10 @@ def main() -> None:
                 Point(100, 0),
                 Point(100, 100),
                 Point(0, 100),
-            ]
+            ],
+            stroke_linecap="square",
+            opacity=0.5,
+            fill=Color("blue"),
         ),
     )
 
