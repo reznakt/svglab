@@ -5,7 +5,7 @@ from svglab.attrs.d import (
     D,
     DType,
     LineTo,
-    PathCommandBase,
+    PathCommand,
     QuadraticBezierTo,
 )
 from svglab.attrs.length import Length, LengthType, LengthUnit
@@ -45,6 +45,7 @@ __all__ = [
     "LengthUnit",
     "LineTo",
     "Matrix",
+    "PathCommand",
     "PathCommandBase",
     "Point",
     "PointType",

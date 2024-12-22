@@ -14,17 +14,7 @@ from svglab import (
     Rect,
     parse_svg,
 )
-from svglab.attrs import (
-    Color,
-    CubicBezierTo,
-    D,
-    Length,
-    LineTo,
-    Point,
-    QuadraticBezierTo,
-    SkewX,
-    Translate,
-)
+from svglab.attrs import Color, D, Length, Point, SkewX, Translate
 from svglab.serialize import Formatter, set_formatter
 
 
@@ -48,12 +38,14 @@ def main() -> None:
               <!-- This is a comment -->
               <![CDATA[.background { fill: blue; }]]>
               Hello SVG!
-              <path d="M 10,10 L 100,100 Q 100,100 50,50"/>
+              <path d="M 10,10 L 100,100 Q 100,100 50,50 Z"/>
               <polygon points="0,0 100,0 100,100 0,100"/>
           </g>
         </svg>
     """
     )
+
+    print(svg)
 
     # Create an element programmatically
     group = G().add_children(
@@ -68,13 +60,18 @@ def main() -> None:
         CData(".background { fill: blue; }"),
         RawText("Hello SVG!"),
         Path(
-            d=D(
-                LineTo(Point(100, 100)),
-                QuadraticBezierTo(Point(100, 100), Point(50, 50)),
-                CubicBezierTo(
-                    Point(100, 100), Point(50, 50), Point(25, 25)
-                ),
+            d=D()
+            .move_to(Point(10, 10))
+            .line_to(Point(100, 100))
+            .quadratic_bezier_to(Point(100, 100), Point(50, 50))
+            .move_to(Point(50, 50))
+            .cubic_bezier_to(
+                Point(100, 100), Point(100, 100), Point(10, 10)
             )
+            .arc_to(
+                Point(50, 50), 90, Point(100, 100), large=True, sweep=False
+            )
+            .close()
         ),
         Polyline(
             points=[

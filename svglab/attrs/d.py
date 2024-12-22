@@ -1,20 +1,11 @@
 from __future__ import annotations
 
-import abc
-from collections.abc import Generator, Iterable, MutableSequence
-from typing import (
-    Final,
-    Protocol,
-    SupportsIndex,
-    TypeAlias,
-    final,
-    overload,
-    runtime_checkable,
-)
+from collections.abc import Iterable, MutableSequence
+from typing import Final, SupportsIndex, TypeAlias, final, overload
 
 import pydantic
+import pydantic_core
 import svgpathtools
-from pydantic_core import core_schema
 from typing_extensions import Self, override
 
 from svglab import models, serialize
@@ -32,24 +23,21 @@ __all__ = [
 ]
 
 
-@runtime_checkable
-class HasEnd(Protocol):
+@final
+@pydantic.dataclasses.dataclass
+class MoveTo(serialize.Serializable):
     end: point.Point
 
+    @override
+    def serialize(self) -> str:
+        end = serialize.serialize(self.end)
 
-@pydantic.dataclasses.dataclass
-class PathCommandBase(
-    HasEnd, serialize.Serializable, metaclass=abc.ABCMeta
-):
-    # can't use KwOnly here because pydantic.mypy won't infer the kw_only=True
-    start: point.Point = pydantic.Field(
-        default_factory=point.Point.zero, kw_only=True
-    )
+        return f"M {end}"
 
 
 @final
 @pydantic.dataclasses.dataclass
-class LineTo(PathCommandBase):
+class LineTo(serialize.Serializable):
     end: point.Point
 
     @override
@@ -61,7 +49,7 @@ class LineTo(PathCommandBase):
 
 @final
 @pydantic.dataclasses.dataclass
-class QuadraticBezierTo(PathCommandBase):
+class QuadraticBezierTo(serialize.Serializable):
     control: point.Point
     end: point.Point
 
@@ -74,7 +62,7 @@ class QuadraticBezierTo(PathCommandBase):
 
 @final
 @pydantic.dataclasses.dataclass
-class CubicBezierTo(PathCommandBase):
+class CubicBezierTo(serialize.Serializable):
     control1: point.Point
     control2: point.Point
     end: point.Point
@@ -90,7 +78,7 @@ class CubicBezierTo(PathCommandBase):
 
 @final
 @pydantic.dataclasses.dataclass
-class ArcTo(PathCommandBase):
+class ArcTo(serialize.Serializable):
     radius: point.Point
     angle: float
     large: bool
@@ -106,21 +94,17 @@ class ArcTo(PathCommandBase):
         return f"A {radius} {angle} {large} {sweep} {end}"
 
 
-PathCommand: TypeAlias = LineTo | QuadraticBezierTo | CubicBezierTo | ArcTo
-
-
-# internal helper to represent and serialize a MoveTo command
-# not a part of PathCommand and not for export
 @final
 @pydantic.dataclasses.dataclass
-class _MoveTo(PathCommandBase):
-    end: point.Point
-
+class ClosePath(serialize.Serializable):
     @override
     def serialize(self) -> str:
-        end = serialize.serialize(self.end)
+        return "Z"
 
-        return f"M {end}"
+
+PathCommand: TypeAlias = (
+    MoveTo | LineTo | QuadraticBezierTo | CubicBezierTo | ArcTo | ClosePath
+)
 
 
 @final
@@ -129,8 +113,11 @@ class D(
     models.CustomModel,
     serialize.Serializable,
 ):
-    def __init__(self, *commands: PathCommand) -> None:
-        self.__commands: Final[list[PathCommand]] = list(commands)
+    def __init__(
+        self, iterable: Iterable[PathCommand] | None = None, /
+    ) -> None:
+        self.__commands: Final[list[PathCommand]] = list(iterable or [])
+        self.start: Final = point.Point.zero()
 
     @override
     def __len__(self) -> int:
@@ -149,7 +136,7 @@ class D(
         if isinstance(index_or_slice, SupportsIndex):
             return self.__commands[index_or_slice]
 
-        return D(*self.__commands[index_or_slice])
+        return D(self.__commands[index_or_slice])
 
     @overload
     def __delitem__(self, index: SupportsIndex, /) -> None: ...
@@ -192,75 +179,60 @@ class D(
 
     @override
     def insert(self, index: SupportsIndex, value: PathCommand) -> None:
-        # this is going to need to be a bit more complex
-        # so leave it for now
-        # TODO: implement
-        del index, value
-        raise NotImplementedError
-
-    def __resolve_moves(
-        self,
-    ) -> Generator[PathCommand | _MoveTo, None, None]:
-        pos = point.Point.zero()
-
-        for cmd in self:
-            if cmd.start != pos:
-                yield _MoveTo(end=cmd.start)
-
-            yield cmd
-
-    @override
-    def serialize(self) -> str:
-        return serialize.serialize(list(self.__resolve_moves()))
-
-    def add(self, *commands: PathCommand) -> Self:
-        self.__commands.extend(commands)
-
-        return self
+        self.__commands.insert(index, value)
 
     @property
     def end(self) -> point.Point:
         if not self:
             return point.Point.zero()
 
-        return self[-1].end
+        last = self[-1]
 
-    def line(self, end: point.Point) -> Self:
-        return self.add(LineTo(start=self.end, end=end))
+        if isinstance(last, ClosePath):
+            return self.start
 
-    def quadratic_bezier(
+        return last.end
+
+    def move_to(self, end: point.Point, /) -> Self:
+        self.append(MoveTo(end=end))
+
+        return self
+
+    def line_to(self, end: point.Point, /) -> Self:
+        self.append(LineTo(end=end))
+
+        return self
+
+    def quadratic_bezier_to(
         self, control: point.Point, end: point.Point
     ) -> Self:
-        return self.add(
-            QuadraticBezierTo(start=self.end, control=control, end=end)
-        )
+        self.append(QuadraticBezierTo(control=control, end=end))
 
-    def cubic_bezier(
+        return self
+
+    def cubic_bezier_to(
         self,
         control1: point.Point,
         control2: point.Point,
         end: point.Point,
     ) -> Self:
-        return self.add(
-            CubicBezierTo(
-                start=self.end,
-                control1=control1,
-                control2=control2,
-                end=end,
-            )
+        self.append(
+            CubicBezierTo(control1=control1, control2=control2, end=end)
         )
 
-    def arc(
+        return self
+
+    def arc_to(
         self,
         radius: point.Point,
         angle: float,
-        large: bool,  # noqa: FBT001
-        sweep: bool,  # noqa: FBT001
         end: point.Point,
+        *,
+        large: bool,
+        sweep: bool,
     ) -> Self:
-        return self.add(
+        self.append(
             ArcTo(
-                start=self.end,
                 radius=radius,
                 angle=angle,
                 large=large,
@@ -269,27 +241,18 @@ class D(
             )
         )
 
+        return self
+
+    def close(self) -> Self:
+        self.append(ClosePath())
+
+        return self
+
+    @override
     def __repr__(self) -> str:
         name = type(self).__name__
         commands = ", ".join(repr(command) for command in self)
         return f"{name}({commands})"
-
-    def is_closed(self) -> bool:
-        if not self:
-            return False
-
-        first = self[0]
-        last = self[-1]
-
-        return first.start == last.end
-
-    def close(self) -> Self:
-        if self.is_closed():
-            raise ValueError("Path is already closed")
-
-        first = self.__commands[0]
-
-        return self.add(LineTo(end=first.start))
 
     @classmethod
     def __from_svgpathtools(cls, path: svgpathtools.Path) -> Self:
@@ -298,14 +261,14 @@ class D(
         for command in path:
             match command:
                 case svgpathtools.Line():
-                    d.line(end=point.Point.from_complex(command.end))
+                    d.line_to(point.Point.from_complex(command.end))
                 case svgpathtools.QuadraticBezier():
-                    d.quadratic_bezier(
+                    d.quadratic_bezier_to(
                         control=point.Point.from_complex(command.control),
                         end=point.Point.from_complex(command.end),
                     )
                 case svgpathtools.CubicBezier():
-                    d.cubic_bezier(
+                    d.cubic_bezier_to(
                         control1=point.Point.from_complex(
                             command.control1
                         ),
@@ -315,7 +278,7 @@ class D(
                         end=point.Point.from_complex(command.end),
                     )
                 case svgpathtools.Arc():
-                    d.arc(
+                    d.arc_to(
                         radius=point.Point.from_complex(command.radius),
                         angle=command.rotation,
                         large=command.large_arc,
@@ -333,7 +296,7 @@ class D(
     @override
     @classmethod
     def _validate(
-        cls, value: object, info: core_schema.ValidationInfo
+        cls, value: object, info: pydantic_core.core_schema.ValidationInfo
     ) -> Self:
         del info
 
@@ -351,6 +314,10 @@ class D(
             case _:
                 msg = f"Expected a string or {cls.__name__}"
                 raise TypeError(msg)
+
+    @override
+    def serialize(self) -> str:
+        return serialize.serialize(self.__commands)
 
 
 DType: TypeAlias = D
