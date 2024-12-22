@@ -1,7 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, MutableSequence
-from typing import Final, SupportsIndex, TypeAlias, cast, final, overload
+from collections.abc import Generator, Iterable, MutableSequence
+from typing import (
+    Final,
+    Literal,
+    SupportsIndex,
+    TypeAlias,
+    final,
+    overload,
+)
 
 import pydantic
 import pydantic_core
@@ -22,17 +29,18 @@ __all__ = [
     "QuadraticBezierTo",
 ]
 
+AbsolutePathCommandChar: TypeAlias = Literal[
+    "M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"
+]
+RelativePathCommandChar: TypeAlias = Literal[
+    "m", "l", "h", "v", "c", "s", "q", "t", "a", "z"
+]
+
 
 @final
 @pydantic.dataclasses.dataclass
-class MoveTo(serialize.CustomSerializable):
+class MoveTo:
     end: point.Point
-
-    @override
-    def serialize(self) -> str:
-        end = serialize.serialize(self.end)
-
-        return f"M {end}"
 
     def __add__(self, other: point.Point, /) -> Self:
         return MoveTo(end=self.end + other)
@@ -42,14 +50,8 @@ class MoveTo(serialize.CustomSerializable):
 
 
 @pydantic.dataclasses.dataclass
-class LineTo(serialize.CustomSerializable):
+class LineTo:
     end: point.Point
-
-    @override
-    def serialize(self) -> str:
-        end = serialize.serialize(self.end)
-
-        return f"L {end}"
 
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(end=self.end + other)
@@ -60,15 +62,9 @@ class LineTo(serialize.CustomSerializable):
 
 @final
 @pydantic.dataclasses.dataclass
-class QuadraticBezierTo(serialize.CustomSerializable):
+class QuadraticBezierTo:
     control: point.Point
     end: point.Point
-
-    @override
-    def serialize(self) -> str:
-        control, end = serialize.serialize(self.control, self.end)
-
-        return f"Q {control} {end}"
 
     def __add__(self, other: point.Point, /) -> Self:
         return QuadraticBezierTo(
@@ -83,18 +79,10 @@ class QuadraticBezierTo(serialize.CustomSerializable):
 
 @final
 @pydantic.dataclasses.dataclass
-class CubicBezierTo(serialize.CustomSerializable):
+class CubicBezierTo:
     control1: point.Point
     control2: point.Point
     end: point.Point
-
-    @override
-    def serialize(self) -> str:
-        control1, control2, end = serialize.serialize(
-            self.control1, self.control2, self.end
-        )
-
-        return f"C {control1} {control2} {end}"
 
     def __add__(self, other: point.Point, /) -> Self:
         return CubicBezierTo(
@@ -113,20 +101,12 @@ class CubicBezierTo(serialize.CustomSerializable):
 
 @final
 @pydantic.dataclasses.dataclass
-class ArcTo(serialize.CustomSerializable):
+class ArcTo:
     radius: point.Point
     angle: float
     large: bool
     sweep: bool
     end: point.Point
-
-    @override
-    def serialize(self) -> str:
-        radius, angle, large, sweep, end = serialize.serialize(
-            self.radius, self.angle, self.large, self.sweep, self.end
-        )
-
-        return f"A {radius} {angle} {large} {sweep} {end}"
 
     def __add__(self, other: point.Point, /) -> Self:
         return ArcTo(
@@ -150,9 +130,7 @@ class ArcTo(serialize.CustomSerializable):
 @final
 @pydantic.dataclasses.dataclass
 class ClosePath(LineTo):
-    @override
-    def serialize(self) -> str:
-        return "Z"
+    pass
 
 
 PathCommand: TypeAlias = (
@@ -382,11 +360,79 @@ class D(
                 msg = f"Expected a string or {cls.__name__}"
                 raise TypeError(msg)
 
+    def __apply_mode(self) -> Generator[PathCommand, None, None]:
+        formatter = serialize.get_current_formatter()
+        pos = point.Point.zero()
+
+        for command in self:
+            match formatter.path_data_mode:
+                case "relative":
+                    yield command - pos
+                case "absolute":
+                    yield command
+
+            pos = command.end
+
+    @staticmethod
+    def __format_command(
+        *args: serialize.Serializable,
+        absolute_char: AbsolutePathCommandChar,
+        relative_char: RelativePathCommandChar,
+    ) -> str:
+        formatter = serialize.get_current_formatter()
+
+        char = (
+            absolute_char
+            if formatter.path_data_mode == "absolute"
+            else relative_char
+        )
+
+        if not args:
+            return char
+
+        return f"{char} {serialize.serialize(args)}"
+
+    def __serialize_commands(self) -> Generator[str, None, None]:
+        for command in self.__apply_mode():
+            match command:
+                case MoveTo(end):
+                    yield self.__format_command(
+                        end, absolute_char="M", relative_char="m"
+                    )
+                case ClosePath(end):  # has to be before LineTo
+                    yield self.__format_command(
+                        absolute_char="Z", relative_char="z"
+                    )
+                case LineTo(end):
+                    yield self.__format_command(
+                        end, absolute_char="L", relative_char="l"
+                    )
+                case QuadraticBezierTo(control, end):
+                    yield self.__format_command(
+                        control, end, absolute_char="Q", relative_char="q"
+                    )
+                case CubicBezierTo(control1, control2, end):
+                    yield self.__format_command(
+                        control1,
+                        control2,
+                        end,
+                        absolute_char="C",
+                        relative_char="c",
+                    )
+                case ArcTo(radius, angle, large, sweep, end):
+                    yield self.__format_command(
+                        radius,
+                        angle,
+                        large,
+                        sweep,
+                        end,
+                        absolute_char="A",
+                        relative_char="a",
+                    )
+
     @override
     def serialize(self) -> str:
-        return serialize.serialize(
-            cast(list[serialize.Serializable], self.__commands)
-        )
+        return serialize.serialize(self.__serialize_commands())
 
 
 DType: TypeAlias = D

@@ -54,9 +54,10 @@ class Point(SupportsComplex, serialize.CustomSerializable):
 
     @override
     def serialize(self) -> str:
+        formatter = serialize.get_current_formatter()
         x, y = serialize.format_number(self.x, self.y)
 
-        return f"{x},{y}"
+        return f"{x}{formatter.point_separator}{y}"
 
     def __add__(self, other: Point) -> Point:
         return Point(self.x + other.x, self.y + other.y)
