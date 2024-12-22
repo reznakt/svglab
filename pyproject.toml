@@ -130,6 +130,9 @@ ban-relative-imports = "all"
 lines-after-imports = 2
 split-on-trailing-comma=false
 
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"abc.ABC".msg = "Use `metaclass=abc.ABCMeta` instead"
+
 [tool.ruff.format]
 docstring-code-format = true
 skip-magic-trailing-comma = true

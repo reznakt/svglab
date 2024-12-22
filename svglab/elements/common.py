@@ -49,7 +49,7 @@ def match_tag(tag: Tag, /, *, search: TagSearch) -> bool:
     return tag.name == search
 
 
-class Element(models.BaseModel, abc.ABC):
+class Element(models.BaseModel, metaclass=abc.ABCMeta):
     """The base class of the SVG element hierarchy."""
 
     parent: Element | None = pydantic.Field(default=None, init=False)
@@ -91,7 +91,7 @@ class Element(models.BaseModel, abc.ABC):
         """Convert the element to a corresponding `BeautifulSoup` object."""
 
 
-class TextElement(Element, abc.ABC):
+class TextElement(Element, metaclass=abc.ABCMeta):
     """The base class of text-based elements.
 
     Text-based elements are elements that are represented by a single string.
@@ -112,7 +112,7 @@ class TextElement(Element, abc.ABC):
         return f"{name}({self.content!r})"
 
 
-class Tag(Element, abc.ABC):
+class Tag(Element, metaclass=abc.ABCMeta):
     """A tag.
 
     A tag is an element that has a name and a set of attributes.
@@ -226,7 +226,7 @@ class Tag(Element, abc.ABC):
         return tag
 
 
-class PairedTag(Tag, abc.ABC):
+class PairedTag(Tag, metaclass=abc.ABCMeta):
     """A paired tag.
 
     A paired tag is a tag that can have children.
