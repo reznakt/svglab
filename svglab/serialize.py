@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import MutableSequence
 from types import TracebackType
 from typing import (
     Final,
@@ -13,6 +14,7 @@ from typing import (
 
 import pydantic
 import readable_number
+from typing_extensions import TypeIs
 
 from svglab import models
 
@@ -42,7 +44,7 @@ ListSeparator: TypeAlias = Literal[", ", ",", " "]
 
 
 @runtime_checkable
-class Serializable(Protocol):
+class CustomSerializable(Protocol):
     """Protocol for objects with special serialization behavior.
 
     When a `Serializable` object is serialized, its `serialize()` method is
@@ -51,6 +53,31 @@ class Serializable(Protocol):
 
     def serialize(self) -> str:
         """Return an SVG-friendly string representation of this object."""
+
+
+Serializable: TypeAlias = (
+    bool
+    | int
+    | float
+    | str
+    | MutableSequence["Serializable"]
+    | tuple["Serializable", ...]
+    | CustomSerializable
+)
+""" Type for objects that can be serialized to a SVG-friendly string. """
+
+
+def is_serializable(value: object, /) -> TypeIs[Serializable]:
+    return isinstance(
+        value,
+        bool
+        | int
+        | float
+        | str
+        | MutableSequence
+        | tuple
+        | CustomSerializable,
+    )
 
 
 class Formatter(models.BaseModel):
@@ -225,6 +252,10 @@ def serialize_attr(value: object, /) -> str:
     'foo bar'
 
     """
+    if not is_serializable(value):
+        msg = f"Type {type(value)} is not serializable."
+        raise TypeError(msg)
+
     formatter = get_current_formatter()
     result = serialize(value)
 
@@ -270,24 +301,24 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
 
 
 @overload
-def serialize(value: object, /) -> str: ...
+def serialize(value: Serializable, /) -> str: ...
 
 
 @overload
-def serialize(*values: object) -> tuple[str, ...]: ...
+def serialize(*values: Serializable) -> tuple[str, ...]: ...
 
 
-def serialize(*values: object) -> str | tuple[str, ...]:
+def serialize(*values: Serializable) -> str | tuple[str, ...]:
     """Return an SVG-friendly string representation of the given value(s)."""
     result = tuple(_serialize(value) for value in values)
     return result[0] if len(result) == 1 else result
 
 
-def _serialize(value: object) -> str:
+def _serialize(value: Serializable) -> str:
     formatter = get_current_formatter()
 
     match value:
-        case Serializable():
+        case CustomSerializable():
             result = value.serialize()
 
             if (
@@ -300,7 +331,7 @@ def _serialize(value: object) -> str:
 
             return result
 
-        case list() | tuple():
+        case MutableSequence() | tuple():
             return formatter.list_separator.join(
                 _serialize(v) for v in value
             )
@@ -308,5 +339,5 @@ def _serialize(value: object) -> str:
             return "1" if value else "0"
         case int() | float():
             return format_number(value)
-        case _:
-            return str(value)
+        case str():
+            return value

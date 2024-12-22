@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, MutableSequence
-from typing import Final, SupportsIndex, TypeAlias, final, overload
+from typing import Final, SupportsIndex, TypeAlias, cast, final, overload
 
 import pydantic
 import pydantic_core
@@ -25,7 +25,7 @@ __all__ = [
 
 @final
 @pydantic.dataclasses.dataclass
-class MoveTo(serialize.Serializable):
+class MoveTo(serialize.CustomSerializable):
     end: point.Point
 
     @override
@@ -42,7 +42,7 @@ class MoveTo(serialize.Serializable):
 
 
 @pydantic.dataclasses.dataclass
-class LineTo(serialize.Serializable):
+class LineTo(serialize.CustomSerializable):
     end: point.Point
 
     @override
@@ -60,7 +60,7 @@ class LineTo(serialize.Serializable):
 
 @final
 @pydantic.dataclasses.dataclass
-class QuadraticBezierTo(serialize.Serializable):
+class QuadraticBezierTo(serialize.CustomSerializable):
     control: point.Point
     end: point.Point
 
@@ -83,7 +83,7 @@ class QuadraticBezierTo(serialize.Serializable):
 
 @final
 @pydantic.dataclasses.dataclass
-class CubicBezierTo(serialize.Serializable):
+class CubicBezierTo(serialize.CustomSerializable):
     control1: point.Point
     control2: point.Point
     end: point.Point
@@ -113,7 +113,7 @@ class CubicBezierTo(serialize.Serializable):
 
 @final
 @pydantic.dataclasses.dataclass
-class ArcTo(serialize.Serializable):
+class ArcTo(serialize.CustomSerializable):
     radius: point.Point
     angle: float
     large: bool
@@ -164,7 +164,7 @@ PathCommand: TypeAlias = (
 class D(
     MutableSequence[PathCommand],
     models.CustomModel,
-    serialize.Serializable,
+    serialize.CustomSerializable,
 ):
     def __init__(
         self, iterable: Iterable[PathCommand] | None = None, /
@@ -384,7 +384,9 @@ class D(
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize(self.__commands)
+        return serialize.serialize(
+            cast(list[serialize.Serializable], self.__commands)
+        )
 
 
 DType: TypeAlias = D

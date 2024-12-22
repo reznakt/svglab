@@ -9,7 +9,9 @@ from svglab import serialize
 __all__ = ["Color", "ColorType"]
 
 
-class Color(pydantic_extra_types.color.Color, serialize.Serializable):
+class Color(
+    pydantic_extra_types.color.Color, serialize.CustomSerializable
+):
     @override
     def serialize(self) -> str:
         formatter = serialize.get_current_formatter()

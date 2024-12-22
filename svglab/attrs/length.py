@@ -19,7 +19,7 @@ LengthUnit: TypeAlias = Literal[
 
 
 @pydantic.dataclasses.dataclass
-class Length(serialize.Serializable):
+class Length(serialize.CustomSerializable):
     """Represents the SVG `<length>` type.
 
     A length is a number optionally followed by a unit. Available units are:
