@@ -5,6 +5,7 @@ from typing_extensions import override
 
 from svglab import serialize
 
+
 __all__ = ["Color", "ColorType"]
 
 

@@ -122,6 +122,13 @@ ignore = [
 [tool.ruff.lint.pycodestyle]
 max-line-length = 79 # linter
 
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+split-on-trailing-comma=false
 
 [tool.ruff.format]
 docstring-code-format = true
+skip-magic-trailing-comma = true

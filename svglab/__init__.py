@@ -1,10 +1,11 @@
 import importlib.metadata as _importlib_metadata
 import typing as _typing
 
+
 __version__: _typing.Final = _importlib_metadata.version(__name__)
 
 
-from .elements import (
+from svglab.elements import (
     A,
     AltGlyph,
     AltGlyphDef,
@@ -91,7 +92,8 @@ from .elements import (
     View,
     Vkern,
 )
-from .parse import parse_svg
+from svglab.parse import parse_svg
+
 
 __all__ = [
     "A",

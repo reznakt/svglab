@@ -1,6 +1,10 @@
-from .common import Element, PairedTag, Tag, TextElement
-from .names import TAG_NAME_TO_NORMALIZED, TAG_NAMES, TagName
-from .tags import (
+from svglab.elements.common import Element, PairedTag, Tag, TextElement
+from svglab.elements.names import (
+    TAG_NAME_TO_NORMALIZED,
+    TAG_NAMES,
+    TagName,
+)
+from svglab.elements.tags import (
     A,
     AltGlyph,
     AltGlyphDef,
@@ -82,7 +86,8 @@ from .tags import (
     View,
     Vkern,
 )
-from .text_elements import CData, Comment, RawText
+from svglab.elements.text_elements import CData, Comment, RawText
+
 
 __all__ = [
     "TAG_NAMES",

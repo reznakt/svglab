@@ -8,6 +8,7 @@ import pytest
 from svglab import elements, parse, types
 from svglab.attrs import length, transform
 
+
 numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
 
 
@@ -189,8 +190,7 @@ def test_valid_transform_sequence() -> None:
 )
 def test_invalid_transform(text: str) -> None:
     with pytest.raises(
-        ValueError,
-        match="Failed to parse text with grammar 'transform'",
+        ValueError, match="Failed to parse text with grammar 'transform'"
     ):
         parse.parse_svg(f"<svg><rect transform='{text}'/></svg>")
 

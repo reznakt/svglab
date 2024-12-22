@@ -1,12 +1,12 @@
-from .color import Color, ColorType
-from .length import Length, LengthType, LengthUnit
-from .names import (
+from svglab.attrs.color import Color, ColorType
+from svglab.attrs.length import Length, LengthType, LengthUnit
+from svglab.attrs.names import (
     ATTR_NAME_TO_NORMALIZED,
     ATTRIBUTE_NAMES,
     AttributeName,
     normalize_attr_name,
 )
-from .transform import (
+from svglab.attrs.transform import (
     Matrix,
     Rotate,
     Scale,
@@ -17,6 +17,7 @@ from .transform import (
     TransformType,
     Translate,
 )
+
 
 __all__ = [
     "ATTRIBUTE_NAMES",

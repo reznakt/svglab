@@ -5,6 +5,7 @@ from typing import Final, Literal, TypeAlias, TypeVar
 import lark
 import pydantic
 
+
 __all__ = ["get_validator"]
 
 GRAMMARS_DIR: Final = pathlib.Path(__file__).parent / "grammars"
@@ -63,10 +64,7 @@ def get_validator(
     def validator(value: object) -> object:
         if isinstance(value, str):
             return parse(
-                value,
-                grammar=grammar,
-                transformer=transformer,
-                **kwargs,
+                value, grammar=grammar, transformer=transformer, **kwargs
             )
 
         return value

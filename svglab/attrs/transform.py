@@ -7,6 +7,7 @@ from typing_extensions import Self, override
 from svglab import serialize
 from svglab.attrs import utils
 
+
 __all__ = [
     "Matrix",
     "Rotate",
