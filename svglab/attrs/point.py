@@ -14,7 +14,7 @@ __all__ = ["Point", "PointType"]
 
 
 @final
-@pydantic.dataclasses.dataclass
+@pydantic.dataclasses.dataclass(frozen=True)
 class Point(SupportsComplex, serialize.CustomSerializable):
     """A point in a 2D plane.
 
