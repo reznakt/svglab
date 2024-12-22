@@ -34,8 +34,13 @@ class MoveTo(serialize.Serializable):
 
         return f"M {end}"
 
+    def __add__(self, other: point.Point, /) -> Self:
+        return MoveTo(end=self.end + other)
 
-@final
+    def __sub__(self, other: point.Point, /) -> Self:
+        return MoveTo(end=self.end - other)
+
+
 @pydantic.dataclasses.dataclass
 class LineTo(serialize.Serializable):
     end: point.Point
@@ -45,6 +50,12 @@ class LineTo(serialize.Serializable):
         end = serialize.serialize(self.end)
 
         return f"L {end}"
+
+    def __add__(self, other: point.Point, /) -> Self:
+        return type(self)(end=self.end + other)
+
+    def __sub__(self, other: point.Point, /) -> Self:
+        return type(self)(end=self.end - other)
 
 
 @final
@@ -58,6 +69,16 @@ class QuadraticBezierTo(serialize.Serializable):
         control, end = serialize.serialize(self.control, self.end)
 
         return f"Q {control} {end}"
+
+    def __add__(self, other: point.Point, /) -> Self:
+        return QuadraticBezierTo(
+            control=self.control + other, end=self.end + other
+        )
+
+    def __sub__(self, other: point.Point, /) -> Self:
+        return QuadraticBezierTo(
+            control=self.control - other, end=self.end - other
+        )
 
 
 @final
@@ -74,6 +95,20 @@ class CubicBezierTo(serialize.Serializable):
         )
 
         return f"C {control1} {control2} {end}"
+
+    def __add__(self, other: point.Point, /) -> Self:
+        return CubicBezierTo(
+            control1=self.control1 + other,
+            control2=self.control2 + other,
+            end=self.end + other,
+        )
+
+    def __sub__(self, other: point.Point, /) -> Self:
+        return CubicBezierTo(
+            control1=self.control1 - other,
+            control2=self.control2 - other,
+            end=self.end - other,
+        )
 
 
 @final
@@ -93,10 +128,28 @@ class ArcTo(serialize.Serializable):
 
         return f"A {radius} {angle} {large} {sweep} {end}"
 
+    def __add__(self, other: point.Point, /) -> Self:
+        return ArcTo(
+            radius=self.radius + other,
+            angle=self.angle,
+            large=self.large,
+            sweep=self.sweep,
+            end=self.end + other,
+        )
+
+    def __sub__(self, other: point.Point, /) -> Self:
+        return ArcTo(
+            radius=self.radius - other,
+            angle=self.angle,
+            large=self.large,
+            sweep=self.sweep,
+            end=self.end - other,
+        )
+
 
 @final
 @pydantic.dataclasses.dataclass
-class ClosePath(serialize.Serializable):
+class ClosePath(LineTo):
     @override
     def serialize(self) -> str:
         return "Z"
@@ -117,7 +170,6 @@ class D(
         self, iterable: Iterable[PathCommand] | None = None, /
     ) -> None:
         self.__commands: Final[list[PathCommand]] = list(iterable or [])
-        self.start: Final = point.Point.zero()
 
     @override
     def __len__(self) -> int:
@@ -182,47 +234,64 @@ class D(
         self.__commands.insert(index, value)
 
     @property
+    def start(self) -> point.Point:
+        return next(
+            (cmd.end for cmd in self if not isinstance(cmd, MoveTo)),
+            point.Point.zero(),
+        )
+
+    @property
     def end(self) -> point.Point:
         if not self:
             return point.Point.zero()
 
-        last = self[-1]
+        return self[-1].end
 
-        if isinstance(last, ClosePath):
-            return self.start
+    def __add(
+        self, command: PathCommand, *, relative: bool = False
+    ) -> Self:
+        if relative:
+            command += self.end
 
-        return last.end
-
-    def move_to(self, end: point.Point, /) -> Self:
-        self.append(MoveTo(end=end))
-
-        return self
-
-    def line_to(self, end: point.Point, /) -> Self:
-        self.append(LineTo(end=end))
+        self.append(command)
 
         return self
+
+    def move_to(
+        self, end: point.Point, /, *, relative: bool = False
+    ) -> Self:
+        return self.__add(MoveTo(end=end), relative=relative)
+
+    def line_to(
+        self, end: point.Point, /, *, relative: bool = False
+    ) -> Self:
+        return self.__add(LineTo(end=end), relative=relative)
 
     def quadratic_bezier_to(
-        self, control: point.Point, end: point.Point
+        self,
+        control: point.Point,
+        end: point.Point,
+        *,
+        relative: bool = False,
     ) -> Self:
-        self.append(QuadraticBezierTo(control=control, end=end))
-
-        return self
+        return self.__add(
+            QuadraticBezierTo(control=control, end=end), relative=relative
+        )
 
     def cubic_bezier_to(
         self,
         control1: point.Point,
         control2: point.Point,
         end: point.Point,
+        *,
+        relative: bool = False,
     ) -> Self:
-        self.append(
-            CubicBezierTo(control1=control1, control2=control2, end=end)
+        return self.__add(
+            CubicBezierTo(control1=control1, control2=control2, end=end),
+            relative=relative,
         )
 
-        return self
-
-    def arc_to(
+    def arc_to(  # noqa: PLR0913
         self,
         radius: point.Point,
         angle: float,
@@ -230,23 +299,21 @@ class D(
         *,
         large: bool,
         sweep: bool,
+        relative: bool = False,
     ) -> Self:
-        self.append(
+        return self.__add(
             ArcTo(
                 radius=radius,
                 angle=angle,
                 large=large,
                 sweep=sweep,
                 end=end,
-            )
+            ),
+            relative=relative,
         )
 
-        return self
-
     def close(self) -> Self:
-        self.append(ClosePath())
-
-        return self
+        return self.__add(ClosePath(end=self.start))
 
     @override
     def __repr__(self) -> str:
