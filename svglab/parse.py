@@ -6,12 +6,12 @@ import bs4
 
 from svglab import elements, utils
 
+
 Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
 """ Type for parsers supported by BeautifulSoup. """
 
 
 DEFAULT_PARSER: Final[Parser] = "lxml-xml"
-"""The default parser to use when parsing SVG documents."""
 
 
 TAG_NAME_TO_CLASS: Final = {
@@ -80,9 +80,7 @@ def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def convert_element(
-    backend: bs4.PageElement,
-) -> elements.Element | None:
+def convert_element(backend: bs4.PageElement) -> elements.Element | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
@@ -114,11 +112,7 @@ def convert_element(
             ]
 
             tag = tag_class.model_validate(
-                {
-                    "prefix": backend.prefix,
-                    **backend.attrs,
-                },
-                strict=False,
+                {"prefix": backend.prefix, **backend.attrs}, strict=False
             )
 
             if isinstance(tag, elements.PairedTag):

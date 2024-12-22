@@ -6,6 +6,7 @@ import lark.visitors
 from svglab import attrs
 from svglab.attrs import utils
 
+
 __all__ = ["Points", "PointsType"]
 
 Points: TypeAlias = list[attrs.Point]

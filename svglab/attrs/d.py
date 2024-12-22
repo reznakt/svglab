@@ -20,6 +20,7 @@ from typing_extensions import Self, override
 from svglab import models, serialize
 from svglab.attrs import point
 
+
 __all__ = [
     "ArcTo",
     "CubicBezierTo",

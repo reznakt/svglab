@@ -6,7 +6,9 @@ import lark
 import pydantic
 from typing_extensions import LiteralString
 
+
 __all__ = ["get_validator", "v_args_to_list"]
+
 
 CURRENT_DIR: Final = pathlib.Path(__file__).parent
 GRAMMARS_DIR: Final = CURRENT_DIR / "grammars"
@@ -52,10 +54,7 @@ def get_validator(
     def validator(value: object) -> object:
         if isinstance(value, str):
             return parse(
-                value,
-                grammar=grammar,
-                transformer=transformer,
-                **kwargs,
+                value, grammar=grammar, transformer=transformer, **kwargs
             )
 
         return value

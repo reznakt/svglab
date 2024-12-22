@@ -1,11 +1,8 @@
 from collections.abc import Iterable
-from typing import (
-    Protocol,
-    TypeVar,
-    runtime_checkable,
-)
+from typing import Protocol, TypeVar, runtime_checkable
 
 import bs4
+
 
 _AnyStr_contra = TypeVar("_AnyStr_contra", str, bytes, contravariant=True)
 _AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)

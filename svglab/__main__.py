@@ -27,6 +27,7 @@ from svglab.attrs import (
 )
 from svglab.serialize import Formatter, set_formatter
 
+
 set_formatter(Formatter(indent=4, max_precision=2, color_mode="rgb"))
 
 

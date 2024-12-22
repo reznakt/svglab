@@ -8,6 +8,7 @@ import pytest
 from svglab import elements, parse
 from svglab.attrs import length, transform
 
+
 numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
 
 

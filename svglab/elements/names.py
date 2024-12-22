@@ -3,11 +3,8 @@ from typing import Final, Literal, TypeAlias
 
 import bidict
 
-__all__ = [
-    "TAG_NAMES",
-    "TAG_NAME_TO_NORMALIZED",
-    "TagName",
-]
+
+__all__ = ["TAG_NAMES", "TAG_NAME_TO_NORMALIZED", "TagName"]
 
 TagName: TypeAlias = Literal[
     "a",

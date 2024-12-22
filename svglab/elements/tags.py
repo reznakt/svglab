@@ -6,6 +6,7 @@ from typing import final, overload
 from svglab import models, serialize, utils
 from svglab.elements import attrdefs, attrtypes, common
 
+
 __all__ = [
     "A",
     "AltGlyph",

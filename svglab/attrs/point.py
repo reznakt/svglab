@@ -9,6 +9,7 @@ from typing_extensions import override
 from svglab import serialize
 from svglab.attrs import utils
 
+
 __all__ = ["Point", "PointType"]
 
 

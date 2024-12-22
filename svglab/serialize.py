@@ -16,14 +16,9 @@ import readable_number
 
 from svglab import models
 
+
 ColorSerializationMode: TypeAlias = Literal[
-    "named",
-    "hex-short",
-    "hex-long",
-    "rgb",
-    "hsl",
-    "auto",
-    "original",
+    "named", "hex-short", "hex-long", "rgb", "hsl", "auto", "original"
 ]
 """ Mode for serializing colors.
 
@@ -239,9 +234,7 @@ def serialize_attr(value: object, /) -> str:
     return result
 
 
-def extract_function_name_and_args(
-    attr: str,
-) -> tuple[str, str] | None:
+def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     """Extract function name and arguments from a function-call-like attribute.
 
     An attribute is considered to be a function call if it has the form

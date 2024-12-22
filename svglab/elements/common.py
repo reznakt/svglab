@@ -15,12 +15,8 @@ from typing_extensions import Self, override
 from svglab import attrs, models, serialize, utils
 from svglab.elements import names
 
-__all__ = [
-    "Element",
-    "PairedTag",
-    "Tag",
-    "TextElement",
-]
+
+__all__ = ["Element", "PairedTag", "Tag", "TextElement"]
 
 TagSearch: TypeAlias = names.TagName | type["Tag"]
 """Type for searching tags. A tag name or a tag class."""

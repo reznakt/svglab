@@ -1,5 +1,5 @@
-from .color import Color, ColorType
-from .d import (
+from svglab.attrs.color import Color, ColorType
+from svglab.attrs.d import (
     ArcTo,
     CubicBezierTo,
     D,
@@ -8,16 +8,16 @@ from .d import (
     PathCommandBase,
     QuadraticBezierTo,
 )
-from .length import Length, LengthType, LengthUnit
-from .names import (
+from svglab.attrs.length import Length, LengthType, LengthUnit
+from svglab.attrs.names import (
     ATTR_NAME_TO_NORMALIZED,
     ATTRIBUTE_NAMES,
     AttributeName,
     normalize_attr_name,
 )
-from .point import Point, PointType
-from .points import Points, PointsType
-from .transform import (
+from svglab.attrs.point import Point, PointType
+from svglab.attrs.points import Points, PointsType
+from svglab.attrs.transform import (
     Matrix,
     Rotate,
     Scale,
@@ -28,6 +28,7 @@ from .transform import (
     TransformType,
     Translate,
 )
+
 
 __all__ = [
     "ATTRIBUTE_NAMES",

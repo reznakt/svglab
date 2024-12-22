@@ -13,6 +13,7 @@ import pydantic_core.core_schema
 from pydantic import Field
 from typing_extensions import Self, override
 
+
 _T_co = TypeVar("_T_co", covariant=True)
 
 KwOnly: TypeAlias = Annotated[_T_co, Field(kw_only=True)]

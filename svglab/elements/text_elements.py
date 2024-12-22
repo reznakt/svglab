@@ -5,6 +5,7 @@ from typing_extensions import override
 
 from svglab.elements import common
 
+
 __all__ = ["CData", "Comment", "RawText"]
 
 

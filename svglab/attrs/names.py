@@ -4,6 +4,7 @@ from typing import Final, Literal, TypeAlias
 
 import bidict
 
+
 __all__ = [
     "ATTRIBUTE_NAMES",
     "ATTR_NAME_TO_NORMALIZED",
@@ -198,10 +199,7 @@ def normalize_attr_name(name: AttributeName) -> str:
     """
     normalized: str = name
 
-    substitutions = {
-        "-": "_",
-        ":": "_",
-    }
+    substitutions = {"-": "_", ":": "_"}
 
     for old, new in substitutions.items():
         normalized = normalized.replace(old, new)

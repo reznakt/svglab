@@ -2,6 +2,7 @@ from typing import Literal, TypeAlias
 
 from svglab import attrs
 
+
 _NotImplemented: TypeAlias = str
 """Represents a type that is currently not parsed."""
 
