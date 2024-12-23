@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Generator, Iterable, MutableSequence
+from collections.abc import Generator, Iterable, Iterator, MutableSequence
 from typing import (
     Final,
     Literal,
@@ -15,7 +15,7 @@ import pydantic_core
 import svgpathtools
 from typing_extensions import Self, override
 
-from svglab import models, serialize
+from svglab import models, serialize, utils
 from svglab.attrs import point
 
 
@@ -291,7 +291,78 @@ class D(
         )
 
     def close(self) -> Self:
-        return self.__add(ClosePath(end=self.start))
+        last_continuous_subpath = utils.take_last(
+            self.__continuous_subpaths()
+        )
+
+        end = (
+            self.start
+            if last_continuous_subpath is None
+            else last_continuous_subpath.start
+        )
+
+        return self.__add(ClosePath(end=end))
+
+    def is_continuous(self) -> bool:
+        """Determine whether the path is continuous.
+
+        A continuous path is a path that does not contain any `MoveTo`
+        commands in between other commands. A continuous path may contain
+        leading or trailing `MoveTo` commands.
+
+        Returns:
+            `True` if the path is continuous, `False` otherwise.
+
+        Examples:
+            >>> d = D()
+            >>> d.is_continuous()
+            True
+            >>> _ = d.move_to(point.Point(0, 0)).line_to(point.Point(1, 1))
+            >>> d.is_continuous()
+            True
+            >>> _ = d.move_to(point.Point(2, 2)).line_to(point.Point(3, 3))
+            >>> d.is_continuous()
+            False
+
+        """
+        return utils.length(self.continuous_subpaths()) <= 1
+
+    def __continuous_subpaths(self) -> Generator[D, None, None]:
+        subpath = D()
+
+        for command in self:
+            if isinstance(command, MoveTo):
+                yield subpath
+                subpath = D()
+            else:
+                subpath.append(command)
+
+        yield subpath
+
+    def continuous_subpaths(self) -> Iterator[D]:
+        """Iterate over the continuous subpaths of the path.
+
+        A continuous subpath is a sequence of commands that form a single
+        path without any `MoveTo` commands in between.
+
+        Returns:
+            An iterator over the continuous subpaths of the path.
+
+        Examples:
+            >>> d = D()
+            >>> list(d.continuous_subpaths())
+            []
+            >>> _ = d.move_to(point.Point(0, 0)).line_to(point.Point(1, 1))
+            >>> list(d.continuous_subpaths())
+            [D(LineTo(end=Point(x=1.0, y=1.0)))]
+            >>> _ = d.move_to(point.Point(2, 2)).line_to(point.Point(3, 3))
+            >>> for subpath in d.continuous_subpaths():
+            ...     print(subpath)
+            D(LineTo(end=Point(x=1.0, y=1.0)))
+            D(LineTo(end=Point(x=3.0, y=3.0)))
+
+        """
+        return filter(None, self.__continuous_subpaths())
 
     @override
     def __repr__(self) -> str:
