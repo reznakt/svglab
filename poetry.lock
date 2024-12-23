@@ -225,13 +225,13 @@ lxml = ["lxml"]
 
 [[package]]
 name = "hypothesis"
-version = "6.122.3"
+version = "6.123.0"
 description = "A library for property-based testing"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "hypothesis-6.122.3-py3-none-any.whl", hash = "sha256:f0f57036d3b95b979491602b32c95b6725c3af678cccb6165d8de330857f3c83"},
-    {file = "hypothesis-6.122.3.tar.gz", hash = "sha256:f4c927ce0ec739fa6266e4572949d0b54e24a14601a2bc5fec8f78e16af57918"},
+    {file = "hypothesis-6.123.0-py3-none-any.whl", hash = "sha256:13fb3fe8879245d224be423ca2086150593d9fd8dcfd4585e62dea3c5c8cdddb"},
+    {file = "hypothesis-6.123.0.tar.gz", hash = "sha256:d206c70e6919c8c76dd94b4ffc6daa05f55473b97988e63b88ad3ad66cc389d1"},
 ]
 
 [package.dependencies]
@@ -1222,4 +1222,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "a7c133a96d19fe0ad89755fb1080565af06e5ee7c93978b54d5019b3578f8a57"
+content-hash = "99dd74383a4e823823b0d5c6ed383cd62347d2c2e4e9ebfe25ee80fcb7c43e46"
