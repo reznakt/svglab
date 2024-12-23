@@ -41,6 +41,12 @@ TransformList: TypeAlias = attrs.TransformType
 
 Coordinate: TypeAlias = Length
 OpacityValue: TypeAlias = Number
+
+# composite types
 Paint: TypeAlias = (
-    None_ | Literal["currentColor"] | Inherit | Color | _Incomplete
+    None_
+    | Literal["currentColor"]
+    | Inherit
+    | Color
+    | _Incomplete  # <funciri> [ none | currentColor | <color> [<icccolor>] ]
 )
