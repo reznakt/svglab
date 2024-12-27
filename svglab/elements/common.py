@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import abc
 import collections
-import functools
 import reprlib
 import sys
 from collections.abc import Generator, Mapping
@@ -138,7 +137,7 @@ class Tag(Element, metaclass=abc.ABCMeta):
     prefix: str | None = None
 
     @pydantic.computed_field
-    @functools.cached_property
+    @property
     def name(self) -> names.TagName:
         return names.TAG_NAME_TO_NORMALIZED.inverse[type(self).__name__]
 
