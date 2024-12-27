@@ -1,4 +1,10 @@
-from svglab.elements.common import Element, PairedTag, Tag, TextElement
+from svglab.elements.common import (
+    Element,
+    PairedTag,
+    Tag,
+    TextElement,
+    tag_name,
+)
 from svglab.elements.names import (
     TAG_NAME_TO_NORMALIZED,
     TAG_NAMES,
@@ -184,4 +190,5 @@ __all__ = [
     "Use",
     "View",
     "Vkern",
+    "tag_name",
 ]

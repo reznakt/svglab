@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import abc
 import collections
-import functools
 import reprlib
 import sys
 from collections.abc import Generator, Mapping
@@ -16,10 +15,30 @@ from svglab import attrs, models, serialize, utils
 from svglab.elements import names
 
 
-__all__ = ["Element", "PairedTag", "Tag", "TextElement"]
+__all__ = ["Element", "PairedTag", "Tag", "TextElement", "tag_name"]
 
 TagSearch: TypeAlias = names.TagName | type["Tag"]
 """Type for searching tags. A tag name or a tag class."""
+
+
+def tag_name(tag: Tag | type[Tag], /) -> names.TagName:
+    """Get the SVG tag name of the given tag or tag class.
+
+    Args:
+    tag: The tag or tag class.
+
+    Returns:
+    The SVG tag name.
+
+    Examples:
+    >>> from svglab import Rect
+    >>> tag_name(Rect)
+    'rect'
+
+    """
+    tag_cls = tag if isinstance(tag, type) else type(tag)
+
+    return names.TAG_NAME_TO_NORMALIZED.inverse[tag_cls.__name__]
 
 
 def match_tag(tag: Tag, /, *, search: TagSearch) -> bool:
@@ -46,7 +65,7 @@ def match_tag(tag: Tag, /, *, search: TagSearch) -> bool:
     if isinstance(search, type):
         return isinstance(tag, search)
 
-    return tag.name == search
+    return tag_name(tag) == search
 
 
 class Element(models.BaseModel, metaclass=abc.ABCMeta):
@@ -138,11 +157,6 @@ class Tag(Element, metaclass=abc.ABCMeta):
 
     prefix: str | None = None
 
-    @pydantic.computed_field
-    @functools.cached_property
-    def name(self) -> names.TagName:
-        return names.TAG_NAME_TO_NORMALIZED.inverse[type(self).__name__]
-
     @pydantic.model_validator(mode="after")
     def __validate_extra(self) -> Tag:
         # model_extra cannot be None because extra is set to "allow"
@@ -214,7 +228,7 @@ class Tag(Element, metaclass=abc.ABCMeta):
     @override
     def to_beautifulsoup_object(self) -> bs4.Tag:
         tag = bs4.Tag(
-            name=self.name,
+            name=tag_name(self),
             can_be_empty_element=True,
             prefix=self.prefix,
             is_xml=True,

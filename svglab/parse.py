@@ -15,7 +15,7 @@ DEFAULT_PARSER: Final[Parser] = "lxml-xml"
 
 
 TAG_NAME_TO_CLASS: Final = {
-    cls().name: cls
+    elements.tag_name(cls): cls
     for cls in set(
         itertools.chain(
             elements.Tag.__subclasses__(),
@@ -122,7 +122,7 @@ def convert_element(backend: bs4.PageElement) -> elements.Element | None:
                     if grandchild is not None:
                         tag.add_child(grandchild)
             elif not utils.is_empty(backend.contents):
-                msg = f"Unpaired tag {tag.name!r} cannot have children."
+                msg = f"Unpaired tag {type(tag)} cannot have children."
                 raise TypeError(msg)
 
             return tag
