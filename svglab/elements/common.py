@@ -149,8 +149,15 @@ class Tag(Element, metaclass=abc.ABCMeta):
 
     model_config = pydantic.ConfigDict(
         extra="allow",
-        alias_generator=lambda name: attrs.ATTR_NAME_TO_NORMALIZED.inverse.get(
-            name, name
+        alias_generator=pydantic.AliasGenerator(
+            validation_alias=lambda name: pydantic.AliasChoices(
+                name, attrs.ATTR_NAME_TO_NORMALIZED.inverse.get(name, name)
+            ),
+            serialization_alias=(
+                lambda name: attrs.ATTR_NAME_TO_NORMALIZED.inverse.get(
+                    name, name
+                )
+            ),
         ),
     )
 
