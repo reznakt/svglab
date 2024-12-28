@@ -202,3 +202,92 @@ def test_invalid_rotate() -> None:
         match="Both cx and cy must either be provided or omitted",
     ):
         transform.Rotate(1, 2)
+
+
+def test_attribute_normalization_native() -> None:
+    rect = elements.Rect(
+        stroke_dasharray="1 2 3",
+        stroke_dashoffset=length.Length(1),
+        stroke_linecap="round",
+        stroke_linejoin="round",
+        stroke_width=length.Length(1),
+        stroke_opacity=0.9,
+        xml_base="http://example.com",
+        xml_lang="en",
+        xml_space="preserve",
+    )
+
+    assert rect.extra_attrs() == {}
+
+    assert rect.stroke_dasharray == "1 2 3"
+    assert rect.stroke_dashoffset == length.Length(1)
+    assert rect.stroke_linecap == "round"
+    assert rect.stroke_linejoin == "round"
+    assert rect.stroke_width == length.Length(1)
+    assert rect.stroke_opacity == 0.9
+    assert rect.xml_base == "http://example.com"
+    assert rect.xml_lang == "en"
+    assert rect.xml_space == "preserve"
+
+
+def test_attribute_normalization_validate() -> None:
+    rect = elements.Rect.model_validate(
+        {
+            "stroke-dasharray": "1 2 3",
+            "stroke-dashoffset": length.Length(1),
+            "stroke-linecap": "round",
+            "stroke-linejoin": "round",
+            "stroke-width": length.Length(1),
+            "stroke-opacity": 0.9,
+            "xml:base": "http://example.com",
+            "xml:lang": "en",
+            "xml:space": "preserve",
+        }
+    )
+
+    assert rect.extra_attrs() == {}
+
+    assert rect.stroke_dasharray == "1 2 3"
+    assert rect.stroke_dashoffset == length.Length(1)
+    assert rect.stroke_linecap == "round"
+    assert rect.stroke_linejoin == "round"
+    assert rect.stroke_width == length.Length(1)
+    assert rect.stroke_opacity == 0.9
+    assert rect.xml_base == "http://example.com"
+    assert rect.xml_lang == "en"
+    assert rect.xml_space == "preserve"
+
+
+def test_attribute_normalization_serialize() -> None:
+    rect = elements.Rect(
+        stroke_dasharray="1 2 3",
+        stroke_dashoffset=length.Length(1),
+        stroke_linecap="round",
+        stroke_linejoin="round",
+        stroke_width=length.Length(1),
+        stroke_opacity=0.9,
+        xml_base="http://example.com",
+        xml_lang="en",
+        xml_space="preserve",
+    )
+
+    attrs = {
+        "stroke-dasharray": "1 2 3",
+        "stroke-dashoffset": {"value": 1},
+        "stroke-linecap": "round",
+        "stroke-linejoin": "round",
+        "stroke-width": {"value": 1},
+        "stroke-opacity": 0.9,
+        "xml:base": "http://example.com",
+        "xml:lang": "en",
+        "xml:space": "preserve",
+    }
+
+    dump = rect.model_dump(
+        by_alias=True,
+        exclude_defaults=True,
+        exclude_unset=True,
+        exclude_none=True,
+    )
+
+    assert dump == attrs
