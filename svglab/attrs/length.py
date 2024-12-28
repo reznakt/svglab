@@ -19,7 +19,7 @@ LengthUnit: TypeAlias = Literal[
 
 
 @pydantic.dataclasses.dataclass
-class Length(serialize.Serializable):
+class Length(serialize.CustomSerializable):
     """Represents the SVG `<length>` type.
 
     A length is a number optionally followed by a unit. Available units are:
@@ -47,10 +47,10 @@ class Length(serialize.Serializable):
 @lark.v_args(inline=True)
 class Transformer(lark.Transformer[object, Length]):
     number = float
-    start = Length
+    length = Length
 
 
 LengthType: TypeAlias = Annotated[
     Length,
-    utils.get_validator(grammar="length", transformer=Transformer()),
+    utils.get_validator(grammar="length.lark", transformer=Transformer()),
 ]

@@ -1,31 +1,19 @@
-import functools
+import itertools
 import pathlib
-from typing import Final, Literal, TypeAlias, TypeVar
+from typing import Final, TypeVar
 
 import lark
 import pydantic
+from typing_extensions import LiteralString
 
 
-__all__ = ["get_validator"]
-
-GRAMMARS_DIR: Final = pathlib.Path(__file__).parent / "grammars"
-GAMMAR_EXT: Final = ".lark"
-
-GrammarName: TypeAlias = Literal["transform", "length"]
+__all__ = ["get_validator", "v_args_to_list"]
 
 
-def get_grammar_path(name: GrammarName) -> pathlib.Path:
-    return GRAMMARS_DIR / f"{name}{GAMMAR_EXT}"
+CURRENT_DIR: Final = pathlib.Path(__file__).parent
+GRAMMARS_DIR: Final = CURRENT_DIR / "grammars"
 
-
-@functools.cache
-def load_grammar(name: GrammarName) -> str:
-    path = get_grammar_path(name)
-
-    with path.open("r") as file:
-        return file.read()
-
-
+_T = TypeVar("_T")
 _Leaf_T = TypeVar("_Leaf_T")
 _Return_T = TypeVar("_Return_T")
 
@@ -34,17 +22,19 @@ def parse(
     text: str,
     /,
     *,
-    grammar: GrammarName,
+    grammar: LiteralString,
     transformer: lark.Transformer[_Leaf_T, _Return_T],
     **kwargs: object,
 ) -> lark.ParseTree:
-    parser = lark.Lark(
-        grammar=load_grammar(grammar),
+    parser = lark.Lark.open(
+        grammar_filename=str(GRAMMARS_DIR / grammar),
+        rel_to=None,
+        cache=True,
+        maybe_placeholders=False,
+        ordered_sets=False,
         parser="lalr",
         propagate_positions=False,
-        maybe_placeholders=False,
         transformer=transformer,
-        cache=True,
         **kwargs,
     )
 
@@ -57,7 +47,7 @@ def parse(
 
 def get_validator(
     *,
-    grammar: GrammarName,
+    grammar: LiteralString,
     transformer: lark.Transformer[_Leaf_T, _Return_T],
     **kwargs: object,
 ) -> pydantic.BeforeValidator:
@@ -70,3 +60,8 @@ def get_validator(
         return value
 
     return pydantic.BeforeValidator(validator)
+
+
+def v_args_to_list(*values: _T) -> list[_T]:
+    # drop the first value, which is the transformer instance (self)
+    return list(itertools.islice(values, 1, None))

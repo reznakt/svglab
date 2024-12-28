@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable, MutableSequence
 from types import TracebackType
 from typing import (
     Final,
@@ -13,6 +14,7 @@ from typing import (
 
 import pydantic
 import readable_number
+from typing_extensions import TypeIs
 
 from svglab import models
 
@@ -37,12 +39,15 @@ ColorSerializationMode: TypeAlias = Literal[
             if possible. Falls back to `auto`.
 """
 
-ListSeparator: TypeAlias = Literal[", ", ",", " "]
+Separator: TypeAlias = Literal[", ", ",", " "]
 """ Type for basic valid separators for lists of values. """
+
+PathDataSerializationMode: TypeAlias = Literal["relative", "absolute"]
+""" Mode for serializing path data."""
 
 
 @runtime_checkable
-class Serializable(Protocol):
+class CustomSerializable(Protocol):
     """Protocol for objects with special serialization behavior.
 
     When a `Serializable` object is serialized, its `serialize()` method is
@@ -51,6 +56,30 @@ class Serializable(Protocol):
 
     def serialize(self) -> str:
         """Return an SVG-friendly string representation of this object."""
+
+
+Serializable: TypeAlias = (
+    bool
+    | int
+    | float
+    | str
+    | CustomSerializable
+    | Iterable["Serializable"]
+)
+""" Type for objects that can be serialized to a SVG-friendly string. """
+
+
+def is_serializable(value: object, /) -> TypeIs[Serializable]:
+    return isinstance(
+        value,
+        bool
+        | int
+        | float
+        | str
+        | MutableSequence
+        | tuple
+        | CustomSerializable,
+    )
 
 
 class Formatter(models.BaseModel):
@@ -76,9 +105,13 @@ class Formatter(models.BaseModel):
     For example, `1e+06` instead of `1000000`. If `None`, scientific notation
     is not used for large numbers.
 
+    `path_data_mode`: The path data serialization mode (`relative`, `absolute`)
+
+    `list_separator`: The separator to use when serializing lists of values.
+    `point_separator`: The separator to use when serializing points.
+
     `indent`: The number of spaces to use for indentation in the resulting
     SVG document.
-    `list_separator`: The separator to use when serializing lists of values.
     `spaces_around_attrs`: Whether to add spaces around attribute values.
     For example, `fill=" red "` instead of `fill="red"`.
     `spaces_around_function_args`: Whether to add spaces around function
@@ -103,9 +136,15 @@ class Formatter(models.BaseModel):
         pydantic.Field(default=1e6, ge=0)
     )
 
-    # misc
+    # path data
+    path_data_mode: models.KwOnly[PathDataSerializationMode] = "absolute"
+
+    # separators
+    list_separator: models.KwOnly[Separator] = " "
+    point_separator: models.KwOnly[Separator] = ","
+
+    # whitespace
     indent: models.KwOnly[int] = pydantic.Field(default=2, ge=0)
-    list_separator: models.KwOnly[ListSeparator] = ", "
     spaces_around_attrs: models.KwOnly[bool] = False
     spaces_around_function_args: models.KwOnly[bool] = False
 
@@ -205,33 +244,6 @@ def format_number(*numbers: float) -> str | tuple[str, ...]:
     return result[0] if len(result) == 1 else result
 
 
-def _serialize_attr(value: object, /) -> str:
-    formatter = get_current_formatter()
-
-    match value:
-        case Serializable():
-            result = value.serialize()
-
-            if (
-                formatter.spaces_around_function_args
-                and (fn_call := extract_function_name_and_args(result))
-                is not None
-            ):
-                fn, args = fn_call
-                return f"{fn}( {args} )"
-
-            return result
-
-        case list() | tuple():
-            return formatter.list_separator.join(
-                _serialize_attr(item) for item in value
-            )
-        case int() | float():
-            return format_number(value)
-        case _:
-            return str(value)
-
-
 def serialize_attr(value: object, /) -> str:
     """Serialize an attribute value into its SVG representation.
 
@@ -249,11 +261,15 @@ def serialize_attr(value: object, /) -> str:
     >>> serialize_attr("foo")
     'foo'
     >>> serialize_attr(["foo", "bar"])
-    'foo, bar'
+    'foo bar'
 
     """
+    if not is_serializable(value):
+        msg = f"Type {type(value)} is not serializable."
+        raise TypeError(msg)
+
     formatter = get_current_formatter()
-    result = _serialize_attr(value)
+    result = serialize(value)
 
     if formatter.spaces_around_attrs:
         result = f" {result} "
@@ -294,3 +310,49 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
         return None
 
     return match.group(1), match.group(2)
+
+
+@overload
+def serialize(value: Serializable, /) -> str: ...
+
+
+@overload
+def serialize(*values: Serializable) -> tuple[str, ...]: ...
+
+
+def serialize(*values: Serializable) -> str | tuple[str, ...]:
+    """Return an SVG-friendly string representation of the given value(s)."""
+    result = tuple(_serialize(value) for value in values)
+    return result[0] if len(result) == 1 else result
+
+
+def _serialize(value: Serializable) -> str:
+    formatter = get_current_formatter()
+    result: str
+
+    match value:
+        case CustomSerializable():
+            result = value.serialize()
+
+            if (
+                formatter.spaces_around_function_args
+                and (fn_call := extract_function_name_and_args(result))
+                is not None
+            ):
+                fn, args = fn_call
+                result = f"{fn}( {args} )"
+        case bool():  # needs to be before int (bool is a subclass of int)
+            result = "1" if value else "0"
+        case int() | float():
+            result = format_number(value)
+        case str():
+            result = value
+        case bytes():
+            result = value.decode()
+        # this should go last to avoid classifying strings as iterables, etc.
+        case Iterable():
+            result = formatter.list_separator.join(
+                _serialize(v) for v in value
+            )
+
+    return result

@@ -1,6 +1,48 @@
+import functools
 from collections.abc import Iterable
+from typing import Protocol, TypeVar, runtime_checkable
 
 import bs4
+
+
+_T = TypeVar("_T")
+
+_AnyStr_contra = TypeVar("_AnyStr_contra", str, bytes, contravariant=True)
+_AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
+
+
+@runtime_checkable
+class SupportsRead(Protocol[_AnyStr_co]):
+    """Protocol for objects that support reading.
+
+    This exists because using `SupportsRead` from `typeshed` causes problems.
+
+    Example:
+    >>> from io import StringIO
+    >>> buf = StringIO()
+    >>> isinstance(buf, SupportsRead)
+    True
+
+    """
+
+    def read(self, size: int | None = None, /) -> _AnyStr_co: ...
+
+
+@runtime_checkable
+class SupportsWrite(Protocol[_AnyStr_contra]):
+    """Protocol for objects that support writing.
+
+    This exists because using `SupportsWrite` from `typeshed` causes problems.
+
+    Example:
+    >>> from io import StringIO
+    >>> buf = StringIO()
+    >>> isinstance(buf, SupportsWrite)
+    True
+
+    """
+
+    def write(self, data: _AnyStr_contra, /) -> int: ...
 
 
 def is_empty(iterable: Iterable[object], /) -> bool:
@@ -27,6 +69,52 @@ def is_empty(iterable: Iterable[object], /) -> bool:
         return False
 
     return True
+
+
+def length(iterable: Iterable[_T], /) -> int:
+    """Count the number of items in an iterable.
+
+    Args:
+        iterable: The iterable to count.
+
+    Returns:
+        The number of items in the iterable.
+
+    Examples:
+        >>> length([])
+        0
+        >>> length([1, 2, 3])
+        3
+        >>> length(range(0))
+        0
+        >>> length(range(3))
+        3
+
+    """
+    return sum(1 for _ in iterable)
+
+
+def take_last(iterable: Iterable[_T], /) -> _T | None:
+    """Get the last item in an iterable.
+
+    Args:
+        iterable: The iterable to extract the last item from.
+
+    Returns:
+        The last item in the iterable, or `None` if the iterable is empty.
+
+    Examples:
+        >>> take_last([]) is None
+        True
+        >>> take_last([1, 2, 3])
+        3
+        >>> take_last(range(0)) is None
+        True
+        >>> take_last(range(3))
+        2
+
+    """
+    return functools.reduce(lambda _, s: s, iterable, None)
 
 
 def make_soup(element: bs4.PageElement, /) -> bs4.BeautifulSoup:

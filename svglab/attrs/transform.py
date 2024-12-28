@@ -27,7 +27,7 @@ _T_opt_float = TypeVar("_T_opt_float", float, None)
 
 @final
 @pydantic.dataclasses.dataclass
-class Translate(serialize.Serializable):
+class Translate(serialize.CustomSerializable):
     x: float
     y: float | None = None
 
@@ -45,7 +45,7 @@ class Translate(serialize.Serializable):
 
 @final
 @pydantic.dataclasses.dataclass
-class Scale(serialize.Serializable):
+class Scale(serialize.CustomSerializable):
     x: float
     y: float | None = None
 
@@ -62,7 +62,7 @@ class Scale(serialize.Serializable):
 
 
 @pydantic.dataclasses.dataclass
-class Rotate(serialize.Serializable, Generic[_T_opt_float]):
+class Rotate(serialize.CustomSerializable, Generic[_T_opt_float]):
     angle: float
     cx: _T_opt_float = cast(_T_opt_float, None)
     cy: _T_opt_float = cast(_T_opt_float, None)
@@ -93,7 +93,7 @@ class Rotate(serialize.Serializable, Generic[_T_opt_float]):
 
 @final
 @pydantic.dataclasses.dataclass
-class SkewX(serialize.Serializable):
+class SkewX(serialize.CustomSerializable):
     angle: float
 
     @override
@@ -105,7 +105,7 @@ class SkewX(serialize.Serializable):
 
 @final
 @pydantic.dataclasses.dataclass
-class SkewY(serialize.Serializable):
+class SkewY(serialize.CustomSerializable):
     angle: float
 
     @override
@@ -117,7 +117,7 @@ class SkewY(serialize.Serializable):
 
 @final
 @pydantic.dataclasses.dataclass
-class Matrix(serialize.Serializable):
+class Matrix(serialize.CustomSerializable):
     a: float
     b: float
     c: float
@@ -162,11 +162,12 @@ class Transformer(lark.Transformer[object, Transform]):
     skew_y = SkewY
     matrix = Matrix
 
-    def start(self, *actions: TransformAction) -> Transform:
-        return list(actions)
+    transform_ = utils.v_args_to_list
 
 
 TransformType: TypeAlias = Annotated[
     Transform,
-    utils.get_validator(grammar="transform", transformer=Transformer()),
+    utils.get_validator(
+        grammar="transform.lark", transformer=Transformer()
+    ),
 ]

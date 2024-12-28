@@ -91,7 +91,8 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
 
         Examples:
         >>> from svglab import Rect
-        >>> rect = Rect(id="foo", x=100, y=100)
+        >>> from svglab.attrs import Length
+        >>> rect = Rect(id="foo", x=Length(100), y=Length(100))
         >>> rect.to_xml()
         '<rect id="foo" x="100" y="100"/>'
 
@@ -172,7 +173,7 @@ class Tag(Element, metaclass=abc.ABCMeta):
             if not isinstance(value, str):
                 msg = (
                     f"Non-standard attribute {key!r} must be of type str,"
-                    f" got {type(value).__name__}"
+                    f" got {type(value)}"
                 )
                 raise TypeError(msg)
 
@@ -204,9 +205,10 @@ class Tag(Element, metaclass=abc.ABCMeta):
         )
 
         return {
-            cast(attrs.AttributeName, key): getattr(self, key)
+            attr: getattr(self, attrs.ATTR_NAME_TO_NORMALIZED[attr])
             for key, _ in dump.items()
-            if key in attrs.ATTRIBUTE_NAMES
+            if (attr := cast(attrs.AttributeName, key))
+            in attrs.ATTRIBUTE_NAMES
         }
 
     def all_attrs(self) -> Mapping[str, object]:

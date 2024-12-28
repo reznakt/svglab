@@ -1,14 +1,17 @@
 import collections
 import itertools
-from typing import Final, cast
+from typing import Final, Literal, TypeAlias, cast
 
 import bs4
 
-from svglab import elements, types, utils
+from svglab import elements, utils
 
 
-DEFAULT_PARSER: Final[types.Parser] = "lxml-xml"
-"""The default parser to use when parsing SVG documents."""
+Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
+""" Type for parsers supported by BeautifulSoup. """
+
+
+DEFAULT_PARSER: Final[Parser] = "lxml-xml"
 
 
 TAG_NAME_TO_CLASS: Final = {
@@ -130,11 +133,11 @@ def convert_element(backend: bs4.PageElement) -> elements.Element | None:
 def parse_svg(
     markup: str
     | bytes
-    | types.SupportsRead[str]
-    | types.SupportsRead[bytes],
+    | utils.SupportsRead[str]
+    | utils.SupportsRead[bytes],
     /,
     *,
-    parser: types.Parser = DEFAULT_PARSER,
+    parser: Parser = DEFAULT_PARSER,
 ) -> elements.Svg:
     """Parse an SVG document.
 

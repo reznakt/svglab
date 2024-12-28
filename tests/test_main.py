@@ -5,7 +5,7 @@ import hypothesis
 import hypothesis.strategies as st
 import pytest
 
-from svglab import elements, parse, types
+from svglab import elements, parse
 from svglab.attrs import length, transform
 
 
@@ -29,7 +29,7 @@ def test_get_root_svg_fragments(markup: str, fragment_count: int) -> None:
 
 
 @pytest.mark.parametrize("parser", ["lxml", "lxml-xml", "html5lib"])
-def test_get_root_svg_fragments_parser(parser: types.Parser) -> None:
+def test_get_root_svg_fragments_parser(parser: parse.Parser) -> None:
     soup = bs4.BeautifulSoup("<svg></svg>", features=parser)
 
     assert len(parse.get_root_svg_fragments(soup)) == 1
@@ -95,7 +95,7 @@ def test_invalid_length(value: str) -> None:
     xml = f"<svg><rect width='{value}'/></svg>"
 
     with pytest.raises(
-        ValueError, match="Failed to parse text with grammar 'length'"
+        ValueError, match="Failed to parse text with grammar 'length.lark'"
     ):
         parse.parse_svg(xml)
 
@@ -190,7 +190,8 @@ def test_valid_transform_sequence() -> None:
 )
 def test_invalid_transform(text: str) -> None:
     with pytest.raises(
-        ValueError, match="Failed to parse text with grammar 'transform'"
+        ValueError,
+        match="Failed to parse text with grammar 'transform.lark'",
     ):
         parse.parse_svg(f"<svg><rect transform='{text}'/></svg>")
 
