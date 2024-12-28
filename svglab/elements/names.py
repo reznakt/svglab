@@ -119,7 +119,7 @@ def normalize_tag_name(name: TagName, /) -> str:
     return "".join(part[0].upper() + part[1:] for part in name.split("-"))
 
 
-TAG_NAME_TO_NORMALIZED: Final = bidict.frozenbidict(
+TAG_NAME_TO_NORMALIZED: Final = bidict.frozenbidict[TagName, str](
     {tag: normalize_tag_name(tag) for tag in TAG_NAMES}
 )
 """

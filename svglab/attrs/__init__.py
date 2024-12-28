@@ -46,7 +46,6 @@ __all__ = [
     "LineTo",
     "Matrix",
     "PathCommand",
-    "PathCommandBase",
     "Point",
     "PointType",
     "Points",

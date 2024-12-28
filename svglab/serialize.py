@@ -56,6 +56,7 @@ class CustomSerializable(Protocol):
 
     def serialize(self) -> str:
         """Return an SVG-friendly string representation of this object."""
+        ...
 
 
 Serializable: TypeAlias = (
@@ -132,8 +133,8 @@ class Formatter(models.BaseModel):
     small_number_scientific_threshold: models.KwOnly[float | None] = (
         pydantic.Field(default=1e-6, ge=0)
     )
-    large_number_scientific_threshold: models.KwOnly[float | None] = (
-        pydantic.Field(default=1e6, ge=0)
+    large_number_scientific_threshold: models.KwOnly[int | None] = (
+        pydantic.Field(default=int(1e6), ge=0)
     )
 
     # path data
@@ -198,7 +199,9 @@ def format_number(number: float, /) -> str: ...
 
 
 @overload
-def format_number(*numbers: float) -> tuple[str, ...]: ...
+def format_number(
+    first: float, second: float, /, *numbers: float
+) -> tuple[str, ...]: ...
 
 
 def format_number(*numbers: float) -> str | tuple[str, ...]:
@@ -232,11 +235,13 @@ def format_number(*numbers: float) -> str | tuple[str, ...]:
         use_exponent_for_small_numbers=(
             formatter.small_number_scientific_threshold is not None
         ),
-        small_number_threshold=formatter.small_number_scientific_threshold,
+        small_number_threshold=formatter.small_number_scientific_threshold
+        or 0,
         use_exponent_for_large_numbers=(
             formatter.large_number_scientific_threshold is not None
         ),
-        large_number_threshold=formatter.large_number_scientific_threshold,
+        large_number_threshold=formatter.large_number_scientific_threshold
+        or 0,
     )
 
     result = tuple(rn.of(number) for number in numbers)
@@ -317,7 +322,9 @@ def serialize(value: Serializable, /) -> str: ...
 
 
 @overload
-def serialize(*values: Serializable) -> tuple[str, ...]: ...
+def serialize(
+    first: Serializable, second: Serializable, /, *values: Serializable
+) -> tuple[str, ...]: ...
 
 
 def serialize(*values: Serializable) -> str | tuple[str, ...]:

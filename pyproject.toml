@@ -21,12 +21,12 @@ pydantic-extra-types = "^2.10.1"
 lark = "^1.2.2"
 readable-number = "^0.1.3"
 svgpathtools = "^1.6.1"
+pyright = "^1.1.391"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.8.4"
 poethepoet = "^0.31.0"
 pytest = "^8.3.4"
-mypy = "^1.14.0"
 pre-commit = "^4.0.1"
 types-beautifulsoup4 = "^4.12.0.20241020"
 hypothesis = "^6.123.0"
@@ -46,7 +46,7 @@ lint-fix = "ruff check --fix"
 format = "ruff format --diff"
 format-fix = "ruff format"
 test = "pytest"
-typecheck = "mypy"
+typecheck = "pyright --warnings"
 start = "poetry run svglab"
 versioncheck = "vermin ."
 
@@ -57,24 +57,28 @@ filterwarnings = [
   "ignore:The 'strip_cdata' option of HTMLParser\\(\\) has never done anything and will eventually be removed.",
 ]
 
-[tool.mypy]
-disable_error_code = "prop-decorator" # https://github.com/python/mypy/issues/1362
-packages = ["svglab", "tests"]
-plugins = ["pydantic.mypy"]
-pretty = true
-python_version = "3.10"
-show_column_numbers = true
-show_error_context = true
-strict = true
-warn_no_return = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_ignores = true
-
-[[tool.mypy.overrides]]
-module = "readable_number.*,svgpathtools.*"
-ignore_missing_imports = true
+[tool.pyright]
+deprecateTypingAliases = true
+enableReachabilityAnalysis = true
+pythonPlatform = "All"
+pythonVersion = "3.10"
+reportInvalidTypeVarUse = true
+reportMissingImports = true
+reportMissingTypeArgument = true
+reportMissingTypeStubs = false
+reportPrivateUsage = true
+reportUnknownArgumentType = false
+reportUnknownMemberType = false
+reportUnknownParameterType = false
+reportUnknownVariableType = false
+reportUnnecessaryCast = true
+reportUnnecessaryComparison = true
+reportUntypedFunctionDecorator = true
+reportUnusedImport = true
+strictDictionaryInference = true
+strictListInference = true
+strictSetInference = true
+typeCheckingMode = "strict"
 
 [tool.ruff]
 target-version = "py310"
@@ -132,7 +136,7 @@ ban-relative-imports = "all"
 
 [tool.ruff.lint.isort]
 lines-after-imports = 2
-split-on-trailing-comma=false
+split-on-trailing-comma = false
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "abc.ABC".msg = "Use `metaclass=abc.ABCMeta` instead"

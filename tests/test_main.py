@@ -201,7 +201,7 @@ def test_invalid_rotate() -> None:
         ValueError,
         match="Both cx and cy must either be provided or omitted",
     ):
-        transform.Rotate(1, 2)
+        transform.Rotate(1, 2)  # pyright: ignore[reportCallIssue]
 
 
 def test_attribute_normalization_native() -> None:

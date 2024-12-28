@@ -165,7 +165,7 @@ class Tag(Element, metaclass=abc.ABCMeta):
     prefix: str | None = None
 
     @pydantic.model_validator(mode="after")
-    def __validate_extra(self) -> Tag:
+    def __validate_extra(self) -> Tag:  # pyright: ignore[reportUnusedFunction]
         # model_extra cannot be None because extra is set to "allow"
         assert self.model_extra is not None
 

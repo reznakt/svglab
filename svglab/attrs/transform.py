@@ -1,4 +1,4 @@
-from typing import Annotated, Generic, TypeAlias, TypeVar, cast, final
+from typing import Annotated, TypeAlias, cast, final, overload
 
 import lark
 import pydantic
@@ -11,8 +11,7 @@ from svglab.attrs import utils
 __all__ = [
     "Matrix",
     "Rotate",
-    "RotateWithCenter",
-    "RotateWithoutCenter",
+    "Rotate",
     "Scale",
     "SkewX",
     "SkewY",
@@ -21,8 +20,6 @@ __all__ = [
     "TransformType",
     "Translate",
 ]
-
-_T_opt_float = TypeVar("_T_opt_float", float, None)
 
 
 @final
@@ -62,13 +59,13 @@ class Scale(serialize.CustomSerializable):
 
 
 @pydantic.dataclasses.dataclass
-class Rotate(serialize.CustomSerializable, Generic[_T_opt_float]):
+class _Rotate(serialize.CustomSerializable):
     angle: float
-    cx: _T_opt_float = cast(_T_opt_float, None)
-    cy: _T_opt_float = cast(_T_opt_float, None)
+    cx: float | None
+    cy: float | None
 
     @pydantic.model_validator(mode="after")
-    def __check_cx_cy(self) -> Self:
+    def __check_cx_cy(self) -> Self:  # pyright: ignore[reportUnusedFunction]
         cx_is_none = self.cx is None
         cy_is_none = self.cy is None
 
@@ -86,9 +83,26 @@ class Rotate(serialize.CustomSerializable, Generic[_T_opt_float]):
         if self.cx is None:
             return f"rotate({angle})"
 
-        cx, cy = serialize.format_number(self.cx, self.cy)
+        cx, cy = serialize.format_number(self.cx, cast(float, self.cy))
 
         return f"rotate({angle} {cx} {cy})"
+
+
+class Rotate(_Rotate):
+    @overload
+    def __init__(self, angle: float, /) -> None: ...
+
+    @overload
+    def __init__(self, angle: float, /, cx: float, cy: float) -> None: ...
+
+    def __init__(
+        self,
+        angle: float,
+        /,
+        cx: float | None = None,
+        cy: float | None = None,
+    ) -> None:
+        super().__init__(angle=angle, cx=cx, cy=cy)
 
 
 @final
@@ -135,17 +149,8 @@ class Matrix(serialize.CustomSerializable):
         return f"matrix({a} {b} {c} {d} {e} {f})"
 
 
-RotateWithoutCenter: TypeAlias = Rotate[None]
-RotateWithCenter: TypeAlias = Rotate[float]
-
 TransformAction: TypeAlias = (
-    Translate
-    | Scale
-    | RotateWithoutCenter
-    | RotateWithCenter
-    | SkewX
-    | SkewY
-    | Matrix
+    Translate | Scale | Rotate | SkewX | SkewY | Matrix
 )
 
 Transform: TypeAlias = list[TransformAction]

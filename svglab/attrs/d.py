@@ -43,10 +43,10 @@ class MoveTo:
     end: point.Point
 
     def __add__(self, other: point.Point, /) -> Self:
-        return MoveTo(end=self.end + other)
+        return type(self)(end=self.end + other)
 
     def __sub__(self, other: point.Point, /) -> Self:
-        return MoveTo(end=self.end - other)
+        return type(self)(end=self.end - other)
 
 
 @pydantic.dataclasses.dataclass
@@ -67,12 +67,12 @@ class QuadraticBezierTo:
     end: point.Point
 
     def __add__(self, other: point.Point, /) -> Self:
-        return QuadraticBezierTo(
+        return type(self)(
             control=self.control + other, end=self.end + other
         )
 
     def __sub__(self, other: point.Point, /) -> Self:
-        return QuadraticBezierTo(
+        return type(self)(
             control=self.control - other, end=self.end - other
         )
 
@@ -85,14 +85,14 @@ class CubicBezierTo:
     end: point.Point
 
     def __add__(self, other: point.Point, /) -> Self:
-        return CubicBezierTo(
+        return type(self)(
             control1=self.control1 + other,
             control2=self.control2 + other,
             end=self.end + other,
         )
 
     def __sub__(self, other: point.Point, /) -> Self:
-        return CubicBezierTo(
+        return type(self)(
             control1=self.control1 - other,
             control2=self.control2 - other,
             end=self.end - other,
@@ -109,7 +109,7 @@ class ArcTo:
     end: point.Point
 
     def __add__(self, other: point.Point, /) -> Self:
-        return ArcTo(
+        return type(self)(
             radius=self.radius + other,
             angle=self.angle,
             large=self.large,
@@ -118,7 +118,7 @@ class ArcTo:
         )
 
     def __sub__(self, other: point.Point, /) -> Self:
-        return ArcTo(
+        return type(self)(
             radius=self.radius - other,
             angle=self.angle,
             large=self.large,
@@ -154,58 +154,51 @@ class D(
         return len(self.__commands)
 
     @overload
-    def __getitem__(self, index: SupportsIndex, /) -> PathCommand: ...
+    def __getitem__(self, index: int) -> PathCommand: ...
 
     @overload
-    def __getitem__(self, slice: slice, /) -> Self: ...
+    def __getitem__(self, index: slice) -> Self: ...
 
     @override
-    def __getitem__(
-        self, index_or_slice: SupportsIndex | slice, /
-    ) -> PathCommand | Self:
-        if isinstance(index_or_slice, SupportsIndex):
-            return self.__commands[index_or_slice]
+    def __getitem__(self, index: int | slice) -> PathCommand | Self:
+        if isinstance(index, SupportsIndex):
+            return self.__commands[index]
 
-        return D(self.__commands[index_or_slice])
+        return type(self)(self.__commands[index])
 
     @overload
-    def __delitem__(self, index: SupportsIndex, /) -> None: ...
+    def __delitem__(self, index: int) -> None: ...
 
     @overload
-    def __delitem__(self, slice: slice, /) -> None: ...
+    def __delitem__(self, index: slice) -> None: ...
 
     @override
-    def __delitem__(
-        self, index_or_slice: SupportsIndex | slice, /
-    ) -> None:
-        if isinstance(index_or_slice, SupportsIndex):
-            del self.__commands[index_or_slice]
+    def __delitem__(self, index: int | slice) -> None:
+        if isinstance(index, SupportsIndex):
+            del self.__commands[index]
         else:
-            del self.__commands[index_or_slice]
+            del self.__commands[index]
+
+    @overload
+    def __setitem__(self, index: int, values: PathCommand) -> None: ...
 
     @overload
     def __setitem__(
-        self, index: SupportsIndex, value: PathCommand, /
-    ) -> None: ...
-
-    @overload
-    def __setitem__(
-        self, slice: slice, values: Iterable[PathCommand], /
+        self, index: slice, values: Iterable[PathCommand]
     ) -> None: ...
 
     @override
     def __setitem__(
         self,
-        index_or_slice: SupportsIndex | slice,
-        value_or_values: PathCommand | Iterable[PathCommand],
-        /,
+        index: int | slice,
+        values: PathCommand | Iterable[PathCommand],
     ) -> None:
-        if isinstance(index_or_slice, SupportsIndex):
-            assert isinstance(value_or_values, PathCommand)
-            self.__commands[index_or_slice] = value_or_values
+        if isinstance(index, SupportsIndex):
+            assert isinstance(values, PathCommand)
+            self.__commands[index] = values
         else:
-            assert isinstance(value_or_values, Iterable)
-            self.__commands[index_or_slice] = value_or_values
+            assert isinstance(values, Iterable)
+            self.__commands[index] = values
 
     @override
     def insert(self, index: SupportsIndex, value: PathCommand) -> None:
@@ -375,7 +368,7 @@ class D(
         d = cls()
 
         for command in path:
-            match command:
+            match command:  # pyright: ignore[reportMatchNotExhaustive]
                 case svgpathtools.Line():
                     d.line_to(point.Point.from_complex(command.end))
                 case svgpathtools.QuadraticBezier():
@@ -419,14 +412,8 @@ class D(
         match value:
             case str():
                 return cls.from_str(value)
-            case D():
-                if not all(
-                    isinstance(command, PathCommand) for command in value
-                ):
-                    msg = "All commands must be instances of PathCommand"
-                    raise TypeError(msg)
-
-                return value
+            case d if isinstance(d, cls):
+                return d
             case _:
                 msg = f"Expected a string or {cls.__name__}"
                 raise TypeError(msg)
