@@ -14,7 +14,6 @@ Inherit: TypeAlias = Literal["inherit"]
 None_: TypeAlias = Literal["none"]
 
 # basic types that are not parsed
-Angle: TypeAlias = _NotImplemented
 DashArray: TypeAlias = _NotImplemented
 Frequency: TypeAlias = _NotImplemented
 FuncIri: TypeAlias = _NotImplemented
@@ -30,6 +29,7 @@ Time: TypeAlias = _NotImplemented
 XmlName: TypeAlias = _NotImplemented
 
 # basic types that are parsed
+Angle: TypeAlias = attrs.AngleType
 Anything: TypeAlias = str
 Color: TypeAlias = attrs.ColorType
 Integer: TypeAlias = int

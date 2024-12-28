@@ -1,3 +1,4 @@
+from svglab.attrs.angle import Angle, AngleType, AngleUnit
 from svglab.attrs.color import Color, ColorType
 from svglab.attrs.d import (
     ArcTo,
@@ -33,6 +34,9 @@ from svglab.attrs.transform import (
 __all__ = [
     "ATTRIBUTE_NAMES",
     "ATTR_NAME_TO_NORMALIZED",
+    "Angle",
+    "AngleType",
+    "AngleUnit",
     "ArcTo",
     "AttributeName",
     "Color",
