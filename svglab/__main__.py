@@ -96,6 +96,7 @@ def main() -> None:
     # Save to a file
     svg.save(sys.stdout)
 
+    print(svg.find(G).find(Rect).width)
     print(*svg.find_all(Rect), sep="\n")
 
 

@@ -5,20 +5,23 @@ import collections
 import reprlib
 import sys
 from collections.abc import Generator, Mapping
-from typing import SupportsIndex, TypeAlias, cast
+from typing import Final, SupportsIndex, TypeVar, cast, overload
 
 import bs4
 import pydantic
 from typing_extensions import Self, override
 
-from svglab import attrs, models, serialize, utils
+from svglab import attrs, errors, models, serialize, utils
 from svglab.elements import names
 
 
 __all__ = ["Element", "PairedTag", "Tag", "TextElement", "tag_name"]
 
-TagSearch: TypeAlias = names.TagName | type["Tag"]
-"""Type for searching tags. A tag name or a tag class."""
+_T = TypeVar("_T")
+_T_tag = TypeVar("_T_tag", bound="Tag")
+
+EMPTY_PARAM: Final = object()
+"""A sentinel value for an empty parameter."""
 
 
 def tag_name(tag: Tag | type[Tag], /) -> names.TagName:
@@ -41,7 +44,7 @@ def tag_name(tag: Tag | type[Tag], /) -> names.TagName:
     return names.TAG_NAME_TO_NORMALIZED.inverse[tag_cls.__name__]
 
 
-def match_tag(tag: Tag, /, *, search: TagSearch) -> bool:
+def match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
     """Check if a tag matches the given search criteria.
 
     Args:
@@ -381,8 +384,18 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
         return tag
 
+    @overload
     def find_all(
-        self, *tags: TagSearch, recursive: bool = True
+        self, *tags: type[_T_tag], recursive: bool = True
+    ) -> Generator[_T_tag, None, None]: ...
+
+    @overload
+    def find_all(
+        self, *tags: type[Tag] | names.TagName, recursive: bool = True
+    ) -> Generator[Tag, None, None]: ...
+
+    def find_all(
+        self, *tags: type[Tag] | names.TagName, recursive: bool = True
     ) -> Generator[Tag, None, None]:
         """Find all tags that match the given search criteria.
 
@@ -413,17 +426,53 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
             ):
                 yield child
 
-    def find(self, *tags: TagSearch, recursive: bool = True) -> Tag | None:
+    @overload
+    def find(
+        self, *tags: type[_T_tag], recursive: bool = True
+    ) -> _T_tag: ...
+
+    @overload
+    def find(
+        self, *tags: type[Tag] | names.TagName, recursive: bool = True
+    ) -> Tag: ...
+
+    @overload
+    def find(
+        self,
+        *tags: type[_T_tag],
+        recursive: bool = True,
+        default: _T = EMPTY_PARAM,
+    ) -> _T_tag | _T: ...
+
+    @overload
+    def find(
+        self,
+        *tags: type[Tag] | names.TagName,
+        recursive: bool = True,
+        default: _T = EMPTY_PARAM,
+    ) -> Tag | _T: ...
+
+    def find(
+        self,
+        *tags: type[Tag] | names.TagName,
+        recursive: bool = True,
+        default: _T = EMPTY_PARAM,
+    ) -> Tag | _T:
         """Find the first tag that matches the given search criteria.
 
         Args:
         tags: The tags to search for. Can be tag names or tag classes.
         recursive: If `False`, only search the direct children of the tag,
         otherwise search all descendants.
+        default: The default value to return if no tag matches the search
+        criteria.
 
         Returns:
-        The first tag that matches the search criteria,
-        or `None` if no tag is found.
+        The first tag that matches the search criteria.
+
+        Raises:
+        SvgElementNotFoundError: If no tag matches the search criteria and no
+        default value is provided.
 
         Examples:
         >>> from svglab import G, Rect
@@ -434,8 +483,15 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
         Rect(id='foo')
         >>> g.find(G)
         G(children=[Rect(id='bar')])
-        >>> g.find("circle") is None
+        >>> g.find("circle", default=None) is None
         True
 
         """
-        return next(self.find_all(*tags, recursive=recursive), None)
+        try:
+            return next(self.find_all(*tags, recursive=recursive))
+        except StopIteration as e:
+            if default is not EMPTY_PARAM:
+                return default
+
+            msg = f"Unable to find tag by search criteria: {tags}"
+            raise errors.SvgElementNotFoundError(msg) from e
