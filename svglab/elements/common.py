@@ -95,9 +95,9 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         Examples:
         >>> from svglab import Rect
         >>> from svglab.attrs import Length
-        >>> rect = Rect(id="foo", x=Length(100), y=Length(100))
+        >>> rect = Rect(id="foo", stroke_linecap="round")
         >>> rect.to_xml()
-        '<rect id="foo" x="100" y="100"/>'
+        '<rect id="foo" stroke-linecap="round"/>'
 
         """
         formatter = formatter or serialize.get_current_formatter()

@@ -1,5 +1,3 @@
-from typing import Literal
-
 from svglab import models
 from svglab.elements import attrtypes
 
@@ -11,61 +9,51 @@ class AttrBase(models.BaseModel):
 class Common(AttrBase):
     """Common attributes shared by all SVG elements."""
 
-    id: models.Attr[attrtypes.Name] = None
-    xml_base: models.Attr[attrtypes.Iri] = None
-    xml_lang: models.Attr[attrtypes.LanguageId] = None
-    xml_space: models.Attr[Literal["default", "preserve"]] = None
+    id: models.Attr[attrtypes.Id] = None
+    xml_base: models.Attr[attrtypes.XmlBase] = None
+    xml_lang: models.Attr[attrtypes.XmlLang] = None
+    xml_space: models.Attr[attrtypes.XmlSpace] = None
 
 
 class Points(AttrBase):
-    points: models.Attr[attrtypes.ListOfPoints] = None
+    points: models.Attr[attrtypes.Points] = None
 
 
 class CenterPoints(AttrBase):
-    cx: models.Attr[attrtypes.Coordinate] = None
-    cy: models.Attr[attrtypes.Coordinate] = None
+    cx: models.Attr[attrtypes.Cx] = None
+    cy: models.Attr[attrtypes.Cy] = None
 
 
 class WidthHeight(AttrBase):
-    width: models.Attr[attrtypes.Length] = None
-    height: models.Attr[attrtypes.Length] = None
+    width: models.Attr[attrtypes.Width] = None
+    height: models.Attr[attrtypes.Height] = None
 
 
 class PathData(AttrBase):
-    d: models.Attr[attrtypes.PathData] = None
+    d: models.Attr[attrtypes.D] = None
 
 
 class Radius(AttrBase):
-    r: models.Attr[attrtypes.Length] = None
+    r: models.Attr[attrtypes.R] = None
 
 
 class RadiusXY(AttrBase):
-    rx: models.Attr[attrtypes.Length] = None
-    ry: models.Attr[attrtypes.Length] = None
+    rx: models.Attr[attrtypes.Rx] = None
+    ry: models.Attr[attrtypes.Ry] = None
 
 
 class Transform(AttrBase):
-    transform: models.Attr[attrtypes.TransformList] = None
+    transform: models.Attr[attrtypes.Transform] = None
 
 
 class Presentation(AttrBase):
-    opacity: models.Attr[attrtypes.OpacityValue] = None
-    fill: models.Attr[attrtypes.Paint] = None
-    fill_opacity: models.Attr[attrtypes.OpacityValue] = None
-    stroke: models.Attr[attrtypes.Paint] = None
-    stroke_opacity: models.Attr[attrtypes.OpacityValue] = None
-    stroke_width: models.Attr[
-        attrtypes.Length | attrtypes.Percentage | attrtypes.Inherit
-    ] = None
-    stroke_linecap: models.Attr[
-        Literal["butt", "round", "square"] | attrtypes.Inherit
-    ] = None
-    stroke_linejoin: models.Attr[
-        Literal["miter", "round", "bevel"] | attrtypes.Inherit
-    ] = None
-    stroke_dasharray: models.Attr[
-        attrtypes.None_ | attrtypes.DashArray | attrtypes.Inherit
-    ] = None
-    stroke_dashoffset: models.Attr[
-        attrtypes.Percentage | attrtypes.Length | attrtypes.Inherit
-    ] = None
+    opacity: models.Attr[attrtypes.Opacity] = None
+    fill: models.Attr[attrtypes.Fill] = None
+    fill_opacity: models.Attr[attrtypes.FillOpacity] = None
+    stroke: models.Attr[attrtypes.Stroke] = None
+    stroke_opacity: models.Attr[attrtypes.StrokeOpacity] = None
+    stroke_width: models.Attr[attrtypes.StrokeWidth] = None
+    stroke_linecap: models.Attr[attrtypes.StrokeLinecap] = None
+    stroke_linejoin: models.Attr[attrtypes.StrokeLinejoin] = None
+    stroke_dasharray: models.Attr[attrtypes.StrokeDasharray] = None
+    stroke_dashoffset: models.Attr[attrtypes.StrokeDashoffset] = None

@@ -3,9 +3,11 @@ from collections.abc import Iterable
 from typing import Protocol, TypeVar, runtime_checkable
 
 import bs4
+from useful_types import SupportsRichComparison
 
 
 _T = TypeVar("_T")
+_T_cmp = TypeVar("_T_cmp", bound=SupportsRichComparison)
 
 _AnyStr_contra = TypeVar("_AnyStr_contra", str, bytes, contravariant=True)
 _AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
@@ -150,3 +152,30 @@ def beautifulsoup_to_str(
             raise TypeError(msg)
 
     return result.strip()
+
+
+def clamp(
+    value: _T_cmp, /, *, min_value: _T_cmp, max_value: _T_cmp
+) -> _T_cmp:
+    """Clamp a value between two bounds.
+
+    Args:
+        value: The value to clamp.
+        min_value: The minimum value.
+        max_value: The maximum value.
+
+    Returns:
+        The clamped value. If `value` is less than `min_value`, `min_value` is
+        returned. If `value` is greater than `max_value`, `max_value` is
+        returned. Otherwise, `value` is returned.
+
+    Examples:
+        >>> clamp(5, min_value=0, max_value=10)
+        5
+        >>> clamp(-5, min_value=0, max_value=10)
+        0
+        >>> clamp(15, min_value=0, max_value=10)
+        10
+
+    """
+    return max(min(value, max_value), min_value)

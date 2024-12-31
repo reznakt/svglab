@@ -1,5 +1,8 @@
 import abc
+import functools
+import re
 import reprlib
+from collections.abc import Callable
 from typing import (
     Annotated,
     Protocol,
@@ -14,13 +17,79 @@ from pydantic import Field
 from typing_extensions import Self, override
 
 
+_T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
+_T_seq = TypeVar("_T_seq", list[str], tuple[str])
+
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
+_T3 = TypeVar("_T3")
+_T4 = TypeVar("_T4")
 
 KwOnly: TypeAlias = Annotated[_T_co, Field(kw_only=True)]
 """ Pydantic field for a keyword-only attribute. """
 
 Attr: TypeAlias = KwOnly[_T_co | None]
 """ Pydantic field for an attribute. """
+
+
+def parse_list(text: str, /, collection: type[_T_seq] = list) -> _T_seq:
+    """Parse a string into a list of strings.
+
+    Items are separated by whitespace or commas.
+
+    Args:
+        text: The string to parse.
+        collection: The type of collection to return.
+
+    Returns:
+        A collection of strings.
+
+    Examples:
+        >>> parse_list("a b c")
+        ['a', 'b', 'c']
+        >>> parse_list("a, b, c")
+        ['a', 'b', 'c']
+        >>> parse_list("a b, c")
+        ['a', 'b', 'c']
+        >>> parse_list("a,b,c")
+        ['a', 'b', 'c']
+        >>> parse_list("")
+        []
+
+    """
+    result = (part for part in re.split(r"\s+|\s*,\s*", text) if part)
+    return collection(result)
+
+
+def get_validator(
+    func: Callable[[str], object], /
+) -> pydantic.BeforeValidator:
+    def validator(value: object) -> object:
+        if isinstance(value, str):
+            return func(value)
+
+        return value
+
+    return pydantic.BeforeValidator(validator)
+
+
+List: TypeAlias = Annotated[
+    list[_T], get_validator(functools.partial(parse_list, collection=list))
+]
+"""Pydantic field for a list of strings. Uses `parse_list` as a validator."""
+
+Tuple: TypeAlias = Annotated[
+    _T, get_validator(functools.partial(parse_list, collection=tuple))
+]
+"""Pydantic field for a tuple of strings. Uses `parse_list` as a validator."""
+
+# unfortunately, there doesn't seem to be a better way to do this
+# see https://github.com/python/typing/issues/779
+Tuple1: TypeAlias = Tuple[tuple[_T1]]
+Tuple2: TypeAlias = Tuple[tuple[_T1, _T2]]
+Tuple3: TypeAlias = Tuple[tuple[_T1, _T2, _T3]]
+Tuple4: TypeAlias = Tuple[tuple[_T1, _T2, _T3, _T4]]
 
 
 class BaseModel(pydantic.BaseModel):

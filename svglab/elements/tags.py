@@ -179,8 +179,8 @@ class Ellipse(
     attrdefs.Transform,
     common.Tag,
 ):
-    rx: models.Attr[attrtypes.Length] = None
-    ry: models.Attr[attrtypes.Length] = None
+    rx: models.Attr[attrtypes.Rx] = None
+    ry: models.Attr[attrtypes.Ry] = None
 
 
 @final
@@ -372,10 +372,10 @@ class Image(attrdefs.Common, attrdefs.Transform, common.Tag):
 class Line(
     attrdefs.Common, attrdefs.Transform, attrdefs.Presentation, common.Tag
 ):
-    x1: models.Attr[attrtypes.Coordinate] = None
-    y1: models.Attr[attrtypes.Coordinate] = None
-    x2: models.Attr[attrtypes.Coordinate] = None
-    y2: models.Attr[attrtypes.Coordinate] = None
+    x1: models.Attr[attrtypes.X1] = None
+    y1: models.Attr[attrtypes.Y1] = None
+    x2: models.Attr[attrtypes.X2] = None
+    y2: models.Attr[attrtypes.Y2] = None
 
 
 @final
@@ -461,8 +461,8 @@ class Rect(
     attrdefs.WidthHeight,
     common.Tag,
 ):
-    x: models.Attr[attrtypes.Coordinate] = None
-    y: models.Attr[attrtypes.Coordinate] = None
+    x: models.Attr[attrtypes.X] = None
+    y: models.Attr[attrtypes.Y] = None
     color: models.Attr[attrtypes.Color] = None
 
 

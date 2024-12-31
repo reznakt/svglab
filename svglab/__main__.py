@@ -50,7 +50,6 @@ def main() -> None:
     # Create an element programmatically
     group = G().add_children(
         Rect(
-            x=Length(10, "in"),
             width=Length(15, "px"),
             height=Length(20),
             transform=[SkewX(45.123), Translate(10, 20)],
@@ -82,7 +81,6 @@ def main() -> None:
             ],
             stroke_linecap="square",
             opacity=0.5,
-            fill=Color("blue"),
         ),
     )
 
