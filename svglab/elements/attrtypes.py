@@ -6,42 +6,39 @@ from svglab import attrs, models, utils
 
 
 # special pseudo-types
-_NOT_IMPLEMENTED: TypeAlias = str
+_NotImplemented: TypeAlias = str
 """Represents a type that is currently not parsed."""
 
-_INCOMPLETE: TypeAlias = str
-"""Represents a "catch-all" part of a partially parsed type."""
 
 # common string literals
 _All: TypeAlias = Literal["all"]
 _Auto: TypeAlias = Literal["auto"]
-_Boolean: TypeAlias = Literal["true", "false"]
 _Inherit: TypeAlias = Literal["inherit"]
 _None: TypeAlias = Literal["none"]
 
 # basic types that are not parsed
-_AdvisoryTitle: TypeAlias = _NOT_IMPLEMENTED
-_BeginValueList: TypeAlias = _NOT_IMPLEMENTED
-_ClockValue: TypeAlias = _NOT_IMPLEMENTED
-_ContentType: TypeAlias = _NOT_IMPLEMENTED  # MIME type
-_Dasharray: TypeAlias = _NOT_IMPLEMENTED  # list of percentages and lengths
-_EndValueList: TypeAlias = _NOT_IMPLEMENTED
-_FamilyName: TypeAlias = _NOT_IMPLEMENTED
-_FilterPrimitiveReference: TypeAlias = _NOT_IMPLEMENTED
-_FuncIri: TypeAlias = _NOT_IMPLEMENTED
-_GenericFamily: TypeAlias = _NOT_IMPLEMENTED
-_Iri: TypeAlias = _NOT_IMPLEMENTED
-_LanguageCodes: TypeAlias = _NOT_IMPLEMENTED
-_LanguageId: TypeAlias = _NOT_IMPLEMENTED
-_ListOfCoordinates: TypeAlias = _NOT_IMPLEMENTED
-_ListOfLengths: TypeAlias = _NOT_IMPLEMENTED
-_MediaDescriptors: TypeAlias = _NOT_IMPLEMENTED
-_Name: TypeAlias = _NOT_IMPLEMENTED
-_Percentage: TypeAlias = _NOT_IMPLEMENTED
-_ProfileName: TypeAlias = _NOT_IMPLEMENTED
-_Shape: TypeAlias = _NOT_IMPLEMENTED
-_Urange: TypeAlias = _NOT_IMPLEMENTED
-_XmlName: TypeAlias = _NOT_IMPLEMENTED
+_AdvisoryTitle: TypeAlias = _NotImplemented
+_BeginValueList: TypeAlias = _NotImplemented
+_ClockValue: TypeAlias = _NotImplemented
+_ContentType: TypeAlias = _NotImplemented  # MIME type
+_Dasharray: TypeAlias = _NotImplemented  # list of percentages and lengths
+_EndValueList: TypeAlias = _NotImplemented
+_FamilyName: TypeAlias = _NotImplemented
+_FilterPrimitiveReference: TypeAlias = _NotImplemented
+_FuncIri: TypeAlias = _NotImplemented
+_GenericFamily: TypeAlias = _NotImplemented
+_Iri: TypeAlias = _NotImplemented
+_LanguageCodes: TypeAlias = _NotImplemented
+_LanguageId: TypeAlias = _NotImplemented
+_ListOfCoordinates: TypeAlias = _NotImplemented
+_ListOfLengths: TypeAlias = _NotImplemented
+_MediaDescriptors: TypeAlias = _NotImplemented
+_Name: TypeAlias = _NotImplemented
+_Percentage: TypeAlias = _NotImplemented
+_ProfileName: TypeAlias = _NotImplemented
+_Shape: TypeAlias = _NotImplemented
+_Urange: TypeAlias = _NotImplemented
+_XmlName: TypeAlias = _NotImplemented
 
 # basic types that are parsed
 _Angle: TypeAlias = attrs.AngleType
@@ -59,31 +56,8 @@ _Character: TypeAlias = Annotated[
 _Miterlimit: TypeAlias = Annotated[_Number, pydantic.Field(ge=1)]
 
 # composite types
-_NumericValue: TypeAlias = _Number
+_Boolean: TypeAlias = Literal["true", "false"]
 _Coordinate: TypeAlias = _Length
-_ListOfNumbers: TypeAlias = models.List[_Number]
-_ListOfStrings: TypeAlias = models.List[_Anything]
-_NumberOptionalNumber: TypeAlias = (
-    _Number | models.Tuple2[_Number, _Number]
-)
-_ListOfNames: TypeAlias = models.List[_Name]
-_ListOfExtensions: TypeAlias = models.List[_Iri]
-_ListOfFeatures: TypeAlias = models.List[_INCOMPLETE]
-_OpacityValue: TypeAlias = Annotated[
-    _Number,
-    pydantic.AfterValidator(
-        lambda x: utils.clamp(x, min_value=0, max_value=1)
-    ),
-]
-
-_Paint: TypeAlias = (
-    _None
-    | Literal["currentColor"]
-    | _Inherit
-    | _Color
-    | _INCOMPLETE  # <funciri> [ none | currentColor | <color> [<icccolor>] ]
-)
-
 _CursorValue: TypeAlias = (
     _FuncIri
     | _Auto
@@ -105,6 +79,29 @@ _CursorValue: TypeAlias = (
         "help",
     ]
 )
+_ListOfExtensions: TypeAlias = models.List[_Iri]
+_ListOfFeatures: TypeAlias = models.List[_NotImplemented]
+_ListOfNames: TypeAlias = models.List[_Name]
+_ListOfNumbers: TypeAlias = models.List[_Number]
+_ListOfStrings: TypeAlias = models.List[_Anything]
+_NumericValue: TypeAlias = _Number
+_NumberOptionalNumber: TypeAlias = (
+    _Number | models.Tuple2[_Number, _Number]
+)
+_OpacityValue: TypeAlias = Annotated[
+    _Number,
+    pydantic.AfterValidator(
+        lambda x: utils.clamp(x, min_value=0, max_value=1)
+    ),
+]
+_Paint: TypeAlias = (
+    _None
+    | Literal["currentColor"]
+    | _Inherit
+    | _Color
+    # <funciri> [ none | currentColor | <color> [<icccolor>] ]
+    | _NotImplemented
+)
 
 
 AccentHeight: TypeAlias = _Number
@@ -123,7 +120,7 @@ BaseProfile: TypeAlias = _ProfileName
 Bbox: TypeAlias = models.Tuple4[_Number, _Number, _Number, _Number]
 Begin: TypeAlias = _BeginValueList
 Bias: TypeAlias = _Number
-By: TypeAlias = _NOT_IMPLEMENTED
+By: TypeAlias = _NotImplemented
 CalcMode: TypeAlias = Literal["discrete", "linear", "paced", "spline"]
 CapHeight: TypeAlias = _Number
 Class: TypeAlias = _ListOfStrings
@@ -177,14 +174,14 @@ FontStretch: TypeAlias = (
     ]
 )
 FontSize: TypeAlias = _All | _ListOfLengths
-Format: TypeAlias = _NOT_IMPLEMENTED
-From: TypeAlias = _NOT_IMPLEMENTED
+Format: TypeAlias = _NotImplemented
+From: TypeAlias = _NotImplemented
 Fx: TypeAlias = _Coordinate
 Fy: TypeAlias = _Coordinate
 G1: TypeAlias = _ListOfNames
 G2: TypeAlias = G1
 GlyphName: TypeAlias = _ListOfNames
-GlyphRef: TypeAlias = _NOT_IMPLEMENTED
+GlyphRef: TypeAlias = _NotImplemented
 GradientTransform: TypeAlias = _TransformList
 GradientUnits: TypeAlias = Literal["userSpaceOnUse", "objectBoundingBox"]
 Hanging: TypeAlias = _Number
@@ -194,7 +191,7 @@ HorizOriginX: TypeAlias = _Number
 HorizOriginY: TypeAlias = _Number
 Id: TypeAlias = _Name
 Ideographic: TypeAlias = _Number
-In: TypeAlias = _Paint | _FilterPrimitiveReference | _INCOMPLETE
+In: TypeAlias = _Paint | _FilterPrimitiveReference | _NotImplemented
 In2: TypeAlias = In
 Intercept: TypeAlias = _Number
 K: TypeAlias = _Number
@@ -205,12 +202,12 @@ K4: TypeAlias = _Number
 KernelMatrix: TypeAlias = _ListOfNumbers
 KernelUnitLength: TypeAlias = _NumberOptionalNumber
 KeyPoints: TypeAlias = _ListOfNumbers
-KeySplines: TypeAlias = _NOT_IMPLEMENTED
-KeyTimes: TypeAlias = _NOT_IMPLEMENTED
+KeySplines: TypeAlias = _NotImplemented
+KeyTimes: TypeAlias = _NotImplemented
 Lang: TypeAlias = _LanguageCodes
 LengthAdjust: TypeAlias = Literal["spacing", "spacingAndGlyphs"]
 LimitingConeAngle: TypeAlias = _Number
-Local: TypeAlias = _NOT_IMPLEMENTED
+Local: TypeAlias = _NotImplemented
 MarkerHeight: TypeAlias = _Length
 MarkerUnits: TypeAlias = Literal["strokeWidth", "userSpaceOnUse"]
 MarkerWidth: TypeAlias = _Length
@@ -294,7 +291,7 @@ PreserveAspectRatio: TypeAlias = (
         "xMidYMax",
         "xMaxYMax",
     ]
-    | _INCOMPLETE
+    | _NotImplemented
 )
 PrimitiveUnits: TypeAlias = Literal["userSpaceOnUse", "objectBoundingBox"]
 R: TypeAlias = _Length
@@ -332,7 +329,7 @@ StitchTiles: TypeAlias = Literal["stitch", "noStitch"]
 StrikethroughPosition: TypeAlias = _Number
 StrikethroughThickness: TypeAlias = _Number
 String: TypeAlias = _Anything
-Style: TypeAlias = _NOT_IMPLEMENTED
+Style: TypeAlias = _NotImplemented
 SurfaceScale: TypeAlias = _Number
 SystemLanguage: TypeAlias = _LanguageCodes
 TableValues: TypeAlias = _ListOfNumbers
@@ -343,7 +340,7 @@ TargetX: TypeAlias = _Integer
 TargetY: TypeAlias = _Integer
 TextLength: TypeAlias = _Length
 Title: TypeAlias = _AdvisoryTitle
-To: TypeAlias = _NOT_IMPLEMENTED
+To: TypeAlias = _NotImplemented
 Transform: TypeAlias = _TransformList
 Type: TypeAlias = Literal["translate", "scale", "rotate", "skewX", "skewY"]
 U1: TypeAlias = models.List[_Character | _Urange]
@@ -467,7 +464,7 @@ DominantBaseline: TypeAlias = (
 EnableBackground: TypeAlias = (
     Literal["accumulate"]
     | _Inherit
-    | _INCOMPLETE  # new [ <x> <y> <width> <height> ]
+    | _NotImplemented  # new [ <x> <y> <width> <height> ]
 )
 FillOpacity: TypeAlias = _OpacityValue | _Inherit
 FillRule: TypeAlias = Literal["nonzero", "evenodd"] | _Inherit
@@ -477,7 +474,7 @@ FloodColor: TypeAlias = (
     Literal["currentColor"]
     | _Color
     | _Inherit
-    | _INCOMPLETE  # <color> [<icccolor>]
+    | _NotImplemented  # <color> [<icccolor>]
 )
 FloodOpacity: TypeAlias = _OpacityValue | _Inherit
 FontSizeAdjust: TypeAlias = _Number | _None | _Inherit
@@ -494,7 +491,7 @@ ImageRendering: TypeAlias = (
 Kerning: TypeAlias = _Auto | _Length | _Inherit
 LetterSpacing: TypeAlias = Literal["normal"] | _Length | _Inherit
 LightingColor: TypeAlias = (
-    Literal["currentColor"] | _Color | _Inherit | _INCOMPLETE
+    Literal["currentColor"] | _Color | _Inherit | _NotImplemented
 )
 MarkerEnd: TypeAlias = _FuncIri | _None | _Inherit
 MarkerMid: TypeAlias = _FuncIri | _None | _Inherit
@@ -524,7 +521,9 @@ ShapeRendering: TypeAlias = (
     | _Inherit
 )
 StopColor: TypeAlias = (
-    Literal["currentColor"] | _Inherit | _INCOMPLETE  # <color> <icccolor>
+    Literal["currentColor"]
+    | _Inherit
+    | _NotImplemented  # <color> <icccolor>
 )
 StopOpacity: TypeAlias = _OpacityValue | _Inherit
 StrokeDasharray: TypeAlias = _None | _Dasharray | _Inherit
