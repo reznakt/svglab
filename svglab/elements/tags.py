@@ -378,8 +378,8 @@ class Rect(
     groups.WidthHeight,
     presentation.Color,
     regular.Transform,
-    regular.X,
-    regular.Y,
+    regular.XCoordinate,
+    regular.YCoordinate,
     common.Tag,
 ):
     pass

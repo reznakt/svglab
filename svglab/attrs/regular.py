@@ -128,12 +128,20 @@ class Dur(common.Attr):
     )
 
 
-class Dx(common.Attr):
+class DxListOfLengths(common.Attr):
     dx: models.Attr[types.ListOfLengths] = None
 
 
-class Dy(common.Attr):
+class DxNumber(common.Attr):
+    dx: models.Attr[types.Number] = None
+
+
+class DyListOfLengths(common.Attr):
     dy: models.Attr[types.ListOfLengths] = None
+
+
+class DyNumber(common.Attr):
+    dy: models.Attr[types.Number] = None
 
 
 class EdgeMode(common.Attr):
@@ -428,12 +436,24 @@ class Mode(common.Attr):
     ] = None
 
 
+class NameName(common.Attr):
+    name: models.Attr[types.Name] = None
+
+
+class NameAnything(common.Attr):
+    name: models.Attr[types.Anything] = None
+
+
 class NumOctaves(common.Attr):
     num_octaves: models.Attr[types.Integer] = None
 
 
-class Offset(common.Attr):
+class OffsetNumberPercentage(common.Attr):
     offset: models.Attr[types.Number | types.Percentage] = None
+
+
+class OffsetNumber(common.Attr):
+    offset: models.Attr[types.Number] = None
 
 
 class OnAbort(common.Attr):
@@ -508,10 +528,14 @@ class OnZoom(common.Attr):
     on_zoom: models.Attr[types.Anything] = None
 
 
-class Operator(common.Attr):
+class OperatorFeComposite(common.Attr):
     operator: models.Attr[
         Literal["over", "in", "out", "atop", "xor", "arithmetic"]
     ] = None
+
+
+class OperatorFeMorphology(common.Attr):
+    operator: models.Attr[Literal["erode", "dilate"]] = None
 
 
 class Order(common.Attr):
@@ -683,8 +707,14 @@ class Result(common.Attr):
     result: models.Attr[types.FilterPrimitiveReference] = None
 
 
-class Rotate(common.Attr):
+class RotateListOfNumbers(common.Attr):
     rotate: models.Attr[types.ListOfNumbers] = None
+
+
+class RotateNumberAutoAutoReverse(common.Attr):
+    rotate: (
+        models.Attr[types.Number] | types.Auto | Literal["auto-reverse"]
+    ) = None
 
 
 class Rx(common.Attr):
@@ -802,9 +832,29 @@ class Transform(common.Attr):
     transform: models.Attr[types.TransformList] = None
 
 
-class Type(common.Attr):
+class TypeAnimateTransform(common.Attr):
     type: models.Attr[
         Literal["translate", "scale", "rotate", "skewX", "skewY"]
+    ] = None
+
+
+class TypeFeColorMatrix(common.Attr):
+    type: models.Attr[
+        Literal["matrix", "saturate", "hueRotate", "luminanceToAlpha"]
+    ] = None
+
+
+class TypeFeTurbluence(common.Attr):
+    type: models.Attr[Literal["fractalNoise", "turbulence"]] = None
+
+
+class TypeContentType(common.Attr):
+    type: models.Attr[types.ContentType] = None
+
+
+class TypeFeFunc(common.Attr):
+    type: models.Attr[
+        Literal["identity", "table", "discrete", "linear", "gamma"]
     ] = None
 
 
@@ -852,8 +902,12 @@ class VMathematical(common.Attr):
     v_mathematical: models.Attr[types.Number] = None
 
 
-class Values(common.Attr):
+class ValuesListOfNumbers(common.Attr):
     values: models.Attr[types.ListOfNumbers] = None
+
+
+class ValuesList(common.Attr):
+    values: models.Attr[types.Unparsed] = None
 
 
 class Version(common.Attr):
@@ -896,8 +950,16 @@ class Widths(common.Attr):
     ] = None
 
 
-class X(common.Attr):
+class XListOfCoordinates(common.Attr):
     x: models.Attr[types.ListOfCoordinates] = None
+
+
+class XCoordinate(common.Attr):
+    x: models.Attr[types.Coordinate] = None
+
+
+class XNumber(common.Attr):
+    x: models.Attr[types.Number] = None
 
 
 class XHeight(common.Attr):
@@ -916,8 +978,12 @@ class XChannelSelector(common.Attr):
     x_channel_selector: models.Attr[Literal["R", "G", "B", "A"]] = None
 
 
-class XlinkActuate(common.Attr):
+class XlinkActuateOnRequest(common.Attr):
     xlink_actuate: models.Attr[Literal["onRequest"]] = None
+
+
+class XlinkActuateOnLoad(common.Attr):
+    xlink_actuate: models.Attr[Literal["onLoad"]] = None
 
 
 class XlinkArcrole(common.Attr):
@@ -958,8 +1024,16 @@ class XmlSpace(common.Attr):
     xml_space: models.Attr[Literal["default", "preserve"]] = None
 
 
-class Y(common.Attr):
+class YListOfCoordinates(common.Attr):
     y: models.Attr[types.ListOfCoordinates] = None
+
+
+class YCoordinate(common.Attr):
+    y: models.Attr[types.Coordinate] = None
+
+
+class YNumber(common.Attr):
+    y: models.Attr[types.Number] = None
 
 
 class Y1(common.Attr):
