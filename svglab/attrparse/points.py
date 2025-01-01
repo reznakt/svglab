@@ -3,17 +3,17 @@ from typing import Annotated, TypeAlias
 import lark
 import lark.visitors
 
-from svglab import attrs
-from svglab.attrs import utils
+from svglab import attrparse
+from svglab.attrparse import utils
 
 
-Points: TypeAlias = list[attrs.Point]
+Points: TypeAlias = list[attrparse.Point]
 
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, Points]):
     number = float
-    point = attrs.Point
+    point = attrparse.Point
 
     points = utils.v_args_to_list
 

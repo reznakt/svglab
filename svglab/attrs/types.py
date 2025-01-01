@@ -2,7 +2,7 @@ from typing import Annotated, Literal, TypeAlias
 
 import pydantic
 
-from svglab import attrs, models, utils
+from svglab import attrparse, models, utils
 
 
 # special pseudo-types
@@ -41,15 +41,15 @@ _Urange: TypeAlias = _NotImplemented
 _XmlName: TypeAlias = _NotImplemented
 
 # basic types that are parsed
-_Angle: TypeAlias = attrs.AngleType
+_Angle: TypeAlias = attrparse.AngleType
 _Anything: TypeAlias = str
-_Color: TypeAlias = attrs.ColorType
+_Color: TypeAlias = attrparse.ColorType
 _Integer: TypeAlias = int
-_Length: TypeAlias = attrs.LengthType
-_ListOfPoints: TypeAlias = attrs.PointsType
+_Length: TypeAlias = attrparse.LengthType
+_ListOfPoints: TypeAlias = attrparse.PointsType
 _Number: TypeAlias = float
-_PathData: TypeAlias = attrs.DType
-_TransformList: TypeAlias = attrs.TransformType
+_PathData: TypeAlias = attrparse.DType
+_TransformList: TypeAlias = attrparse.TransformType
 _Character: TypeAlias = Annotated[
     str, pydantic.Field(min_length=1, max_length=1)
 ]

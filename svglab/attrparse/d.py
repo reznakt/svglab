@@ -16,7 +16,7 @@ import svgpathtools
 from typing_extensions import Self, override
 
 from svglab import models, serialize, utils
-from svglab.attrs import point
+from svglab.attrparse import point
 
 
 _AbsolutePathCommandChar: TypeAlias = Literal[

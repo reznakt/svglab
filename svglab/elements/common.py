@@ -11,7 +11,7 @@ import bs4
 import pydantic
 from typing_extensions import Self, override
 
-from svglab import attrs, errors, models, serialize, utils
+from svglab import attrparse, errors, models, serialize, utils
 from svglab.elements import names
 
 
@@ -92,7 +92,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
 
         Examples:
         >>> from svglab import Rect
-        >>> from svglab.attrs import Length
+        >>> from svglab.attrparse import Length
         >>> rect = Rect(id="foo", stroke_linecap="round")
         >>> rect.to_xml()
         '<rect id="foo" stroke-linecap="round"/>'
@@ -153,10 +153,11 @@ class Tag(Element, metaclass=abc.ABCMeta):
         extra="allow",
         alias_generator=pydantic.AliasGenerator(
             validation_alias=lambda name: pydantic.AliasChoices(
-                name, attrs.ATTR_NAME_TO_NORMALIZED.inverse.get(name, name)
+                name,
+                attrparse.ATTR_NAME_TO_NORMALIZED.inverse.get(name, name),
             ),
             serialization_alias=(
-                lambda name: attrs.ATTR_NAME_TO_NORMALIZED.inverse.get(
+                lambda name: attrparse.ATTR_NAME_TO_NORMALIZED.inverse.get(
                     name, name
                 )
             ),
@@ -197,7 +198,7 @@ class Tag(Element, metaclass=abc.ABCMeta):
         assert self.model_extra is not None
         return self.model_extra
 
-    def standard_attrs(self) -> Mapping[attrs.AttributeName, object]:
+    def standard_attrs(self) -> Mapping[attrparse.AttributeName, object]:
         dump = self.model_dump(
             by_alias=True,
             exclude_defaults=True,
@@ -206,10 +207,10 @@ class Tag(Element, metaclass=abc.ABCMeta):
         )
 
         return {
-            attr: getattr(self, attrs.ATTR_NAME_TO_NORMALIZED[attr])
+            attr: getattr(self, attrparse.ATTR_NAME_TO_NORMALIZED[attr])
             for key, _ in dump.items()
-            if (attr := cast(attrs.AttributeName, key))
-            in attrs.ATTRIBUTE_NAMES
+            if (attr := cast(attrparse.AttributeName, key))
+            in attrparse.ATTRIBUTE_NAMES
         }
 
     def all_attrs(self) -> Mapping[str, object]:

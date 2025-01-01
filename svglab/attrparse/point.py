@@ -7,7 +7,7 @@ import pydantic
 from typing_extensions import override
 
 from svglab import serialize
-from svglab.attrs import utils
+from svglab.attrparse import utils
 
 
 @final

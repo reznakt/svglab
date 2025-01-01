@@ -14,7 +14,7 @@ from svglab import (
     Rect,
     parse_svg,
 )
-from svglab.attrs import Color, D, Length, Point, SkewX, Translate
+from svglab.attrparse import Color, D, Length, Point, SkewX, Translate
 from svglab.serialize import Formatter, set_formatter
 
 
