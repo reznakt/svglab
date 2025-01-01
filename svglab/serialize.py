@@ -195,16 +195,16 @@ def set_formatter(formatter: Formatter) -> None:
 
 
 @overload
-def format_number(number: float, /) -> str: ...
+def _format_number(number: float, /) -> str: ...
 
 
 @overload
-def format_number(
+def _format_number(
     first: float, second: float, /, *numbers: float
 ) -> tuple[str, ...]: ...
 
 
-def format_number(*numbers: float) -> str | tuple[str, ...]:
+def _format_number(*numbers: float) -> str | tuple[str, ...]:
     """Format a number or a sequence of numbers for SVG serialization.
 
     Args:
@@ -214,15 +214,15 @@ def format_number(*numbers: float) -> str | tuple[str, ...]:
     The formatted number or numbers.
 
     Examples:
-    >>> format_number(42)
+    >>> _format_number(42)
     '42'
-    >>> format_number(3.14)
+    >>> _format_number(3.14)
     '3.14'
-    >>> format_number(1, 2, 3)
+    >>> _format_number(1, 2, 3)
     ('1', '2', '3')
-    >>> format_number(1.0, 2.0, 3.0)
+    >>> _format_number(1.0, 2.0, 3.0)
     ('1', '2', '3')
-    >>> format_number(1e9)
+    >>> _format_number(1e9)
     '1e+09'
 
     """
@@ -282,7 +282,7 @@ def serialize_attr(value: object, /) -> str:
     return result
 
 
-def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
+def _extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     """Extract function name and arguments from a function-call-like attribute.
 
     An attribute is considered to be a function call if it has the form
@@ -297,13 +297,13 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     or `None` if the attribute is not a function call.
 
     Examples:
-    >>> extract_function_name_and_args("foo()") is None  # no arguments
+    >>> _extract_function_name_and_args("foo()") is None  # no arguments
     True
-    >>> extract_function_name_and_args("foo(42)")
+    >>> _extract_function_name_and_args("foo(42)")
     ('foo', '42')
-    >>> extract_function_name_and_args("foo(42, 'bar')")
+    >>> _extract_function_name_and_args("foo(42, 'bar')")
     ('foo', "42, 'bar'")
-    >>> extract_function_name_and_args(
+    >>> _extract_function_name_and_args(
     ...     "bar"
     ... ) is None  # not a function call
     True
@@ -343,7 +343,7 @@ def _serialize(value: Serializable) -> str:
 
             if (
                 formatter.spaces_around_function_args
-                and (fn_call := extract_function_name_and_args(result))
+                and (fn_call := _extract_function_name_and_args(result))
                 is not None
             ):
                 fn, args = fn_call
@@ -351,7 +351,7 @@ def _serialize(value: Serializable) -> str:
         case bool():  # needs to be before int (bool is a subclass of int)
             result = "1" if value else "0"
         case int() | float():
-            result = format_number(value)
+            result = _format_number(value)
         case str():
             result = value
         case bytes():

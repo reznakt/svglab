@@ -7,18 +7,16 @@ import pydantic
 from typing_extensions import LiteralString
 
 
-__all__ = ["get_validator", "v_args_to_list"]
-
-
-CURRENT_DIR: Final = pathlib.Path(__file__).parent
-GRAMMARS_DIR: Final = CURRENT_DIR / "grammars"
-
 _T = TypeVar("_T")
 _Leaf_T = TypeVar("_Leaf_T")
 _Return_T = TypeVar("_Return_T")
 
 
-def parse(
+_CURRENT_DIR: Final = pathlib.Path(__file__).parent
+_GRAMMARS_DIR: Final = _CURRENT_DIR / "grammars"
+
+
+def _parse(
     text: str,
     /,
     *,
@@ -27,7 +25,7 @@ def parse(
     **kwargs: object,
 ) -> lark.ParseTree:
     parser = lark.Lark.open(
-        grammar_filename=str(GRAMMARS_DIR / grammar),
+        grammar_filename=str(_GRAMMARS_DIR / grammar),
         rel_to=None,
         cache=True,
         maybe_placeholders=False,
@@ -53,7 +51,7 @@ def get_validator(
 ) -> pydantic.BeforeValidator:
     def validator(value: object) -> object:
         if isinstance(value, str):
-            return parse(
+            return _parse(
                 value, grammar=grammar, transformer=transformer, **kwargs
             )
 

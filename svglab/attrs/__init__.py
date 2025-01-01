@@ -14,7 +14,6 @@ from svglab.attrs.names import (
     ATTR_NAME_TO_NORMALIZED,
     ATTRIBUTE_NAMES,
     AttributeName,
-    normalize_attr_name,
 )
 from svglab.attrs.point import Point, PointType
 from svglab.attrs.points import Points, PointsType
@@ -63,5 +62,4 @@ __all__ = [
     "TransformAction",
     "TransformType",
     "Translate",
-    "normalize_attr_name",
 ]

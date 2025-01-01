@@ -33,7 +33,7 @@ Attr: TypeAlias = KwOnly[_T_co | None]
 """ Pydantic field for an attribute. """
 
 
-def parse_list(text: str, /, collection: type[_T_seq] = list) -> _T_seq:
+def _parse_list(text: str, /, collection: type[_T_seq] = list) -> _T_seq:
     """Parse a string into a list of strings.
 
     Items are separated by whitespace or commas.
@@ -46,15 +46,15 @@ def parse_list(text: str, /, collection: type[_T_seq] = list) -> _T_seq:
         A collection of strings.
 
     Examples:
-        >>> parse_list("a b c")
+        >>> _parse_list("a b c")
         ['a', 'b', 'c']
-        >>> parse_list("a, b, c")
+        >>> _parse_list("a, b, c")
         ['a', 'b', 'c']
-        >>> parse_list("a b, c")
+        >>> _parse_list("a b, c")
         ['a', 'b', 'c']
-        >>> parse_list("a,b,c")
+        >>> _parse_list("a,b,c")
         ['a', 'b', 'c']
-        >>> parse_list("")
+        >>> _parse_list("")
         []
 
     """
@@ -75,14 +75,15 @@ def get_validator(
 
 
 List: TypeAlias = Annotated[
-    list[_T], get_validator(functools.partial(parse_list, collection=list))
+    list[_T],
+    get_validator(functools.partial(_parse_list, collection=list)),
 ]
-"""Pydantic field for a list of strings. Uses `parse_list` as a validator."""
+"""Pydantic field for a list of strings. Uses `_parse_list` as a validator."""
 
 Tuple: TypeAlias = Annotated[
-    _T, get_validator(functools.partial(parse_list, collection=tuple))
+    _T, get_validator(functools.partial(_parse_list, collection=tuple))
 ]
-"""Pydantic field for a tuple of strings. Uses `parse_list` as a validator."""
+"""Pydantic field for a tuple of strings. Uses `_parse_list` as a validator."""
 
 # unfortunately, there doesn't seem to be a better way to do this
 # see https://github.com/python/typing/issues/779

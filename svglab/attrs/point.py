@@ -10,9 +10,6 @@ from svglab import serialize
 from svglab.attrs import utils
 
 
-__all__ = ["Point", "PointType"]
-
-
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
 class Point(SupportsComplex, serialize.CustomSerializable):
@@ -55,7 +52,7 @@ class Point(SupportsComplex, serialize.CustomSerializable):
     @override
     def serialize(self) -> str:
         formatter = serialize.get_current_formatter()
-        x, y = serialize.format_number(self.x, self.y)
+        x, y = serialize.serialize(self.x, self.y)
 
         return f"{x}{formatter.point_separator}{y}"
 
@@ -87,12 +84,12 @@ class Point(SupportsComplex, serialize.CustomSerializable):
 
 
 @lark.v_args(inline=True)
-class Transformer(lark.Transformer[object, Point]):
+class _Transformer(lark.Transformer[object, Point]):
     number = float
     point = Point
 
 
 PointType: TypeAlias = Annotated[
     Point,
-    utils.get_validator(grammar="point.lark", transformer=Transformer()),
+    utils.get_validator(grammar="point.lark", transformer=_Transformer()),
 ]

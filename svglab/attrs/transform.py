@@ -8,20 +8,6 @@ from svglab import serialize
 from svglab.attrs import utils
 
 
-__all__ = [
-    "Matrix",
-    "Rotate",
-    "Rotate",
-    "Scale",
-    "SkewX",
-    "SkewY",
-    "Transform",
-    "TransformAction",
-    "TransformType",
-    "Translate",
-]
-
-
 @final
 @pydantic.dataclasses.dataclass
 class Translate(serialize.CustomSerializable):
@@ -30,12 +16,12 @@ class Translate(serialize.CustomSerializable):
 
     @override
     def serialize(self) -> str:
-        x = serialize.format_number(self.x)
+        x = serialize.serialize(self.x)
 
         if self.y is None:
             return f"translate({x})"
 
-        y = serialize.format_number(self.y)
+        y = serialize.serialize(self.y)
 
         return f"translate({x}, {y})"
 
@@ -48,12 +34,12 @@ class Scale(serialize.CustomSerializable):
 
     @override
     def serialize(self) -> str:
-        x = serialize.format_number(self.x)
+        x = serialize.serialize(self.x)
 
         if self.y is None:
             return f"scale({x})"
 
-        y = serialize.format_number(self.y)
+        y = serialize.serialize(self.y)
 
         return f"scale({x}, {y})"
 
@@ -78,12 +64,12 @@ class _Rotate(serialize.CustomSerializable):
 
     @override
     def serialize(self) -> str:
-        angle = serialize.format_number(self.angle)
+        angle = serialize.serialize(self.angle)
 
         if self.cx is None:
             return f"rotate({angle})"
 
-        cx, cy = serialize.format_number(self.cx, cast(float, self.cy))
+        cx, cy = serialize.serialize(self.cx, cast(float, self.cy))
 
         return f"rotate({angle} {cx} {cy})"
 
@@ -112,7 +98,7 @@ class SkewX(serialize.CustomSerializable):
 
     @override
     def serialize(self) -> str:
-        angle = serialize.format_number(self.angle)
+        angle = serialize.serialize(self.angle)
 
         return f"skewX({angle})"
 
@@ -124,7 +110,7 @@ class SkewY(serialize.CustomSerializable):
 
     @override
     def serialize(self) -> str:
-        angle = serialize.format_number(self.angle)
+        angle = serialize.serialize(self.angle)
 
         return f"skewY({angle})"
 
@@ -141,9 +127,8 @@ class Matrix(serialize.CustomSerializable):
 
     @override
     def serialize(self) -> str:
-        a, b, c, d, e, f = map(
-            serialize.format_number,
-            (self.a, self.b, self.c, self.d, self.e, self.f),
+        a, b, c, d, e, f = serialize.serialize(
+            self.a, self.b, self.c, self.d, self.e, self.f
         )
 
         return f"matrix({a} {b} {c} {d} {e} {f})"
@@ -157,7 +142,7 @@ Transform: TypeAlias = list[TransformAction]
 
 
 @lark.v_args(inline=True)
-class Transformer(lark.Transformer[object, Transform]):
+class _Transformer(lark.Transformer[object, Transform]):
     number = float
 
     translate = Translate
@@ -173,6 +158,6 @@ class Transformer(lark.Transformer[object, Transform]):
 TransformType: TypeAlias = Annotated[
     Transform,
     utils.get_validator(
-        grammar="transform.lark", transformer=Transformer()
+        grammar="transform.lark", transformer=_Transformer()
     ),
 ]

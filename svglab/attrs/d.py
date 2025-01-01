@@ -19,20 +19,10 @@ from svglab import models, serialize, utils
 from svglab.attrs import point
 
 
-__all__ = [
-    "ArcTo",
-    "CubicBezierTo",
-    "D",
-    "DType",
-    "LineTo",
-    "PathCommand",
-    "QuadraticBezierTo",
-]
-
-AbsolutePathCommandChar: TypeAlias = Literal[
+_AbsolutePathCommandChar: TypeAlias = Literal[
     "M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"
 ]
-RelativePathCommandChar: TypeAlias = Literal[
+_RelativePathCommandChar: TypeAlias = Literal[
     "m", "l", "h", "v", "c", "s", "q", "t", "a", "z"
 ]
 
@@ -434,8 +424,8 @@ class D(
     @staticmethod
     def __format_command(
         *args: serialize.Serializable,
-        absolute_char: AbsolutePathCommandChar,
-        relative_char: RelativePathCommandChar,
+        absolute_char: _AbsolutePathCommandChar,
+        relative_char: _RelativePathCommandChar,
     ) -> str:
         formatter = serialize.get_current_formatter()
 

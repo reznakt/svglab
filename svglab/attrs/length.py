@@ -10,9 +10,6 @@ from svglab import serialize
 from svglab.attrs import utils
 
 
-__all__ = ["Length", "LengthType", "LengthUnit"]
-
-
 LengthUnit: TypeAlias = Literal[
     "em", "ex", "px", "in", "cm", "mm", "pt", "pc", "%"
 ]
@@ -40,17 +37,17 @@ class Length(serialize.CustomSerializable):
 
     @override
     def serialize(self) -> str:
-        value = serialize.format_number(self.value)
+        value = serialize.serialize(self.value)
         return f"{value}{self.unit or ''}"
 
 
 @lark.v_args(inline=True)
-class Transformer(lark.Transformer[object, Length]):
+class _Transformer(lark.Transformer[object, Length]):
     number = float
     length = Length
 
 
 LengthType: TypeAlias = Annotated[
     Length,
-    utils.get_validator(grammar="length.lark", transformer=Transformer()),
+    utils.get_validator(grammar="length.lark", transformer=_Transformer()),
 ]

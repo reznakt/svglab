@@ -2,11 +2,11 @@ from svglab import models
 from svglab.elements import attrtypes
 
 
-class AttrBase(models.BaseModel):
+class _AttrBase(models.BaseModel):
     pass
 
 
-class Common(AttrBase):
+class Common(_AttrBase):
     """Common attributes shared by all SVG elements."""
 
     id: models.Attr[attrtypes.Id] = None
@@ -15,38 +15,38 @@ class Common(AttrBase):
     xml_space: models.Attr[attrtypes.XmlSpace] = None
 
 
-class Points(AttrBase):
+class Points(_AttrBase):
     points: models.Attr[attrtypes.Points] = None
 
 
-class CenterPoints(AttrBase):
+class CenterPoints(_AttrBase):
     cx: models.Attr[attrtypes.Cx] = None
     cy: models.Attr[attrtypes.Cy] = None
 
 
-class WidthHeight(AttrBase):
+class WidthHeight(_AttrBase):
     width: models.Attr[attrtypes.Width] = None
     height: models.Attr[attrtypes.Height] = None
 
 
-class PathData(AttrBase):
+class PathData(_AttrBase):
     d: models.Attr[attrtypes.D] = None
 
 
-class Radius(AttrBase):
+class Radius(_AttrBase):
     r: models.Attr[attrtypes.R] = None
 
 
-class RadiusXY(AttrBase):
+class RadiusXY(_AttrBase):
     rx: models.Attr[attrtypes.Rx] = None
     ry: models.Attr[attrtypes.Ry] = None
 
 
-class Transform(AttrBase):
+class Transform(_AttrBase):
     transform: models.Attr[attrtypes.Transform] = None
 
 
-class Presentation(AttrBase):
+class Presentation(_AttrBase):
     opacity: models.Attr[attrtypes.Opacity] = None
     fill: models.Attr[attrtypes.Fill] = None
     fill_opacity: models.Attr[attrtypes.FillOpacity] = None

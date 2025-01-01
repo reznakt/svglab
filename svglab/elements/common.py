@@ -15,12 +15,10 @@ from svglab import attrs, errors, models, serialize, utils
 from svglab.elements import names
 
 
-__all__ = ["Element", "PairedTag", "Tag", "TextElement", "tag_name"]
-
 _T = TypeVar("_T")
 _T_tag = TypeVar("_T_tag", bound="Tag")
 
-EMPTY_PARAM: Final = object()
+_EMPTY_PARAM: Final = object()
 """A sentinel value for an empty parameter."""
 
 
@@ -44,7 +42,7 @@ def tag_name(tag: Tag | type[Tag], /) -> names.TagName:
     return names.TAG_NAME_TO_NORMALIZED.inverse[tag_cls.__name__]
 
 
-def match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
+def _match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
     """Check if a tag matches the given search criteria.
 
     Args:
@@ -57,11 +55,11 @@ def match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
     Examples:
     >>> from svglab import Rect
     >>> rect = Rect()
-    >>> match_tag(rect, search="rect")
+    >>> _match_tag(rect, search="rect")
     True
-    >>> match_tag(rect, search=Rect)
+    >>> _match_tag(rect, search=Rect)
     True
-    >>> match_tag(rect, search="circle")
+    >>> _match_tag(rect, search="circle")
     False
 
     """
@@ -422,7 +420,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
         """
         for child in self.descendants if recursive else self.children:
             if isinstance(child, Tag) and any(
-                match_tag(child, search=tag) for tag in tags
+                _match_tag(child, search=tag) for tag in tags
             ):
                 yield child
 
@@ -441,7 +439,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
         self,
         *tags: type[_T_tag],
         recursive: bool = True,
-        default: _T = EMPTY_PARAM,
+        default: _T = _EMPTY_PARAM,
     ) -> _T_tag | _T: ...
 
     @overload
@@ -449,14 +447,14 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
         self,
         *tags: type[Tag] | names.TagName,
         recursive: bool = True,
-        default: _T = EMPTY_PARAM,
+        default: _T = _EMPTY_PARAM,
     ) -> Tag | _T: ...
 
     def find(
         self,
         *tags: type[Tag] | names.TagName,
         recursive: bool = True,
-        default: _T = EMPTY_PARAM,
+        default: _T = _EMPTY_PARAM,
     ) -> Tag | _T:
         """Find the first tag that matches the given search criteria.
 
@@ -490,7 +488,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
         try:
             return next(self.find_all(*tags, recursive=recursive))
         except StopIteration as e:
-            if default is not EMPTY_PARAM:
+            if default is not _EMPTY_PARAM:
                 return default
 
             msg = f"Unable to find tag by search criteria: {tags}"

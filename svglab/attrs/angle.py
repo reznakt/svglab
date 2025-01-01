@@ -10,9 +10,6 @@ from svglab import serialize
 from svglab.attrs import utils
 
 
-__all__ = ["Angle", "AngleType", "AngleUnit"]
-
-
 AngleUnit: TypeAlias = Literal["deg", "grad", "rad"]
 
 
@@ -32,17 +29,17 @@ class Angle(serialize.CustomSerializable):
 
     @override
     def serialize(self) -> str:
-        value = serialize.format_number(self.value)
+        value = serialize.serialize(self.value)
         return f"{value}{self.unit or ''}"
 
 
 @lark.v_args(inline=True)
-class Transformer(lark.Transformer[object, Angle]):
+class _Transformer(lark.Transformer[object, Angle]):
     number = float
     angle = Angle
 
 
 AngleType: TypeAlias = Annotated[
     Angle,
-    utils.get_validator(grammar="angle.lark", transformer=Transformer()),
+    utils.get_validator(grammar="angle.lark", transformer=_Transformer()),
 ]
