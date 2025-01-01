@@ -12,7 +12,7 @@ import pydantic
 from typing_extensions import Self, override
 
 from svglab import attrparse, errors, models, serialize, utils
-from svglab.elements import names
+from svglab.elements import names, traits
 
 
 _T = TypeVar("_T")
@@ -132,7 +132,7 @@ class TextElement(Element, metaclass=abc.ABCMeta):
         return f"{name}({self.content!r})"
 
 
-class Tag(Element, metaclass=abc.ABCMeta):
+class Tag(traits.Element, Element, metaclass=abc.ABCMeta):
     """A tag.
 
     A tag is an element that has a name and a set of attributes.
@@ -169,7 +169,7 @@ class Tag(Element, metaclass=abc.ABCMeta):
     @pydantic.model_validator(mode="after")
     def __validate_extra(self) -> Tag:  # pyright: ignore[reportUnusedFunction]
         # model_extra cannot be None because extra is set to "allow"
-        assert self.model_extra is not None
+        assert self.model_extra is not None, "model_extra is None"
 
         for key, value in self.model_extra.items():
             if not isinstance(value, str):
@@ -182,20 +182,20 @@ class Tag(Element, metaclass=abc.ABCMeta):
         return self
 
     def __getitem__(self, key: str) -> str:
-        assert self.model_extra is not None
+        assert self.model_extra is not None, "model_extra is None"
         value: str = self.model_extra[key]
         return value
 
     def __setitem__(self, key: str, value: str) -> None:
-        assert self.model_extra is not None
+        assert self.model_extra is not None, "model_extra is None"
         self.model_extra[key] = value
 
     def __delitem__(self, key: str) -> None:
-        assert self.model_extra is not None
+        assert self.model_extra is not None, "model_extra is None"
         del self.model_extra[key]
 
     def extra_attrs(self) -> Mapping[str, str]:
-        assert self.model_extra is not None
+        assert self.model_extra is not None, "model_extra is None"
         return self.model_extra
 
     def standard_attrs(self) -> Mapping[attrparse.AttributeName, object]:
@@ -249,7 +249,7 @@ class Tag(Element, metaclass=abc.ABCMeta):
         return tag
 
 
-class PairedTag(Tag, metaclass=abc.ABCMeta):
+class PairedTag(traits.ContainerElement, Tag, metaclass=abc.ABCMeta):
     """A paired tag.
 
     A paired tag is a tag that can have children.

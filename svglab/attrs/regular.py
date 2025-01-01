@@ -484,6 +484,10 @@ class OnFocusIn(common.Attr):
     on_focus_in: models.Attr[types.Anything] = None
 
 
+class OnFocusOut(common.Attr):
+    on_focus_out: models.Attr[types.Anything] = None
+
+
 class OnLoad(common.Attr):
     on_load: models.Attr[types.Anything] = None
 

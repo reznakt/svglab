@@ -5,408 +5,396 @@ from typing import final, overload
 
 from svglab import models, serialize, utils
 from svglab.attrs import groups, presentation, regular
-from svglab.elements import common
+from svglab.elements import common, traits
 
 
 # ! WARNING: `PairedTag` and `Tag` must always go last in the inheritance list
 
 
 @final
-class A(groups.Common, regular.Transform, common.PairedTag):
+class A(regular.Transform, common.PairedTag):
     pass
 
 
 @final
-class AltGlyph(groups.Common, groups.CommonPresentation, common.Tag):
+class AltGlyph(
+    traits.TextContentElement, traits.TextContentChildElement, common.Tag
+):
     pass
 
 
 @final
-class AltGlyphDef(groups.Common, common.Tag):
+class AltGlyphDef(common.Tag):
     pass
 
 
 @final
-class AltGlyphItem(groups.Common, common.Tag):
+class AltGlyphItem(common.Tag):
     pass
 
 
 @final
-class Animate(groups.Common, common.Tag):
+class Animate(traits.AnimationElement, common.Tag):
     pass
 
 
 @final
-class AnimateColor(groups.Common, common.Tag):
+class AnimateColor(traits.AnimationElement, common.Tag):
     pass
 
 
 @final
-class AnimateMotion(groups.Common, common.Tag):
+class AnimateMotion(traits.AnimationElement, common.Tag):
     pass
 
 
 @final
-class AnimateTransform(groups.Common, common.Tag):
+class AnimateTransform(traits.AnimationElement, common.Tag):
     pass
 
 
 @final
 class Circle(
-    groups.Common,
-    groups.CommonPresentation,
     groups.CxCy,
     groups.RxRy,
     regular.Transform,
+    traits.BasicShape,
     common.Tag,
 ):
     pass
 
 
 @final
-class ClipPath(groups.Common, regular.Transform, common.Tag):
+class ClipPath(regular.Transform, common.Tag):
     pass
 
 
 @final
-class ColorProfile(groups.Common, common.Tag):
+class ColorProfile(common.Tag):
     pass
 
 
 @final
-class Cursor(groups.Common, common.Tag):
+class Cursor(common.Tag):
     pass
 
 
 @final
-class Defs(groups.Common, regular.Transform, common.PairedTag):
+class Defs(regular.Transform, traits.StructuralElement, common.PairedTag):
     pass
 
 
 @final
-class Desc(groups.Common, common.Tag):
+class Desc(traits.DescriptiveElement, common.Tag):
     pass
 
 
 @final
 class Ellipse(
-    groups.Common,
-    groups.CommonPresentation,
     groups.CxCy,
     groups.RxRy,
     regular.Transform,
+    traits.BasicShape,
     common.Tag,
 ):
     pass
 
 
 @final
-class FeBlend(groups.Common, common.Tag):
+class FeBlend(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeColorMatrix(groups.Common, common.Tag):
+class FeColorMatrix(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeComponentTransfer(groups.Common, common.Tag):
+class FeComponentTransfer(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeComposite(groups.Common, common.Tag):
+class FeComposite(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeConvolveMatrix(groups.Common, common.Tag):
+class FeConvolveMatrix(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeDiffuseLighting(groups.Common, common.Tag):
+class FeDiffuseLighting(common.Tag):
     pass
 
 
 @final
-class FeDisplacementMap(groups.Common, common.Tag):
+class FeDisplacementMap(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeDistantLight(groups.Common, common.Tag):
+class FeDistantLight(traits.LightSourceElement, common.Tag):
     pass
 
 
 @final
-class FeFlood(groups.Common, common.Tag):
+class FeFlood(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeFuncA(groups.Common, common.Tag):
+class FeFuncA(common.Tag):
     pass
 
 
 @final
-class FeFuncB(groups.Common, common.Tag):
+class FeFuncB(common.Tag):
     pass
 
 
 @final
-class FeFuncG(groups.Common, common.Tag):
+class FeFuncG(common.Tag):
     pass
 
 
 @final
-class FeFuncR(groups.Common, common.Tag):
+class FeFuncR(common.Tag):
     pass
 
 
 @final
-class FeGaussianBlur(groups.Common, common.Tag):
+class FeGaussianBlur(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeImage(groups.Common, common.Tag):
+class FeImage(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeMerge(groups.Common, common.Tag):
+class FeMerge(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeMergeNode(groups.Common, common.Tag):
+class FeMergeNode(common.Tag):
     pass
 
 
 @final
-class FeMorphology(groups.Common, common.Tag):
+class FeMorphology(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeOffset(groups.Common, common.Tag):
+class FeOffset(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FePointLight(groups.Common, common.Tag):
+class FePointLight(traits.LightSourceElement, common.Tag):
     pass
 
 
 @final
-class FeSpecularLighting(groups.Common, common.Tag):
+class FeSpecularLighting(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeSpotLight(groups.Common, common.Tag):
+class FeSpotLight(traits.LightSourceElement, common.Tag):
     pass
 
 
 @final
-class FeTile(groups.Common, common.Tag):
+class FeTile(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class FeTurbulence(groups.Common, common.Tag):
+class FeTurbulence(traits.FilterPrimitiveElement, common.Tag):
     pass
 
 
 @final
-class Filter(groups.Common, common.Tag):
+class Filter(common.Tag):
     pass
 
 
 @final
-class Font(groups.Common, common.Tag):
+class Font(common.Tag):
     pass
 
 
 @final
-class FontFace(groups.Common, common.Tag):
+class FontFace(common.Tag):
     pass
 
 
 @final
-class FontFaceFormat(groups.Common, common.Tag):
+class FontFaceFormat(common.Tag):
     pass
 
 
 @final
-class FontFaceName(groups.Common, common.Tag):
+class FontFaceName(common.Tag):
     pass
 
 
 @final
-class FontFaceSrc(groups.Common, common.Tag):
+class FontFaceSrc(common.Tag):
     pass
 
 
 @final
-class FontFaceUri(groups.Common, common.Tag):
+class FontFaceUri(common.Tag):
     pass
 
 
 @final
-class ForeignObject(groups.Common, regular.Transform, common.Tag):
+class ForeignObject(regular.Transform, common.Tag):
     pass
 
 
 @final
-class G(groups.Common, regular.Transform, common.PairedTag):
+class G(regular.Transform, traits.StructuralElement, common.PairedTag):
     pass
 
 
 @final
-class Glyph(groups.Common, regular.D, common.PairedTag):
+class Glyph(regular.D, common.PairedTag):
     pass
 
 
 @final
-class GlyphRef(groups.Common, common.Tag):
+class GlyphRef(common.Tag):
     pass
 
 
 @final
-class Hkern(groups.Common, common.Tag):
+class Hkern(common.Tag):
     pass
 
 
 @final
-class Image(groups.Common, regular.Transform, common.Tag):
+class Image(
+    regular.Transform, traits.GraphicsReferencingElement, common.Tag
+):
     pass
 
 
 @final
 class Line(
-    groups.Common,
-    groups.CommonPresentation,
     regular.Transform,
     regular.X1,
     regular.X2,
     regular.Y1,
     regular.Y2,
+    traits.BasicShape,
     common.Tag,
 ):
     pass
 
 
 @final
-class LinearGradient(groups.Common, common.Tag):
+class LinearGradient(traits.GradientElement, common.Tag):
     pass
 
 
 @final
-class Marker(groups.Common, common.PairedTag):
+class Marker(common.PairedTag):
     pass
 
 
 @final
-class Mask(groups.Common, common.PairedTag):
+class Mask(common.PairedTag):
     pass
 
 
 @final
-class Metadata(groups.Common, common.Tag):
+class Metadata(traits.DescriptiveElement, common.Tag):
     pass
 
 
 @final
-class MissingGlyph(
-    groups.Common, regular.D, regular.Transform, common.PairedTag
-):
+class MissingGlyph(regular.D, regular.Transform, common.PairedTag):
     pass
 
 
 @final
-class Mpath(groups.Common, common.Tag):
+class Mpath(common.Tag):
     pass
 
 
 @final
-class Path(
-    groups.Common, regular.D, groups.CommonPresentation, common.Tag
-):
+class Path(regular.D, traits.Shape, common.Tag):
     pass
 
 
 @final
-class Pattern(groups.Common, common.PairedTag):
+class Pattern(common.PairedTag):
     pass
 
 
 @final
 class Polygon(
-    groups.Common,
-    regular.Points,
-    regular.Transform,
-    groups.CommonPresentation,
-    common.Tag,
+    regular.Points, regular.Transform, traits.BasicShape, common.Tag
 ):
     pass
 
 
 @final
 class Polyline(
-    groups.Common,
-    regular.Points,
-    regular.Transform,
-    groups.CommonPresentation,
-    common.Tag,
+    regular.Points, regular.Transform, traits.BasicShape, common.Tag
 ):
     pass
 
 
 @final
-class RadialGradient(groups.Common, common.Tag):
+class RadialGradient(traits.GradientElement, common.Tag):
     pass
 
 
 @final
 class Rect(
-    groups.Common,
-    groups.CommonPresentation,
     groups.RxRy,
     groups.WidthHeight,
     presentation.Color,
     regular.Transform,
     regular.XCoordinate,
     regular.YCoordinate,
+    traits.BasicShape,
     common.Tag,
 ):
     pass
 
 
 @final
-class Script(groups.Common, common.Tag):
+class Script(common.Tag):
     pass
 
 
 @final
-class Set(groups.Common, common.Tag):
+class Set(traits.AnimationElement, common.Tag):
     pass
 
 
 @final
-class Stop(groups.Common, common.Tag):
+class Stop(common.Tag):
     pass
 
 
 @final
-class Style(groups.Common, common.Tag):
+class Style(common.Tag):
     pass
 
 
 @final
-class Svg(groups.Common, groups.WidthHeight, common.PairedTag):
+class Svg(groups.WidthHeight, traits.StructuralElement, common.PairedTag):
     xmlns: models.Attr[str] = "http://www.w3.org/2000/svg"
 
     @overload
@@ -484,52 +472,70 @@ class Svg(groups.Common, groups.WidthHeight, common.PairedTag):
 
 
 @final
-class Switch(groups.Common, regular.Transform, common.PairedTag):
+class Switch(regular.Transform, common.PairedTag):
     pass
 
 
 @final
-class Symbol(groups.Common, common.PairedTag):
+class Symbol(traits.StructuralElement, common.PairedTag):
     pass
 
 
 @final
 class Text(
-    groups.Common, regular.Transform, groups.CommonPresentation, common.Tag
+    regular.Transform,
+    traits.GraphicsElement,
+    traits.TextContentElement,
+    common.Tag,
 ):
     pass
 
 
 @final
-class TextPath(groups.Common, groups.CommonPresentation, common.Tag):
+class TextPath(
+    traits.TextContentElement, traits.TextContentChildElement, common.Tag
+):
     pass
 
 
 @final
-class Title(groups.Common, common.Tag):
+class Title(traits.DescriptiveElement, common.Tag):
     pass
 
 
 @final
-class Tref(groups.Common, groups.CommonPresentation, common.Tag):
+class Tref(
+    traits.TextContentElement, traits.TextContentChildElement, common.Tag
+):
     pass
 
 
 @final
-class Tspan(groups.Common, groups.CommonPresentation, common.Tag):
+class Tspan(
+    traits.TextContentElement,
+    traits.TextContentChildElement,
+    traits.TextContentBlockElement,
+    common.Tag,
+):
     pass
 
 
 @final
-class Use(groups.Common, regular.Transform, common.Tag):
+class Use(
+    regular.Transform,
+    traits.GraphicsElement,
+    traits.StructuralElement,
+    traits.GraphicsReferencingElement,
+    common.Tag,
+):
     pass
 
 
 @final
-class View(groups.Common, common.Tag):
+class View(common.Tag):
     pass
 
 
 @final
-class Vkern(groups.Common, common.Tag):
+class Vkern(common.Tag):
     pass
