@@ -42,6 +42,7 @@ XmlName: TypeAlias = Unparsed
 # basic types that are parsed
 Angle: TypeAlias = attrparse.AngleType
 Anything: TypeAlias = str
+Boolean: TypeAlias = Literal["true", "false"]
 Color: TypeAlias = attrparse.ColorType
 Integer: TypeAlias = int
 Length: TypeAlias = attrparse.LengthType
@@ -52,10 +53,8 @@ TransformList: TypeAlias = attrparse.TransformType
 Character: TypeAlias = Annotated[
     str, pydantic.Field(min_length=1, max_length=1)
 ]
-Miterlimit: TypeAlias = Annotated[Number, pydantic.Field(ge=1)]
 
 # composite types
-Boolean: TypeAlias = Literal["true", "false"]
 Coordinate: TypeAlias = Length
 CursorValue: TypeAlias = (
     FuncIri
@@ -83,6 +82,7 @@ ListOfFeatures: TypeAlias = models.List[Unparsed]
 ListOfNames: TypeAlias = models.List[Name]
 ListOfNumbers: TypeAlias = models.List[Number]
 ListOfStrings: TypeAlias = models.List[Anything]
+Miterlimit: TypeAlias = Annotated[Number, pydantic.Field(ge=1)]
 NumericValue: TypeAlias = Number
 NumberOptionalNumber: TypeAlias = Number | models.Tuple2[Number, Number]
 OpacityValue: TypeAlias = Annotated[
