@@ -1,194 +1,378 @@
-from typing import Literal, TypeAlias
+from typing import Literal
 
 from svglab import models
-from svglab.attrs import types
+from svglab.attrs import common, types
 
 
-AlignmentBaseline: TypeAlias = (
-    types.Auto
-    | types.Inherit
-    | Literal[
-        "baseline",
-        "before-edge",
-        "text-before-edge",
-        "middle",
-        "central",
-        "after-edge",
-        "text-after-edge",
-        "ideographic",
-        "alphabetic",
-        "hanging",
-        "mathematical",
-    ]
-)
-BaselineShift: TypeAlias = (
-    Literal["baseline", "sub", "super"]
-    | types.Percentage
-    | types.Length
-    | types.Inherit
-)
-ClipPath: TypeAlias = types.FuncIri | types.None_ | types.Inherit
-ClipRule: TypeAlias = Literal["nonzero", "evenodd"] | types.Inherit
-Clip: TypeAlias = types.Shape | types.Auto | types.Inherit
-ColorInterpolationFilters: TypeAlias = (
-    types.Auto | Literal["sRGB", "linearRGB"] | types.Inherit
-)
-ColorInterpolation: TypeAlias = (
-    types.Auto | Literal["sRGB", "linearRGB"] | types.Inherit
-)
-ColorProfile: TypeAlias = (
-    types.Auto | Literal["sRGB"] | types.Name | types.Iri | types.Inherit
-)
-ColorRendering: TypeAlias = (
-    types.Auto
-    | Literal["optimizeSpeed", "optimizeQuality"]
-    | types.Inherit
-)
-Color: TypeAlias = types.Color | types.Inherit
-Cursor: TypeAlias = (
-    types.CursorValue | types.Inherit | models.List[types.CursorValue]
-)
-Direction: TypeAlias = Literal["ltr", "rtl"] | types.Inherit
-Display: TypeAlias = (
-    Literal[
-        "block",
-        "compact",
-        "inline-table",
-        "inline",
-        "list-item",
-        "marker",
-        "run-in",
-        "table-caption",
-        "table-cell",
-        "table-column-group",
-        "table-column",
-        "table-footer-group",
-        "table-header-group",
-        "table-row-group",
-        "table-row",
-        "table",
-    ]
-    | types.None_
-    | types.Inherit
-)
-DominantBaseline: TypeAlias = (
-    types.Auto
-    | Literal[
-        "use-script",
-        "no-change",
-        "reset-size",
-        "ideographic",
-        "alphabetic",
-        "hanging",
-        "mathematical",
-        "central",
-        "middle",
-        "text-after-edge",
-        "text-before-edge",
-    ]
-    | types.Inherit
-)
-EnableBackground: TypeAlias = (
-    Literal["accumulate"]
-    | types.Inherit
-    | types.Unparsed  # new [ <x> <y> <width> <height> ]
-)
-FillOpacity: TypeAlias = types.OpacityValue | types.Inherit
-FillRule: TypeAlias = Literal["nonzero", "evenodd"] | types.Inherit
-# TODO: Fill
-Filter: TypeAlias = types.FuncIri | types.None_ | types.Inherit
-FloodColor: TypeAlias = (
-    Literal["currentColor"]
-    | types.Color
-    | types.Inherit
-    | types.Unparsed  # <color> [<icccolor>]
-)
-FloodOpacity: TypeAlias = types.OpacityValue | types.Inherit
-FontSizeAdjust: TypeAlias = types.Number | types.None_ | types.Inherit
-# TODO: font-size
-# TODO: font-stretch
-# TODO: font-style
-# TODO: font-variant
-# TODO: font-weight
-GlyphOrientationHorizontal: TypeAlias = types.Angle | types.Inherit
-GlyphOrientationVertical: TypeAlias = (
-    types.Auto | types.Angle | types.Inherit
-)
-ImageRendering: TypeAlias = (
-    types.Auto
-    | Literal["optimizeSpeed", "optimizeQuality"]
-    | types.Inherit
-)
-Kerning: TypeAlias = types.Auto | types.Length | types.Inherit
-LetterSpacing: TypeAlias = Literal["normal"] | types.Length | types.Inherit
-LightingColor: TypeAlias = (
-    Literal["currentColor"] | types.Color | types.Inherit | types.Unparsed
-)
-MarkerEnd: TypeAlias = types.FuncIri | types.None_ | types.Inherit
-MarkerMid: TypeAlias = types.FuncIri | types.None_ | types.Inherit
-MarkerStart: TypeAlias = types.FuncIri | types.None_ | types.Inherit
-Mask: TypeAlias = types.FuncIri | types.None_ | types.Inherit
-Opacity: TypeAlias = types.OpacityValue | types.Inherit
-Overflow: TypeAlias = (
-    Literal["visible", "hidden", "scroll"] | types.Auto | types.Inherit
-)
-PointerEvents: TypeAlias = (
-    Literal[
-        "visiblePainted",
-        "visibleFill",
-        "visibleStroke",
-        "visible",
-        "painted",
-        "fill",
-        "stroke",
-    ]
-    | types.All
-    | types.None_
-    | types.Inherit
-)
-ShapeRendering: TypeAlias = (
-    types.Auto
-    | Literal["optimizeSpeed", "crispEdges", "geometricPrecision"]
-    | types.Inherit
-)
-StopColor: TypeAlias = (
-    Literal["currentColor"]
-    | types.Inherit
-    | types.Unparsed  # <color> <icccolor>
-)
-StopOpacity: TypeAlias = types.OpacityValue | types.Inherit
-StrokeDasharray: TypeAlias = types.None_ | types.Dasharray | types.Inherit
-StrokeDashoffset: TypeAlias = (
-    types.Percentage | types.Length | types.Inherit
-)
-StrokeLinecap: TypeAlias = (
-    Literal["butt", "round", "square"] | types.Inherit
-)
-StrokeLinejoin: TypeAlias = (
-    Literal["miter", "round", "bevel"] | types.Inherit
-)
-StrokeMiterlimit: TypeAlias = types.Miterlimit | types.Inherit
-StrokeOpacity: TypeAlias = types.OpacityValue | types.Inherit
-StrokeWidth: TypeAlias = types.Percentage | types.Length | types.Inherit
-Stroke: TypeAlias = types.Paint
-TextAnchor: TypeAlias = Literal["start", "middle", "end"] | types.Inherit
-TextDecoration: TypeAlias = (
-    types.None_
-    | Literal["underline", "overline", "line-through", "blink"]
-    | types.Inherit
-)
-TextRendering: TypeAlias = (
-    types.Auto
-    | Literal["optimizeSpeed", "optimizeLegibility", "geometricPrecision"]
-    | types.Inherit
-)
-UnicodeBidi: TypeAlias = (
-    Literal["normal", "embed", "bidi-override"] | types.Inherit
-)
-Visibility: TypeAlias = (
-    Literal["visible", "hidden", "collapse"] | types.Inherit
-)
-WordSpacing: TypeAlias = Literal["normal"] | types.Length | types.Inherit
-WritingMode: TypeAlias = (
-    Literal["lr-tb", "rl-tb", "tb-rl", "lr", "rl", "tb"] | types.Inherit
-)
+class AlignmentBaseline(common.Attr):
+    alignment_baseline: models.Attr[
+        types.Auto
+        | types.Inherit
+        | Literal[
+            "baseline",
+            "before-edge",
+            "text-before-edge",
+            "middle",
+            "central",
+            "after-edge",
+            "text-after-edge",
+            "ideographic",
+            "alphabetic",
+            "hanging",
+            "mathematical",
+        ]
+    ] = None
+
+
+class BaselineShift(common.Attr):
+    baseline_shift: models.Attr[
+        Literal["baseline", "sub", "super"]
+        | types.Percentage
+        | types.Length
+        | types.Inherit
+    ] = None
+
+
+class ClipPath(common.Attr):
+    clip_path: models.Attr[types.FuncIri | types.None_ | types.Inherit] = (
+        None
+    )
+
+
+class ClipRule(common.Attr):
+    clip_rule: models.Attr[
+        Literal["nonzero", "evenodd"] | types.Inherit
+    ] = None
+
+
+class Clip(common.Attr):
+    clip: models.Attr[types.Shape | types.Auto | types.Inherit] = None
+
+
+class ColorInterpolationFilters(common.Attr):
+    color_interpolation_filters: models.Attr[
+        types.Auto | Literal["sRGB", "linearRGB"] | types.Inherit
+    ] = None
+
+
+class ColorInterpolation(common.Attr):
+    color_interpolation: models.Attr[
+        types.Auto | Literal["sRGB", "linearRGB"] | types.Inherit
+    ] = None
+
+
+class ColorProfile(common.Attr):
+    color_profile: models.Attr[
+        types.Auto
+        | Literal["sRGB"]
+        | types.Name
+        | types.Iri
+        | types.Inherit
+    ] = None
+
+
+class ColorRendering(common.Attr):
+    color_rendering: models.Attr[
+        types.Auto
+        | Literal["optimizeSpeed", "optimizeQuality"]
+        | types.Inherit
+    ] = None
+
+
+class Color(common.Attr):
+    color: models.Attr[types.Color | types.Inherit] = None
+
+
+class Cursor(common.Attr):
+    cursor: models.Attr[
+        types.CursorValue | types.Inherit | models.List[types.CursorValue]
+    ] = None
+
+
+class Direction(common.Attr):
+    direction: models.Attr[Literal["ltr", "rtl"] | types.Inherit] = None
+
+
+class Display(common.Attr):
+    display: models.Attr[
+        Literal[
+            "block",
+            "compact",
+            "inline-table",
+            "inline",
+            "list-item",
+            "marker",
+            "run-in",
+            "table-caption",
+            "table-cell",
+            "table-column-group",
+            "table-column",
+            "table-footer-group",
+            "table-header-group",
+            "table-row-group",
+            "table-row",
+            "table",
+        ]
+        | types.None_
+        | types.Inherit
+    ] = None
+
+
+class DominantBaseline(common.Attr):
+    dominant_baseline: models.Attr[
+        types.Auto
+        | Literal[
+            "use-script",
+            "no-change",
+            "reset-size",
+            "ideographic",
+            "alphabetic",
+            "hanging",
+            "mathematical",
+            "central",
+            "middle",
+            "text-after-edge",
+            "text-before-edge",
+        ]
+        | types.Inherit
+    ] = None
+
+
+class EnableBackground(common.Attr):
+    enable_background: models.Attr[
+        Literal["accumulate"]
+        | types.Inherit
+        | types.Unparsed  # new [ <x> <y> <width> <height> ]
+    ] = None
+
+
+class FillOpacity(common.Attr):
+    fill_opacity: models.Attr[types.OpacityValue | types.Inherit] = None
+
+
+class FillRule(common.Attr):
+    fill_rule: models.Attr[
+        Literal["nonzero", "evenodd"] | types.Inherit
+    ] = None
+
+
+class Filter(common.Attr):
+    filter: models.Attr[types.FuncIri | types.None_ | types.Inherit] = None
+
+
+class FloodColor(common.Attr):
+    flood_color: models.Attr[
+        Literal["currentColor"]
+        | types.Color
+        | types.Inherit
+        | types.Unparsed  # <color> [<icccolor>]
+    ] = None
+
+
+class FloodOpacity(common.Attr):
+    flood_opacity: models.Attr[types.OpacityValue | types.Inherit] = None
+
+
+class FontSizeAdjust(common.Attr):
+    font_size_adjust: models.Attr[
+        types.Number | types.None_ | types.Inherit
+    ] = None
+
+
+class GlyphOrientationHorizontal(common.Attr):
+    glyph_orientation_horizontal: models.Attr[
+        types.Angle | types.Inherit
+    ] = None
+
+
+class GlyphOrientationVertical(common.Attr):
+    glyph_orientation_vertical: models.Attr[
+        types.Auto | types.Angle | types.Inherit
+    ] = None
+
+
+class ImageRendering(common.Attr):
+    image_rendering: models.Attr[
+        types.Auto
+        | Literal["optimizeSpeed", "optimizeQuality"]
+        | types.Inherit
+    ] = None
+
+
+class Kerning(common.Attr):
+    kerning: models.Attr[types.Auto | types.Length | types.Inherit] = None
+
+
+class LetterSpacing(common.Attr):
+    letter_spacing: models.Attr[
+        Literal["normal"] | types.Length | types.Inherit
+    ] = None
+
+
+class LightingColor(common.Attr):
+    lighting_color: models.Attr[
+        Literal["currentColor"]
+        | types.Color
+        | types.Inherit
+        | types.Unparsed
+    ] = None
+
+
+class MarkerEnd(common.Attr):
+    marker_end: models.Attr[
+        types.FuncIri | types.None_ | types.Inherit
+    ] = None
+
+
+class MarkerMid(common.Attr):
+    marker_mid: models.Attr[
+        types.FuncIri | types.None_ | types.Inherit
+    ] = None
+
+
+class MarkerStart(common.Attr):
+    marker_start: models.Attr[
+        types.FuncIri | types.None_ | types.Inherit
+    ] = None
+
+
+class Mask(common.Attr):
+    mask: models.Attr[types.FuncIri | types.None_ | types.Inherit] = None
+
+
+class Opacity(common.Attr):
+    opacity: models.Attr[types.OpacityValue | types.Inherit] = None
+
+
+class Overflow(common.Attr):
+    overflow: models.Attr[
+        Literal["visible", "hidden", "scroll"] | types.Auto | types.Inherit
+    ] = None
+
+
+class PointerEvents(common.Attr):
+    pointer_events: models.Attr[
+        Literal[
+            "visiblePainted",
+            "visibleFill",
+            "visibleStroke",
+            "visible",
+            "painted",
+            "fill",
+            "stroke",
+        ]
+        | types.All
+        | types.None_
+        | types.Inherit
+    ] = None
+
+
+class ShapeRendering(common.Attr):
+    shape_rendering: models.Attr[
+        types.Auto
+        | Literal["optimizeSpeed", "crispEdges", "geometricPrecision"]
+        | types.Inherit
+    ] = None
+
+
+class StopColor(common.Attr):
+    stop_color: models.Attr[
+        Literal["currentColor"]
+        | types.Inherit
+        | types.Unparsed  # <color> <icccolor>
+    ] = None
+
+
+class StopOpacity(common.Attr):
+    stop_opacity: models.Attr[types.OpacityValue | types.Inherit] = None
+
+
+class StrokeDasharray(common.Attr):
+    stroke_dasharray: models.Attr[
+        types.None_ | types.Dasharray | types.Inherit
+    ] = None
+
+
+class StrokeDashoffset(common.Attr):
+    stroke_dashoffset: models.Attr[
+        types.Percentage | types.Length | types.Inherit
+    ] = None
+
+
+class StrokeLinecap(common.Attr):
+    stroke_linecap: models.Attr[
+        Literal["butt", "round", "square"] | types.Inherit
+    ] = None
+
+
+class StrokeLinejoin(common.Attr):
+    stroke_linejoin: models.Attr[
+        Literal["miter", "round", "bevel"] | types.Inherit
+    ] = None
+
+
+class StrokeMiterlimit(common.Attr):
+    stroke_miterlimit: models.Attr[types.Miterlimit | types.Inherit] = None
+
+
+class StrokeOpacity(common.Attr):
+    stroke_opacity: models.Attr[types.OpacityValue | types.Inherit] = None
+
+
+class StrokeWidth(common.Attr):
+    stroke_width: models.Attr[
+        types.Percentage | types.Length | types.Inherit
+    ] = None
+
+
+class Stroke(common.Attr):
+    stroke: models.Attr[types.Paint] = None
+
+
+class TextAnchor(common.Attr):
+    text_anchor: models.Attr[
+        Literal["start", "middle", "end"] | types.Inherit
+    ] = None
+
+
+class TextDecoration(common.Attr):
+    text_decoration: models.Attr[
+        types.None_
+        | Literal["underline", "overline", "line-through", "blink"]
+        | types.Inherit
+    ] = None
+
+
+class TextRendering(common.Attr):
+    text_rendering: models.Attr[
+        types.Auto
+        | Literal[
+            "optimizeSpeed", "optimizeLegibility", "geometricPrecision"
+        ]
+        | types.Inherit
+    ] = None
+
+
+class UnicodeBidi(common.Attr):
+    unicode_bidi: models.Attr[
+        Literal["normal", "embed", "bidi-override"] | types.Inherit
+    ] = None
+
+
+class Visibility(common.Attr):
+    visibility: models.Attr[
+        Literal["visible", "hidden", "collapse"] | types.Inherit
+    ] = None
+
+
+class WordSpacing(common.Attr):
+    word_spacing: models.Attr[
+        Literal["normal"] | types.Length | types.Inherit
+    ] = None
+
+
+class WritingMode(common.Attr):
+    writing_mode: models.Attr[
+        Literal["lr-tb", "rl-tb", "tb-rl", "lr", "rl", "tb"]
+        | types.Inherit
+    ] = None

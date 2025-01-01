@@ -12,12 +12,12 @@ from svglab.elements import common
 
 
 @final
-class A(groups.Common, groups.Transform, common.PairedTag):
+class A(groups.Common, regular.Transform, common.PairedTag):
     pass
 
 
 @final
-class AltGlyph(groups.Common, groups.Presentation, common.Tag):
+class AltGlyph(groups.Common, groups.CommonPresentation, common.Tag):
     pass
 
 
@@ -53,18 +53,18 @@ class AnimateTransform(groups.Common, common.Tag):
 
 @final
 class Circle(
-    groups.CenterPoints,
     groups.Common,
-    groups.Presentation,
-    groups.Radius,
-    groups.Transform,
+    groups.CommonPresentation,
+    groups.CxCy,
+    groups.RxRy,
+    regular.Transform,
     common.Tag,
 ):
     pass
 
 
 @final
-class ClipPath(groups.Common, groups.Transform, common.Tag):
+class ClipPath(groups.Common, regular.Transform, common.Tag):
     pass
 
 
@@ -79,7 +79,7 @@ class Cursor(groups.Common, common.Tag):
 
 
 @final
-class Defs(groups.Common, groups.Transform, common.PairedTag):
+class Defs(groups.Common, regular.Transform, common.PairedTag):
     pass
 
 
@@ -90,14 +90,14 @@ class Desc(groups.Common, common.Tag):
 
 @final
 class Ellipse(
-    groups.CenterPoints,
     groups.Common,
-    groups.Presentation,
-    groups.Transform,
+    groups.CommonPresentation,
+    groups.CxCy,
+    groups.RxRy,
+    regular.Transform,
     common.Tag,
 ):
-    rx: models.Attr[regular.Rx] = None
-    ry: models.Attr[regular.Ry] = None
+    pass
 
 
 @final
@@ -256,17 +256,17 @@ class FontFaceUri(groups.Common, common.Tag):
 
 
 @final
-class ForeignObject(groups.Common, groups.Transform, common.Tag):
+class ForeignObject(groups.Common, regular.Transform, common.Tag):
     pass
 
 
 @final
-class G(groups.Common, groups.Transform, common.PairedTag):
+class G(groups.Common, regular.Transform, common.PairedTag):
     pass
 
 
 @final
-class Glyph(groups.Common, groups.PathData, common.PairedTag):
+class Glyph(groups.Common, regular.D, common.PairedTag):
     pass
 
 
@@ -281,18 +281,22 @@ class Hkern(groups.Common, common.Tag):
 
 
 @final
-class Image(groups.Common, groups.Transform, common.Tag):
+class Image(groups.Common, regular.Transform, common.Tag):
     pass
 
 
 @final
 class Line(
-    groups.Common, groups.Transform, groups.Presentation, common.Tag
+    groups.Common,
+    groups.CommonPresentation,
+    regular.Transform,
+    regular.X1,
+    regular.X2,
+    regular.Y1,
+    regular.Y2,
+    common.Tag,
 ):
-    x1: models.Attr[regular.X1] = None
-    y1: models.Attr[regular.Y1] = None
-    x2: models.Attr[regular.X2] = None
-    y2: models.Attr[regular.Y2] = None
+    pass
 
 
 @final
@@ -317,7 +321,7 @@ class Metadata(groups.Common, common.Tag):
 
 @final
 class MissingGlyph(
-    groups.Common, groups.PathData, groups.Transform, common.PairedTag
+    groups.Common, regular.D, regular.Transform, common.PairedTag
 ):
     pass
 
@@ -329,7 +333,7 @@ class Mpath(groups.Common, common.Tag):
 
 @final
 class Path(
-    groups.Common, groups.PathData, groups.Presentation, common.Tag
+    groups.Common, regular.D, groups.CommonPresentation, common.Tag
 ):
     pass
 
@@ -342,9 +346,9 @@ class Pattern(groups.Common, common.PairedTag):
 @final
 class Polygon(
     groups.Common,
-    groups.Points,
-    groups.Transform,
-    groups.Presentation,
+    regular.Points,
+    regular.Transform,
+    groups.CommonPresentation,
     common.Tag,
 ):
     pass
@@ -353,9 +357,9 @@ class Polygon(
 @final
 class Polyline(
     groups.Common,
-    groups.Points,
-    groups.Transform,
-    groups.Presentation,
+    regular.Points,
+    regular.Transform,
+    groups.CommonPresentation,
     common.Tag,
 ):
     pass
@@ -369,15 +373,16 @@ class RadialGradient(groups.Common, common.Tag):
 @final
 class Rect(
     groups.Common,
-    groups.Presentation,
-    groups.RadiusXY,
-    groups.Transform,
+    groups.CommonPresentation,
+    groups.RxRy,
     groups.WidthHeight,
+    presentation.Color,
+    regular.Transform,
+    regular.X,
+    regular.Y,
     common.Tag,
 ):
-    x: models.Attr[regular.X] = None
-    y: models.Attr[regular.Y] = None
-    color: models.Attr[presentation.Color] = None
+    pass
 
 
 @final
@@ -479,7 +484,7 @@ class Svg(groups.Common, groups.WidthHeight, common.PairedTag):
 
 
 @final
-class Switch(groups.Common, groups.Transform, common.PairedTag):
+class Switch(groups.Common, regular.Transform, common.PairedTag):
     pass
 
 
@@ -490,13 +495,13 @@ class Symbol(groups.Common, common.PairedTag):
 
 @final
 class Text(
-    groups.Common, groups.Transform, groups.Presentation, common.Tag
+    groups.Common, regular.Transform, groups.CommonPresentation, common.Tag
 ):
     pass
 
 
 @final
-class TextPath(groups.Common, groups.Presentation, common.Tag):
+class TextPath(groups.Common, groups.CommonPresentation, common.Tag):
     pass
 
 
@@ -506,17 +511,17 @@ class Title(groups.Common, common.Tag):
 
 
 @final
-class Tref(groups.Common, groups.Presentation, common.Tag):
+class Tref(groups.Common, groups.CommonPresentation, common.Tag):
     pass
 
 
 @final
-class Tspan(groups.Common, groups.Presentation, common.Tag):
+class Tspan(groups.Common, groups.CommonPresentation, common.Tag):
     pass
 
 
 @final
-class Use(groups.Common, groups.Transform, common.Tag):
+class Use(groups.Common, regular.Transform, common.Tag):
     pass
 
 
