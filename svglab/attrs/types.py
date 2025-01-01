@@ -40,19 +40,29 @@ Urange: TypeAlias = Unparsed
 XmlName: TypeAlias = Unparsed
 
 # basic types that are parsed
+AbsoluteSize: TypeAlias = Literal[
+    "xx-small",
+    "x-small",
+    "small",
+    "medium",
+    "large",
+    "x-large",
+    "xx-large",
+]
 Angle: TypeAlias = attrparse.AngleType
 Anything: TypeAlias = str
 Boolean: TypeAlias = Literal["true", "false"]
+Character: TypeAlias = Annotated[
+    str, pydantic.Field(min_length=1, max_length=1)
+]
 Color: TypeAlias = attrparse.ColorType
 Integer: TypeAlias = int
 Length: TypeAlias = attrparse.LengthType
 ListOfPoints: TypeAlias = attrparse.PointsType
 Number: TypeAlias = float
 PathData: TypeAlias = attrparse.DType
+RelativeSize: TypeAlias = Literal["smaller", "larger"]
 TransformList: TypeAlias = attrparse.TransformType
-Character: TypeAlias = Annotated[
-    str, pydantic.Field(min_length=1, max_length=1)
-]
 
 # composite types
 Coordinate: TypeAlias = Length

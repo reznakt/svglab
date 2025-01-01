@@ -21,7 +21,7 @@ class RxRy(regular.Rx, regular.Ry):
 
 class CommonPresentation(
     presentation.Opacity,
-    regular.Fill,  # TODO: Change to presentation.Fill
+    presentation.Fill,
     presentation.FillOpacity,
     presentation.Stroke,
     presentation.StrokeOpacity,

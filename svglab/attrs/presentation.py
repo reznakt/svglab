@@ -156,6 +156,10 @@ class FillRule(common.Attr):
     ] = None
 
 
+class Fill(common.Attr):
+    fill: models.Attr[types.Paint] = None
+
+
 class Filter(common.Attr):
     filter: models.Attr[types.FuncIri | types.None_ | types.Inherit] = None
 
@@ -176,6 +180,68 @@ class FloodOpacity(common.Attr):
 class FontSizeAdjust(common.Attr):
     font_size_adjust: models.Attr[
         types.Number | types.None_ | types.Inherit
+    ] = None
+
+
+class FontSize(common.Attr):
+    font_size: models.Attr[
+        types.AbsoluteSize
+        | types.RelativeSize
+        | types.Length
+        | types.Percentage
+        | types.Inherit
+    ] = None
+
+
+class FontStretch(common.Attr):
+    font_stretch: models.Attr[
+        Literal[
+            "normal",
+            "wider",
+            "narrower",
+            "ultra-condensed",
+            "extra-condensed",
+            "condensed",
+            "semi-condensed",
+            "semi-expanded",
+            "expanded",
+            "extra-expanded",
+            "ultra-expanded",
+        ]
+        | types.Inherit
+    ] = None
+
+
+class FontStyle(common.Attr):
+    font_style: models.Attr[
+        Literal["normal", "italic", "oblique"] | types.Inherit
+    ] = None
+
+
+class FontVariant(common.Attr):
+    font_variant: models.Attr[
+        Literal["normal", "small-caps"] | types.Inherit
+    ] = None
+
+
+class FontWeight(common.Attr):
+    font_weight: models.Attr[
+        Literal[
+            "normal",
+            "bold",
+            "bolder",
+            "lighter",
+            100,
+            200,
+            300,
+            400,
+            500,
+            600,
+            700,
+            800,
+            900,
+        ]
+        | types.Inherit
     ] = None
 
 
