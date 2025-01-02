@@ -85,7 +85,7 @@ graph TD
   Tag --> Circle
   Tag --> etc2[...]
 
-  TextElement:::abc --> Text
+  TextElement:::abc --> RawText
   TextElement --> Comment
   TextElement --> CData
 
