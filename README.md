@@ -59,10 +59,10 @@
   - scientific notation for small/large numbers
   - and many more...
 - Strong type safety:
-  - One class per distinct SVG element
-  - Typed attributes
-  - Runtime validation thanks to [Pydantic](https://pypi.org/project/pydantic/)
-- Support for all [BeautifulSoup4](https://pypi.org/project/beautifulsoup4/) parsers (e.g., `html.parser`, `lxml`, `html5lib`)
+  - one class per distinct SVG element
+  - typed attributes
+  - runtime validation thanks to [pydantic](https://pypi.org/project/pydantic/)
+- Support for all [beautifulsoup4](https://pypi.org/project/beautifulsoup4/) parsers (e.g., `html.parser`, `lxml`, `html5lib`)
 
 ```mermaid
 ---
@@ -106,8 +106,17 @@ graph TD
 
 ### Installation
 
+**From PyPi**:
 ```sh
 pip install svglab
+```
+**From source**:
+```sh
+# Via HTTPS
+pip install git+https://github.com/reznakt/svglab.git
+
+# Via SSH
+pip install git+ssh://git@github.com/reznakt/svglab.git
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
