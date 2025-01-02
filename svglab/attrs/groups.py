@@ -1,4 +1,4 @@
-from svglab.attrs import presentation, regular
+from svglab.attrs import common, presentation, regular
 
 
 class Core(regular.Id, regular.XmlBase, regular.XmlLang, regular.XmlSpace):
@@ -6,6 +6,11 @@ class Core(regular.Id, regular.XmlBase, regular.XmlLang, regular.XmlSpace):
 
 
 class Presentation(
+    common.Fill,
+    common.FontStretch,
+    common.FontStyle,
+    common.FontVariant,
+    common.FontWeight,
     presentation.BaselineShift,
     presentation.ClipRule,
     presentation.Color,
@@ -17,15 +22,10 @@ class Presentation(
     presentation.Direction,
     presentation.Display,
     presentation.DominantBaseline,
-    presentation.Fill,
     presentation.FillOpacity,
     presentation.FillRule,
     presentation.FontSize,
     presentation.FontSizeAdjust,
-    presentation.FontStretch,
-    presentation.FontStyle,
-    presentation.FontVariant,
-    presentation.FontWeight,
     presentation.GlyphOrientationHorizontal,
     presentation.GlyphOrientationVertical,
     presentation.ImageRendering,
@@ -63,6 +63,42 @@ class Presentation(
 class AnimationEvents(
     regular.OnBegin, regular.OnEnd, regular.OnLoad, regular.OnRepeat
 ):
+    pass
+
+
+class AnimationAttributeTarget(
+    regular.AttributeName, regular.AttributeType
+):
+    pass
+
+
+class AnimationTiming(
+    regular.Begin,
+    regular.Dur,
+    regular.End,
+    common.Fill,
+    regular.Max,
+    regular.Min,
+    regular.RepeatCount,
+    regular.RepeatDur,
+    regular.Restart,
+):
+    pass
+
+
+class AnimationValue(
+    regular.By,
+    regular.CalcMode,
+    regular.From,
+    regular.KeySplines,
+    regular.KeyTimes,
+    regular.To,
+    regular.ValuesList,
+):
+    pass
+
+
+class AnimationAddition(regular.Accumulate, regular.Additive):
     pass
 
 
@@ -122,5 +158,17 @@ class Xlink(
     regular.XlinkShow,
     regular.XlinkTitle,
     regular.XlinkType,
+):
+    pass
+
+
+class TransferFunction(
+    regular.Amplitude,
+    regular.Exponent,
+    regular.Intercept,
+    regular.OffsetNumber,
+    regular.Slope,
+    regular.TableValues,
+    regular.TypeFeFunc,
 ):
     pass

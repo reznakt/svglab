@@ -21,7 +21,9 @@ class BasicShape(Shape):
     pass
 
 
-class AnimationElement(groups.AnimationEvents, Element):
+class AnimationElement(
+    groups.AnimationEvents, groups.AnimationTiming, Element
+):
     pass
 
 
@@ -36,7 +38,7 @@ class DescriptiveElement(Element):
     pass
 
 
-class FilterPrimitiveElement(Element):
+class FilterPrimitiveElement(groups.FilterPrimitives, Element):
     pass
 
 
@@ -56,7 +58,7 @@ class StructuralElement(Element):
     pass
 
 
-class TextContentElement(Element):
+class TextContentElement(GraphicsElement):
     pass
 
 

@@ -170,10 +170,6 @@ class ExternalResourcesRequired(common.Attr):
     externalResourcesRequired: models.Attr[types.Boolean] = None
 
 
-class Fill(common.Attr):
-    fill: models.Attr[Literal["freeze", "remove"]] = None
-
-
 class FilterRes(common.Attr):
     filterRes: models.Attr[types.NumberOptionalNumber] = None
 
@@ -187,58 +183,6 @@ class FilterUnits(common.Attr):
 class FontFamily(common.Attr):
     font_family: models.Attr[
         models.List[types.FamilyName | types.GenericFamily]
-    ] = None
-
-
-class FontStyle(common.Attr):
-    font_style: models.Attr[
-        types.All | models.List[Literal["normal", "italic", "oblique"]]
-    ] = None
-
-
-class FontVariant(common.Attr):
-    font_variant: models.Attr[
-        models.List[Literal["normal", "small-caps"]]
-    ] = None
-
-
-class FontWeight(common.Attr):
-    font_weight: models.Attr[
-        types.All
-        | models.List[
-            Literal[
-                "normal",
-                "bold",
-                100,
-                200,
-                300,
-                400,
-                500,
-                600,
-                700,
-                800,
-                900,
-            ]
-        ]
-    ] = None
-
-
-class FontStretch(common.Attr):
-    font_stretch: models.Attr[
-        types.All
-        | models.List[
-            Literal[
-                "normal",
-                "ultra-condensed",
-                "extra-condensed",
-                "condensed ",
-                "semi-condensed",
-                "semi-expanded",
-                "expanded",
-                "extra-expanded",
-                "ultra-expanded",
-            ]
-        ]
     ] = None
 
 
