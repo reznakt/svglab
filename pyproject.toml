@@ -5,6 +5,16 @@ description = "A manipulation and optimization library for Scalable Vector Graph
 authors = ["Tomáš Režňák <tomas.reznak@volny.cz>"]
 license = "MIT"
 readme = "README.md"
+classifiers = [
+  "Framework :: Pydantic :: 2",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Topic :: Multimedia :: Graphics :: Editors :: Vector-Based",
+  "Topic :: Multimedia :: Graphics",
+  "Topic :: Scientific/Engineering :: Image Processing",
+  "Topic :: Text Processing :: Markup :: XML",
+  "Typing :: Typed",
+]
 
 [build-system]
 requires = ["poetry-core"]
