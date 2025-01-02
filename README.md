@@ -2,10 +2,12 @@
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/reznakt/svglab/check.yml)
 ![GitHub License](https://img.shields.io/github/license/reznakt/svglab)
-![Python version](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12%20|%203.13-blue)
+[![PyPI - Version](https://img.shields.io/pypi/v/svglab)](https://pypi.org/project/svglab/)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/svglab)
 ![Maintenance](https://img.shields.io/maintenance/yes/2025)
+[![Dependency status](https://img.shields.io/librariesio/release/pypi/svglab)](https://libraries.io/pypi/svglab/tree)
 ![GitHub repo size](https://img.shields.io/github/repo-size/reznakt/svglab)
-![GitHub Repo stars](https://img.shields.io/github/stars/reznakt/svglab?style=flat)
+![LOC](https://img.shields.io/endpoint?url=https%3A%2F%2Floc-counter.onrender.com%3Frepo%3Dreznakt%2Fsvglab%26branch%3Dmain&label=LOC&color=blue)
 
 <br />
 <div align="center">
