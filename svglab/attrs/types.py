@@ -51,7 +51,7 @@ AbsoluteSize: TypeAlias = Literal[
 ]
 Angle: TypeAlias = attrparse.AngleType
 Anything: TypeAlias = str
-Boolean: TypeAlias = Literal["true", "false"]
+Boolean: TypeAlias = bool
 Character: TypeAlias = Annotated[
     str, pydantic.Field(min_length=1, max_length=1)
 ]

@@ -438,7 +438,8 @@ class D(
         if not args:
             return char
 
-        return f"{char} {serialize.serialize(args)}"
+        args_str = serialize.serialize(args, bool_mode="number")
+        return f"{char} {args_str}"
 
     def __serialize_commands(self) -> Generator[str, None, None]:
         for command in self.__apply_mode():
