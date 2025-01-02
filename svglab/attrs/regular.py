@@ -1,3 +1,5 @@
+# ruff: noqa: N815
+
 from typing import Literal
 
 from svglab import models
@@ -34,8 +36,12 @@ class Ascent(common.Attr):
     ascent: models.Attr[types.Number] = None
 
 
+class AttributeName(common.Attr):
+    attributeName: models.Attr[types.Unparsed] = None
+
+
 class AttributeType(common.Attr):
-    attribute_type: models.Attr[Literal["CSS", "XML"] | types.Auto] = None
+    attributeType: models.Attr[Literal["CSS", "XML"] | types.Auto] = None
 
 
 class Azimuth(common.Attr):
@@ -43,11 +49,11 @@ class Azimuth(common.Attr):
 
 
 class BaseFrequency(common.Attr):
-    base_frequency: models.Attr[types.NumberOptionalNumber] = None
+    baseFrequency: models.Attr[types.NumberOptionalNumber] = None
 
 
 class BaseProfile(common.Attr):
-    base_profile: models.Attr[types.ProfileName] = None
+    baseProfile: models.Attr[types.ProfileName] = None
 
 
 class Bbox(common.Attr):
@@ -71,7 +77,7 @@ class By(common.Attr):
 
 
 class CalcMode(common.Attr):
-    calc_mode: models.Attr[
+    calcMode: models.Attr[
         Literal["discrete", "linear", "paced", "spline"]
     ] = None
 
@@ -85,17 +91,17 @@ class Class(common.Attr):
 
 
 class ClipPathUnits(common.Attr):
-    clip_path_units: models.Attr[
+    clipPathUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
 class ContentScriptType(common.Attr):
-    content_script_type: models.Attr[types.ContentType] = None
+    contentScriptType: models.Attr[types.ContentType] = None
 
 
 class ContentStyleType(common.Attr):
-    content_style_type: models.Attr[types.ContentType] = None
+    contentStyleType: models.Attr[types.ContentType] = None
 
 
 class Cx(common.Attr):
@@ -115,7 +121,7 @@ class Descent(common.Attr):
 
 
 class DiffuseConstant(common.Attr):
-    diffuse_constant: models.Attr[types.Number] = None
+    diffuseConstant: models.Attr[types.Number] = None
 
 
 class Divisor(common.Attr):
@@ -145,7 +151,7 @@ class DyNumber(common.Attr):
 
 
 class EdgeMode(common.Attr):
-    edge_mode: models.Attr[Literal["duplicate", "wrap", "none"]] = None
+    edgeMode: models.Attr[Literal["duplicate", "wrap", "none"]] = None
 
 
 class Elevation(common.Attr):
@@ -161,7 +167,7 @@ class Exponent(common.Attr):
 
 
 class ExternalResourcesRequired(common.Attr):
-    external_resources_required: models.Attr[types.Boolean] = None
+    externalResourcesRequired: models.Attr[types.Boolean] = None
 
 
 class Fill(common.Attr):
@@ -169,11 +175,11 @@ class Fill(common.Attr):
 
 
 class FilterRes(common.Attr):
-    filter_res: models.Attr[types.NumberOptionalNumber] = None
+    filterRes: models.Attr[types.NumberOptionalNumber] = None
 
 
 class FilterUnits(common.Attr):
-    filter_units: models.Attr[
+    filterUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
@@ -269,15 +275,15 @@ class GlyphName(common.Attr):
 
 
 class GlyphRef(common.Attr):
-    glyph_ref: models.Attr[types.Unparsed] = None
+    glyphRef: models.Attr[types.Unparsed] = None
 
 
 class GradientTransform(common.Attr):
-    gradient_transform: models.Attr[types.TransformList] = None
+    gradientTransform: models.Attr[types.TransformList] = None
 
 
 class GradientUnits(common.Attr):
-    gradient_units: models.Attr[
+    gradientUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
@@ -347,23 +353,23 @@ class K4(common.Attr):
 
 
 class KernelMatrix(common.Attr):
-    kernel_matrix: models.Attr[types.ListOfNumbers] = None
+    kernelMatrix: models.Attr[types.ListOfNumbers] = None
 
 
 class KernelUnitLength(common.Attr):
-    kernel_unit_length: models.Attr[types.NumberOptionalNumber] = None
+    kernelUnitLength: models.Attr[types.NumberOptionalNumber] = None
 
 
 class KeyPoints(common.Attr):
-    key_points: models.Attr[types.ListOfNumbers] = None
+    keyPoints: models.Attr[types.ListOfNumbers] = None
 
 
 class KeySplines(common.Attr):
-    key_splines: models.Attr[types.Unparsed] = None
+    keySplines: models.Attr[types.Unparsed] = None
 
 
 class KeyTimes(common.Attr):
-    key_times: models.Attr[types.Unparsed] = None
+    keyTimes: models.Attr[types.Unparsed] = None
 
 
 class Lang(common.Attr):
@@ -371,13 +377,13 @@ class Lang(common.Attr):
 
 
 class LengthAdjust(common.Attr):
-    length_adjust: models.Attr[Literal["spacing", "spacingAndGlyphs"]] = (
+    lengthAdjust: models.Attr[Literal["spacing", "spacingAndGlyphs"]] = (
         None
     )
 
 
 class LimitingConeAngle(common.Attr):
-    limiting_cone_angle: models.Attr[types.Number] = None
+    limitingConeAngle: models.Attr[types.Number] = None
 
 
 class Local(common.Attr):
@@ -385,27 +391,27 @@ class Local(common.Attr):
 
 
 class MarkerHeight(common.Attr):
-    marker_height: models.Attr[types.Length] = None
+    markerHeight: models.Attr[types.Length] = None
 
 
 class MarkerUnits(common.Attr):
-    marker_units: models.Attr[Literal["strokeWidth", "userSpaceOnUse"]] = (
+    markerUnits: models.Attr[Literal["strokeWidth", "userSpaceOnUse"]] = (
         None
     )
 
 
 class MarkerWidth(common.Attr):
-    marker_width: models.Attr[types.Length] = None
+    markerWidth: models.Attr[types.Length] = None
 
 
 class MaskContentUnits(common.Attr):
-    mask_content_units: models.Attr[
+    maskContentUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
 class MaskUnits(common.Attr):
-    mask_units: models.Attr[
+    maskUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
@@ -445,7 +451,7 @@ class NameAnything(common.Attr):
 
 
 class NumOctaves(common.Attr):
-    num_octaves: models.Attr[types.Integer] = None
+    numOctaves: models.Attr[types.Integer] = None
 
 
 class OffsetNumberPercentage(common.Attr):
@@ -590,21 +596,21 @@ class Path(common.Attr):
 
 
 class PathLength(common.Attr):
-    path_length: models.Attr[types.Number] = None
+    pathLength: models.Attr[types.Number] = None
 
 
 class PatternContentUnits(common.Attr):
-    pattern_content_units: models.Attr[
+    patternContentUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
 class PatternTransform(common.Attr):
-    pattern_transform: models.Attr[types.TransformList] = None
+    patternTransform: models.Attr[types.TransformList] = None
 
 
 class PatternUnits(common.Attr):
-    pattern_units: models.Attr[
+    patternUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
@@ -614,23 +620,23 @@ class Points(common.Attr):
 
 
 class PointsAtX(common.Attr):
-    points_at_x: models.Attr[types.Number] = None
+    pointsAtX: models.Attr[types.Number] = None
 
 
 class PointsAtY(common.Attr):
-    points_at_y: models.Attr[types.Number] = None
+    pointsAtY: models.Attr[types.Number] = None
 
 
 class PointsAtZ(common.Attr):
-    points_at_z: models.Attr[types.Number] = None
+    pointsAtZ: models.Attr[types.Number] = None
 
 
 class PreserveAlpha(common.Attr):
-    preserve_alpha: models.Attr[types.Boolean] = None
+    preserveAlpha: models.Attr[types.Boolean] = None
 
 
 class PreserveAspectRatio(common.Attr):
-    preserve_aspect_ratio: models.Attr[
+    preserveAspectRatio: models.Attr[
         None
         | Literal[
             "xMinYMin",
@@ -648,7 +654,7 @@ class PreserveAspectRatio(common.Attr):
 
 
 class PrimitiveUnits(common.Attr):
-    primitive_units: models.Attr[
+    primitiveUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
@@ -682,23 +688,21 @@ class RenderingIntent(common.Attr):
 
 
 class RepeatCount(common.Attr):
-    repeat_count: models.Attr[
+    repeatCount: models.Attr[
         Literal["indefinite"] | types.NumericValue
     ] = None
 
 
 class RepeatDur(common.Attr):
-    repeat_dur: models.Attr[Literal["indefinite"] | types.ClockValue] = (
-        None
-    )
+    repeatDur: models.Attr[Literal["indefinite"] | types.ClockValue] = None
 
 
 class RequiredExtensions(common.Attr):
-    required_extensions: models.Attr[types.ListOfExtensions] = None
+    requiredExtensions: models.Attr[types.ListOfExtensions] = None
 
 
 class RequiredFeatures(common.Attr):
-    required_features: models.Attr[types.ListOfFeatures] = None
+    requiredFeatures: models.Attr[types.ListOfFeatures] = None
 
 
 class Restart(common.Attr):
@@ -746,23 +750,23 @@ class Spacing(common.Attr):
 
 
 class SpecularConstant(common.Attr):
-    specular_constant: models.Attr[types.Number] = None
+    specularConstant: models.Attr[types.Number] = None
 
 
 class SpecularExponent(common.Attr):
-    specular_exponent: models.Attr[types.Number] = None
+    specularExponent: models.Attr[types.Number] = None
 
 
 class SpreadMethod(common.Attr):
-    spread_method: models.Attr[Literal["pad", "reflect", "repeat"]] = None
+    spreadMethod: models.Attr[Literal["pad", "reflect", "repeat"]] = None
 
 
 class StartOffset(common.Attr):
-    start_offset: models.Attr[types.Length] = None
+    startOffset: models.Attr[types.Length] = None
 
 
 class StdDeviation(common.Attr):
-    std_deviation: models.Attr[types.NumberOptionalNumber] = None
+    stdDeviation: models.Attr[types.NumberOptionalNumber] = None
 
 
 class Stemh(common.Attr):
@@ -774,7 +778,7 @@ class Stemv(common.Attr):
 
 
 class StitchTiles(common.Attr):
-    stitch_tiles: models.Attr[Literal["stitch", "noStitch"]] = None
+    stitchTiles: models.Attr[Literal["stitch", "noStitch"]] = None
 
 
 class StrikethroughPosition(common.Attr):
@@ -794,15 +798,15 @@ class Style(common.Attr):
 
 
 class SurfaceScale(common.Attr):
-    surface_scale: models.Attr[types.Number] = None
+    surfaceScale: models.Attr[types.Number] = None
 
 
 class SystemLanguage(common.Attr):
-    system_language: models.Attr[types.LanguageCodes] = None
+    systemLanguage: models.Attr[types.LanguageCodes] = None
 
 
 class TableValues(common.Attr):
-    table_values: models.Attr[types.ListOfNumbers] = None
+    tableValues: models.Attr[types.ListOfNumbers] = None
 
 
 class Target(common.Attr):
@@ -813,15 +817,15 @@ class Target(common.Attr):
 
 
 class TargetX(common.Attr):
-    target_x: models.Attr[types.Integer] = None
+    targetX: models.Attr[types.Integer] = None
 
 
 class TargetY(common.Attr):
-    target_y: models.Attr[types.Integer] = None
+    targetY: models.Attr[types.Integer] = None
 
 
 class TextLength(common.Attr):
-    text_length: models.Attr[types.Length] = None
+    textLength: models.Attr[types.Length] = None
 
 
 class Title(common.Attr):
@@ -931,7 +935,7 @@ class VertOriginY(common.Attr):
 
 
 class ViewBox(common.Attr):
-    view_box: models.Attr[
+    viewBox: models.Attr[
         models.Tuple4[
             types.Number, types.Number, types.Number, types.Number
         ]
@@ -939,7 +943,7 @@ class ViewBox(common.Attr):
 
 
 class ViewTarget(common.Attr):
-    view_target: models.Attr[models.List[types.XmlName]] = None
+    viewTarget: models.Attr[models.List[types.XmlName]] = None
 
 
 class Width(common.Attr):
@@ -979,7 +983,7 @@ class X2(common.Attr):
 
 
 class XChannelSelector(common.Attr):
-    x_channel_selector: models.Attr[Literal["R", "G", "B", "A"]] = None
+    xChannelSelector: models.Attr[Literal["R", "G", "B", "A"]] = None
 
 
 class XlinkActuateOnRequest(common.Attr):
@@ -1053,7 +1057,7 @@ class Y2(common.Attr):
 
 
 class YChannelSelector(common.Attr):
-    y_channel_selector: models.Attr[Literal["R", "G", "B", "A"]] = None
+    yChannelSelector: models.Attr[Literal["R", "G", "B", "A"]] = None
 
 
 class Z(common.Attr):
@@ -1061,4 +1065,4 @@ class Z(common.Attr):
 
 
 class ZoomAndPan(common.Attr):
-    zoom_and_pan: models.Attr[Literal["disable", "magnify"]] = None
+    zoomAndPan: models.Attr[Literal["disable", "magnify"]] = None
