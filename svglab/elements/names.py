@@ -4,8 +4,6 @@ from typing import Final, Literal, TypeAlias
 import bidict
 
 
-__all__ = ["TAG_NAMES", "TAG_NAME_TO_NORMALIZED", "TagName"]
-
 TagName: TypeAlias = Literal[
     "a",
     "altGlyph",
@@ -95,7 +93,7 @@ TAG_NAMES: Final[frozenset[TagName]] = frozenset(typing.get_args(TagName))
 """A set of all SVG tag names."""
 
 
-def normalize_tag_name(name: TagName, /) -> str:
+def _normalize_tag_name(name: TagName, /) -> str:
     """Convert an SVG tag name to an appropriate class name.
 
     Args:
@@ -108,11 +106,11 @@ def normalize_tag_name(name: TagName, /) -> str:
         ValueError: If the tag name cannot be normalized.
 
     Examples:
-    >>> normalize_tag_name("circle")
+    >>> _normalize_tag_name("circle")
     'Circle'
-    >>> normalize_tag_name("feGaussianBlur")
+    >>> _normalize_tag_name("feGaussianBlur")
     'FeGaussianBlur'
-    >>> normalize_tag_name("font-face-name")
+    >>> _normalize_tag_name("font-face-name")
     'FontFaceName'
 
     """
@@ -120,7 +118,7 @@ def normalize_tag_name(name: TagName, /) -> str:
 
 
 TAG_NAME_TO_NORMALIZED: Final = bidict.frozenbidict[TagName, str](
-    {tag: normalize_tag_name(tag) for tag in TAG_NAMES}
+    {tag: _normalize_tag_name(tag) for tag in TAG_NAMES}
 )
 """
 A bidirectional mapping from SVG tag names to normalized Python identifiers.

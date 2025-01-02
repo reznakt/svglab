@@ -1,11 +1,14 @@
+import collections
 import functools
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from typing import Protocol, TypeVar, runtime_checkable
 
 import bs4
+from useful_types import SupportsRichComparison
 
 
 _T = TypeVar("_T")
+_T_cmp = TypeVar("_T_cmp", bound=SupportsRichComparison)
 
 _AnyStr_contra = TypeVar("_AnyStr_contra", str, bytes, contravariant=True)
 _AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
@@ -150,3 +153,64 @@ def beautifulsoup_to_str(
             raise TypeError(msg)
 
     return result.strip()
+
+
+def clamp(
+    value: _T_cmp, /, *, min_value: _T_cmp, max_value: _T_cmp
+) -> _T_cmp:
+    """Clamp a value between two bounds.
+
+    Args:
+        value: The value to clamp.
+        min_value: The minimum value.
+        max_value: The maximum value.
+
+    Returns:
+        The clamped value. If `value` is less than `min_value`, `min_value` is
+        returned. If `value` is greater than `max_value`, `max_value` is
+        returned. Otherwise, `value` is returned.
+
+    Examples:
+        >>> clamp(5, min_value=0, max_value=10)
+        5
+        >>> clamp(-5, min_value=0, max_value=10)
+        0
+        >>> clamp(15, min_value=0, max_value=10)
+        10
+
+    """
+    return max(min(value, max_value), min_value)
+
+
+def get_all_subclasses(
+    cls: type[_T], /
+) -> Generator[type[_T], None, None]:
+    """Recursively obtain all subclasses of a class.
+
+    Args:
+        cls: The class to obtain subclasses for.
+
+    Yields:
+        Subclasses of the given class, including subclasses of subclasses
+        (and so on).
+
+    Examples:
+        >>> class A:
+        ...     pass
+        >>> class B(A):
+        ...     pass
+        >>> class C(B):
+        ...     pass
+        >>> list(cls.__name__ for cls in get_all_subclasses(A))
+        ['B', 'C']
+
+    """
+    queue = collections.deque([cls])
+
+    while queue:
+        subclass = queue.popleft()
+
+        if subclass is not cls:
+            yield subclass
+
+        queue.extend(subclass.__subclasses__())

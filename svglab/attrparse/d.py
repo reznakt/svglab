@@ -16,23 +16,13 @@ import svgpathtools
 from typing_extensions import Self, override
 
 from svglab import models, serialize, utils
-from svglab.attrs import point
+from svglab.attrparse import point
 
 
-__all__ = [
-    "ArcTo",
-    "CubicBezierTo",
-    "D",
-    "DType",
-    "LineTo",
-    "PathCommand",
-    "QuadraticBezierTo",
-]
-
-AbsolutePathCommandChar: TypeAlias = Literal[
+_AbsolutePathCommandChar: TypeAlias = Literal[
     "M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"
 ]
-RelativePathCommandChar: TypeAlias = Literal[
+_RelativePathCommandChar: TypeAlias = Literal[
     "m", "l", "h", "v", "c", "s", "q", "t", "a", "z"
 ]
 
@@ -434,8 +424,8 @@ class D(
     @staticmethod
     def __format_command(
         *args: serialize.Serializable,
-        absolute_char: AbsolutePathCommandChar,
-        relative_char: RelativePathCommandChar,
+        absolute_char: _AbsolutePathCommandChar,
+        relative_char: _RelativePathCommandChar,
     ) -> str:
         formatter = serialize.get_current_formatter()
 
@@ -448,7 +438,8 @@ class D(
         if not args:
             return char
 
-        return f"{char} {serialize.serialize(args)}"
+        args_str = serialize.serialize(args, bool_mode="number")
+        return f"{char} {args_str}"
 
     def __serialize_commands(self) -> Generator[str, None, None]:
         for command in self.__apply_mode():

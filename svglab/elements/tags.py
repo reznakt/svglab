@@ -3,493 +3,929 @@ import os
 import pathlib
 from typing import final, overload
 
-from svglab import models, serialize, utils
-from svglab.elements import attrdefs, attrtypes, common
+from svglab import serialize, utils
+from svglab.attrs import groups, regular
+from svglab.elements import traits
 
 
-__all__ = [
-    "A",
-    "AltGlyph",
-    "AltGlyphDef",
-    "AltGlyphItem",
-    "Animate",
-    "AnimateColor",
-    "AnimateMotion",
-    "AnimateTransform",
-    "Circle",
-    "ClipPath",
-    "ColorProfile",
-    "Cursor",
-    "Defs",
-    "Desc",
-    "Ellipse",
-    "FeBlend",
-    "FeColorMatrix",
-    "FeComponentTransfer",
-    "FeComposite",
-    "FeConvolveMatrix",
-    "FeDiffuseLighting",
-    "FeDisplacementMap",
-    "FeDistantLight",
-    "FeFlood",
-    "FeFuncA",
-    "FeFuncB",
-    "FeFuncG",
-    "FeFuncR",
-    "FeGaussianBlur",
-    "FeImage",
-    "FeMerge",
-    "FeMergeNode",
-    "FeMorphology",
-    "FeOffset",
-    "FePointLight",
-    "FeSpecularLighting",
-    "FeSpotLight",
-    "FeTile",
-    "FeTurbulence",
-    "Filter",
-    "Font",
-    "FontFace",
-    "FontFaceFormat",
-    "FontFaceName",
-    "FontFaceSrc",
-    "FontFaceUri",
-    "ForeignObject",
-    "G",
-    "Glyph",
-    "GlyphRef",
-    "Hkern",
-    "Image",
-    "Line",
-    "LinearGradient",
-    "Marker",
-    "Mask",
-    "Metadata",
-    "MissingGlyph",
-    "Mpath",
-    "Path",
-    "Pattern",
-    "Polygon",
-    "Polyline",
-    "RadialGradient",
-    "Rect",
-    "Script",
-    "Set",
-    "Stop",
-    "Style",
-    "Svg",
-    "Switch",
-    "Symbol",
-    "Text",
-    "TextPath",
-    "Title",
-    "Tref",
-    "Tspan",
-    "Use",
-    "View",
-    "Vkern",
-]
-
-
-# ! WARNING: `PairedTag` and `Tag` must always go last in the inheritance list
+# ! WARNING: `Element` and `ContainerElement` must always go last
 
 
 @final
-class A(attrdefs.Common, attrdefs.Transform, common.PairedTag):
+class A(
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Style,
+    regular.Target,
+    regular.Transform,
+    traits.ContainerElement,
+):
     pass
 
 
 @final
-class AltGlyph(attrdefs.Common, attrdefs.Presentation, common.Tag):
+class AltGlyph(
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    regular.Class,
+    regular.DxListOfLengths,
+    regular.DyListOfLengths,
+    regular.ExternalResourcesRequired,
+    regular.Format,
+    regular.GlyphRef,
+    regular.RotateListOfNumbers,
+    regular.Style,
+    regular.XListOfCoordinates,
+    regular.YListOfCoordinates,
+    traits.TextContentChildElement,
+    traits.TextContentElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class AltGlyphDef(attrdefs.Common, common.Tag):
+class AltGlyphDef(traits.Element):
     pass
 
 
 @final
-class AltGlyphItem(attrdefs.Common, common.Tag):
+class AltGlyphItem(traits.Element):
     pass
 
 
 @final
-class Animate(attrdefs.Common, common.Tag):
+class Animate(
+    groups.AnimationAddition,
+    groups.AnimationAttributeTarget,
+    groups.AnimationValue,
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    traits.AnimationElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class AnimateColor(attrdefs.Common, common.Tag):
+class AnimateColor(
+    groups.AnimationAddition,
+    groups.AnimationAttributeTarget,
+    groups.AnimationValue,
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    regular.ExternalResourcesRequired,
+    traits.AnimationElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class AnimateMotion(attrdefs.Common, common.Tag):
+class AnimateMotion(
+    groups.AnimationAddition,
+    groups.AnimationValue,
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    regular.ExternalResourcesRequired,
+    regular.KeyPoints,
+    regular.Origin,
+    regular.Path,
+    regular.RotateNumberAutoAutoReverse,
+    traits.AnimationElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class AnimateTransform(attrdefs.Common, common.Tag):
+class AnimateTransform(
+    groups.AnimationAddition,
+    groups.AnimationAttributeTarget,
+    groups.AnimationValue,
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    regular.ExternalResourcesRequired,
+    regular.TypeAnimateTransform,
+    traits.AnimationElement,
+    traits.Element,
+):
     pass
 
 
 @final
 class Circle(
-    attrdefs.CenterPoints,
-    attrdefs.Common,
-    attrdefs.Presentation,
-    attrdefs.Radius,
-    attrdefs.Transform,
-    common.Tag,
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.Cx,
+    regular.Cy,
+    regular.ExternalResourcesRequired,
+    regular.R,
+    regular.Style,
+    regular.Transform,
+    traits.BasicShape,
+    traits.Element,
 ):
     pass
 
 
 @final
-class ClipPath(attrdefs.Common, attrdefs.Transform, common.Tag):
+class ClipPath(
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.ClipPathUnits,
+    regular.ExternalResourcesRequired,
+    regular.Style,
+    regular.Transform,
+    traits.Element,
+):
     pass
 
 
 @final
-class ColorProfile(attrdefs.Common, common.Tag):
+class ColorProfile(
+    groups.Xlink,
+    regular.Local,
+    regular.NameName,
+    regular.RenderingIntent,
+    traits.Element,
+):
     pass
 
 
 @final
-class Cursor(attrdefs.Common, common.Tag):
+class Cursor(
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    regular.ExternalResourcesRequired,
+    regular.XCoordinate,
+    regular.YCoordinate,
+    traits.Element,
+):
     pass
 
 
 @final
-class Defs(attrdefs.Common, attrdefs.Transform, common.PairedTag):
+class Defs(
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Style,
+    regular.Transform,
+    traits.StructuralElement,
+    traits.ContainerElement,
+):
     pass
 
 
 @final
-class Desc(attrdefs.Common, common.Tag):
+class Desc(
+    regular.Class, regular.Style, traits.DescriptiveElement, traits.Element
+):
     pass
 
 
 @final
 class Ellipse(
-    attrdefs.CenterPoints,
-    attrdefs.Common,
-    attrdefs.Presentation,
-    attrdefs.Transform,
-    common.Tag,
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.Cx,
+    regular.Cy,
+    regular.ExternalResourcesRequired,
+    regular.Rx,
+    regular.Ry,
+    regular.Style,
+    regular.Transform,
+    traits.BasicShape,
+    traits.Element,
 ):
-    rx: models.Attr[attrtypes.Length] = None
-    ry: models.Attr[attrtypes.Length] = None
-
-
-@final
-class FeBlend(attrdefs.Common, common.Tag):
     pass
 
 
 @final
-class FeColorMatrix(attrdefs.Common, common.Tag):
+class FeBlend(
+    regular.Class,
+    regular.In,
+    regular.In2,
+    regular.Mode,
+    regular.Style,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeComponentTransfer(attrdefs.Common, common.Tag):
+class FeColorMatrix(
+    regular.Class,
+    regular.In,
+    regular.In2,
+    regular.Style,
+    regular.TypeFeColorMatrix,
+    regular.ValuesListOfNumbers,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeComposite(attrdefs.Common, common.Tag):
+class FeComponentTransfer(
+    regular.Class,
+    regular.In,
+    regular.Style,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeConvolveMatrix(attrdefs.Common, common.Tag):
+class FeComposite(
+    regular.Class,
+    regular.In,
+    regular.In2,
+    regular.K1,
+    regular.K2,
+    regular.K3,
+    regular.K4,
+    regular.OperatorFeComposite,
+    regular.Style,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeDiffuseLighting(attrdefs.Common, common.Tag):
+class FeConvolveMatrix(
+    regular.Bias,
+    regular.Class,
+    regular.Divisor,
+    regular.In,
+    regular.KernelMatrix,
+    regular.KernelUnitLength,
+    regular.Order,
+    regular.PreserveAlpha,
+    regular.Style,
+    regular.TargetX,
+    regular.TargetY,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeDisplacementMap(attrdefs.Common, common.Tag):
+class FeDiffuseLighting(
+    regular.Class,
+    regular.DiffuseConstant,
+    regular.In,
+    regular.KernelUnitLength,
+    regular.Style,
+    regular.SurfaceScale,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeDistantLight(attrdefs.Common, common.Tag):
+class FeDisplacementMap(
+    regular.Class,
+    regular.In,
+    regular.In2,
+    regular.Scale,
+    regular.Style,
+    regular.XChannelSelector,
+    regular.YChannelSelector,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeFlood(attrdefs.Common, common.Tag):
+class FeDistantLight(
+    regular.Azimuth,
+    regular.Elevation,
+    traits.LightSourceElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeFuncA(attrdefs.Common, common.Tag):
+class FeFlood(
+    regular.Class,
+    regular.Style,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeFuncB(attrdefs.Common, common.Tag):
+class FeFuncA(groups.TransferFunction, traits.Element):
     pass
 
 
 @final
-class FeFuncG(attrdefs.Common, common.Tag):
+class FeFuncB(groups.TransferFunction, traits.Element):
     pass
 
 
 @final
-class FeFuncR(attrdefs.Common, common.Tag):
+class FeFuncG(groups.TransferFunction, traits.Element):
     pass
 
 
 @final
-class FeGaussianBlur(attrdefs.Common, common.Tag):
+class FeFuncR(groups.TransferFunction, traits.Element):
     pass
 
 
 @final
-class FeImage(attrdefs.Common, common.Tag):
+class FeGaussianBlur(
+    regular.Class,
+    regular.In,
+    regular.StdDeviation,
+    regular.Style,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeMerge(attrdefs.Common, common.Tag):
+class FeImage(
+    groups.Xlink,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.PreserveAspectRatio,
+    regular.Style,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeMergeNode(attrdefs.Common, common.Tag):
+class FeMerge(
+    regular.Class,
+    regular.Style,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeMorphology(attrdefs.Common, common.Tag):
+class FeMergeNode(regular.In, traits.Element):
     pass
 
 
 @final
-class FeOffset(attrdefs.Common, common.Tag):
+class FeMorphology(
+    regular.Class,
+    regular.In,
+    regular.OperatorFeMorphology,
+    regular.Radius,
+    regular.Style,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FePointLight(attrdefs.Common, common.Tag):
+class FeOffset(
+    regular.Class,
+    regular.DxNumber,
+    regular.DyNumber,
+    regular.In,
+    regular.Style,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeSpecularLighting(attrdefs.Common, common.Tag):
+class FePointLight(
+    regular.XNumber,
+    regular.YNumber,
+    regular.Z,
+    traits.LightSourceElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeSpotLight(attrdefs.Common, common.Tag):
+class FeSpecularLighting(
+    regular.Class,
+    regular.In,
+    regular.KernelUnitLength,
+    regular.SpecularConstant,
+    regular.SpecularExponent,
+    regular.Style,
+    regular.SurfaceScale,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeTile(attrdefs.Common, common.Tag):
+class FeSpotLight(
+    regular.LimitingConeAngle,
+    regular.PointsAtX,
+    regular.PointsAtY,
+    regular.PointsAtZ,
+    regular.SpecularExponent,
+    regular.XNumber,
+    regular.YNumber,
+    regular.Z,
+    traits.LightSourceElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class FeTurbulence(attrdefs.Common, common.Tag):
+class FeTile(
+    regular.Class,
+    regular.In,
+    regular.Style,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class Filter(attrdefs.Common, common.Tag):
+class FeTurbulence(
+    regular.BaseFrequency,
+    regular.Class,
+    regular.NumOctaves,
+    regular.Seed,
+    regular.StitchTiles,
+    regular.Style,
+    regular.TypeFeTurbluence,
+    traits.FilterPrimitiveElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class Font(attrdefs.Common, common.Tag):
+class Filter(
+    groups.Xlink,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.FilterRes,
+    regular.FilterUnits,
+    regular.Height,
+    regular.PrimitiveUnits,
+    regular.Style,
+    regular.Width,
+    regular.XCoordinate,
+    regular.YCoordinate,
+    traits.Element,
+):
     pass
 
 
 @final
-class FontFace(attrdefs.Common, common.Tag):
+class Font(
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.HorizAdvX,
+    regular.HorizOriginX,
+    regular.HorizOriginY,
+    regular.Style,
+    regular.VertAdvY,
+    regular.VertOriginX,
+    regular.VertOriginY,
+    traits.Element,
+):
     pass
 
 
 @final
-class FontFaceFormat(attrdefs.Common, common.Tag):
+class FontFace(
+    regular.AccentHeight,
+    regular.Alphabetic,
+    regular.Ascent,
+    regular.Bbox,
+    regular.CapHeight,
+    regular.Descent,
+    regular.FontFamily,
+    regular.FontSize,
+    regular.Hanging,
+    regular.Ideographic,
+    regular.Mathematical,
+    regular.OverlinePosition,
+    regular.OverlineThickness,
+    regular.Panose1,
+    regular.Slope,
+    regular.Stemh,
+    regular.Stemv,
+    regular.StrikethroughPosition,
+    regular.StrikethroughThickness,
+    regular.UnderlinePosition,
+    regular.UnderlineThickness,
+    regular.UnicodeRange,
+    regular.UnitsPerEm,
+    regular.VAlphabetic,
+    regular.VHanging,
+    regular.VIdeographic,
+    regular.VMathematical,
+    regular.Widths,
+    regular.XHeight,
+    traits.Element,
+):
     pass
 
 
 @final
-class FontFaceName(attrdefs.Common, common.Tag):
+class FontFaceFormat(regular.String, traits.Element):
     pass
 
 
 @final
-class FontFaceSrc(attrdefs.Common, common.Tag):
+class FontFaceName(regular.String, traits.Element):
     pass
 
 
 @final
-class FontFaceUri(attrdefs.Common, common.Tag):
+class FontFaceSrc(traits.Element):
     pass
 
 
 @final
-class ForeignObject(attrdefs.Common, attrdefs.Transform, common.Tag):
+class FontFaceUri(groups.Xlink, traits.Element):
     pass
 
 
 @final
-class G(attrdefs.Common, attrdefs.Transform, common.PairedTag):
+class ForeignObject(
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Height,
+    regular.Style,
+    regular.Transform,
+    regular.Width,
+    regular.XCoordinate,
+    regular.YCoordinate,
+    traits.Element,
+):
     pass
 
 
 @final
-class Glyph(attrdefs.Common, attrdefs.PathData, common.PairedTag):
+class G(
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Style,
+    regular.Transform,
+    traits.StructuralElement,
+    traits.ContainerElement,
+):
     pass
 
 
 @final
-class GlyphRef(attrdefs.Common, common.Tag):
+class Glyph(
+    regular.ArabicForm,
+    regular.Class,
+    regular.D,
+    regular.GlyphName,
+    regular.HorizAdvX,
+    regular.Lang,
+    regular.Orientation,
+    regular.Style,
+    regular.Unicode,
+    regular.VertAdvY,
+    regular.VertOriginX,
+    regular.VertOriginY,
+    traits.ContainerElement,
+):
     pass
 
 
 @final
-class Hkern(attrdefs.Common, common.Tag):
+class GlyphRef(
+    groups.Xlink,
+    regular.Class,
+    regular.DxNumber,
+    regular.DyNumber,
+    regular.Format,
+    regular.GlyphRef,
+    regular.Style,
+    regular.XNumber,
+    regular.YNumber,
+    traits.Element,
+):
     pass
 
 
 @final
-class Image(attrdefs.Common, attrdefs.Transform, common.Tag):
+class Hkern(
+    regular.G1,
+    regular.G2,
+    regular.K,
+    regular.U1,
+    regular.U2,
+    traits.Element,
+):
+    pass
+
+
+@final
+class Image(
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Height,
+    regular.PreserveAspectRatio,
+    regular.Style,
+    regular.Transform,
+    regular.Width,
+    regular.XCoordinate,
+    regular.YCoordinate,
+    traits.GraphicsElement,
+    traits.GraphicsReferencingElement,
+    traits.Element,
+):
     pass
 
 
 @final
 class Line(
-    attrdefs.Common, attrdefs.Transform, attrdefs.Presentation, common.Tag
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Style,
+    regular.Transform,
+    regular.X1,
+    regular.X2,
+    regular.Y1,
+    regular.Y2,
+    traits.BasicShape,
+    traits.Element,
 ):
-    x1: models.Attr[attrtypes.Coordinate] = None
-    y1: models.Attr[attrtypes.Coordinate] = None
-    x2: models.Attr[attrtypes.Coordinate] = None
-    y2: models.Attr[attrtypes.Coordinate] = None
-
-
-@final
-class LinearGradient(attrdefs.Common, common.Tag):
     pass
 
 
 @final
-class Marker(attrdefs.Common, common.PairedTag):
+class LinearGradient(
+    groups.Xlink,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.GradientTransform,
+    regular.GradientUnits,
+    regular.SpreadMethod,
+    regular.Style,
+    regular.X1,
+    regular.X2,
+    regular.Y1,
+    regular.Y2,
+    traits.GradientElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class Mask(attrdefs.Common, common.PairedTag):
+class Marker(
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.MarkerHeight,
+    regular.MarkerUnits,
+    regular.MarkerWidth,
+    regular.Orient,
+    regular.PreserveAspectRatio,
+    regular.RefX,
+    regular.RefY,
+    regular.Style,
+    regular.ViewBox,
+    traits.ContainerElement,
+):
     pass
 
 
 @final
-class Metadata(attrdefs.Common, common.Tag):
+class Mask(
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Height,
+    regular.MaskContentUnits,
+    regular.MaskUnits,
+    regular.Style,
+    regular.Width,
+    regular.XCoordinate,
+    regular.YCoordinate,
+    traits.ContainerElement,
+):
+    pass
+
+
+@final
+class Metadata(traits.DescriptiveElement, traits.Element):
     pass
 
 
 @final
 class MissingGlyph(
-    attrdefs.Common,
-    attrdefs.PathData,
-    attrdefs.Transform,
-    common.PairedTag,
+    regular.Class,
+    regular.D,
+    regular.HorizAdvX,
+    regular.Style,
+    regular.Transform,
+    regular.VertAdvY,
+    regular.VertOriginX,
+    regular.VertOriginY,
+    traits.ContainerElement,
 ):
     pass
 
 
 @final
-class Mpath(attrdefs.Common, common.Tag):
+class Mpath(
+    groups.Xlink, regular.ExternalResourcesRequired, traits.Element
+):
     pass
 
 
 @final
 class Path(
-    attrdefs.Common, attrdefs.PathData, attrdefs.Presentation, common.Tag
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.D,
+    regular.ExternalResourcesRequired,
+    regular.PathLength,
+    regular.Style,
+    regular.Transform,
+    traits.Shape,
+    traits.Element,
 ):
     pass
 
 
 @final
-class Pattern(attrdefs.Common, common.PairedTag):
+class Pattern(
+    groups.Xlink,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Height,
+    regular.PatternContentUnits,
+    regular.PatternTransform,
+    regular.PatternUnits,
+    regular.PreserveAspectRatio,
+    regular.Style,
+    regular.ViewBox,
+    regular.Width,
+    regular.XCoordinate,
+    regular.YCoordinate,
+    traits.ContainerElement,
+):
     pass
 
 
 @final
 class Polygon(
-    attrdefs.Common,
-    attrdefs.Points,
-    attrdefs.Transform,
-    attrdefs.Presentation,
-    common.Tag,
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Points,
+    regular.Style,
+    regular.Transform,
+    traits.BasicShape,
+    traits.Element,
 ):
     pass
 
 
 @final
 class Polyline(
-    attrdefs.Common,
-    attrdefs.Points,
-    attrdefs.Transform,
-    attrdefs.Presentation,
-    common.Tag,
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Points,
+    regular.Style,
+    regular.Transform,
+    traits.BasicShape,
+    traits.Element,
 ):
     pass
 
 
 @final
-class RadialGradient(attrdefs.Common, common.Tag):
+class RadialGradient(
+    groups.Xlink,
+    regular.Class,
+    regular.Cx,
+    regular.Cy,
+    regular.ExternalResourcesRequired,
+    regular.Fx,
+    regular.Fy,
+    regular.GradientTransform,
+    regular.GradientUnits,
+    regular.R,
+    regular.SpreadMethod,
+    regular.Style,
+    traits.GradientElement,
+    traits.Element,
+):
     pass
 
 
 @final
 class Rect(
-    attrdefs.Common,
-    attrdefs.Presentation,
-    attrdefs.RadiusXY,
-    attrdefs.Transform,
-    attrdefs.WidthHeight,
-    common.Tag,
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Height,
+    regular.Rx,
+    regular.Ry,
+    regular.Style,
+    regular.Transform,
+    regular.Width,
+    regular.XCoordinate,
+    regular.YCoordinate,
+    traits.BasicShape,
+    traits.Element,
 ):
-    x: models.Attr[attrtypes.Coordinate] = None
-    y: models.Attr[attrtypes.Coordinate] = None
-    color: models.Attr[attrtypes.Color] = None
-
-
-@final
-class Script(attrdefs.Common, common.Tag):
     pass
 
 
 @final
-class Set(attrdefs.Common, common.Tag):
+class Script(
+    groups.Xlink,
+    regular.ExternalResourcesRequired,
+    regular.TypeContentType,
+    traits.Element,
+):
     pass
 
 
 @final
-class Stop(attrdefs.Common, common.Tag):
+class Set(
+    groups.AnimationAttributeTarget,
+    groups.Xlink,
+    regular.ExternalResourcesRequired,
+    regular.To,
+    traits.AnimationElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class Style(attrdefs.Common, common.Tag):
+class Stop(
+    regular.Class,
+    regular.OffsetNumberPercentage,
+    regular.Style,
+    traits.Element,
+):
     pass
 
 
 @final
-class Svg(attrdefs.Common, attrdefs.WidthHeight, common.PairedTag):
-    xmlns: models.Attr[str] = "http://www.w3.org/2000/svg"
+class Style(
+    regular.Media, regular.Title, regular.TypeContentType, traits.Element
+):
+    pass
 
+
+@final
+class Svg(
+    groups.ConditionalProcessing,
+    groups.DocumentEvents,
+    regular.BaseProfile,
+    regular.Class,
+    regular.ContentScriptType,
+    regular.ContentStyleType,
+    regular.ExternalResourcesRequired,
+    regular.Height,
+    regular.PreserveAspectRatio,
+    regular.Style,
+    regular.Version,
+    regular.ViewBox,
+    regular.Width,
+    regular.XCoordinate,
+    regular.Xmlns,
+    regular.YCoordinate,
+    regular.ZoomAndPan,
+    traits.StructuralElement,
+    traits.ContainerElement,
+):
     @overload
     def save(
         self,
@@ -565,52 +1001,148 @@ class Svg(attrdefs.Common, attrdefs.WidthHeight, common.PairedTag):
 
 
 @final
-class Switch(attrdefs.Common, attrdefs.Transform, common.PairedTag):
-    pass
-
-
-@final
-class Symbol(attrdefs.Common, common.PairedTag):
-    pass
-
-
-@final
-class Text(
-    attrdefs.Common, attrdefs.Transform, attrdefs.Presentation, common.Tag
+class Switch(
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Style,
+    regular.Transform,
+    traits.ContainerElement,
 ):
     pass
 
 
 @final
-class TextPath(attrdefs.Common, attrdefs.Presentation, common.Tag):
+class Symbol(
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.PreserveAspectRatio,
+    regular.Style,
+    regular.ViewBox,
+    traits.StructuralElement,
+    traits.ContainerElement,
+):
     pass
 
 
 @final
-class Title(attrdefs.Common, common.Tag):
+class Text(
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.DxListOfLengths,
+    regular.DyListOfLengths,
+    regular.ExternalResourcesRequired,
+    regular.LengthAdjust,
+    regular.RotateListOfNumbers,
+    regular.Style,
+    regular.TextLength,
+    regular.Transform,
+    regular.XListOfCoordinates,
+    regular.YListOfCoordinates,
+    traits.TextContentElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class Tref(attrdefs.Common, attrdefs.Presentation, common.Tag):
+class TextPath(
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Method,
+    regular.Spacing,
+    regular.StartOffset,
+    regular.Style,
+    traits.TextContentChildElement,
+    traits.TextContentElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class Tspan(attrdefs.Common, attrdefs.Presentation, common.Tag):
+class Title(
+    regular.Class, regular.Style, traits.DescriptiveElement, traits.Element
+):
     pass
 
 
 @final
-class Use(attrdefs.Common, attrdefs.Transform, common.Tag):
+class Tref(
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Style,
+    traits.TextContentChildElement,
+    traits.TextContentElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class View(attrdefs.Common, common.Tag):
+class Tspan(
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.DxListOfLengths,
+    regular.DyListOfLengths,
+    regular.ExternalResourcesRequired,
+    regular.LengthAdjust,
+    regular.RotateListOfNumbers,
+    regular.Style,
+    regular.TextLength,
+    regular.XListOfCoordinates,
+    regular.YListOfCoordinates,
+    traits.TextContentBlockElement,
+    traits.TextContentChildElement,
+    traits.TextContentElement,
+    traits.Element,
+):
     pass
 
 
 @final
-class Vkern(attrdefs.Common, common.Tag):
+class Use(
+    groups.ConditionalProcessing,
+    groups.Xlink,
+    regular.Class,
+    regular.ExternalResourcesRequired,
+    regular.Height,
+    regular.Style,
+    regular.Transform,
+    regular.Width,
+    regular.XCoordinate,
+    regular.YCoordinate,
+    traits.GraphicsElement,
+    traits.GraphicsReferencingElement,
+    traits.StructuralElement,
+    traits.Element,
+):
+    pass
+
+
+@final
+class View(
+    regular.ExternalResourcesRequired,
+    regular.PreserveAspectRatio,
+    regular.ViewBox,
+    regular.ViewTarget,
+    regular.ZoomAndPan,
+    traits.Element,
+):
+    pass
+
+
+@final
+class Vkern(
+    regular.G1,
+    regular.G2,
+    regular.K,
+    regular.U1,
+    regular.U2,
+    traits.Element,
+):
     pass

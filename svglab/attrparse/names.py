@@ -5,14 +5,6 @@ from typing import Final, Literal, TypeAlias
 import bidict
 
 
-__all__ = [
-    "ATTRIBUTE_NAMES",
-    "ATTR_NAME_TO_NORMALIZED",
-    "AttributeName",
-    "normalize_attr_name",
-]
-
-
 AttributeName: TypeAlias = Literal[
     "accent-height",
     "accumulate",
@@ -265,7 +257,7 @@ AttributeName: TypeAlias = Literal[
 """ Type for all SVG attribute names. """
 
 
-def is_valid_identifier(name: str) -> bool:
+def _is_valid_identifier(name: str) -> bool:
     """Check if a string is a valid identifier and not a reserved keyword.
 
     Args:
@@ -275,20 +267,20 @@ def is_valid_identifier(name: str) -> bool:
         `True` if the string is a valid Python identifier, `False` otherwise.
 
     Examples:
-        >>> is_valid_identifier("foo")
+        >>> _is_valid_identifier("foo")
         True
-        >>> is_valid_identifier("class")
+        >>> _is_valid_identifier("class")
         False
-        >>> is_valid_identifier("123")
+        >>> _is_valid_identifier("123")
         False
-        >>> is_valid_identifier("for")
+        >>> _is_valid_identifier("for")
         False
 
     """
     return name.isidentifier() and not keyword.iskeyword(name)
 
 
-def normalize_attr_name(name: AttributeName) -> str:
+def _normalize_attr_name(name: AttributeName) -> str:
     """Convert an SVG attribute name to a valid Python identifier.
 
     Args:
@@ -301,13 +293,13 @@ def normalize_attr_name(name: AttributeName) -> str:
         ValueError: If the attribute name cannot be normalized.
 
     Examples:
-        >>> normalize_attr_name("width")
+        >>> _normalize_attr_name("width")
         'width'
-        >>> normalize_attr_name("stroke-width")
+        >>> _normalize_attr_name("stroke-width")
         'stroke_width'
-        >>> normalize_attr_name("xlink:href")
+        >>> _normalize_attr_name("xlink:href")
         'xlink_href'
-        >>> normalize_attr_name("class")
+        >>> _normalize_attr_name("class")
         'class_'
 
     """
@@ -318,10 +310,10 @@ def normalize_attr_name(name: AttributeName) -> str:
     for old, new in substitutions.items():
         normalized = normalized.replace(old, new)
 
-    if not is_valid_identifier(normalized):
+    if not _is_valid_identifier(normalized):
         normalized = f"{normalized}_"
 
-    if not is_valid_identifier(normalized):
+    if not _is_valid_identifier(normalized):
         msg = f"Cannot normalize attribute name: {name!r}"
         raise ValueError(msg)
 
@@ -335,7 +327,7 @@ ATTRIBUTE_NAMES: Final[frozenset[AttributeName]] = frozenset(
 
 
 ATTR_NAME_TO_NORMALIZED: Final = bidict.frozenbidict(
-    {attr: normalize_attr_name(attr) for attr in ATTRIBUTE_NAMES}
+    {attr: _normalize_attr_name(attr) for attr in ATTRIBUTE_NAMES}
 )
 """
 A bidirectional mapping of SVG attribute names to normalized

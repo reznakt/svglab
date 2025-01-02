@@ -1,5 +1,4 @@
 import collections
-import itertools
 from typing import Final, Literal, TypeAlias, cast
 
 import bs4
@@ -14,18 +13,13 @@ Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
 DEFAULT_PARSER: Final[Parser] = "lxml-xml"
 
 
-TAG_NAME_TO_CLASS: Final = {
+_TAG_NAME_TO_CLASS: Final = {
     elements.tag_name(cls): cls
-    for cls in set(
-        itertools.chain(
-            elements.Tag.__subclasses__(),
-            elements.PairedTag.__subclasses__(),
-        )
-    )
-    - {elements.PairedTag}
+    for cls in utils.get_all_subclasses(elements.Tag)
+    if cls.__name__ in elements.TAG_NAME_TO_NORMALIZED.inverse
 }
 
-BS_TO_TEXT_ELEMENT: Final[
+_BS_TO_TEXT_ELEMENT: Final[
     dict[
         type[bs4.NavigableString],
         type[elements.CData | elements.Comment | elements.RawText],
@@ -37,7 +31,7 @@ BS_TO_TEXT_ELEMENT: Final[
 }
 
 
-def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
+def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     """Find all root SVG fragments in the given BeautifulSoup object.
 
     The function performs a breadth-first search until it finds an
@@ -54,12 +48,12 @@ def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
 
     Examples:
         >>> soup = bs4.BeautifulSoup("<svg><rect/></svg>", features="lxml-xml")
-        >>> get_root_svg_fragments(soup)
+        >>> _get_root_svg_fragments(soup)
         [<svg><rect/></svg>]
         >>> soup = bs4.BeautifulSoup(
         ...     "<svg><rect/></svg>", features="html.parser"
         ... )
-        >>> get_root_svg_fragments(soup)
+        >>> _get_root_svg_fragments(soup)
         [<svg><rect></rect></svg>]
 
     """
@@ -80,7 +74,7 @@ def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def convert_element(backend: bs4.PageElement) -> elements.Element | None:
+def _convert_element(backend: bs4.PageElement) -> elements.Element | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
@@ -95,7 +89,7 @@ def convert_element(backend: bs4.PageElement) -> elements.Element | None:
     """
     match backend:
         case bs4.NavigableString():
-            cls = BS_TO_TEXT_ELEMENT.get(type(backend))
+            cls = _BS_TO_TEXT_ELEMENT.get(type(backend))
 
             if cls is None:
                 return None
@@ -107,7 +101,7 @@ def convert_element(backend: bs4.PageElement) -> elements.Element | None:
 
             return cls(text)
         case bs4.Tag():
-            tag_class = TAG_NAME_TO_CLASS[
+            tag_class = _TAG_NAME_TO_CLASS[
                 cast(elements.TagName, backend.name)
             ]
 
@@ -117,7 +111,7 @@ def convert_element(backend: bs4.PageElement) -> elements.Element | None:
 
             if isinstance(tag, elements.PairedTag):
                 for child in backend.children:
-                    grandchild = convert_element(child)
+                    grandchild = _convert_element(child)
 
                     if grandchild is not None:
                         tag.add_child(grandchild)
@@ -164,7 +158,7 @@ def parse_svg(
     """
     soup = bs4.BeautifulSoup(markup, features=parser)
 
-    svg_fragments = get_root_svg_fragments(soup)
+    svg_fragments = _get_root_svg_fragments(soup)
 
     if len(svg_fragments) != 1:
         msg = (
@@ -174,7 +168,7 @@ def parse_svg(
 
         raise ValueError(msg)
 
-    svg = convert_element(svg_fragments[0])
+    svg = _convert_element(svg_fragments[0])
 
     if not isinstance(svg, elements.Svg):
         msg = f"Expected an <svg> element, found {type(svg).__name__}."

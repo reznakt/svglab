@@ -6,9 +6,6 @@ from typing_extensions import override
 from svglab import serialize
 
 
-__all__ = ["Color", "ColorType"]
-
-
 class Color(
     pydantic_extra_types.color.Color, serialize.CustomSerializable
 ):

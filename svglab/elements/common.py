@@ -11,16 +11,14 @@ import bs4
 import pydantic
 from typing_extensions import Self, override
 
-from svglab import attrs, errors, models, serialize, utils
+from svglab import attrparse, errors, models, serialize, utils
 from svglab.elements import names
 
-
-__all__ = ["Element", "PairedTag", "Tag", "TextElement", "tag_name"]
 
 _T = TypeVar("_T")
 _T_tag = TypeVar("_T_tag", bound="Tag")
 
-EMPTY_PARAM: Final = object()
+_EMPTY_PARAM: Final = object()
 """A sentinel value for an empty parameter."""
 
 
@@ -44,7 +42,7 @@ def tag_name(tag: Tag | type[Tag], /) -> names.TagName:
     return names.TAG_NAME_TO_NORMALIZED.inverse[tag_cls.__name__]
 
 
-def match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
+def _match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
     """Check if a tag matches the given search criteria.
 
     Args:
@@ -57,11 +55,11 @@ def match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
     Examples:
     >>> from svglab import Rect
     >>> rect = Rect()
-    >>> match_tag(rect, search="rect")
+    >>> _match_tag(rect, search="rect")
     True
-    >>> match_tag(rect, search=Rect)
+    >>> _match_tag(rect, search=Rect)
     True
-    >>> match_tag(rect, search="circle")
+    >>> _match_tag(rect, search="circle")
     False
 
     """
@@ -94,10 +92,10 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
 
         Examples:
         >>> from svglab import Rect
-        >>> from svglab.attrs import Length
-        >>> rect = Rect(id="foo", x=Length(100), y=Length(100))
+        >>> from svglab.attrparse import Length
+        >>> rect = Rect(id="foo", stroke_linecap="round")
         >>> rect.to_xml()
-        '<rect id="foo" x="100" y="100"/>'
+        '<rect id="foo" stroke-linecap="round"/>'
 
         """
         formatter = formatter or serialize.get_current_formatter()
@@ -155,10 +153,11 @@ class Tag(Element, metaclass=abc.ABCMeta):
         extra="allow",
         alias_generator=pydantic.AliasGenerator(
             validation_alias=lambda name: pydantic.AliasChoices(
-                name, attrs.ATTR_NAME_TO_NORMALIZED.inverse.get(name, name)
+                name,
+                attrparse.ATTR_NAME_TO_NORMALIZED.inverse.get(name, name),
             ),
             serialization_alias=(
-                lambda name: attrs.ATTR_NAME_TO_NORMALIZED.inverse.get(
+                lambda name: attrparse.ATTR_NAME_TO_NORMALIZED.inverse.get(
                     name, name
                 )
             ),
@@ -170,7 +169,7 @@ class Tag(Element, metaclass=abc.ABCMeta):
     @pydantic.model_validator(mode="after")
     def __validate_extra(self) -> Tag:  # pyright: ignore[reportUnusedFunction]
         # model_extra cannot be None because extra is set to "allow"
-        assert self.model_extra is not None
+        assert self.model_extra is not None, "model_extra is None"
 
         for key, value in self.model_extra.items():
             if not isinstance(value, str):
@@ -183,23 +182,23 @@ class Tag(Element, metaclass=abc.ABCMeta):
         return self
 
     def __getitem__(self, key: str) -> str:
-        assert self.model_extra is not None
+        assert self.model_extra is not None, "model_extra is None"
         value: str = self.model_extra[key]
         return value
 
     def __setitem__(self, key: str, value: str) -> None:
-        assert self.model_extra is not None
+        assert self.model_extra is not None, "model_extra is None"
         self.model_extra[key] = value
 
     def __delitem__(self, key: str) -> None:
-        assert self.model_extra is not None
+        assert self.model_extra is not None, "model_extra is None"
         del self.model_extra[key]
 
     def extra_attrs(self) -> Mapping[str, str]:
-        assert self.model_extra is not None
+        assert self.model_extra is not None, "model_extra is None"
         return self.model_extra
 
-    def standard_attrs(self) -> Mapping[attrs.AttributeName, object]:
+    def standard_attrs(self) -> Mapping[attrparse.AttributeName, object]:
         dump = self.model_dump(
             by_alias=True,
             exclude_defaults=True,
@@ -208,10 +207,10 @@ class Tag(Element, metaclass=abc.ABCMeta):
         )
 
         return {
-            attr: getattr(self, attrs.ATTR_NAME_TO_NORMALIZED[attr])
+            attr: getattr(self, attrparse.ATTR_NAME_TO_NORMALIZED[attr])
             for key, _ in dump.items()
-            if (attr := cast(attrs.AttributeName, key))
-            in attrs.ATTRIBUTE_NAMES
+            if (attr := cast(attrparse.AttributeName, key))
+            in attrparse.ATTRIBUTE_NAMES
         }
 
     def all_attrs(self) -> Mapping[str, object]:
@@ -422,7 +421,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
         """
         for child in self.descendants if recursive else self.children:
             if isinstance(child, Tag) and any(
-                match_tag(child, search=tag) for tag in tags
+                _match_tag(child, search=tag) for tag in tags
             ):
                 yield child
 
@@ -441,7 +440,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
         self,
         *tags: type[_T_tag],
         recursive: bool = True,
-        default: _T = EMPTY_PARAM,
+        default: _T = _EMPTY_PARAM,
     ) -> _T_tag | _T: ...
 
     @overload
@@ -449,14 +448,14 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
         self,
         *tags: type[Tag] | names.TagName,
         recursive: bool = True,
-        default: _T = EMPTY_PARAM,
+        default: _T = _EMPTY_PARAM,
     ) -> Tag | _T: ...
 
     def find(
         self,
         *tags: type[Tag] | names.TagName,
         recursive: bool = True,
-        default: _T = EMPTY_PARAM,
+        default: _T = _EMPTY_PARAM,
     ) -> Tag | _T:
         """Find the first tag that matches the given search criteria.
 
@@ -490,7 +489,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
         try:
             return next(self.find_all(*tags, recursive=recursive))
         except StopIteration as e:
-            if default is not EMPTY_PARAM:
+            if default is not _EMPTY_PARAM:
                 return default
 
             msg = f"Unable to find tag by search criteria: {tags}"

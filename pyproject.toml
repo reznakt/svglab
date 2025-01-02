@@ -36,6 +36,7 @@ pytest-clarity = "^1.0.1"
 pytest-accept = "^0.1.12"
 pytest-sugar = "^1.0.0"
 pytest-randomly = "^3.16.0"
+useful-types = "^0.2.1"
 
 [tool.poetry.scripts]
 svglab = "svglab.__main__:main"
@@ -58,7 +59,7 @@ filterwarnings = [
 ]
 
 [tool.pyright]
-deprecateTypingAliases = true
+deprecateTypingAliases = false        # covered by Ruff + shows false positives
 enableReachabilityAnalysis = true
 pythonPlatform = "All"
 pythonVersion = "3.10"

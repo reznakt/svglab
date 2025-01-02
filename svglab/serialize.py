@@ -45,6 +45,9 @@ Separator: TypeAlias = Literal[", ", ",", " "]
 PathDataSerializationMode: TypeAlias = Literal["relative", "absolute"]
 """ Mode for serializing path data."""
 
+BoolSerializationMode: TypeAlias = Literal["text", "number"]
+""" Mode for serializing boolean values."""
+
 
 @runtime_checkable
 class CustomSerializable(Protocol):
@@ -70,7 +73,7 @@ Serializable: TypeAlias = (
 """ Type for objects that can be serialized to a SVG-friendly string. """
 
 
-def is_serializable(value: object, /) -> TypeIs[Serializable]:
+def _is_serializable(value: object, /) -> TypeIs[Serializable]:
     return isinstance(
         value,
         bool
@@ -195,16 +198,16 @@ def set_formatter(formatter: Formatter) -> None:
 
 
 @overload
-def format_number(number: float, /) -> str: ...
+def _serialize_number(number: float, /) -> str: ...
 
 
 @overload
-def format_number(
+def _serialize_number(
     first: float, second: float, /, *numbers: float
 ) -> tuple[str, ...]: ...
 
 
-def format_number(*numbers: float) -> str | tuple[str, ...]:
+def _serialize_number(*numbers: float) -> str | tuple[str, ...]:
     """Format a number or a sequence of numbers for SVG serialization.
 
     Args:
@@ -214,15 +217,15 @@ def format_number(*numbers: float) -> str | tuple[str, ...]:
     The formatted number or numbers.
 
     Examples:
-    >>> format_number(42)
+    >>> _serialize_number(42)
     '42'
-    >>> format_number(3.14)
+    >>> _serialize_number(3.14)
     '3.14'
-    >>> format_number(1, 2, 3)
+    >>> _serialize_number(1, 2, 3)
     ('1', '2', '3')
-    >>> format_number(1.0, 2.0, 3.0)
+    >>> _serialize_number(1.0, 2.0, 3.0)
     ('1', '2', '3')
-    >>> format_number(1e9)
+    >>> _serialize_number(1e9)
     '1e+09'
 
     """
@@ -269,7 +272,7 @@ def serialize_attr(value: object, /) -> str:
     'foo bar'
 
     """
-    if not is_serializable(value):
+    if not _is_serializable(value):
         msg = f"Type {type(value)} is not serializable."
         raise TypeError(msg)
 
@@ -282,7 +285,7 @@ def serialize_attr(value: object, /) -> str:
     return result
 
 
-def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
+def _extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     """Extract function name and arguments from a function-call-like attribute.
 
     An attribute is considered to be a function call if it has the form
@@ -297,13 +300,13 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     or `None` if the attribute is not a function call.
 
     Examples:
-    >>> extract_function_name_and_args("foo()") is None  # no arguments
+    >>> _extract_function_name_and_args("foo()") is None  # no arguments
     True
-    >>> extract_function_name_and_args("foo(42)")
+    >>> _extract_function_name_and_args("foo(42)")
     ('foo', '42')
-    >>> extract_function_name_and_args("foo(42, 'bar')")
+    >>> _extract_function_name_and_args("foo(42, 'bar')")
     ('foo', "42, 'bar'")
-    >>> extract_function_name_and_args(
+    >>> _extract_function_name_and_args(
     ...     "bar"
     ... ) is None  # not a function call
     True
@@ -318,22 +321,34 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
 
 
 @overload
-def serialize(value: Serializable, /) -> str: ...
+def serialize(
+    value: Serializable, /, *, bool_mode: BoolSerializationMode = "text"
+) -> str: ...
 
 
 @overload
 def serialize(
-    first: Serializable, second: Serializable, /, *values: Serializable
+    first: Serializable,
+    second: Serializable,
+    /,
+    *values: Serializable,
+    bool_mode: BoolSerializationMode = "text",
 ) -> tuple[str, ...]: ...
 
 
-def serialize(*values: Serializable) -> str | tuple[str, ...]:
+def serialize(
+    *values: Serializable, bool_mode: BoolSerializationMode = "text"
+) -> str | tuple[str, ...]:
     """Return an SVG-friendly string representation of the given value(s)."""
-    result = tuple(_serialize(value) for value in values)
+    result = tuple(
+        _serialize(value, bool_mode=bool_mode) for value in values
+    )
     return result[0] if len(result) == 1 else result
 
 
-def _serialize(value: Serializable) -> str:
+def _serialize(
+    value: Serializable, /, *, bool_mode: BoolSerializationMode
+) -> str:
     formatter = get_current_formatter()
     result: str
 
@@ -343,15 +358,16 @@ def _serialize(value: Serializable) -> str:
 
             if (
                 formatter.spaces_around_function_args
-                and (fn_call := extract_function_name_and_args(result))
+                and (fn_call := _extract_function_name_and_args(result))
                 is not None
             ):
                 fn, args = fn_call
                 result = f"{fn}( {args} )"
-        case bool():  # needs to be before int (bool is a subclass of int)
-            result = "1" if value else "0"
+        # needs to be before int (bool is a subclass of int)
+        case bool():
+            result = _serialize_bool(value, mode=bool_mode)
         case int() | float():
-            result = format_number(value)
+            result = _serialize_number(value)
         case str():
             result = value
         case bytes():
@@ -359,7 +375,42 @@ def _serialize(value: Serializable) -> str:
         # this should go last to avoid classifying strings as iterables, etc.
         case Iterable():
             result = formatter.list_separator.join(
-                _serialize(v) for v in value
+                _serialize(v, bool_mode=bool_mode) for v in value
             )
 
     return result
+
+
+def _serialize_bool(
+    value: bool,  # noqa: FBT001
+    /,
+    *,
+    mode: BoolSerializationMode,
+) -> str:
+    """Serialize a boolean value into its SVG representation.
+
+    Args:
+    value: The boolean value to serialize.
+    mode: The serialization mode to use. Can be either "text" or "number".
+    If set to "text", the value is serialized as "true" or "false".
+    If set to "number", the value is serialized as "1" or "0".
+
+    Returns:
+    The SVG representation of the boolean value.
+
+    Examples:
+    >>> _serialize_bool(True, mode="text")
+    'true'
+    >>> _serialize_bool(False, mode="text")
+    'false'
+    >>> _serialize_bool(True, mode="number")
+    '1'
+    >>> _serialize_bool(False, mode="number")
+    '0'
+
+    """
+    match mode:
+        case "text":
+            return "true" if value else "false"
+        case "number":
+            return "1" if value else "0"
