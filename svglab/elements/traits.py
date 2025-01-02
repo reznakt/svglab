@@ -1,11 +1,15 @@
-from svglab.attrs import groups, regular
+from svglab.attrs import groups
+from svglab.elements import common
 
 
-class Element(groups.Core, groups.Presentation):
+class Element(groups.Core, groups.Presentation, common.Tag):
     pass
 
 
-class GraphicsElement(Element):
+class GraphicsElement(
+    groups.GraphicalEvents,  # TODO: check if this is correct
+    Element,
+):
     pass
 
 
@@ -17,11 +21,14 @@ class BasicShape(Shape):
     pass
 
 
-class AnimationElement(regular.OnLoad, Element):
+class AnimationElement(groups.AnimationEvents, Element):
     pass
 
 
-class ContainerElement(Element):
+class ContainerElement(
+    groups.GraphicalEvents,  # TODO: check if this is correct
+    common.PairedTag,
+):
     pass
 
 

@@ -12,7 +12,7 @@ import pydantic
 from typing_extensions import Self, override
 
 from svglab import attrparse, errors, models, serialize, utils
-from svglab.elements import names, traits
+from svglab.elements import names
 
 
 _T = TypeVar("_T")
@@ -132,7 +132,7 @@ class TextElement(Element, metaclass=abc.ABCMeta):
         return f"{name}({self.content!r})"
 
 
-class Tag(traits.Element, Element, metaclass=abc.ABCMeta):
+class Tag(Element, metaclass=abc.ABCMeta):
     """A tag.
 
     A tag is an element that has a name and a set of attributes.
@@ -249,7 +249,7 @@ class Tag(traits.Element, Element, metaclass=abc.ABCMeta):
         return tag
 
 
-class PairedTag(traits.ContainerElement, Tag, metaclass=abc.ABCMeta):
+class PairedTag(Tag, metaclass=abc.ABCMeta):
     """A paired tag.
 
     A paired tag is a tag that can have children.

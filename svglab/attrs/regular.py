@@ -457,79 +457,79 @@ class OffsetNumber(common.Attr):
 
 
 class OnAbort(common.Attr):
-    on_abort: models.Attr[types.Anything] = None
+    onabort: models.Attr[types.Anything] = None
 
 
 class OnActivate(common.Attr):
-    on_activate: models.Attr[types.Anything] = None
+    onactivate: models.Attr[types.Anything] = None
 
 
 class OnBegin(common.Attr):
-    on_begin: models.Attr[types.Anything] = None
+    onbegin: models.Attr[types.Anything] = None
 
 
 class OnClick(common.Attr):
-    on_click: models.Attr[types.Anything] = None
+    onclick: models.Attr[types.Anything] = None
 
 
 class OnEnd(common.Attr):
-    on_end: models.Attr[types.Anything] = None
+    onend: models.Attr[types.Anything] = None
 
 
 class OnError(common.Attr):
-    on_error: models.Attr[types.Anything] = None
+    onerror: models.Attr[types.Anything] = None
 
 
 class OnFocusIn(common.Attr):
-    on_focus_in: models.Attr[types.Anything] = None
+    onfocusin: models.Attr[types.Anything] = None
 
 
 class OnFocusOut(common.Attr):
-    on_focus_out: models.Attr[types.Anything] = None
+    onfocusout: models.Attr[types.Anything] = None
 
 
 class OnLoad(common.Attr):
-    on_load: models.Attr[types.Anything] = None
+    onload: models.Attr[types.Anything] = None
 
 
 class OnMouseDown(common.Attr):
-    on_mouse_down: models.Attr[types.Anything] = None
+    onmousedown: models.Attr[types.Anything] = None
 
 
 class OnMouseMove(common.Attr):
-    on_mouse_move: models.Attr[types.Anything] = None
+    onmousemove: models.Attr[types.Anything] = None
 
 
 class OnMouseOut(common.Attr):
-    on_mouse_out: models.Attr[types.Anything] = None
+    onmouseout: models.Attr[types.Anything] = None
 
 
 class OnMouseOver(common.Attr):
-    on_mouse_over: models.Attr[types.Anything] = None
+    onmouseover: models.Attr[types.Anything] = None
 
 
 class OnMouseUp(common.Attr):
-    on_mouse_up: models.Attr[types.Anything] = None
+    onmouseup: models.Attr[types.Anything] = None
 
 
 class OnRepeat(common.Attr):
-    on_repeat: models.Attr[types.Anything] = None
+    onrepeat: models.Attr[types.Anything] = None
 
 
 class OnResize(common.Attr):
-    on_resize: models.Attr[types.Anything] = None
+    onresize: models.Attr[types.Anything] = None
 
 
 class OnScroll(common.Attr):
-    on_scroll: models.Attr[types.Anything] = None
+    onscroll: models.Attr[types.Anything] = None
 
 
 class OnUnload(common.Attr):
-    on_unload: models.Attr[types.Anything] = None
+    onunload: models.Attr[types.Anything] = None
 
 
 class OnZoom(common.Attr):
-    on_zoom: models.Attr[types.Anything] = None
+    onzoom: models.Attr[types.Anything] = None
 
 
 class OperatorFeComposite(common.Attr):

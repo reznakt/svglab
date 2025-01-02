@@ -1,5 +1,4 @@
 import collections
-import itertools
 from typing import Final, Literal, TypeAlias, cast
 
 import bs4
@@ -16,13 +15,8 @@ DEFAULT_PARSER: Final[Parser] = "lxml-xml"
 
 _TAG_NAME_TO_CLASS: Final = {
     elements.tag_name(cls): cls
-    for cls in set(
-        itertools.chain(
-            elements.Tag.__subclasses__(),
-            elements.PairedTag.__subclasses__(),
-        )
-    )
-    - {elements.PairedTag}
+    for cls in utils.get_all_subclasses(elements.Tag)
+    if cls.__name__ in elements.TAG_NAME_TO_NORMALIZED.inverse
 }
 
 _BS_TO_TEXT_ELEMENT: Final[

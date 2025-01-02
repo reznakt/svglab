@@ -8,6 +8,7 @@ class Core(regular.Id, regular.XmlBase, regular.XmlLang, regular.XmlSpace):
 class Presentation(
     presentation.BaselineShift,
     presentation.ClipRule,
+    presentation.Color,
     presentation.ColorInterpolation,
     presentation.ColorInterpolationFilters,
     presentation.ColorProfile,
@@ -59,7 +60,9 @@ class Presentation(
     pass
 
 
-class AnimationEvent(regular.OnBegin, regular.OnEnd, regular.OnRepeat):
+class AnimationEvents(
+    regular.OnBegin, regular.OnEnd, regular.OnLoad, regular.OnRepeat
+):
     pass
 
 
@@ -71,7 +74,7 @@ class ConditionalProcessing(
     pass
 
 
-class DocumentEvent(
+class DocumentEvents(
     regular.OnAbort,
     regular.OnError,
     regular.OnResize,
@@ -82,25 +85,26 @@ class DocumentEvent(
     pass
 
 
-class GraphicalEvent(
-    regular.OnFocusIn,
-    regular.OnFocusOut,
+class GraphicalEvents(
     regular.OnActivate,
     regular.OnClick,
+    regular.OnFocusIn,
+    regular.OnFocusOut,
+    regular.OnLoad,
     regular.OnMouseDown,
-    regular.OnMouseUp,
-    regular.OnMouseOver,
     regular.OnMouseMove,
     regular.OnMouseOut,
+    regular.OnMouseOver,
+    regular.OnMouseUp,
 ):
     pass
 
 
-class Event(GraphicalEvent, AnimationEvent, DocumentEvent):
+class Event(GraphicalEvents, AnimationEvents, DocumentEvents):
     pass
 
 
-class FilterPrimitive(
+class FilterPrimitives(
     regular.XCoordinate,
     regular.YCoordinate,
     regular.Width,
@@ -110,13 +114,13 @@ class FilterPrimitive(
     pass
 
 
-class CxCy(regular.Cx, regular.Cy):
-    pass
-
-
-class WidthHeight(regular.Width, regular.Height):
-    pass
-
-
-class RxRy(regular.Rx, regular.Ry):
+class Xlink(
+    regular.XlinkActuateOnLoad,
+    regular.XlinkArcrole,
+    regular.XlinkHref,
+    regular.XlinkRole,
+    regular.XlinkShow,
+    regular.XlinkTitle,
+    regular.XlinkType,
+):
     pass

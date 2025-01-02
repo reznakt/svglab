@@ -1,5 +1,6 @@
+import collections
 import functools
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from typing import Protocol, TypeVar, runtime_checkable
 
 import bs4
@@ -179,3 +180,37 @@ def clamp(
 
     """
     return max(min(value, max_value), min_value)
+
+
+def get_all_subclasses(
+    cls: type[_T], /
+) -> Generator[type[_T], None, None]:
+    """Recursively obtain all subclasses of a class.
+
+    Args:
+        cls: The class to obtain subclasses for.
+
+    Yields:
+        Subclasses of the given class, including subclasses of subclasses
+        (and so on).
+
+    Examples:
+        >>> class A:
+        ...     pass
+        >>> class B(A):
+        ...     pass
+        >>> class C(B):
+        ...     pass
+        >>> list(cls.__name__ for cls in get_all_subclasses(A))
+        ['B', 'C']
+
+    """
+    queue = collections.deque([cls])
+
+    while queue:
+        subclass = queue.popleft()
+
+        if subclass is not cls:
+            yield subclass
+
+        queue.extend(subclass.__subclasses__())
