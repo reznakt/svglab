@@ -1024,6 +1024,10 @@ class XmlLang(common.Attr):
     xml_lang: models.Attr[types.LanguageId] = None
 
 
+class Xmlns(common.Attr):
+    xmlns: models.Attr[types.Iri] = None
+
+
 class XmlSpace(common.Attr):
     xml_space: models.Attr[Literal["default", "preserve"]] = None
 

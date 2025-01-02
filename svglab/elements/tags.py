@@ -3,7 +3,7 @@ import os
 import pathlib
 from typing import final, overload
 
-from svglab import models, serialize, utils
+from svglab import serialize, utils
 from svglab.attrs import groups, presentation, regular
 from svglab.elements import common, traits
 
@@ -394,9 +394,12 @@ class Style(common.Tag):
 
 
 @final
-class Svg(groups.WidthHeight, traits.StructuralElement, common.PairedTag):
-    xmlns: models.Attr[str] = "http://www.w3.org/2000/svg"
-
+class Svg(
+    regular.Xmlns,
+    groups.WidthHeight,
+    traits.StructuralElement,
+    common.PairedTag,
+):
     @overload
     def save(
         self,
