@@ -16,6 +16,10 @@ classifiers = [
   "Typing :: Typed",
 ]
 
+[tool.poetry.urls]
+"Homepage" = "https://github.com/reznakt/svglab"
+"Issues" = "https://github.com/reznakt/svglab/issues"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
