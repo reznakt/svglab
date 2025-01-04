@@ -22,9 +22,6 @@ from svglab.attrparse import point
 _AbsolutePathCommandChar: TypeAlias = Literal[
     "M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"
 ]
-_RelativePathCommandChar: TypeAlias = Literal[
-    "m", "l", "h", "v", "c", "s", "q", "t", "a", "z"
-]
 
 
 @final
@@ -425,14 +422,13 @@ class D(
     def __format_command(
         *args: serialize.Serializable,
         absolute_char: _AbsolutePathCommandChar,
-        relative_char: _RelativePathCommandChar,
     ) -> str:
         formatter = serialize.get_current_formatter()
 
         char = (
             absolute_char
             if formatter.path_data_mode == "absolute"
-            else relative_char
+            else absolute_char.lower()
         )
 
         if not args:
@@ -445,38 +441,22 @@ class D(
         for command in self.__apply_mode():
             match command:
                 case MoveTo(end):
-                    yield self.__format_command(
-                        end, absolute_char="M", relative_char="m"
-                    )
+                    yield self.__format_command(end, absolute_char="M")
                 case ClosePath(end):  # has to be before LineTo
-                    yield self.__format_command(
-                        absolute_char="Z", relative_char="z"
-                    )
+                    yield self.__format_command(absolute_char="Z")
                 case LineTo(end):
-                    yield self.__format_command(
-                        end, absolute_char="L", relative_char="l"
-                    )
+                    yield self.__format_command(end, absolute_char="L")
                 case QuadraticBezierTo(control, end):
                     yield self.__format_command(
-                        control, end, absolute_char="Q", relative_char="q"
+                        control, end, absolute_char="Q"
                     )
                 case CubicBezierTo(control1, control2, end):
                     yield self.__format_command(
-                        control1,
-                        control2,
-                        end,
-                        absolute_char="C",
-                        relative_char="c",
+                        control1, control2, end, absolute_char="C"
                     )
                 case ArcTo(radius, angle, large, sweep, end):
                     yield self.__format_command(
-                        radius,
-                        angle,
-                        large,
-                        sweep,
-                        end,
-                        absolute_char="A",
-                        relative_char="a",
+                        radius, angle, large, sweep, end, absolute_char="A"
                     )
 
     @override
