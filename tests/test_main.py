@@ -2,6 +2,7 @@ from typing import Final
 
 import hypothesis
 import hypothesis.strategies as st
+import pydantic
 import pytest
 
 from svglab import elements, parse
@@ -237,3 +238,60 @@ def test_attribute_normalization_serialize() -> None:
     )
 
     assert dump == attrs
+
+
+@pytest.mark.parametrize(
+    "element", [elements.RawText, elements.Comment, elements.CData]
+)
+def test_text_elements_min_str_length_invalid(
+    element: type[elements.RawText | elements.Comment | elements.CData],
+) -> None:
+    with pytest.raises(pydantic.ValidationError):
+        element("")
+
+
+@hypothesis.given(st.text(min_size=1))
+def test_text_elements_min_str_length_valid(test: str) -> None:
+    elements.RawText(test)
+    elements.Comment(test)
+    elements.CData(test)
+
+
+@hypothesis.given(st.text(min_size=1))
+def test_eq_text(text: str) -> None:
+    assert elements.RawText(text) == elements.RawText(text)
+    assert elements.Comment(text) == elements.Comment(text)
+    assert elements.CData(text) == elements.CData(text)
+
+    assert elements.RawText(text) != elements.Comment(text)
+    assert elements.RawText(text) != elements.CData(text)
+    assert elements.Comment(text) != elements.CData(text)
+
+
+def test_eq_tag_simple() -> None:
+    assert elements.Rect() == elements.Rect()
+    assert elements.Rect() != elements.Circle()
+
+    stroke_width = length.Length(1, "px")
+
+    assert elements.Rect(stroke_width=stroke_width) == elements.Rect(
+        stroke_width=stroke_width
+    )
+    assert elements.Rect(stroke_width=stroke_width) != elements.Rect()
+    assert elements.Rect(stroke_width=stroke_width) != elements.Rect(
+        stroke_width=length.Length(2, "px")
+    )
+    assert elements.Rect(stroke_width=stroke_width) != elements.Circle(
+        stroke_width=stroke_width
+    )
+
+    assert elements.Rect(stroke_width=stroke_width) != elements.Rect(
+        stroke_width=stroke_width, stroke="red"
+    )
+
+
+@pytest.mark.xfail
+def test_eq_tag_group() -> None:
+    assert elements.G().add_child(
+        elements.Rect()
+    ) == elements.G().add_child(elements.Rect())
