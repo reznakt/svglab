@@ -290,8 +290,12 @@ def test_eq_tag_simple() -> None:
     )
 
 
-@pytest.mark.xfail
 def test_eq_tag_group() -> None:
     assert elements.G().add_child(
         elements.Rect()
     ) == elements.G().add_child(elements.Rect())
+
+
+@hypothesis.given(st.text())
+def test_eq_tag_prefix(prefix: str) -> None:
+    assert elements.Rect(prefix=prefix) == elements.Rect(prefix=prefix)

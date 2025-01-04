@@ -110,6 +110,19 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
     def to_beautifulsoup_object(self) -> bs4.PageElement:
         """Convert the element to a corresponding `BeautifulSoup` object."""
 
+    @override
+    def __eq__(self, other: object) -> bool:
+        if self is other:
+            return True
+
+        if not isinstance(other, type(self)):
+            return False
+
+        return self._eq(other)
+
+    @abc.abstractmethod
+    def _eq(self, other: Self) -> bool: ...
+
 
 class TextElement(Element, metaclass=abc.ABCMeta):
     """The base class of text-based elements.
@@ -130,6 +143,10 @@ class TextElement(Element, metaclass=abc.ABCMeta):
     def __repr__(self) -> str:
         name = type(self).__name__
         return f"{name}({self.content!r})"
+
+    @override
+    def _eq(self, other: Self) -> bool:
+        return self.content == other.content
 
 
 class Tag(Element, metaclass=abc.ABCMeta):
@@ -247,6 +264,13 @@ class Tag(Element, metaclass=abc.ABCMeta):
             tag[key] = serialize.serialize_attr(value)
 
         return tag
+
+    @override
+    def _eq(self, other: Self) -> bool:
+        return (
+            self.prefix == other.prefix
+            and self.all_attrs() == other.all_attrs()
+        )
 
 
 class PairedTag(Tag, metaclass=abc.ABCMeta):
@@ -494,3 +518,10 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
             msg = f"Unable to find tag by search criteria: {tags}"
             raise errors.SvgElementNotFoundError(msg) from e
+
+    @override
+    def _eq(self, other: Self) -> bool:
+        return super()._eq(other) and all(
+            c1 == c2
+            for c1, c2 in zip(self.children, other.children, strict=True)
+        )
