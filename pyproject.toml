@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "svglab"
-version = "0.1.0"
+version = "0.1.1"
 description = "A manipulation and optimization library for Scalable Vector Graphics"
 authors = ["Tomáš Režňák <tomas.reznak@volny.cz>"]
 license = "MIT"
