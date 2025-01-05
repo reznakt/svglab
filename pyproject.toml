@@ -36,6 +36,7 @@ lark = "^1.2.2"
 readable-number = "^0.1.3"
 svgpathtools = "^1.6.1"
 pyright = "^1.1.391"
+useful-types = "^0.2.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.8.4"
@@ -50,7 +51,6 @@ pytest-clarity = "^1.0.1"
 pytest-accept = "^0.1.12"
 pytest-sugar = "^1.0.0"
 pytest-randomly = "^3.16.0"
-useful-types = "^0.2.1"
 
 [tool.poetry.scripts]
 svglab = "svglab.__main__:main"
