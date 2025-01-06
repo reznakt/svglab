@@ -2,7 +2,9 @@
 
 from typing import Literal
 
-from svglab import models
+import pydantic
+
+from svglab import constants, models
 from svglab.attrs import common, types
 
 
@@ -973,7 +975,11 @@ class XmlLang(common.Attr):
 
 
 class Xmlns(common.Attr):
-    xmlns: models.Attr[types.Iri] = None
+    # cannot use Final here because pydantic will consider the field a ClassVar
+    # see https://github.com/pydantic/pydantic/issues/6253
+    xmlns: constants.Xmlns = pydantic.Field(
+        default=constants.DEFAULT_XMLNS, frozen=True
+    )
 
 
 class XmlSpace(common.Attr):

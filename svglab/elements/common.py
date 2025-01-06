@@ -217,12 +217,7 @@ class Tag(Element, metaclass=abc.ABCMeta):
         return self.model_extra
 
     def standard_attrs(self) -> Mapping[attr_names.AttributeName, object]:
-        dump = self.model_dump(
-            by_alias=True,
-            exclude_defaults=True,
-            exclude_unset=True,
-            exclude_none=True,
-        )
+        dump = self.model_dump(by_alias=True, exclude_none=True)
 
         return {
             attr: getattr(self, attr_names.ATTR_NAME_TO_NORMALIZED[attr])

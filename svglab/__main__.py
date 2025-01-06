@@ -89,7 +89,7 @@ def main() -> None:
 
     # Manipulate attributes
     print(svg.xmlns)  # http://www.w3.org/2000/svg
-    svg.xmlns = "http://example.com"
+    svg.x = Length(10, "px")
 
     # Save to a file
     svg.save(sys.stdout)

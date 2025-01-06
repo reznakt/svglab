@@ -230,12 +230,7 @@ def test_attribute_normalization_serialize() -> None:
         "xml:space": "preserve",
     }
 
-    dump = rect.model_dump(
-        by_alias=True,
-        exclude_defaults=True,
-        exclude_unset=True,
-        exclude_none=True,
-    )
+    dump = rect.model_dump(by_alias=True, exclude_none=True)
 
     assert dump == attrs
 
@@ -299,3 +294,10 @@ def test_eq_tag_group() -> None:
 @hypothesis.given(st.text())
 def test_eq_tag_prefix(prefix: str) -> None:
     assert elements.Rect(prefix=prefix) == elements.Rect(prefix=prefix)
+
+
+def test_xmlns_always_present_on_svg() -> None:
+    svg = elements.Svg()
+
+    assert "xmlns" in svg.standard_attrs()
+    assert svg.xmlns == "http://www.w3.org/2000/svg"
