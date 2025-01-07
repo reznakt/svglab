@@ -23,7 +23,7 @@ jobs:
           poetry-version: "2.0.0"
 
       - name: Install dependencies
-        run: poetry install
+        run: poetry install --only main,dev
 
       - name: Run linter
         run: poetry run poe lint
@@ -31,11 +31,17 @@ jobs:
       - name: Run formatter
         run: poetry run poe format
 
-      - name: Run type checking
-        run: poetry run poe typecheck
-
       - name: Run version check
         run: poetry run poe versioncheck
 
+      - name: Install test dependencies
+        run: poetry install --only main,dev,test
+
       - name: Run tests
         run: poetry run poe test
+
+      - name: Install types
+        run: poetry install --only main,dev,test,types
+
+      - name: Run type checking
+        run: poetry run poe typecheck
