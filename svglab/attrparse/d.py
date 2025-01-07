@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import abc
 from collections.abc import Generator, Iterable, Iterator, MutableSequence
 from typing import (
     Final,
@@ -24,40 +25,52 @@ _AbsolutePathCommandChar: TypeAlias = Literal[
 ]
 
 
-@final
-@pydantic.dataclasses.dataclass
-class MoveTo:
+class PathCommand(
+    point.Supports2DMovement["PathCommand"], metaclass=abc.ABCMeta
+):
     end: point.Point
 
+
+@final
+@pydantic.dataclasses.dataclass
+class MoveTo(PathCommand):
+    end: point.Point
+
+    @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(end=self.end + other)
 
+    @override
     def __sub__(self, other: point.Point, /) -> Self:
         return type(self)(end=self.end - other)
 
 
 @pydantic.dataclasses.dataclass
-class LineTo:
+class LineTo(PathCommand):
     end: point.Point
 
+    @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(end=self.end + other)
 
+    @override
     def __sub__(self, other: point.Point, /) -> Self:
         return type(self)(end=self.end - other)
 
 
 @final
 @pydantic.dataclasses.dataclass
-class QuadraticBezierTo:
+class QuadraticBezierTo(PathCommand):
     control: point.Point
     end: point.Point
 
+    @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(
             control=self.control + other, end=self.end + other
         )
 
+    @override
     def __sub__(self, other: point.Point, /) -> Self:
         return type(self)(
             control=self.control - other, end=self.end - other
@@ -66,11 +79,12 @@ class QuadraticBezierTo:
 
 @final
 @pydantic.dataclasses.dataclass
-class CubicBezierTo:
+class CubicBezierTo(PathCommand):
     control1: point.Point
     control2: point.Point
     end: point.Point
 
+    @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(
             control1=self.control1 + other,
@@ -78,6 +92,7 @@ class CubicBezierTo:
             end=self.end + other,
         )
 
+    @override
     def __sub__(self, other: point.Point, /) -> Self:
         return type(self)(
             control1=self.control1 - other,
@@ -88,13 +103,14 @@ class CubicBezierTo:
 
 @final
 @pydantic.dataclasses.dataclass
-class ArcTo:
+class ArcTo(PathCommand):
     radius: point.Point
     angle: float
     large: bool
     sweep: bool
     end: point.Point
 
+    @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(
             radius=self.radius + other,
@@ -104,6 +120,7 @@ class ArcTo:
             end=self.end + other,
         )
 
+    @override
     def __sub__(self, other: point.Point, /) -> Self:
         return type(self)(
             radius=self.radius - other,
@@ -120,14 +137,10 @@ class ClosePath(LineTo):
     pass
 
 
-PathCommand: TypeAlias = (
-    MoveTo | LineTo | QuadraticBezierTo | CubicBezierTo | ArcTo | ClosePath
-)
-
-
 @final
 class D(
     MutableSequence[PathCommand],
+    point.Supports2DMovement["D"],
     models.CustomModel,
     serialize.CustomSerializable,
 ):
@@ -135,6 +148,14 @@ class D(
         self, iterable: Iterable[PathCommand] | None = None, /
     ) -> None:
         self.__commands: Final[list[PathCommand]] = list(iterable or [])
+
+    @override
+    def __add__(self, other: point.Point) -> Self:
+        return type(self)(command + other for command in self)
+
+    @override
+    def __sub__(self, other: point.Point) -> Self:
+        return type(self)(command - other for command in self)
 
     @override
     def __len__(self) -> int:
@@ -458,6 +479,9 @@ class D(
                     yield self.__format_command(
                         radius, angle, large, sweep, end, absolute_char="A"
                     )
+                case _:
+                    msg = f"Unsupported command type: {type(command)}"
+                    raise TypeError(msg)
 
     @override
     def serialize(self) -> str:

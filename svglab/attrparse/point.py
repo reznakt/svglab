@@ -1,18 +1,43 @@
 from __future__ import annotations
 
-from typing import Annotated, SupportsComplex, TypeAlias, final
+from typing import (
+    Annotated,
+    Protocol,
+    SupportsComplex,
+    TypeAlias,
+    TypeVar,
+    final,
+    runtime_checkable,
+)
 
 import lark
 import pydantic
-from typing_extensions import override
+from typing_extensions import Self, override
+from useful_types import SupportsAdd, SupportsSub
 
 from svglab import serialize
 from svglab.attrparse import utils
 
 
+_Supports2DMovementT_co = TypeVar(
+    "_Supports2DMovementT_co", covariant=True, bound="Point"
+)
+
+
+@runtime_checkable
+class Supports2DMovement(
+    SupportsAdd["Point", _Supports2DMovementT_co],
+    SupportsSub["Point", _Supports2DMovementT_co],
+    Protocol,
+):
+    pass
+
+
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
-class Point(SupportsComplex, serialize.CustomSerializable):
+class Point(
+    SupportsComplex, Supports2DMovement, serialize.CustomSerializable
+):
     """A point in a 2D plane.
 
     Attributes:
@@ -56,30 +81,32 @@ class Point(SupportsComplex, serialize.CustomSerializable):
 
         return f"{x}{formatter.point_separator}{y}"
 
-    def __add__(self, other: Point) -> Point:
-        return Point(self.x + other.x, self.y + other.y)
+    @override
+    def __add__(self, other: Self) -> Self:
+        return type(self)(self.x + other.x, self.y + other.y)
 
-    def __neg__(self) -> Point:
-        return self * -1
-
-    def __sub__(self, other: Point) -> Point:
+    @override
+    def __sub__(self, other: Self) -> Self:
         return self + -other
 
-    def __mul__(self, scalar: float) -> Point:
-        return Point(self.x * scalar, self.y * scalar)
+    def __neg__(self) -> Self:
+        return self * -1
 
-    def __truediv__(self, scalar: float) -> Point:
-        return Point(self.x / scalar, self.y / scalar)
+    def __mul__(self, scalar: float) -> Self:
+        return type(self)(self.x * scalar, self.y * scalar)
+
+    def __truediv__(self, scalar: float) -> Self:
+        return type(self)(self.x / scalar, self.y / scalar)
 
     def __complex__(self) -> complex:
         return complex(self.x, self.y)
 
     @classmethod
-    def from_complex(cls, value: complex, /) -> Point:
+    def from_complex(cls, value: complex, /) -> Self:
         return cls(value.real, value.imag)
 
     @classmethod
-    def zero(cls) -> Point:
+    def zero(cls) -> Self:
         return cls(0, 0)
 
 
