@@ -41,6 +41,7 @@ pydantic-extra-types = "^2.10.1"
 readable-number = "^0.1.3"
 svgpathtools = "^1.6.1"
 useful-types = "^0.2.1"
+typing-extensions = "^4.12.2"
 
 [tool.poetry.group.types.dependencies]
 types-beautifulsoup4 = "^4.12.0.20241020"
