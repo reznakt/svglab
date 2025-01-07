@@ -3,7 +3,7 @@ import os
 import pathlib
 from typing import final, overload
 
-from svglab import serialize, utils
+from svglab import protocols, serialize
 from svglab.attrs import groups, regular
 from svglab.elements import traits
 
@@ -940,7 +940,7 @@ class Svg(
     @overload
     def save(
         self,
-        file: utils.SupportsWrite[str],
+        file: protocols.SupportsWrite[str],
         /,
         *,
         pretty: bool = True,
@@ -950,7 +950,9 @@ class Svg(
 
     def save(
         self,
-        path_or_file: str | os.PathLike[str] | utils.SupportsWrite[str],
+        path_or_file: str
+        | os.PathLike[str]
+        | protocols.SupportsWrite[str],
         /,
         *,
         pretty: bool = True,
@@ -984,14 +986,14 @@ class Svg(
         """
         with contextlib.ExitStack() as stack:
             output = self.to_xml(pretty=pretty, formatter=formatter)
-            file: utils.SupportsWrite[str]
+            file: protocols.SupportsWrite[str]
 
             match path_or_file:
                 case str() | os.PathLike() as path:
                     file = stack.enter_context(
                         pathlib.Path(path).open("w")
                     )
-                case utils.SupportsWrite() as file:
+                case protocols.SupportsWrite() as file:
                     pass
 
             file.write(output)

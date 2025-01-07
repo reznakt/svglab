@@ -13,9 +13,8 @@ from typing import (
 import lark
 import pydantic
 from typing_extensions import Self, override
-from useful_types import SupportsAdd, SupportsSub
 
-from svglab import serialize
+from svglab import protocols, serialize
 from svglab.attrparse import utils
 
 
@@ -26,9 +25,7 @@ _Supports2DMovementT_co = TypeVar(
 
 @runtime_checkable
 class Supports2DMovement(
-    SupportsAdd["Point", _Supports2DMovementT_co],
-    SupportsSub["Point", _Supports2DMovementT_co],
-    Protocol,
+    protocols.SupportsAddSub["Point", _Supports2DMovementT_co], Protocol
 ):
     pass
 
@@ -36,7 +33,10 @@ class Supports2DMovement(
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
 class Point(
-    SupportsComplex, Supports2DMovement, serialize.CustomSerializable
+    SupportsComplex,
+    Supports2DMovement,
+    protocols.SupportsMul[float, "Point"],
+    serialize.CustomSerializable,
 ):
     """A point in a 2D plane.
 
@@ -92,6 +92,7 @@ class Point(
     def __neg__(self) -> Self:
         return self * -1
 
+    @override
     def __mul__(self, scalar: float) -> Self:
         return type(self)(self.x * scalar, self.y * scalar)
 

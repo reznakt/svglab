@@ -3,6 +3,7 @@ from typing import Final, Literal, TypeAlias, cast
 
 import bs4
 
+import svglab.protocols
 from svglab import elements, utils
 
 
@@ -127,8 +128,8 @@ def _convert_element(backend: bs4.PageElement) -> elements.Element | None:
 def parse_svg(
     markup: str
     | bytes
-    | utils.SupportsRead[str]
-    | utils.SupportsRead[bytes],
+    | svglab.protocols.SupportsRead[str]
+    | svglab.protocols.SupportsRead[bytes],
     /,
     *,
     parser: Parser = DEFAULT_PARSER,
