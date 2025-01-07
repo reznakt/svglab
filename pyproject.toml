@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "svglab"
-version = "0.1.1"
+version = "0.0.0" # managed by poetry-dynamic-versioning, do not edit
 description = "A manipulation and optimization library for Scalable Vector Graphics"
 authors = ["Tomáš Režňák <tomas.reznak@volny.cz>"]
 license = "MIT"
@@ -20,9 +20,14 @@ classifiers = [
 "Homepage" = "https://github.com/reznakt/svglab"
 "Issues" = "https://github.com/reznakt/svglab/issues"
 
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "semver"
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry.dependencies]
 python = "^3.10"
