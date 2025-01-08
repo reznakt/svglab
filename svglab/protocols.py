@@ -1,6 +1,10 @@
-from typing import Protocol, TypeVar, runtime_checkable
-
-from typing_extensions import override
+import typing_extensions
+from typing_extensions import (
+    Protocol,
+    TypeVar,
+    override,
+    runtime_checkable,
+)
 from useful_types import (
     SupportsAdd,
     SupportsRAdd,
@@ -56,7 +60,7 @@ class SupportsAddSub(
     SupportsSub[_T_contra, _T_co],
     SupportsRAdd[_T_contra, _T_co],
     SupportsRSub[_T_contra, _T_co],
-    Protocol,
+    typing_extensions.Protocol,
 ):
     """Protocol for objects that support addition and subtraction.
 

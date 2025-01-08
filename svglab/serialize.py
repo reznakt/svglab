@@ -3,18 +3,18 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, MutableSequence
 from types import TracebackType
-from typing import (
+
+import pydantic
+import readable_number
+from typing_extensions import (
     Final,
     Literal,
     Protocol,
     TypeAlias,
+    TypeIs,
     overload,
     runtime_checkable,
 )
-
-import pydantic
-import readable_number
-from typing_extensions import TypeIs
 
 from svglab import models
 

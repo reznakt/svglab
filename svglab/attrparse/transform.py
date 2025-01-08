@@ -1,8 +1,14 @@
-from typing import Annotated, TypeAlias, cast, final, overload
-
 import lark
 import pydantic
-from typing_extensions import Self, override
+from typing_extensions import (
+    Annotated,
+    Self,
+    TypeAlias,
+    cast,
+    final,
+    overload,
+    override,
+)
 
 from svglab import serialize
 from svglab.attrparse import utils

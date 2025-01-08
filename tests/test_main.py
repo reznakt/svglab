@@ -1,9 +1,8 @@
-from typing import Final
-
 import hypothesis
 import hypothesis.strategies as st
 import pydantic
 import pytest
+from typing_extensions import Final
 
 from svglab import elements, parse
 from svglab.attrparse import length, transform

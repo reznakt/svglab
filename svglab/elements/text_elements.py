@@ -1,7 +1,5 @@
-from typing import final
-
 import bs4
-from typing_extensions import override
+from typing_extensions import final, override
 
 from svglab.elements import common
 

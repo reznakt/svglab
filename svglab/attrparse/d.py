@@ -2,19 +2,20 @@ from __future__ import annotations
 
 import abc
 from collections.abc import Generator, Iterable, Iterator, MutableSequence
-from typing import (
-    Final,
-    Literal,
-    SupportsIndex,
-    TypeAlias,
-    final,
-    overload,
-)
 
 import pydantic
 import pydantic_core
 import svgpathtools
-from typing_extensions import Self, override
+from typing_extensions import (
+    Final,
+    Literal,
+    Self,
+    SupportsIndex,
+    TypeAlias,
+    final,
+    overload,
+    override,
+)
 
 from svglab import models, serialize, utils
 from svglab.attrparse import point

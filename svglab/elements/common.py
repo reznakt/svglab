@@ -5,11 +5,18 @@ import collections
 import reprlib
 import sys
 from collections.abc import Generator, Mapping
-from typing import Final, SupportsIndex, TypeVar, cast, overload
 
 import bs4
 import pydantic
-from typing_extensions import Self, override
+from typing_extensions import (
+    Final,
+    Self,
+    SupportsIndex,
+    TypeVar,
+    cast,
+    overload,
+    override,
+)
 
 from svglab import errors, models, serialize, utils
 from svglab.attrs import names as attr_names

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from typing import (
+import lark
+import pydantic
+from typing_extensions import (
     Annotated,
     Protocol,
+    Self,
     SupportsComplex,
     TypeAlias,
     TypeVar,
     final,
+    override,
     runtime_checkable,
 )
-
-import lark
-import pydantic
-from typing_extensions import Self, override
 
 from svglab import protocols, serialize
 from svglab.attrparse import utils

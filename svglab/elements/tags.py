@@ -1,7 +1,8 @@
 import contextlib
 import os
 import pathlib
-from typing import final, overload
+
+from typing_extensions import final, overload
 
 from svglab import protocols, serialize
 from svglab.attrs import groups, regular

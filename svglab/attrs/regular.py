@@ -1,8 +1,7 @@
 # ruff: noqa: N815
 
-from typing import Literal
-
 import pydantic
+from typing_extensions import Literal
 
 from svglab import constants, models
 from svglab.attrs import common, types

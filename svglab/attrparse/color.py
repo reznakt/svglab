@@ -1,7 +1,5 @@
-from typing import TypeAlias
-
 import pydantic_extra_types.color
-from typing_extensions import override
+from typing_extensions import TypeAlias, override
 
 from svglab import serialize
 

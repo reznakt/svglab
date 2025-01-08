@@ -1,10 +1,9 @@
 import itertools
 import pathlib
-from typing import Final, TypeVar
 
 import lark
 import pydantic
-from typing_extensions import LiteralString
+from typing_extensions import Final, LiteralString, TypeVar
 
 
 _T = TypeVar("_T")

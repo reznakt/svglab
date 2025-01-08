@@ -1,7 +1,6 @@
-from typing import Annotated, TypeAlias
-
 import lark
 import lark.visitors
+from typing_extensions import Annotated, TypeAlias
 
 from svglab import attrparse
 from svglab.attrparse import utils

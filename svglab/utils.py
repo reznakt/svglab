@@ -1,9 +1,9 @@
 import collections
 import functools
 from collections.abc import Generator, Iterable
-from typing import TypeVar
 
 import bs4
+from typing_extensions import TypeVar
 from useful_types import SupportsRichComparison
 
 

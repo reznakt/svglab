@@ -1,8 +1,9 @@
-import importlib.metadata as _importlib_metadata
-import typing as _typing
+from importlib import metadata as __metadata
+
+from typing_extensions import Final as __Final
 
 
-__version__: _typing.Final = _importlib_metadata.version(__name__)
+__version__: __Final = __metadata.version(__name__)
 
 
 from svglab.elements import (

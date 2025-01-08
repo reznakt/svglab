@@ -1,7 +1,6 @@
-import typing
-from typing import Final, Literal, TypeAlias
-
 import bidict
+import typing_extensions
+from typing_extensions import Final, Literal, TypeAlias
 
 
 TagName: TypeAlias = Literal[
@@ -89,7 +88,9 @@ TagName: TypeAlias = Literal[
 """Type for all SVG tag names."""
 
 
-TAG_NAMES: Final[frozenset[TagName]] = frozenset(typing.get_args(TagName))
+TAG_NAMES: Final[frozenset[TagName]] = frozenset(
+    typing_extensions.get_args(TagName)
+)
 """A set of all SVG tag names."""
 
 

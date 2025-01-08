@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal, TypeAlias
-
 import lark
 import pydantic
-from typing_extensions import override
+from typing_extensions import Annotated, Literal, TypeAlias, override
 
 from svglab import serialize
 from svglab.attrparse import utils

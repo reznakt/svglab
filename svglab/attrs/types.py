@@ -1,6 +1,5 @@
-from typing import Annotated, Literal, TypeAlias
-
 import pydantic
+from typing_extensions import Annotated, Literal, TypeAlias
 
 from svglab import attrparse, models, utils
 

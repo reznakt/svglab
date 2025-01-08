@@ -1,8 +1,8 @@
 import keyword
-import typing
-from typing import Final, Literal, TypeAlias
 
 import bidict
+import typing_extensions
+from typing_extensions import Final, Literal, TypeAlias
 
 
 AttributeName: TypeAlias = Literal[
@@ -322,7 +322,7 @@ def _normalize_attr_name(name: AttributeName) -> str:
 
 
 _ATTRIBUTE_NAMES: Final[frozenset[AttributeName]] = frozenset(
-    typing.get_args(AttributeName)
+    typing_extensions.get_args(AttributeName)
 )
 """A set of all valid SVG attribute names."""
 

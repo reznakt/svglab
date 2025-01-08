@@ -1,7 +1,7 @@
 import collections
-from typing import Final, Literal, TypeAlias, cast
 
 import bs4
+from typing_extensions import Final, Literal, TypeAlias, cast
 
 import svglab.protocols
 from svglab import elements, utils

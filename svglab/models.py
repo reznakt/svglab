@@ -3,18 +3,19 @@ import functools
 import re
 import reprlib
 from collections.abc import Callable
-from typing import (
-    Annotated,
-    Protocol,
-    TypeAlias,
-    TypeVar,
-    runtime_checkable,
-)
 
 import pydantic
 import pydantic_core.core_schema
 from pydantic import Field
-from typing_extensions import Self, override
+from typing_extensions import (
+    Annotated,
+    Protocol,
+    Self,
+    TypeAlias,
+    TypeVar,
+    override,
+    runtime_checkable,
+)
 
 
 _T = TypeVar("_T")
