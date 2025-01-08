@@ -26,61 +26,98 @@ _AbsolutePathCommandChar: TypeAlias = Literal[
 ]
 
 
-class PathCommand(
-    point.Supports2DMovement["PathCommand"], metaclass=abc.ABCMeta
+@pydantic.dataclasses.dataclass
+class PathCommandBase:
+    d: D = pydantic.Field(frozen=True, kw_only=True)
+
+    def prev(self) -> PathCommand | None:
+        index = self.d.index(self)
+
+        return self.d[index - 1] if index > 0 else None
+
+    def next(self) -> PathCommand | None:
+        index = self.d.index(self)
+
+        return self.d[index + 1] if index < len(self.d) - 1 else None
+
+
+class PhysicalPathCommand(
+    PathCommandBase,
+    point.Supports2DMovement["PhysicalPathCommand"],
+    metaclass=abc.ABCMeta,
 ):
     end: point.Point
 
 
-@final
-@pydantic.dataclasses.dataclass
-class MoveTo(PathCommand):
-    end: point.Point
-
-    @override
-    def __add__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end + other)
-
-    @override
-    def __sub__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end - other)
+class VirtualPathCommand(PathCommandBase, metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def end(self) -> point.Point: ...
 
 
-@pydantic.dataclasses.dataclass
-class LineTo(PathCommand):
-    end: point.Point
-
-    @override
-    def __add__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end + other)
-
-    @override
-    def __sub__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end - other)
+PathCommand: TypeAlias = PhysicalPathCommand | VirtualPathCommand
 
 
 @final
 @pydantic.dataclasses.dataclass
-class QuadraticBezierTo(PathCommand):
+class ClosePath(VirtualPathCommand):
+    @property
+    @override
+    def end(self) -> point.Point:
+        prev = self.prev()
+
+        return point.Point.zero() if prev is None else prev.end
+
+
+@final
+@pydantic.dataclasses.dataclass
+class MoveTo(PhysicalPathCommand):
+    end: point.Point
+
+    @override
+    def __add__(self, other: point.Point, /) -> Self:
+        return type(self)(end=self.end + other, d=self.d)
+
+    @override
+    def __sub__(self, other: point.Point, /) -> Self:
+        return type(self)(end=self.end - other, d=self.d)
+
+
+@pydantic.dataclasses.dataclass
+class LineTo(PhysicalPathCommand):
+    end: point.Point
+
+    @override
+    def __add__(self, other: point.Point, /) -> Self:
+        return type(self)(end=self.end + other, d=self.d)
+
+    @override
+    def __sub__(self, other: point.Point, /) -> Self:
+        return type(self)(end=self.end - other, d=self.d)
+
+
+@final
+@pydantic.dataclasses.dataclass
+class QuadraticBezierTo(PhysicalPathCommand):
     control: point.Point
     end: point.Point
 
     @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(
-            control=self.control + other, end=self.end + other
+            control=self.control + other, end=self.end + other, d=self.d
         )
 
     @override
     def __sub__(self, other: point.Point, /) -> Self:
         return type(self)(
-            control=self.control - other, end=self.end - other
+            control=self.control - other, end=self.end - other, d=self.d
         )
 
 
 @final
 @pydantic.dataclasses.dataclass
-class CubicBezierTo(PathCommand):
+class CubicBezierTo(PhysicalPathCommand):
     control1: point.Point
     control2: point.Point
     end: point.Point
@@ -91,6 +128,7 @@ class CubicBezierTo(PathCommand):
             control1=self.control1 + other,
             control2=self.control2 + other,
             end=self.end + other,
+            d=self.d,
         )
 
     @override
@@ -99,12 +137,13 @@ class CubicBezierTo(PathCommand):
             control1=self.control1 - other,
             control2=self.control2 - other,
             end=self.end - other,
+            d=self.d,
         )
 
 
 @final
 @pydantic.dataclasses.dataclass
-class ArcTo(PathCommand):
+class ArcTo(PhysicalPathCommand):
     radius: point.Point
     angle: float
     large: bool
@@ -119,6 +158,7 @@ class ArcTo(PathCommand):
             large=self.large,
             sweep=self.sweep,
             end=self.end + other,
+            d=self.d,
         )
 
     @override
@@ -129,13 +169,8 @@ class ArcTo(PathCommand):
             large=self.large,
             sweep=self.sweep,
             end=self.end - other,
+            d=self.d,
         )
-
-
-@final
-@pydantic.dataclasses.dataclass
-class ClosePath(LineTo):
-    pass
 
 
 @final
@@ -152,11 +187,21 @@ class D(
 
     @override
     def __add__(self, other: point.Point) -> Self:
-        return type(self)(command + other for command in self)
+        return type(self)(
+            command + other
+            if isinstance(command, PhysicalPathCommand)
+            else command
+            for command in self
+        )
 
     @override
     def __sub__(self, other: point.Point) -> Self:
-        return type(self)(command - other for command in self)
+        return type(self)(
+            command - other
+            if isinstance(command, PhysicalPathCommand)
+            else command
+            for command in self
+        )
 
     @override
     def __len__(self) -> int:
@@ -230,7 +275,7 @@ class D(
     def __add(
         self, command: PathCommand, *, relative: bool = False
     ) -> Self:
-        if relative:
+        if relative and isinstance(command, PhysicalPathCommand):
             command += self.end
 
         self.append(command)
@@ -240,12 +285,12 @@ class D(
     def move_to(
         self, end: point.Point, /, *, relative: bool = False
     ) -> Self:
-        return self.__add(MoveTo(end=end), relative=relative)
+        return self.__add(MoveTo(end=end, d=self), relative=relative)
 
     def line_to(
         self, end: point.Point, /, *, relative: bool = False
     ) -> Self:
-        return self.__add(LineTo(end=end), relative=relative)
+        return self.__add(LineTo(end=end, d=self), relative=relative)
 
     def quadratic_bezier_to(
         self,
@@ -255,7 +300,8 @@ class D(
         relative: bool = False,
     ) -> Self:
         return self.__add(
-            QuadraticBezierTo(control=control, end=end), relative=relative
+            QuadraticBezierTo(control=control, end=end, d=self),
+            relative=relative,
         )
 
     def cubic_bezier_to(
@@ -267,7 +313,9 @@ class D(
         relative: bool = False,
     ) -> Self:
         return self.__add(
-            CubicBezierTo(control1=control1, control2=control2, end=end),
+            CubicBezierTo(
+                control1=control1, control2=control2, end=end, d=self
+            ),
             relative=relative,
         )
 
@@ -288,22 +336,13 @@ class D(
                 large=large,
                 sweep=sweep,
                 end=end,
+                d=self,
             ),
             relative=relative,
         )
 
     def close(self) -> Self:
-        last_continuous_subpath = utils.take_last(
-            self.__continuous_subpaths()
-        )
-
-        end = (
-            self.start
-            if last_continuous_subpath is None
-            else last_continuous_subpath.start
-        )
-
-        return self.__add(ClosePath(end=end))
+        return self.__add(ClosePath(d=self))
 
     def is_continuous(self) -> bool:
         """Determine whether the path is continuous.
@@ -434,7 +473,10 @@ class D(
         for command in self:
             match formatter.path_data_mode:
                 case "relative":
-                    yield command - pos
+                    if isinstance(command, PhysicalPathCommand):
+                        yield command - pos
+                    else:
+                        yield command
                 case "absolute":
                     yield command
 
@@ -464,8 +506,6 @@ class D(
             match command:
                 case MoveTo(end):
                     yield self.__format_command(end, absolute_char="M")
-                case ClosePath(end):  # has to be before LineTo
-                    yield self.__format_command(absolute_char="Z")
                 case LineTo(end):
                     yield self.__format_command(end, absolute_char="L")
                 case QuadraticBezierTo(control, end):
@@ -480,6 +520,8 @@ class D(
                     yield self.__format_command(
                         radius, angle, large, sweep, end, absolute_char="A"
                     )
+                case ClosePath():
+                    yield self.__format_command(absolute_char="Z")
                 case _:
                     msg = f"Unsupported command type: {type(command)}"
                     raise TypeError(msg)
