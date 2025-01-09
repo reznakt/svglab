@@ -17,7 +17,7 @@ from typing_extensions import (
     override,
 )
 
-from svglab import models, serialize, utils
+from svglab import constants, models, serialize, utils
 from svglab.attrparse import point
 
 
@@ -25,48 +25,69 @@ _AbsolutePathCommandChar: TypeAlias = Literal[
     "M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"
 ]
 
+_SvgPathToolsCommand: TypeAlias = (
+    svgpathtools.Arc
+    | svgpathtools.CubicBezier
+    | svgpathtools.Line
+    | svgpathtools.QuadraticBezier
+)
+
 
 @pydantic.dataclasses.dataclass
-class PathCommandBase:
-    d: D = pydantic.Field(frozen=True, kw_only=True)
+class _PathCommandBase:
+    d: D = pydantic.Field(frozen=True, kw_only=True, repr=False)
 
-    def prev(self) -> PathCommand | None:
+    def prev(self) -> PathCommand:
         index = self.d.index(self)
 
-        return self.d[index - 1] if index > 0 else None
+        return self.d[index - 1]
 
     def next(self) -> PathCommand | None:
         index = self.d.index(self)
 
-        return self.d[index + 1] if index < len(self.d) - 1 else None
+        return self.d[index + 1] if index + 1 < len(self.d) else None
 
 
 class PhysicalPathCommand(
-    PathCommandBase,
+    _PathCommandBase,
     point.Supports2DMovement["PhysicalPathCommand"],
     metaclass=abc.ABCMeta,
 ):
     end: point.Point
 
 
-class VirtualPathCommand(PathCommandBase, metaclass=abc.ABCMeta):
+class VirtualPathCommand(_PathCommandBase, metaclass=abc.ABCMeta):
     @property
-    @abc.abstractmethod
-    def end(self) -> point.Point: ...
-
-
-PathCommand: TypeAlias = PhysicalPathCommand | VirtualPathCommand
+    def end(self) -> point.Point:
+        return self.prev().end
 
 
 @final
 @pydantic.dataclasses.dataclass
 class ClosePath(VirtualPathCommand):
+    pass
+
+
+@final
+@pydantic.dataclasses.dataclass
+class HorizontalLineTo(VirtualPathCommand):
+    x: float
+
     @property
     @override
     def end(self) -> point.Point:
-        prev = self.prev()
+        return point.Point(self.x, self.prev().end.y)
 
-        return point.Point.zero() if prev is None else prev.end
+
+@final
+@pydantic.dataclasses.dataclass
+class VerticalLineTo(VirtualPathCommand):
+    y: float
+
+    @property
+    @override
+    def end(self) -> point.Point:
+        return point.Point(self.prev().end.x, self.y)
 
 
 @final
@@ -173,6 +194,18 @@ class ArcTo(PhysicalPathCommand):
         )
 
 
+PathCommand: TypeAlias = (
+    ArcTo
+    | ClosePath
+    | CubicBezierTo
+    | HorizontalLineTo
+    | LineTo
+    | QuadraticBezierTo
+    | VerticalLineTo
+    | MoveTo
+)
+
+
 @final
 class D(
     MutableSequence[PathCommand],
@@ -181,9 +214,19 @@ class D(
     serialize.CustomSerializable,
 ):
     def __init__(
-        self, iterable: Iterable[PathCommand] | None = None, /
+        self,
+        iterable: Iterable[PathCommand] = (),
+        /,
+        *,
+        start: point.Point | None = constants.DEFAULT_PATH_START,
     ) -> None:
-        self.__commands: Final[list[PathCommand]] = list(iterable or [])
+        self.__commands: Final[list[PathCommand]] = []
+
+        if start is not None:
+            self.move_to(start)
+
+        for command in iterable:
+            self.__add(command)
 
     @override
     def __add__(self, other: point.Point) -> Self:
@@ -275,6 +318,9 @@ class D(
     def __add(
         self, command: PathCommand, *, relative: bool = False
     ) -> Self:
+        if not self and not isinstance(command, MoveTo):
+            raise ValueError("The first command must be a MoveTo command")
+
         if relative and isinstance(command, PhysicalPathCommand):
             command += self.end
 
@@ -291,6 +337,16 @@ class D(
         self, end: point.Point, /, *, relative: bool = False
     ) -> Self:
         return self.__add(LineTo(end=end, d=self), relative=relative)
+
+    def horizontal_line_to(
+        self, x: float, /, *, relative: bool = False
+    ) -> Self:
+        return self.__add(HorizontalLineTo(x=x, d=self), relative=relative)
+
+    def vertical_line_to(
+        self, y: float, /, *, relative: bool = False
+    ) -> Self:
+        return self.__add(VerticalLineTo(y=y, d=self), relative=relative)
 
     def quadratic_bezier_to(
         self,
@@ -411,43 +467,117 @@ class D(
         commands = ", ".join(repr(command) for command in self)
         return f"{name}({commands})"
 
+    @staticmethod
+    def __add_svgpathtools_command(
+        *, d: D, command: _SvgPathToolsCommand
+    ) -> None:
+        match command:  # pyright: ignore[reportMatchNotExhaustive]
+            case svgpathtools.Line(start=start, end=end):
+                start = point.Point.from_complex(start)
+                end = point.Point.from_complex(end)
+
+                if start.x == end.x:
+                    d.vertical_line_to(end.y)
+                elif start.y == end.y:
+                    d.horizontal_line_to(end.x)
+                else:
+                    d.line_to(end)
+            case svgpathtools.QuadraticBezier(end=end, control=control):
+                d.quadratic_bezier_to(
+                    control=point.Point.from_complex(control),
+                    end=point.Point.from_complex(end),
+                )
+            case svgpathtools.CubicBezier(
+                end=end, control1=control1, control2=control2
+            ):
+                d.cubic_bezier_to(
+                    control1=point.Point.from_complex(control1),
+                    control2=point.Point.from_complex(control2),
+                    end=point.Point.from_complex(end),
+                )
+            case svgpathtools.Arc(
+                radius=radius,
+                rotation=rotation,
+                large_arc=large_arc,
+                sweep=sweep,
+                end=end,
+            ):
+                d.arc_to(
+                    radius=point.Point.from_complex(radius),
+                    angle=rotation,
+                    large=large_arc,
+                    sweep=sweep,
+                    end=point.Point.from_complex(end),
+                )
+
     @classmethod
     def __from_svgpathtools(cls, path: svgpathtools.Path) -> Self:
         d = cls()
+        pos: point.Point | None = None
 
-        for command in path:
-            match command:  # pyright: ignore[reportMatchNotExhaustive]
-                case svgpathtools.Line():
-                    d.line_to(point.Point.from_complex(command.end))
-                case svgpathtools.QuadraticBezier():
-                    d.quadratic_bezier_to(
-                        control=point.Point.from_complex(command.control),
-                        end=point.Point.from_complex(command.end),
-                    )
-                case svgpathtools.CubicBezier():
-                    d.cubic_bezier_to(
-                        control1=point.Point.from_complex(
-                            command.control1
-                        ),
-                        control2=point.Point.from_complex(
-                            command.control2
-                        ),
-                        end=point.Point.from_complex(command.end),
-                    )
-                case svgpathtools.Arc():
-                    d.arc_to(
-                        radius=point.Point.from_complex(command.radius),
-                        angle=command.rotation,
-                        large=command.large_arc,
-                        sweep=command.sweep,
-                        end=point.Point.from_complex(command.end),
-                    )
+        for command_ in path:
+            # help pyright resolve the type
+            command: _SvgPathToolsCommand = command_
+
+            if command.start == command.end:
+                continue
+
+            start = point.Point.from_complex(command.start)
+
+            if start != pos:
+                d.move_to(start)
+
+            # a line with no end is always a close command
+            if command.end is None:
+                assert isinstance(
+                    command, svgpathtools.Line
+                ), "Command is not a line but has no end"
+
+                d.close()
+                continue
+
+            pos = point.Point.from_complex(command.end)
+
+            cls.__add_svgpathtools_command(d=d, command=command)
 
         return d
 
     @classmethod
-    def from_str(cls, value: str) -> Self:
-        path = svgpathtools.parse_path(value)
+    def from_str(cls, text: str) -> Self:
+        """Create a `D` object from an SVG path data string.
+
+        If the path data string is empty, or if it only contains `MoveTo` (`M`)
+        commands, the resulting `D` object will be empty.
+
+        `LineTo` (`L`) commands which only move along the x-axis or y-axis will
+        be converted to `HorizontalLineTo` (`H`) and `VerticalLineTo` (`V`)
+        commands, respectively.
+
+        Per the SVG specification, a path data string must start with a
+        `MoveTo` command. If the first command is not a `MoveTo` command,
+        a `M 0,0` command will be prepended to the path data.
+
+        Args:
+            text: The SVG path data string.
+
+        Returns:
+            A `D` object representing the path data.
+
+        Raises:
+            ValueError: If the path data string is invalid.
+
+        Examples:
+        >>> D.from_str("M 10,10 M 20,20")
+        D()
+        >>> D.from_str("")
+        D()
+        >>> D.from_str("M 1,1 L 2,2")
+        D(MoveTo(end=Point(x=1.0, y=1.0)), LineTo(end=Point(x=2.0, y=2.0)))
+        >>> D.from_str("Z")
+        D(MoveTo(end=Point(x=0.0, y=0.0)), ClosePath())
+
+        """
+        path = svgpathtools.parse_path(text)
         return cls.__from_svgpathtools(path)
 
     @override
@@ -484,47 +614,45 @@ class D(
 
     @staticmethod
     def __format_command(
-        *args: serialize.Serializable,
-        absolute_char: _AbsolutePathCommandChar,
+        *args: serialize.Serializable, char: _AbsolutePathCommandChar
     ) -> str:
         formatter = serialize.get_current_formatter()
 
-        char = (
-            absolute_char
+        cmd = (
+            char
             if formatter.path_data_mode == "absolute"
-            else absolute_char.lower()
+            else char.lower()
         )
 
         if not args:
-            return char
+            return cmd
 
         args_str = serialize.serialize(args, bool_mode="number")
-        return f"{char} {args_str}"
+        return f"{cmd} {args_str}"
 
     def __serialize_commands(self) -> Generator[str, None, None]:
         for command in self.__apply_mode():
             match command:
                 case MoveTo(end):
-                    yield self.__format_command(end, absolute_char="M")
+                    yield self.__format_command(end, char="M")
                 case LineTo(end):
-                    yield self.__format_command(end, absolute_char="L")
+                    yield self.__format_command(end, char="L")
+                case HorizontalLineTo(x):
+                    yield self.__format_command(x, char="H")
+                case VerticalLineTo(y):
+                    yield self.__format_command(y, char="V")
                 case QuadraticBezierTo(control, end):
-                    yield self.__format_command(
-                        control, end, absolute_char="Q"
-                    )
+                    yield self.__format_command(control, end, char="Q")
                 case CubicBezierTo(control1, control2, end):
                     yield self.__format_command(
-                        control1, control2, end, absolute_char="C"
+                        control1, control2, end, char="C"
                     )
                 case ArcTo(radius, angle, large, sweep, end):
                     yield self.__format_command(
-                        radius, angle, large, sweep, end, absolute_char="A"
+                        radius, angle, large, sweep, end, char="A"
                     )
                 case ClosePath():
-                    yield self.__format_command(absolute_char="Z")
-                case _:
-                    msg = f"Unsupported command type: {type(command)}"
-                    raise TypeError(msg)
+                    yield self.__format_command(char="Z")
 
     @override
     def serialize(self) -> str:
