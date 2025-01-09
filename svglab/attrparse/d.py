@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from collections.abc import Generator, Iterable, Iterator, MutableSequence
+from collections.abc import Generator, Iterable, MutableSequence
 
 import pydantic
 import pydantic_core
@@ -17,7 +17,7 @@ from typing_extensions import (
     override,
 )
 
-from svglab import constants, models, serialize, utils
+from svglab import models, serialize
 from svglab.attrparse import point
 
 
@@ -218,7 +218,7 @@ class D(
         iterable: Iterable[PathCommand] = (),
         /,
         *,
-        start: point.Point | None = constants.DEFAULT_PATH_START,
+        start: point.Point | None = None,
     ) -> None:
         self.__commands: Final[list[PathCommand]] = []
 
@@ -301,20 +301,6 @@ class D(
     def insert(self, index: SupportsIndex, value: PathCommand) -> None:
         self.__commands.insert(index, value)
 
-    @property
-    def start(self) -> point.Point:
-        return next(
-            (cmd.end for cmd in self if not isinstance(cmd, MoveTo)),
-            point.Point.zero(),
-        )
-
-    @property
-    def end(self) -> point.Point:
-        if not self:
-            return point.Point.zero()
-
-        return self[-1].end
-
     def __add(
         self, command: PathCommand, *, relative: bool = False
     ) -> Self:
@@ -322,7 +308,7 @@ class D(
             raise ValueError("The first command must be a MoveTo command")
 
         if relative and isinstance(command, PhysicalPathCommand):
-            command += self.end
+            command += self[-1].end
 
         self.append(command)
 
@@ -400,67 +386,6 @@ class D(
     def close(self) -> Self:
         return self.__add(ClosePath(d=self))
 
-    def is_continuous(self) -> bool:
-        """Determine whether the path is continuous.
-
-        A continuous path is a path that does not contain any `MoveTo`
-        commands in between other commands. A continuous path may contain
-        leading or trailing `MoveTo` commands.
-
-        Returns:
-            `True` if the path is continuous, `False` otherwise.
-
-        Examples:
-            >>> d = D()
-            >>> d.is_continuous()
-            True
-            >>> _ = d.move_to(point.Point(0, 0)).line_to(point.Point(1, 1))
-            >>> d.is_continuous()
-            True
-            >>> _ = d.move_to(point.Point(2, 2)).line_to(point.Point(3, 3))
-            >>> d.is_continuous()
-            False
-
-        """
-        return utils.length(self.continuous_subpaths()) <= 1
-
-    def __continuous_subpaths(self) -> Generator[D, None, None]:
-        subpath = D()
-
-        for command in self:
-            if isinstance(command, MoveTo):
-                yield subpath
-                subpath = D()
-            else:
-                subpath.append(command)
-
-        yield subpath
-
-    def continuous_subpaths(self) -> Iterator[D]:
-        """Iterate over the continuous subpaths of the path.
-
-        A continuous subpath is a sequence of commands that form a single
-        path without any `MoveTo` commands in between.
-
-        Returns:
-            An iterator over the continuous subpaths of the path.
-
-        Examples:
-            >>> d = D()
-            >>> list(d.continuous_subpaths())
-            []
-            >>> _ = d.move_to(point.Point(0, 0)).line_to(point.Point(1, 1))
-            >>> list(d.continuous_subpaths())
-            [D(LineTo(end=Point(x=1.0, y=1.0)))]
-            >>> _ = d.move_to(point.Point(2, 2)).line_to(point.Point(3, 3))
-            >>> for subpath in d.continuous_subpaths():
-            ...     print(subpath)
-            D(LineTo(end=Point(x=1.0, y=1.0)))
-            D(LineTo(end=Point(x=3.0, y=3.0)))
-
-        """
-        return filter(None, self.__continuous_subpaths())
-
     @override
     def __repr__(self) -> str:
         name = type(self).__name__
@@ -537,7 +462,6 @@ class D(
                 continue
 
             pos = point.Point.from_complex(command.end)
-
             cls.__add_svgpathtools_command(d=d, command=command)
 
         return d
