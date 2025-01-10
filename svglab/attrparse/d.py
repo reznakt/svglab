@@ -548,35 +548,31 @@ class D(
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, D]):
-    __d: D
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        del args, kwargs
 
-    @property
-    def _d(self) -> D:
-        try:
-            return self.__d
-        except AttributeError:
-            self.__d = D()
-            return self.__d
+        super().__init__()
+        self.__d = D()
 
     number = float
     point = point.Point
 
     def move(self, end: point.Point) -> D:
-        return self._d.move_to(end)
+        return self.__d.move_to(end)
 
     def line(self, end: point.Point) -> D:
-        return self._d.line_to(end)
+        return self.__d.line_to(end)
 
     def horizontal_line(self, x: float) -> D:
-        return self._d.horizontal_line_to(x)
+        return self.__d.horizontal_line_to(x)
 
     def vertical_line(self, y: float) -> D:
-        return self._d.vertical_line_to(y)
+        return self.__d.vertical_line_to(y)
 
     def quadratic_bezier(
         self, control: point.Point, end: point.Point
     ) -> D:
-        return self._d.quadratic_bezier_to(control, end)
+        return self.__d.quadratic_bezier_to(control, end)
 
     def cubic_bezier(
         self,
@@ -584,7 +580,7 @@ class _Transformer(lark.Transformer[object, D]):
         control2: point.Point,
         end: point.Point,
     ) -> D:
-        return self._d.cubic_bezier_to(control1, control2, end)
+        return self.__d.cubic_bezier_to(control1, control2, end)
 
     def arc(
         self,
@@ -594,25 +590,31 @@ class _Transformer(lark.Transformer[object, D]):
         sweep: bool,  # noqa: FBT001
         end: point.Point,
     ) -> D:
-        return self._d.arc_to(
+        return self.__d.arc_to(
             radius, float(angle), end, large=large, sweep=sweep
         )
 
     def smooth_quadratic_bezier(self, end: point.Point) -> D:
-        return self._d.smooth_quadratic_bezier_to(end)
+        return self.__d.smooth_quadratic_bezier_to(end)
 
     def smooth_cubic_bezier(
         self, control2: point.Point, end: point.Point
     ) -> D:
-        return self._d.smooth_cubic_bezier_to(control2, end)
+        return self.__d.smooth_cubic_bezier_to(control2, end)
 
     def z(self) -> D:
-        return self._d.close()
+        return self.__d.close()
 
     @lark.v_args(inline=False)
     def path(self, args: list[object]) -> D:
         del args
-        return self._d
+
+        # the transformer may be reused for multiple parses, so we need to
+        # make sure to clear the current path
+        d = self.__d
+        self.__d = D()
+
+        return d
 
 
 DType: TypeAlias = Annotated[
