@@ -19,6 +19,7 @@ from typing_extensions import (
     override,
 )
 
+import svglab.utils
 from svglab import models, serialize
 from svglab.attrparse import point, utils
 
@@ -60,7 +61,19 @@ class VirtualPathCommand(_PathCommandBase, metaclass=abc.ABCMeta):
 @final
 @pydantic.dataclasses.dataclass
 class ClosePath(VirtualPathCommand):
-    pass
+    # `__eq__` is overridden to avoid recursion errors due to the circular
+    # dependency between `D` and `_PathCommandBase`. Unfortunately, it doesn't
+    # seem to be possible to instruct pydyntic to omit the `_PathCommandBase.d`
+    # field from the comparison. Furthermore, the `__eq__` method MUST be
+    # overridden on each leaf class, inheriting overridden `__eq__` methods
+    # won't work! The behavior of pydantic in this regard is quite strange
+    # indeed. See:
+    # - https://github.com/pydantic/pydantic/discussions/9255
+    # - https://github.com/pydantic/pydantic/issues/4783
+    # TODO: Figure out if there's a better way to do this
+    @override
+    def __eq__(self, other: object) -> bool:
+        return svglab.utils.basic_compare(other, self=self)
 
 
 @final
@@ -73,6 +86,13 @@ class HorizontalLineTo(VirtualPathCommand):
     def end(self) -> point.Point:
         return point.Point(self.x, self.prev().end.y)
 
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not svglab.utils.basic_compare(other, self=self):
+            return False
+
+        return self.x == other.x
+
 
 @final
 @pydantic.dataclasses.dataclass
@@ -84,6 +104,13 @@ class VerticalLineTo(VirtualPathCommand):
     def end(self) -> point.Point:
         return point.Point(self.prev().end.x, self.y)
 
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not svglab.utils.basic_compare(other, self=self):
+            return False
+
+        return self.y == other.y
+
 
 @final
 @pydantic.dataclasses.dataclass
@@ -94,6 +121,13 @@ class MoveTo(PhysicalPathCommand):
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(end=self.end + other, d=self.d)
 
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not svglab.utils.basic_compare(other, self=self):
+            return False
+
+        return self.end == other.end
+
 
 @pydantic.dataclasses.dataclass
 class LineTo(PhysicalPathCommand):
@@ -102,6 +136,13 @@ class LineTo(PhysicalPathCommand):
     @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(end=self.end + other, d=self.d)
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not svglab.utils.basic_compare(other, self=self):
+            return False
+
+        return self.end == other.end
 
 
 @final
@@ -115,6 +156,13 @@ class QuadraticBezierTo(PhysicalPathCommand):
         return type(self)(
             control=self.control + other, end=self.end + other, d=self.d
         )
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not svglab.utils.basic_compare(other, self=self):
+            return False
+
+        return self.control == other.control and self.end == other.end
 
 
 @final
@@ -131,6 +179,17 @@ class CubicBezierTo(PhysicalPathCommand):
             control2=self.control2 + other,
             end=self.end + other,
             d=self.d,
+        )
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not svglab.utils.basic_compare(other, self=self):
+            return False
+
+        return (
+            self.control1 == other.control1
+            and self.control2 == other.control2
+            and self.end == other.end
         )
 
 
@@ -152,6 +211,19 @@ class ArcTo(PhysicalPathCommand):
             sweep=self.sweep,
             end=self.end + other,
             d=self.d,
+        )
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not svglab.utils.basic_compare(other, self=self):
+            return False
+
+        return (
+            self.radius == other.radius
+            and self.angle == other.angle
+            and self.large == other.large
+            and self.sweep == other.sweep
+            and self.end == other.end
         )
 
 
@@ -201,6 +273,16 @@ class D(
     @override
     def __len__(self) -> int:
         return len(self.__commands)
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not svglab.utils.basic_compare(other, self=self):
+            return False
+
+        if len(self) != len(other):
+            return False
+
+        return all(c1 == c2 for c1, c2 in zip(self, other, strict=True))
 
     @overload
     def __getitem__(self, index: int) -> PathCommand: ...

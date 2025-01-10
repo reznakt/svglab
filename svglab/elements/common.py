@@ -120,10 +120,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
 
     @override
     def __eq__(self, other: object) -> bool:
-        if self is other:
-            return True
-
-        if not isinstance(other, type(self)):
+        if not utils.basic_compare(other, self=self):
             return False
 
         return self._eq(other)

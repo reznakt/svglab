@@ -3,7 +3,7 @@ import functools
 from collections.abc import Generator, Iterable
 
 import bs4
-from typing_extensions import TypeVar
+from typing_extensions import TypeIs, TypeVar
 from useful_types import SupportsRichComparisonT
 
 
@@ -180,3 +180,7 @@ def get_all_subclasses(
             yield subclass
 
         queue.extend(subclass.__subclasses__())
+
+
+def basic_compare(other: object, /, *, self: _T) -> TypeIs[_T]:
+    return other is self or isinstance(other, type(self))
