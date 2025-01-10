@@ -9,19 +9,19 @@ path: segment_sequence?
 
 ?segment: l | h | v | c | a | t | q | s | z | m
 
-?a: "A"i arc+
-?c: "C"i cubic_bezier+
-?h: "H"i horizontal_line+
-?l: "L"i line+
+?a: "A"i arc (","? arc)*
+?c: "C"i cubic_bezier (","? cubic_bezier)*
+?h: "H"i horizontal_line (","? horizontal_line)*
+?l: "L"i line (","? line)*
 ?m: "M"i move (","? line)*
-?q: "Q"i quadratic_bezier+
-?s: "S"i smooth_cubic_bezier+
-?t: "T"i smooth_quadratic_bezier+
-?v: "V"i vertical_line+
+?q: "Q"i quadratic_bezier (","? quadratic_bezier)*
+?s: "S"i smooth_cubic_bezier (","? smooth_cubic_bezier)*
+?t: "T"i smooth_quadratic_bezier (","? smooth_quadratic_bezier)*
+?v: "V"i vertical_line (","? vertical_line)*
 ?z: "Z"i
 
 arc: point ","? NUMBER ","? flag ","? flag ","? point
-cubic_bezier: point point point
+cubic_bezier: point ","? point ","? point
 horizontal_line: NUMBER
 line: point
 move: point
