@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import abc
+
 import lark
 import pydantic
 from typing_extensions import (
@@ -14,7 +16,7 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import protocols, serialize
+from svglab import mixins, protocols, serialize
 from svglab.attrparse import utils
 
 
@@ -24,18 +26,29 @@ _Supports2DMovementT_co = TypeVar(
 
 
 @runtime_checkable
-class Supports2DMovement(
-    protocols.SupportsAddSub["Point", _Supports2DMovementT_co], Protocol
+class SupportsTwoDimensionalMovement(
+    protocols.SupportsFullAddSub["Point", _Supports2DMovementT_co],
+    Protocol[_Supports2DMovementT_co],
 ):
     pass
+
+
+class TwoDimensionalMovement(
+    SupportsTwoDimensionalMovement[_Supports2DMovementT_co],
+    mixins.AddSub["Point", _Supports2DMovementT_co],
+    metaclass=abc.ABCMeta,
+):
+    @override
+    def __sub__(self, other: Point, /) -> _Supports2DMovementT_co:
+        return self + -other
 
 
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
 class Point(
     SupportsComplex,
-    Supports2DMovement,
-    protocols.SupportsMul[float, "Point"],
+    TwoDimensionalMovement["Point"],
+    mixins.Mul[float, "Point"],
     serialize.CustomSerializable,
 ):
     """A point in a 2D plane.
@@ -84,10 +97,6 @@ class Point(
     @override
     def __add__(self, other: Self) -> Self:
         return type(self)(self.x + other.x, self.y + other.y)
-
-    @override
-    def __sub__(self, other: Self) -> Self:
-        return self + -other
 
     def __neg__(self) -> Self:
         return self * -1

@@ -1,10 +1,5 @@
 import typing_extensions
-from typing_extensions import (
-    Protocol,
-    TypeVar,
-    override,
-    runtime_checkable,
-)
+from typing_extensions import Protocol, TypeVar, runtime_checkable
 from useful_types import (
     SupportsAdd,
     SupportsRAdd,
@@ -55,7 +50,7 @@ class SupportsWrite(Protocol[_AnyStr_contra]):
 
 
 @runtime_checkable
-class SupportsAddSub(
+class SupportsFullAddSub(
     SupportsAdd[_T_contra, _T_co],
     SupportsSub[_T_contra, _T_co],
     SupportsRAdd[_T_contra, _T_co],
@@ -67,23 +62,24 @@ class SupportsAddSub(
     This is a combination of `SupportsAdd`, `SupportsSub`, `SupportsRAdd`,
     and `SupportsRSub`.
 
-    The class also provides default implementations for `__radd__`
-    and `__rsub__`, which delegate to `__add__` and `__sub__` respectively.
-    This should be sufficient for most use cases.
-
     Example:
-    >>> isinstance(1, SupportsAddSub)
+    >>> isinstance(1, SupportsFullAddSub)
     True
 
     """
 
-    @override
-    def __radd__(self, other: _T_contra, /) -> _T_co:
-        return self + other
 
-    @override
-    def __rsub__(self, other: _T_contra, /) -> _T_co:
-        return self - other
+@runtime_checkable
+class SupportsMul(Protocol[_T_contra, _T_co]):
+    """Protocol for objects that support multiplication.
+
+    Example:
+    >>> isinstance(1, SupportsMul)
+    True
+
+    """
+
+    def __mul__(self, other: _T_contra, /) -> _T_co: ...
 
 
 @runtime_checkable
@@ -100,24 +96,15 @@ class SupportsRMul(Protocol[_T_contra, _T_co]):
 
 
 @runtime_checkable
-class SupportsMul(
-    SupportsRMul[_T_contra, _T_co], Protocol[_T_contra, _T_co]
+class SupportsFullMul(
+    SupportsMul[_T_contra, _T_co],
+    SupportsRMul[_T_contra, _T_co],
+    Protocol[_T_contra, _T_co],
 ):
-    """Protocol for objects that support multiplication.
-
-    This is a combination of `SupportsRMul` and `SupportsMul`.
-
-    The class also provides a default implementation for `__rmul__`,
-    which delegates to `__mul__`. This should be sufficient for most use cases.
+    """Protocol for objects that support multiplication in both directions.
 
     Example:
-    >>> isinstance(1, SupportsMul)
+    >>> isinstance(1, SupportsFullMul)
     True
 
     """
-
-    def __mul__(self, other: _T_contra, /) -> _T_co: ...
-
-    @override
-    def __rmul__(self, other: _T_contra, /) -> _T_co:
-        return self * other

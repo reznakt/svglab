@@ -45,7 +45,7 @@ class _PathCommandBase:
 
 class PhysicalPathCommand(
     _PathCommandBase,
-    point.Supports2DMovement["PhysicalPathCommand"],
+    point.TwoDimensionalMovement["PhysicalPathCommand"],
     metaclass=abc.ABCMeta,
 ):
     end: point.Point
@@ -94,10 +94,6 @@ class MoveTo(PhysicalPathCommand):
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(end=self.end + other, d=self.d)
 
-    @override
-    def __sub__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end - other, d=self.d)
-
 
 @pydantic.dataclasses.dataclass
 class LineTo(PhysicalPathCommand):
@@ -106,10 +102,6 @@ class LineTo(PhysicalPathCommand):
     @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(end=self.end + other, d=self.d)
-
-    @override
-    def __sub__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end - other, d=self.d)
 
 
 @final
@@ -122,12 +114,6 @@ class QuadraticBezierTo(PhysicalPathCommand):
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(
             control=self.control + other, end=self.end + other, d=self.d
-        )
-
-    @override
-    def __sub__(self, other: point.Point, /) -> Self:
-        return type(self)(
-            control=self.control - other, end=self.end - other, d=self.d
         )
 
 
@@ -144,15 +130,6 @@ class CubicBezierTo(PhysicalPathCommand):
             control1=self.control1 + other,
             control2=self.control2 + other,
             end=self.end + other,
-            d=self.d,
-        )
-
-    @override
-    def __sub__(self, other: point.Point, /) -> Self:
-        return type(self)(
-            control1=self.control1 - other,
-            control2=self.control2 - other,
-            end=self.end - other,
             d=self.d,
         )
 
@@ -177,17 +154,6 @@ class ArcTo(PhysicalPathCommand):
             d=self.d,
         )
 
-    @override
-    def __sub__(self, other: point.Point, /) -> Self:
-        return type(self)(
-            radius=self.radius - other,
-            angle=self.angle,
-            large=self.large,
-            sweep=self.sweep,
-            end=self.end - other,
-            d=self.d,
-        )
-
 
 PathCommand: TypeAlias = (
     ArcTo
@@ -204,7 +170,7 @@ PathCommand: TypeAlias = (
 @final
 class D(
     MutableSequence[PathCommand],
-    point.Supports2DMovement["D"],
+    point.TwoDimensionalMovement["D"],
     models.CustomModel,
     serialize.CustomSerializable,
 ):
@@ -227,15 +193,6 @@ class D(
     def __add__(self, other: point.Point) -> Self:
         return type(self)(
             command + other
-            if isinstance(command, PhysicalPathCommand)
-            else command
-            for command in self
-        )
-
-    @override
-    def __sub__(self, other: point.Point) -> Self:
-        return type(self)(
-            command - other
             if isinstance(command, PhysicalPathCommand)
             else command
             for command in self
@@ -417,7 +374,8 @@ class D(
             match formatter.path_data_mode:
                 case "relative":
                     if isinstance(command, PhysicalPathCommand):
-                        yield command - pos
+                        # TODO: this cast can be removed fairly easily
+                        yield cast(PathCommand, command - pos)
                     else:
                         yield command
                 case "absolute":

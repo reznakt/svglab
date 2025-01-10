@@ -129,7 +129,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         return self._eq(other)
 
     @abc.abstractmethod
-    def _eq(self, other: Self) -> bool: ...
+    def _eq(self, other: Self, /) -> bool: ...
 
 
 class TextElement(Element, metaclass=abc.ABCMeta):

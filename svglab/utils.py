@@ -4,11 +4,10 @@ from collections.abc import Generator, Iterable
 
 import bs4
 from typing_extensions import TypeVar
-from useful_types import SupportsRichComparison
+from useful_types import SupportsRichComparisonT
 
 
 _T = TypeVar("_T")
-_T_cmp = TypeVar("_T_cmp", bound=SupportsRichComparison)
 
 
 def is_empty(iterable: Iterable[object], /) -> bool:
@@ -119,8 +118,12 @@ def beautifulsoup_to_str(
 
 
 def clamp(
-    value: _T_cmp, /, *, min_value: _T_cmp, max_value: _T_cmp
-) -> _T_cmp:
+    value: SupportsRichComparisonT,
+    /,
+    *,
+    min_value: SupportsRichComparisonT,
+    max_value: SupportsRichComparisonT,
+) -> SupportsRichComparisonT:
     """Clamp a value between two bounds.
 
     Args:
