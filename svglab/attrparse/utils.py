@@ -15,7 +15,7 @@ _CURRENT_DIR: Final = pathlib.Path(__file__).parent
 _GRAMMARS_DIR: Final = _CURRENT_DIR / "grammars"
 
 
-def _parse(
+def parse(
     text: str,
     /,
     *,
@@ -50,7 +50,7 @@ def get_validator(
 ) -> pydantic.BeforeValidator:
     def validator(value: object) -> object:
         if isinstance(value, str):
-            return _parse(
+            return parse(
                 value, grammar=grammar, transformer=transformer, **kwargs
             )
 

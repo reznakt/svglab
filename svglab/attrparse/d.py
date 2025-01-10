@@ -3,34 +3,29 @@ from __future__ import annotations
 import abc
 from collections.abc import Generator, Iterable, MutableSequence
 
+import lark
 import pydantic
 import pydantic_core
-import svgpathtools
 from typing_extensions import (
+    Annotated,
     Final,
     Literal,
     Self,
     SupportsIndex,
     TypeAlias,
+    cast,
     final,
     overload,
     override,
 )
 
 from svglab import models, serialize
-from svglab.attrparse import point
+from svglab.attrparse import point, utils
 
 
 _AbsolutePathCommandChar: TypeAlias = Literal[
     "M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"
 ]
-
-_SvgPathToolsCommand: TypeAlias = (
-    svgpathtools.Arc
-    | svgpathtools.CubicBezier
-    | svgpathtools.Line
-    | svgpathtools.QuadraticBezier
-)
 
 
 @pydantic.dataclasses.dataclass
@@ -392,119 +387,13 @@ class D(
         commands = ", ".join(repr(command) for command in self)
         return f"{name}({commands})"
 
-    @staticmethod
-    def __add_svgpathtools_command(
-        *, d: D, command: _SvgPathToolsCommand
-    ) -> None:
-        match command:  # pyright: ignore[reportMatchNotExhaustive]
-            case svgpathtools.Line(start=start, end=end):
-                start = point.Point.from_complex(start)
-                end = point.Point.from_complex(end)
-
-                if start.x == end.x:
-                    d.vertical_line_to(end.y)
-                elif start.y == end.y:
-                    d.horizontal_line_to(end.x)
-                else:
-                    d.line_to(end)
-            case svgpathtools.QuadraticBezier(end=end, control=control):
-                d.quadratic_bezier_to(
-                    control=point.Point.from_complex(control),
-                    end=point.Point.from_complex(end),
-                )
-            case svgpathtools.CubicBezier(
-                end=end, control1=control1, control2=control2
-            ):
-                d.cubic_bezier_to(
-                    control1=point.Point.from_complex(control1),
-                    control2=point.Point.from_complex(control2),
-                    end=point.Point.from_complex(end),
-                )
-            case svgpathtools.Arc(
-                radius=radius,
-                rotation=rotation,
-                large_arc=large_arc,
-                sweep=sweep,
-                end=end,
-            ):
-                d.arc_to(
-                    radius=point.Point.from_complex(radius),
-                    angle=rotation,
-                    large=large_arc,
-                    sweep=sweep,
-                    end=point.Point.from_complex(end),
-                )
-
-    @classmethod
-    def __from_svgpathtools(cls, path: svgpathtools.Path) -> Self:
-        d = cls()
-        pos: point.Point | None = None
-
-        for command_ in path:
-            # help pyright resolve the type
-            command: _SvgPathToolsCommand = command_
-
-            if command.start == command.end:
-                continue
-
-            start = point.Point.from_complex(command.start)
-
-            if start != pos:
-                d.move_to(start)
-
-            # a line with no end is always a close command
-            if command.end is None:
-                assert isinstance(
-                    command, svgpathtools.Line
-                ), "Command is not a line but has no end"
-
-                d.close()
-                continue
-
-            pos = point.Point.from_complex(command.end)
-            cls.__add_svgpathtools_command(d=d, command=command)
-
-        return d
-
     @classmethod
     def from_str(cls, text: str) -> Self:
-        """Create a `D` object from an SVG path data string.
+        d = utils.parse(text, grammar="d.lark", transformer=_Transformer())
 
-        If the path data string is empty, or if it only contains `MoveTo` (`M`)
-        commands, the resulting `D` object will be empty.
+        assert isinstance(d, cls), f"Expected {cls}, got {type(d)}"
+        return d
 
-        `LineTo` (`L`) commands which only move along the x-axis or y-axis will
-        be converted to `HorizontalLineTo` (`H`) and `VerticalLineTo` (`V`)
-        commands, respectively.
-
-        Per the SVG specification, a path data string must start with a
-        `MoveTo` command. If the first command is not a `MoveTo` command,
-        a `M 0,0` command will be prepended to the path data.
-
-        Args:
-            text: The SVG path data string.
-
-        Returns:
-            A `D` object representing the path data.
-
-        Raises:
-            ValueError: If the path data string is invalid.
-
-        Examples:
-        >>> D.from_str("M 10,10 M 20,20")
-        D()
-        >>> D.from_str("")
-        D()
-        >>> D.from_str("M 1,1 L 2,2")
-        D(MoveTo(end=Point(x=1.0, y=1.0)), LineTo(end=Point(x=2.0, y=2.0)))
-        >>> D.from_str("Z")
-        D(MoveTo(end=Point(x=0.0, y=0.0)), ClosePath())
-
-        """
-        path = svgpathtools.parse_path(text)
-        return cls.__from_svgpathtools(path)
-
-    @override
     @classmethod
     def _validate(
         cls, value: object, info: pydantic_core.core_schema.ValidationInfo
@@ -514,10 +403,10 @@ class D(
         match value:
             case str():
                 return cls.from_str(value)
-            case d if isinstance(d, cls):
-                return d
+            case D():
+                return cast(cls, value)
             case _:
-                msg = f"Expected a string or {cls.__name__}"
+                msg = f"Expected str or D, got {type(value)}"
                 raise TypeError(msg)
 
     def __apply_mode(self) -> Generator[PathCommand, None, None]:
@@ -583,4 +472,75 @@ class D(
         return serialize.serialize(self.__serialize_commands())
 
 
-DType: TypeAlias = D
+@lark.v_args(inline=True)
+class _Transformer(lark.Transformer[object, D]):
+    __d: D
+
+    @property
+    def _d(self) -> D:
+        try:
+            return self.__d
+        except AttributeError:
+            self.__d = D()
+            return self.__d
+
+    number = float
+    point = point.Point
+
+    def move(self, end: point.Point) -> D:
+        return self._d.move_to(end)
+
+    def line(self, end: point.Point) -> D:
+        return self._d.line_to(end)
+
+    def horizontal_line(self, x: float) -> D:
+        return self._d.horizontal_line_to(x)
+
+    def vertical_line(self, y: float) -> D:
+        return self._d.vertical_line_to(y)
+
+    def quadratic_bezier(
+        self, control: point.Point, end: point.Point
+    ) -> D:
+        return self._d.quadratic_bezier_to(control, end)
+
+    def cubic_bezier(
+        self,
+        control1: point.Point,
+        control2: point.Point,
+        end: point.Point,
+    ) -> D:
+        return self._d.cubic_bezier_to(control1, control2, end)
+
+    def arc(
+        self,
+        radius: point.Point,
+        angle: lark.Token,
+        large: bool,  # noqa: FBT001
+        sweep: bool,  # noqa: FBT001
+        end: point.Point,
+    ) -> D:
+        return self._d.arc_to(
+            radius, float(angle), end, large=large, sweep=sweep
+        )
+
+    def smooth_quadratic_bezier(self, end: point.Point) -> D:
+        del end
+        raise NotImplementedError  # TODO: Implement this
+
+    def smooth_cubic_bezier(
+        self, control2: point.Point, end: point.Point
+    ) -> D:
+        del control2, end
+        raise NotImplementedError  # TODO: Implement this
+
+    def z(self) -> D:
+        return self._d.close()
+
+    def path(self, _: object) -> D:
+        return self._d
+
+
+DType: TypeAlias = Annotated[
+    D, utils.get_validator(grammar="d.lark", transformer=_Transformer())
+]
