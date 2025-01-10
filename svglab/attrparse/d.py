@@ -31,17 +31,7 @@ _AbsolutePathCommandChar: TypeAlias = Literal[
 
 @pydantic.dataclasses.dataclass
 class _PathCommandBase:
-    d: D = pydantic.Field(frozen=True, kw_only=True, repr=False)
-
-    def prev(self) -> PathCommand:
-        index = self.d.index(self)
-
-        return self.d[index - 1]
-
-    def next(self) -> PathCommand | None:
-        index = self.d.index(self)
-
-        return self.d[index + 1] if index + 1 < len(self.d) else None
+    pass
 
 
 class PhysicalPathCommand(
@@ -52,64 +42,22 @@ class PhysicalPathCommand(
     end: point.Point
 
 
-class VirtualPathCommand(_PathCommandBase, metaclass=abc.ABCMeta):
-    @property
-    def end(self) -> point.Point:
-        return self.prev().end
+@final
+@pydantic.dataclasses.dataclass
+class ClosePath(_PathCommandBase):
+    pass
 
 
 @final
 @pydantic.dataclasses.dataclass
-class ClosePath(VirtualPathCommand):
-    # `__eq__` is overridden to avoid recursion errors due to the circular
-    # dependency between `D` and `_PathCommandBase`. Unfortunately, it doesn't
-    # seem to be possible to instruct pydyntic to omit the `_PathCommandBase.d`
-    # field from the comparison. Furthermore, the `__eq__` method MUST be
-    # overridden on each leaf class, inheriting overridden `__eq__` methods
-    # won't work! The behavior of pydantic in this regard is quite strange
-    # indeed. See:
-    # - https://github.com/pydantic/pydantic/discussions/9255
-    # - https://github.com/pydantic/pydantic/issues/4783
-    # TODO: Figure out if there's a better way to do this
-    @override
-    def __eq__(self, other: object) -> bool:
-        return svglab.utils.basic_compare(other, self=self)
-
-
-@final
-@pydantic.dataclasses.dataclass
-class HorizontalLineTo(VirtualPathCommand):
+class HorizontalLineTo(_PathCommandBase):
     x: float
 
-    @property
-    @override
-    def end(self) -> point.Point:
-        return point.Point(self.x, self.prev().end.y)
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if not svglab.utils.basic_compare(other, self=self):
-            return False
-
-        return self.x == other.x
-
 
 @final
 @pydantic.dataclasses.dataclass
-class VerticalLineTo(VirtualPathCommand):
+class VerticalLineTo(_PathCommandBase):
     y: float
-
-    @property
-    @override
-    def end(self) -> point.Point:
-        return point.Point(self.prev().end.x, self.y)
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if not svglab.utils.basic_compare(other, self=self):
-            return False
-
-        return self.y == other.y
 
 
 @final
@@ -119,14 +67,7 @@ class MoveTo(PhysicalPathCommand):
 
     @override
     def __add__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end + other, d=self.d)
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if not svglab.utils.basic_compare(other, self=self):
-            return False
-
-        return self.end == other.end
+        return type(self)(end=self.end + other)
 
 
 @pydantic.dataclasses.dataclass
@@ -135,14 +76,7 @@ class LineTo(PhysicalPathCommand):
 
     @override
     def __add__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end + other, d=self.d)
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if not svglab.utils.basic_compare(other, self=self):
-            return False
-
-        return self.end == other.end
+        return type(self)(end=self.end + other)
 
 
 @final
@@ -154,15 +88,8 @@ class QuadraticBezierTo(PhysicalPathCommand):
     @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(
-            control=self.control + other, end=self.end + other, d=self.d
+            control=self.control + other, end=self.end + other
         )
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if not svglab.utils.basic_compare(other, self=self):
-            return False
-
-        return self.control == other.control and self.end == other.end
 
 
 @final
@@ -178,18 +105,6 @@ class CubicBezierTo(PhysicalPathCommand):
             control1=self.control1 + other,
             control2=self.control2 + other,
             end=self.end + other,
-            d=self.d,
-        )
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if not svglab.utils.basic_compare(other, self=self):
-            return False
-
-        return (
-            self.control1 == other.control1
-            and self.control2 == other.control2
-            and self.end == other.end
         )
 
 
@@ -210,20 +125,6 @@ class ArcTo(PhysicalPathCommand):
             large=self.large,
             sweep=self.sweep,
             end=self.end + other,
-            d=self.d,
-        )
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if not svglab.utils.basic_compare(other, self=self):
-            return False
-
-        return (
-            self.radius == other.radius
-            and self.angle == other.angle
-            and self.large == other.large
-            and self.sweep == other.sweep
-            and self.end == other.end
         )
 
 
@@ -371,6 +272,27 @@ class D(
     def insert(self, index: SupportsIndex, value: PathCommand) -> None:
         self.__commands.insert(index, value)
 
+    def __prev_command(self, command: PathCommand) -> PathCommand:
+        index = self.index(command)
+        return self[index - 1]
+
+    def __get_end(self, command: PathCommand) -> point.Point:
+        match command:
+            case PhysicalPathCommand(end=end):
+                return end
+            case ClosePath():
+                # TODO: Actually implement this
+                return self.__get_end(self.__prev_command(command))
+            case HorizontalLineTo(x=x):
+                end = self.__get_end(self.__prev_command(command))
+                return point.Point(x=x, y=end.y)
+            case VerticalLineTo(y=y):
+                end = self.__get_end(self.__prev_command(command))
+                return point.Point(x=end.x, y=y)
+            case _:
+                msg = f"Unsupported command: {type(command)}"
+                raise ValueError(msg)
+
     def __add(
         self, command: PathCommand, *, relative: bool = False
     ) -> Self:
@@ -378,7 +300,7 @@ class D(
             raise ValueError("The first command must be a MoveTo command")
 
         if relative and isinstance(command, PhysicalPathCommand):
-            command += self[-1].end
+            command += self.__get_end(self[-1])
 
         self.append(command)
 
@@ -387,22 +309,22 @@ class D(
     def move_to(
         self, end: point.Point, /, *, relative: bool = False
     ) -> Self:
-        return self.__add(MoveTo(end=end, d=self), relative=relative)
+        return self.__add(MoveTo(end=end), relative=relative)
 
     def line_to(
         self, end: point.Point, /, *, relative: bool = False
     ) -> Self:
-        return self.__add(LineTo(end=end, d=self), relative=relative)
+        return self.__add(LineTo(end=end), relative=relative)
 
     def horizontal_line_to(
         self, x: float, /, *, relative: bool = False
     ) -> Self:
-        return self.__add(HorizontalLineTo(x=x, d=self), relative=relative)
+        return self.__add(HorizontalLineTo(x=x), relative=relative)
 
     def vertical_line_to(
         self, y: float, /, *, relative: bool = False
     ) -> Self:
-        return self.__add(VerticalLineTo(y=y, d=self), relative=relative)
+        return self.__add(VerticalLineTo(y=y), relative=relative)
 
     def quadratic_bezier_to(
         self,
@@ -412,8 +334,7 @@ class D(
         relative: bool = False,
     ) -> Self:
         return self.__add(
-            QuadraticBezierTo(control=control, end=end, d=self),
-            relative=relative,
+            QuadraticBezierTo(control=control, end=end), relative=relative
         )
 
     def cubic_bezier_to(
@@ -425,9 +346,7 @@ class D(
         relative: bool = False,
     ) -> Self:
         return self.__add(
-            CubicBezierTo(
-                control1=control1, control2=control2, end=end, d=self
-            ),
+            CubicBezierTo(control1=control1, control2=control2, end=end),
             relative=relative,
         )
 
@@ -448,13 +367,12 @@ class D(
                 large=large,
                 sweep=sweep,
                 end=end,
-                d=self,
             ),
             relative=relative,
         )
 
     def close(self) -> Self:
-        return self.__add(ClosePath(d=self))
+        return self.__add(ClosePath())
 
     @override
     def __repr__(self) -> str:
@@ -499,7 +417,7 @@ class D(
                 case "absolute":
                     yield command
 
-            pos = command.end
+            pos = self.__get_end(command)
 
     @staticmethod
     def __format_command(
