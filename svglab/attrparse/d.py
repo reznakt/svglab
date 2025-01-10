@@ -246,6 +246,42 @@ class D(
     models.CustomModel,
     serialize.CustomSerializable,
 ):
+    """A class representing the `d` attribute of a path element.
+
+    The `d` attribute is used to define a path in SVG. This class provides
+    methods for building a path by adding commands. `D` is also
+    a `MutableSequence` of `PathCommand` instances.
+
+    Args:
+        iterable: An iterable of `PathCommand` instances (for example,
+        another `D` instance).
+        start: The starting point of the path. If `start` is not `None`, a
+        `MoveTo` command is automatically added to the path, moving the "pen"
+        to the starting point.
+
+    Examples:
+    >>> d = (
+    ...     D()
+    ...     .move_to(point.Point(10, 10))
+    ...     .line_to(point.Point(100, 100), relative=True)
+    ... )
+    >>> d
+    D(MoveTo(end=Point(x=10.0, y=10.0)), LineTo(end=Point(x=110.0, y=110.0)))
+    >>> len(d)
+    2
+    >>> bool(d)
+    True
+    >>> d[0]
+    MoveTo(end=Point(x=10.0, y=10.0))
+    >>> d.pop()
+    LineTo(end=Point(x=110.0, y=110.0))
+    >>> d.close()
+    D(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
+    >>> d.serialize()
+    'M 10,10 Z'
+
+    """
+
     def __init__(
         self,
         iterable: Iterable[PathCommand] = (),
@@ -577,7 +613,9 @@ class _Transformer(lark.Transformer[object, D]):
     def z(self) -> D:
         return self._d.close()
 
-    def path(self, _: object) -> D:
+    @lark.v_args(inline=False)
+    def path(self, args: list[object]) -> D:
+        del args
         return self._d
 
 
