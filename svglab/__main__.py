@@ -39,7 +39,7 @@ def main() -> None:
               <![CDATA[.background { fill: blue; }]]>
               Hello SVG!
               <path d="M 10,10 H 10 L 100,100 Q 100,100 50,50 v 100 Z"/>
-              <path d="M0,0 S 100,100 50,50 t 100,100 M 50,50 z"/>
+              <path d="M0,0 10,10 20,20 S 100,100 50,50 t 100,100 M 50,50 z"/>
               <polygon points="0,0 100,0 100,100 0,100"/>
           </g>
         </svg>

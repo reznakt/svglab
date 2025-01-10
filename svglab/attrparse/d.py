@@ -548,73 +548,42 @@ class D(
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, D]):
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        del args, kwargs
-
-        super().__init__()
-        self.__d = D()
-
     number = float
     point = point.Point
 
-    def move(self, end: point.Point) -> D:
-        return self.__d.move_to(end)
+    arc = ArcTo
+    cubic_bezier = CubicBezierTo
+    horizontal_line = HorizontalLineTo
+    line = LineTo
+    move = MoveTo
+    quadratic_bezier = QuadraticBezierTo
+    smooth_cubic_bezier = SmoothCubicBezierTo
+    smooth_quadratic_bezier = SmoothQuadraticBezierTo
+    vertical_line = VerticalLineTo
+    z = ClosePath
 
-    def line(self, end: point.Point) -> D:
-        return self.__d.line_to(end)
+    segment_sequence = utils.v_args_to_list
 
-    def horizontal_line(self, x: float) -> D:
-        return self.__d.horizontal_line_to(x)
-
-    def vertical_line(self, y: float) -> D:
-        return self.__d.vertical_line_to(y)
-
-    def quadratic_bezier(
-        self, control: point.Point, end: point.Point
-    ) -> D:
-        return self.__d.quadratic_bezier_to(control, end)
-
-    def cubic_bezier(
-        self,
-        control1: point.Point,
-        control2: point.Point,
-        end: point.Point,
-    ) -> D:
-        return self.__d.cubic_bezier_to(control1, control2, end)
-
-    def arc(
-        self,
-        radius: point.Point,
-        angle: lark.Token,
-        large: bool,  # noqa: FBT001
-        sweep: bool,  # noqa: FBT001
-        end: point.Point,
-    ) -> D:
-        return self.__d.arc_to(
-            radius, float(angle), end, large=large, sweep=sweep
-        )
-
-    def smooth_quadratic_bezier(self, end: point.Point) -> D:
-        return self.__d.smooth_quadratic_bezier_to(end)
-
-    def smooth_cubic_bezier(
-        self, control2: point.Point, end: point.Point
-    ) -> D:
-        return self.__d.smooth_cubic_bezier_to(control2, end)
-
-    def z(self) -> D:
-        return self.__d.close()
+    a = utils.v_args_to_list
+    c = utils.v_args_to_list
+    h = utils.v_args_to_list
+    l = utils.v_args_to_list
+    m = utils.v_args_to_list
+    q = utils.v_args_to_list
+    s = utils.v_args_to_list
+    t = utils.v_args_to_list
+    v = utils.v_args_to_list
 
     @lark.v_args(inline=False)
-    def path(self, args: list[object]) -> D:
-        del args
-
-        # the transformer may be reused for multiple parses, so we need to
-        # make sure to clear the current path
-        d = self.__d
-        self.__d = D()
-
-        return d
+    def path(self, commands: list[PathCommand | lark.Tree[object]]) -> D:
+        # our grammar is not set up ideally, so we need to filter out
+        # some garbage
+        # TODO: try to improve the grammar
+        return D(
+            command
+            for command in svglab.utils.flatten(commands)
+            if isinstance(command, _PathCommandBase)
+        )
 
 
 DType: TypeAlias = Annotated[

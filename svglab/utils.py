@@ -3,11 +3,14 @@ import functools
 from collections.abc import Generator, Iterable
 
 import bs4
-from typing_extensions import TypeIs, TypeVar
+from typing_extensions import TypeAlias, TypeIs, TypeVar
 from useful_types import SupportsRichComparisonT
 
 
 _T = TypeVar("_T")
+
+_NestedIterableItem: TypeAlias = _T | Iterable["_NestedIterableItem[_T]"]
+_NestedIterable: TypeAlias = Iterable[_NestedIterableItem[_T]]
 
 
 def is_empty(iterable: Iterable[object], /) -> bool:
@@ -183,4 +186,55 @@ def get_all_subclasses(
 
 
 def basic_compare(other: object, /, *, self: _T) -> TypeIs[_T]:
+    """Perform a basic comparison between two objects.
+
+    This is a helper function for implementing the `__eq__` method.
+
+    It checks if the other object is the same as the current object or
+    an instance of the same class.
+
+    Args:
+        other: The other object to compare.
+        self: The current object.
+
+    Returns:
+        `True` if the other object is the same as the current object or an
+        instance of the same class, `False` otherwise.
+
+    Examples:
+        >>> class A:
+        ...     def __eq__(self, other: object, /) -> bool:
+        ...         return basic_compare(other, self=self)
+        >>> A() == A()
+        True
+        >>> A() == 1
+        False
+
+    """
     return other is self or isinstance(other, type(self))
+
+
+def flatten(iterable: _NestedIterable[_T], /) -> Generator[_T, None, None]:
+    """Flatten a nested iterable.
+
+    Args:
+        iterable: The nested iterable to flatten.
+
+    Yields:
+        Items from the nested iterable, in order.
+
+    Examples:
+        >>> list(flatten([]))
+        []
+        >>> list(flatten([1, 2, 3]))
+        [1, 2, 3]
+        >>> list(flatten([[1, 2], [3, 4]]))
+        [1, 2, 3, 4]
+        >>> list(flatten([1, [2, 3], 4]))
+        [1, 2, 3, 4]
+        >>> list(flatten([1, [2, [3, [4]]]]))
+        [1, 2, 3, 4]
+
+    """
+    for item in iterable:
+        yield from flatten(item) if isinstance(item, Iterable) else (item,)
