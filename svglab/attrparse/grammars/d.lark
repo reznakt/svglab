@@ -20,7 +20,7 @@ path: segment_sequence?
 ?v: "V"i vertical_line (","? vertical_line)*
 ?z: "Z"i
 
-arc: point ","? NUMBER ","? flag ","? flag ","? point
+arc: point ","? NUMBER ","? FLAG ","? FLAG ","? point
 cubic_bezier: point ","? point ","? point
 horizontal_line: NUMBER
 line: point
@@ -31,8 +31,8 @@ smooth_quadratic_bezier: point
 vertical_line: NUMBER
 
 point: NUMBER ","? NUMBER
-?!flag: "0" | "1"
 
-// for some reason, the LALR(1) parser acts up if number is a rule,
-// so we'll just make it a terminal and parse it as needed
+// for some reason, the LALR(1) parser acts up if numbe or flag are a rules,
+// so we'll just make them terminals and parse them as needed
+FLAG: "0" | "1"
 NUMBER: SIGNED_NUMBER

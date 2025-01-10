@@ -28,6 +28,8 @@ _AbsolutePathCommandChar: TypeAlias = Literal[
     "M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"
 ]
 
+_Flag: TypeAlias = Literal["0", "1"]
+
 
 @pydantic.dataclasses.dataclass
 class _PathCommandBase:
@@ -551,7 +553,23 @@ class _Transformer(lark.Transformer[object, D]):
     number = float
     point = point.Point
 
-    arc = ArcTo
+    def arc(
+        self,
+        radius: point.Point,
+        angle: str,
+        large: _Flag,
+        sweep: _Flag,
+        end: point.Point,
+    ) -> ArcTo:
+        # FLAG and NUMBER are terminals, we have to parse them manually
+        return ArcTo(
+            radius=radius,
+            angle=float(angle),
+            large=large == "1",
+            sweep=sweep == "1",
+            end=end,
+        )
+
     cubic_bezier = CubicBezierTo
     horizontal_line = HorizontalLineTo
     line = LineTo

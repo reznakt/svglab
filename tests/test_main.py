@@ -5,7 +5,7 @@ import pytest
 from typing_extensions import Final
 
 from svglab import elements, parse
-from svglab.attrparse import length, transform
+from svglab.attrparse import d, length, point, transform
 
 
 numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
@@ -300,3 +300,15 @@ def test_xmlns_always_present_on_svg() -> None:
 
     assert "xmlns" in svg.standard_attrs()
     assert svg.xmlns == "http://www.w3.org/2000/svg"
+
+
+def test_path_data_parse_empty() -> None:
+    path = d.D.from_str("")
+    assert path == d.D()
+
+
+@hypothesis.given(st.sampled_from(["M", "m", "L", "l"]), numbers, numbers)
+def test_path_data_parse_move_line(cmd: str, x: float, y: float) -> None:
+    path = d.D.from_str(f"{cmd} {x},{y}")
+
+    assert path == d.D().move_to(point.Point(x, y))
