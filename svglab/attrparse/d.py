@@ -62,6 +62,29 @@ class VerticalLineTo(_PathCommandBase):
 
 @final
 @pydantic.dataclasses.dataclass
+class SmoothQuadraticBezierTo(PhysicalPathCommand):
+    end: point.Point
+
+    @override
+    def __add__(self, other: point.Point, /) -> Self:
+        return type(self)(end=self.end + other)
+
+
+@final
+@pydantic.dataclasses.dataclass
+class SmoothCubicBezierTo(PhysicalPathCommand):
+    control2: point.Point
+    end: point.Point
+
+    @override
+    def __add__(self, other: point.Point, /) -> Self:
+        return type(self)(
+            control2=self.control2 + other, end=self.end + other
+        )
+
+
+@final
+@pydantic.dataclasses.dataclass
 class MoveTo(PhysicalPathCommand):
     end: point.Point
 
@@ -134,9 +157,11 @@ PathCommand: TypeAlias = (
     | CubicBezierTo
     | HorizontalLineTo
     | LineTo
-    | QuadraticBezierTo
-    | VerticalLineTo
     | MoveTo
+    | QuadraticBezierTo
+    | SmoothCubicBezierTo
+    | SmoothQuadraticBezierTo
+    | VerticalLineTo
 )
 
 
@@ -281,7 +306,6 @@ class D(
             case PhysicalPathCommand(end=end):
                 return end
             case ClosePath():
-                # TODO: Actually implement this
                 return self.__get_end(self.__prev_command(command))
             case HorizontalLineTo(x=x):
                 end = self.__get_end(self.__prev_command(command))
@@ -330,6 +354,7 @@ class D(
         self,
         control: point.Point,
         end: point.Point,
+        /,
         *,
         relative: bool = False,
     ) -> Self:
@@ -368,6 +393,26 @@ class D(
                 sweep=sweep,
                 end=end,
             ),
+            relative=relative,
+        )
+
+    def smooth_quadratic_bezier_to(
+        self, end: point.Point, /, *, relative: bool = False
+    ) -> Self:
+        return self.__add(
+            SmoothQuadraticBezierTo(end=end), relative=relative
+        )
+
+    def smooth_cubic_bezier_to(
+        self,
+        control2: point.Point,
+        end: point.Point,
+        /,
+        *,
+        relative: bool = False,
+    ) -> Self:
+        return self.__add(
+            SmoothCubicBezierTo(control2=control2, end=end),
             relative=relative,
         )
 
@@ -437,7 +482,32 @@ class D(
         args_str = serialize.serialize(args, bool_mode="number")
         return f"{cmd} {args_str}"
 
-    def __serialize_commands(self) -> Generator[str, None, None]:
+    def __quadratic_control(
+        self, command: SmoothQuadraticBezierTo
+    ) -> point.Point:
+        prev = self.__prev_command(command)
+        end = self.__get_end(command)
+
+        match prev:
+            case QuadraticBezierTo(control=control):
+                pass
+            case SmoothQuadraticBezierTo():
+                control = self.__quadratic_control(prev)
+            case _:
+                return end
+
+        return 2 * (end - control)
+
+    def __cubic_control(self, command: SmoothCubicBezierTo) -> point.Point:
+        prev = self.__prev_command(command)
+        end = self.__get_end(command)
+
+        if isinstance(prev, CubicBezierTo | SmoothCubicBezierTo):
+            return 2 * (end - prev.control2)
+
+        return end
+
+    def __serialize_commands(self) -> Generator[str, None, None]:  # noqa: C901
         for command in self.__apply_mode():
             match command:
                 case MoveTo(end):
@@ -450,9 +520,19 @@ class D(
                     yield self.__format_command(y, char="V")
                 case QuadraticBezierTo(control, end):
                     yield self.__format_command(control, end, char="Q")
+                case SmoothQuadraticBezierTo(end):
+                    control = self.__quadratic_control(command)
+
+                    yield self.__format_command(control, end, char="T")
                 case CubicBezierTo(control1, control2, end):
                     yield self.__format_command(
                         control1, control2, end, char="C"
+                    )
+                case SmoothCubicBezierTo(control2, end):
+                    control1 = self.__cubic_control(command)
+
+                    yield self.__format_command(
+                        control1, control2, end, char="S"
                     )
                 case ArcTo(radius, angle, large, sweep, end):
                     yield self.__format_command(
@@ -519,14 +599,12 @@ class _Transformer(lark.Transformer[object, D]):
         )
 
     def smooth_quadratic_bezier(self, end: point.Point) -> D:
-        del end
-        raise NotImplementedError  # TODO: Implement this
+        return self._d.smooth_quadratic_bezier_to(end)
 
     def smooth_cubic_bezier(
         self, control2: point.Point, end: point.Point
     ) -> D:
-        del control2, end
-        raise NotImplementedError  # TODO: Implement this
+        return self._d.smooth_cubic_bezier_to(control2, end)
 
     def z(self) -> D:
         return self._d.close()
