@@ -1,6 +1,6 @@
 import collections
 import functools
-from collections.abc import Generator, Iterable
+from collections.abc import Generator, Iterable, Sequence
 
 import bs4
 from typing_extensions import TypeAlias, TypeIs, TypeVar
@@ -238,3 +238,43 @@ def flatten(iterable: _NestedIterable[_T], /) -> Generator[_T, None, None]:
     """
     for item in iterable:
         yield from flatten(item) if isinstance(item, Iterable) else (item,)
+
+
+def prev(sequence: Sequence[_T], item: _T) -> _T:
+    """Get the item before a given item in a sequence.
+
+    Args:
+        sequence: The sequence to search.
+        item: The item to find the predecessor of.
+
+    Returns:
+        The item before the given item in the sequence.
+
+    Raises:
+        ValueError: If the item is not found in the sequence or if the item
+
+
+    Examples:
+        >>> prev([1, 2, 3], 2)
+        1
+        >>> prev([1, 2, 3], 1)
+        Traceback (most recent call last):
+            ...
+        ValueError: Item 1 has no predecessor.
+        >>> prev([1, 2, 3], 4)
+        Traceback (most recent call last):
+            ...
+        ValueError: Item not found in sequence: 4
+
+    """
+    try:
+        index = sequence.index(item)
+    except ValueError as e:
+        msg = f"Item not found in sequence: {item!r}"
+        raise ValueError(msg) from e
+
+    if index == 0:
+        msg = f"Item {item!r} has no predecessor."
+        raise ValueError(msg)
+
+    return sequence[index - 1]

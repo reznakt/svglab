@@ -21,9 +21,9 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-import svglab.utils
-from svglab import models, serialize
-from svglab.attrparse import point, utils
+from svglab import models, serialize, utils
+from svglab.attrparse import point
+from svglab.attrparse import utils as parse_utils
 
 
 _AbsolutePathCommandChar: TypeAlias = Literal[
@@ -175,6 +175,134 @@ PathCommand: TypeAlias = (
 )
 
 
+def _get_end(d: D, command: PathCommand) -> point.Point:
+    """Get the end point of a path command.
+
+    For commands that have a set end point, this function returns the end
+    point. For commands that do not have a set end point, this function
+    calculates the end point based on the previous command.
+
+    Args:
+        d: The path containing the command.
+        command: The command to get the end point of.
+
+    Returns:
+        The end point of the command.
+
+    Examples:
+    >>> d = D().from_str("M 10,10 H 100 V 100 Z")
+    >>> _get_end(d, d[0])
+    Point(x=10.0, y=10.0)
+    >>> _get_end(d, d[1])
+    Point(x=100.0, y=10.0)
+
+    """
+    match command:
+        case PhysicalPathCommand(end=end):
+            return end
+        case ClosePath():
+            return _get_end(d, utils.prev(d, command))
+        case HorizontalLineTo(x=x):
+            end = _get_end(d, utils.prev(d, command))
+            return point.Point(x=x, y=end.y)
+        case VerticalLineTo(y=y):
+            end = _get_end(d, utils.prev(d, command))
+            return point.Point(x=end.x, y=y)
+        case _:
+            raise AssertionError  # this should never happen
+
+
+def _quadratic_control(
+    d: D, command: SmoothQuadraticBezierTo
+) -> point.Point:
+    """Compute the control point for a smooth quadratic Bézier command (`T`).
+
+    The control point is calculated based on the previous command. If the
+    previous command is a quadratic Bézier command (`Q`), the control point
+    is the reflection of the previous control point across the end point of
+    the previous command. If the previous command is of any other type, the
+    control point is coincident with the end point of the previous command.
+
+    Args:
+        d: The path containing the command.
+        command: The smooth quadratic Bézier command.
+
+    Returns:
+        The control point for the command.
+
+    Examples:
+    >>> d = D().from_str("M 0,0 Q 20,0 20,20 T 40,40")
+    >>> _quadratic_control(d, d[2])
+    Point(x=20.0, y=40.0)
+
+    """
+    prev = utils.prev(d, command)
+    end = _get_end(d, prev)
+
+    match prev:
+        case QuadraticBezierTo(control=control):
+            pass
+        case SmoothQuadraticBezierTo():
+            control = _quadratic_control(d, prev)
+        case _:
+            return end
+
+    return control.line_reflect(end)
+
+
+def _cubic_control(d: D, command: SmoothCubicBezierTo) -> point.Point:
+    """Compute the first control point for a smooth cubic Bézier command (`S`).
+
+    The control point is calculated based on the previous command. If the
+    previous command is a cubic Bézier command (`C`), the control point is the
+    reflection of the second control point of the previous command across the
+    end point of the previous command. If the previous command is of any other
+    type, the control point is coincident with the end point of the previous
+    command.
+
+    Args:
+        d: The path containing the command.
+        command: The smooth cubic Bézier command.
+
+    Returns:
+        The first control point for the command.
+
+    Examples:
+    >>> d = D().from_str("M 0,0 C 20,0 20,20 40,40 S 100,100 50,50")
+    >>> _cubic_control(d, d[2])
+    Point(x=60.0, y=60.0)
+
+    """
+    prev = utils.prev(d, command)
+    end = _get_end(d, prev)
+
+    if isinstance(prev, CubicBezierTo | SmoothCubicBezierTo):
+        return prev.control2.line_reflect(end)
+
+    return end
+
+
+def _apply_mode(d: D) -> D:
+    formatter = serialize.get_current_formatter()
+    result = D()
+    pos = point.Point.zero()
+
+    for command in d:
+        match formatter.path_data_mode:
+            case "relative":
+                if isinstance(command, PhysicalPathCommand):
+                    # TODO: this cast can be removed fairly easily
+                    result.append(cast(PathCommand, command - pos))
+                else:
+                    result.append(command)
+            case "absolute":
+                result.append(command)
+
+        pos = _get_end(d, command)
+
+    return result
+
+
 @final
 class D(
     MutableSequence[PathCommand],
@@ -248,7 +376,7 @@ class D(
 
     @override
     def __eq__(self, other: object) -> bool:
-        if not svglab.utils.basic_compare(other, self=self):
+        if not utils.basic_compare(other, self=self):
             return False
 
         if len(self) != len(other):
@@ -307,26 +435,6 @@ class D(
     def insert(self, index: SupportsIndex, value: PathCommand) -> None:
         self.__commands.insert(index, value)
 
-    def __prev_command(self, command: PathCommand) -> PathCommand:
-        index = self.index(command)
-        return self[index - 1]
-
-    def __get_end(self, command: PathCommand) -> point.Point:
-        match command:
-            case PhysicalPathCommand(end=end):
-                return end
-            case ClosePath():
-                return self.__get_end(self.__prev_command(command))
-            case HorizontalLineTo(x=x):
-                end = self.__get_end(self.__prev_command(command))
-                return point.Point(x=x, y=end.y)
-            case VerticalLineTo(y=y):
-                end = self.__get_end(self.__prev_command(command))
-                return point.Point(x=end.x, y=y)
-            case _:
-                msg = f"Unsupported command: {type(command)}"
-                raise ValueError(msg)
-
     def __add(
         self, command: PathCommand, *, relative: bool = False
     ) -> Self:
@@ -334,7 +442,7 @@ class D(
             raise ValueError("The first command must be a MoveTo command")
 
         if relative and isinstance(command, PhysicalPathCommand):
-            command += self.__get_end(self[-1])
+            command += _get_end(self, self[-1])
 
         self.append(command)
 
@@ -437,7 +545,9 @@ class D(
 
     @classmethod
     def from_str(cls, text: str) -> Self:
-        d = utils.parse(text, grammar="d.lark", transformer=_Transformer())
+        d = parse_utils.parse(
+            text, grammar="d.lark", transformer=_Transformer()
+        )
 
         assert isinstance(d, cls), f"Expected {cls}, got {type(d)}"
         return d
@@ -457,23 +567,6 @@ class D(
                 msg = f"Expected str or D, got {type(value)}"
                 raise TypeError(msg)
 
-    def __apply_mode(self) -> Generator[PathCommand, None, None]:
-        formatter = serialize.get_current_formatter()
-        pos = point.Point.zero()
-
-        for command in self:
-            match formatter.path_data_mode:
-                case "relative":
-                    if isinstance(command, PhysicalPathCommand):
-                        # TODO: this cast can be removed fairly easily
-                        yield cast(PathCommand, command - pos)
-                    else:
-                        yield command
-                case "absolute":
-                    yield command
-
-            pos = self.__get_end(command)
-
     @staticmethod
     def __format_command(
         *args: serialize.Serializable, char: _AbsolutePathCommandChar
@@ -492,33 +585,29 @@ class D(
         args_str = serialize.serialize(args, bool_mode="number")
         return f"{cmd} {args_str}"
 
-    def __quadratic_control(
-        self, command: SmoothQuadraticBezierTo
-    ) -> point.Point:
-        prev = self.__prev_command(command)
-        end = self.__get_end(command)
+    def __apply_shorthand_formatting(self) -> D:
+        formatter = serialize.get_current_formatter()
+        line = formatter.path_data_use_shorthand_line_commands
+        curve = formatter.path_data_use_shorthand_curve_commands
 
-        match prev:
-            case QuadraticBezierTo(control=control):
-                pass
-            case SmoothQuadraticBezierTo():
-                control = self.__quadratic_control(prev)
-            case _:
-                return end
+        d = self
 
-        return 2 * (end - control)
+        if line != "original" and curve != "original":
+            if "never" in (line, curve):
+                d = d.resolve_shorthands(
+                    lines=line == "never", curves=curve == "never"
+                )
+            if "always" in (line, curve):
+                d = d.apply_shorthands(
+                    lines=line == "always", curves=curve == "always"
+                )
 
-    def __cubic_control(self, command: SmoothCubicBezierTo) -> point.Point:
-        prev = self.__prev_command(command)
-        end = self.__get_end(command)
-
-        if isinstance(prev, CubicBezierTo | SmoothCubicBezierTo):
-            return 2 * (end - prev.control2)
-
-        return end
+        return d
 
     def __serialize_commands(self) -> Generator[str, None, None]:  # noqa: C901
-        for command in self.__apply_mode():
+        d = self.__apply_shorthand_formatting()
+
+        for command in _apply_mode(d):
             match command:
                 case MoveTo(end):
                     yield self.__format_command(end, char="M")
@@ -531,19 +620,13 @@ class D(
                 case QuadraticBezierTo(control, end):
                     yield self.__format_command(control, end, char="Q")
                 case SmoothQuadraticBezierTo(end):
-                    control = self.__quadratic_control(command)
-
-                    yield self.__format_command(control, end, char="T")
+                    yield self.__format_command(end, char="T")
                 case CubicBezierTo(control1, control2, end):
                     yield self.__format_command(
                         control1, control2, end, char="C"
                     )
                 case SmoothCubicBezierTo(control2, end):
-                    control1 = self.__cubic_control(command)
-
-                    yield self.__format_command(
-                        control1, control2, end, char="S"
-                    )
+                    yield self.__format_command(control2, end, char="S")
                 case ArcTo(radius, angle, large, sweep, end):
                     yield self.__format_command(
                         radius, angle, large, sweep, end, char="A"
@@ -554,6 +637,122 @@ class D(
     @override
     def serialize(self) -> str:
         return serialize.serialize(self.__serialize_commands())
+
+    def resolve_shorthands(
+        self, *, lines: bool = True, curves: bool = True
+    ) -> Self:
+        """Resolve shorthand commands into their full-length equivalents.
+
+        Args:
+            lines: Whether to resolve shorthand line commands (`H`, `V`) into
+            the full-length equivalent (`L`).
+            curves: Whether to resolve shorthand curve commands (`S`, `T`) into
+            the full-length equivalent (`C`, `Q`).
+
+        Returns:
+            A new `D` instance with the shorthand commands (`H`, `V`, `S`, `T`)
+            replaced by their full-length equivalents (`L`, `C`, `Q`).
+
+        Examples:
+        >>> d = D().from_str("M 10,10 H 100 V 100 S 100,100 50,50")
+        >>> d.resolve_shorthands().serialize()
+        'M 10,10 L 100,10 L 100,100 C 100,100 100,100 50,50'
+        >>> d = D().from_str("M 0,0 Q 20,0 20,20 T 40,40")
+        >>> d.resolve_shorthands().serialize()
+        'M 0,0 Q 20,0 20,20 Q 20,40 40,40'
+
+        """
+        d = type(self)()
+
+        for command in self:
+            match command:
+                case SmoothQuadraticBezierTo(end=end) if curves:
+                    control = _quadratic_control(self, command)
+                    d.quadratic_bezier_to(control, end)
+                case SmoothCubicBezierTo(
+                    control2=control2, end=end
+                ) if curves:
+                    control1 = _cubic_control(self, command)
+                    d.cubic_bezier_to(control1, control2, end)
+                case HorizontalLineTo(x=x) if lines:
+                    end = _get_end(d, d[-1])
+                    d.line_to(point.Point(x=x, y=end.y))
+                case VerticalLineTo(y=y) if lines:
+                    end = _get_end(d, d[-1])
+                    d.line_to(point.Point(x=end.x, y=y))
+                case _:
+                    d.append(command)
+        return d
+
+    def apply_shorthands(
+        self, *, lines: bool = True, curves: bool = True
+    ) -> Self:
+        """Convert full-length commands into shorthand commands where possible.
+
+        Args:
+            lines: Whether to convert line commands (`L`) to shorthand
+            (`H`, `V`) where possible.
+            curves: Whether to convert curve commands (`Q`, `C`) to shorthand
+            (`T`, `S`) where possible.
+
+        Returns:
+            A new `D` instance with the full-length commands (`L`, `C`, `Q`)
+            replaced by their shorthand equivalents (`H`, `V`, `S`, `T`).
+
+        Examples:
+        >>> d = D().from_str(
+        ...     "M 10,10 L 100,10 L 100,100 C 100,100 100,100 50,50"
+        ... )
+        >>> d.apply_shorthands().serialize()
+        'M 10,10 H 100 V 100 S 100,100 50,50'
+        >>> d = D().from_str("M 0,0 Q 20,0 20,20 Q 20,40 40,40")
+        >>> d.apply_shorthands().serialize()
+        'M 0,0 Q 20,0 20,20 T 40,40'
+
+        """
+        d = type(self)()
+
+        for command in self:
+            match command:
+                case LineTo(end=end) if lines and end.x == (
+                    _get_end(d, d[-1]).x
+                ):
+                    d.vertical_line_to(end.y)
+                case LineTo(end=end) if lines and end.y == (
+                    _get_end(d, d[-1]).y
+                ):
+                    d.horizontal_line_to(end.x)
+                case QuadraticBezierTo(control=control, end=end) if curves:
+                    d.smooth_quadratic_bezier_to(end)
+
+                    shorthand = d[-1]
+                    assert isinstance(shorthand, SmoothQuadraticBezierTo)
+
+                    # try to replace the command with a shorthand
+                    auto_control = _quadratic_control(d, shorthand)
+
+                    # if the shorthand turns out not to be compatible, revert
+                    # to the original command
+                    if control != auto_control:
+                        d[-1] = command
+
+                case CubicBezierTo(
+                    control1=control1, control2=control2, end=end
+                ) if curves:
+                    d.smooth_cubic_bezier_to(control2, end)
+
+                    shorthand = d[-1]
+                    assert isinstance(shorthand, SmoothCubicBezierTo)
+
+                    auto_control = _cubic_control(d, shorthand)
+
+                    if control1 != auto_control:
+                        d[-1] = command
+
+                case _:
+                    d.append(command)
+
+        return d
 
 
 @lark.v_args(inline=True)
@@ -588,17 +787,17 @@ class _Transformer(lark.Transformer[object, D]):
     vertical_line = VerticalLineTo
     z = ClosePath
 
-    segment_sequence = utils.v_args_to_list
+    segment_sequence = parse_utils.v_args_to_list
 
-    a = utils.v_args_to_list
-    c = utils.v_args_to_list
-    h = utils.v_args_to_list
-    l = utils.v_args_to_list
-    m = utils.v_args_to_list
-    q = utils.v_args_to_list
-    s = utils.v_args_to_list
-    t = utils.v_args_to_list
-    v = utils.v_args_to_list
+    a = parse_utils.v_args_to_list
+    c = parse_utils.v_args_to_list
+    h = parse_utils.v_args_to_list
+    l = parse_utils.v_args_to_list
+    m = parse_utils.v_args_to_list
+    q = parse_utils.v_args_to_list
+    s = parse_utils.v_args_to_list
+    t = parse_utils.v_args_to_list
+    v = parse_utils.v_args_to_list
 
     @lark.v_args(inline=False)
     def path(self, commands: list[PathCommand | lark.Tree[object]]) -> D:
@@ -607,11 +806,14 @@ class _Transformer(lark.Transformer[object, D]):
         # TODO: try to improve the grammar
         return D(
             command
-            for command in svglab.utils.flatten(commands)
+            for command in utils.flatten(commands)
             if isinstance(command, _PathCommandBase)
         )
 
 
 DType: TypeAlias = Annotated[
-    D, utils.get_validator(grammar="d.lark", transformer=_Transformer())
+    D,
+    parse_utils.get_validator(
+        grammar="d.lark", transformer=_Transformer()
+    ),
 ]

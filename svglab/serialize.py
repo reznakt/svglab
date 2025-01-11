@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import re
-from collections.abc import Iterable, MutableSequence
-from types import TracebackType
+from collections.abc import Generator, Iterable, MutableSequence
 
 import pydantic
 import readable_number
@@ -48,6 +48,11 @@ PathDataSerializationMode: TypeAlias = Literal["relative", "absolute"]
 BoolSerializationMode: TypeAlias = Literal["text", "number"]
 """ Mode for serializing boolean values."""
 
+PathDataUseShorthandCommands: TypeAlias = Literal[
+    "always", "never", "original"
+]
+""" Mode for using shorthand commands in path data."""
+
 
 @runtime_checkable
 class CustomSerializable(Protocol):
@@ -86,7 +91,8 @@ def _is_serializable(value: object, /) -> TypeIs[Serializable]:
     )
 
 
-class Formatter(models.BaseModel):
+@pydantic.dataclasses.dataclass(frozen=True)
+class Formatter:
     """Formatter for serializing SVG elements.
 
     This class, together with `set_formatter()` and `get_current_formatter()`,
@@ -123,8 +129,6 @@ class Formatter(models.BaseModel):
 
     """
 
-    model_config = pydantic.ConfigDict(frozen=True)
-
     # colors
     color_mode: models.KwOnly[ColorSerializationMode] = "auto"
 
@@ -142,6 +146,12 @@ class Formatter(models.BaseModel):
 
     # path data
     path_data_mode: models.KwOnly[PathDataSerializationMode] = "absolute"
+    path_data_use_shorthand_line_commands: models.KwOnly[
+        PathDataUseShorthandCommands
+    ] = "original"
+    path_data_use_shorthand_curve_commands: models.KwOnly[
+        PathDataUseShorthandCommands
+    ] = "original"
 
     # separators
     list_separator: models.KwOnly[Separator] = " "
@@ -151,32 +161,6 @@ class Formatter(models.BaseModel):
     indent: models.KwOnly[int] = pydantic.Field(default=2, ge=0)
     spaces_around_attrs: models.KwOnly[bool] = False
     spaces_around_function_args: models.KwOnly[bool] = False
-
-    __original_formatter: Formatter | None = pydantic.PrivateAttr(
-        default=None
-    )
-
-    def __enter__(self) -> None:
-        self.__original_formatter = get_current_formatter()
-        set_formatter(self)
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        del exc_type, exc_val, exc_tb
-
-        if self.__original_formatter is None:
-            msg = (
-                "Cannot exit unentered context manager.",
-                " Call `__enter__` first",
-            )
-
-            raise RuntimeError(msg)
-
-        set_formatter(self.__original_formatter)
 
 
 DEFAULT_FORMATTER: Final = Formatter()
@@ -191,10 +175,22 @@ def get_current_formatter() -> Formatter:
     return _formatter
 
 
-def set_formatter(formatter: Formatter) -> None:
+def set_formatter(formatter: Formatter, /) -> None:
     """Set the current formatter."""
     global _formatter  # noqa: PLW0603
     _formatter = formatter
+
+
+@contextlib.contextmanager
+def use_formatter(formatter: Formatter, /) -> Generator[None, None, None]:
+    """Temporarily use a custom formatter."""
+    original_formatter = get_current_formatter()
+    set_formatter(formatter)
+
+    try:
+        yield
+    finally:
+        set_formatter(original_formatter)
 
 
 @overload

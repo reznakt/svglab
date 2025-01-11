@@ -119,6 +119,29 @@ class Point(
     def zero(cls) -> Self:
         return cls(0, 0)
 
+    def line_reflect(self, center: Self) -> Self:
+        """Reflect this point across a line defined by a center point.
+
+        Given a center point, this method returns a new point such that:
+        - this point, the center point, and the new point are collinear, and
+        - the distance between this point and the center point is equal to the
+          distance between the center point and the new point.
+
+        Args:
+            center: The center of the reflection.
+
+        Returns:
+            The reflected point.
+
+        Examples:
+        >>> Point(1, 1).line_reflect(Point(0, 0))
+        Point(x=-1.0, y=-1.0)
+        >>> Point(0, 0).line_reflect(Point(10, 10))
+        Point(x=20.0, y=20.0)
+
+        """
+        return center + (center - self)
+
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, Point]):
