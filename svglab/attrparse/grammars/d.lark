@@ -32,7 +32,7 @@ vertical_line: NUMBER
 
 point: NUMBER ","? NUMBER
 
-// for some reason, the LALR(1) parser acts up if numbe or flag are a rules,
+// for some reason, the LALR(1) parser acts up if number or flag are rules,
 // so we'll just make them terminals and parse them as needed
 FLAG: "0" | "1"
 NUMBER: SIGNED_NUMBER
