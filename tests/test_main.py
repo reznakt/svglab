@@ -302,13 +302,89 @@ def test_xmlns_always_present_on_svg() -> None:
     assert svg.xmlns == "http://www.w3.org/2000/svg"
 
 
-def test_path_data_parse_empty() -> None:
-    path = d.D.from_str("")
-    assert path == d.D()
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("", d.D()),
+        ("M 10,10", d.D().move_to(point.Point(10, 10))),
+        (
+            "M0,0L 10,10",
+            d.D().move_to(point.Point(0, 0)).line_to(point.Point(10, 10)),
+        ),
+        (
+            "M0,0H 10",
+            d.D().move_to(point.Point(0, 0)).horizontal_line_to(10),
+        ),
+        (
+            "M0,0V 10",
+            d.D().move_to(point.Point(0, 0)).vertical_line_to(10),
+        ),
+        (
+            # https://github.com/mathandy/svgpathtools/issues/185
+            "M12 22a10 10 0 110-20 10 10 0 010 20z",
+            d.D()
+            .move_to(point.Point(12, 22))
+            .arc_to(
+                point.Point(10, 10),
+                0,
+                point.Point(0, -20),
+                large=True,
+                sweep=True,
+            )
+            .arc_to(
+                point.Point(10, 10),
+                0,
+                point.Point(0, 20),
+                large=False,
+                sweep=True,
+            )
+            .close(),
+        ),
+        (
+            "M1 1 2 2 3 3 4 4",
+            d.D()
+            .move_to(point.Point(1, 1))
+            .line_to(point.Point(2, 2))
+            .line_to(point.Point(3, 3))
+            .line_to(point.Point(4, 4)),
+        ),
+        (
+            "M0,0C 10,10 20,20 30,30S 40,40 50,50Q 60,60 70,70T 80,80A 90,90 0"
+            " 1 0 100,100T 110,110ZH 120V 130L 140,140Z",
+            d.D()
+            .move_to(point.Point(0, 0))
+            .cubic_bezier_to(
+                point.Point(10, 10),
+                point.Point(20, 20),
+                point.Point(30, 30),
+            )
+            .smooth_cubic_bezier_to(
+                point.Point(40, 40), point.Point(50, 50)
+            )
+            .quadratic_bezier_to(point.Point(60, 60), point.Point(70, 70))
+            .smooth_quadratic_bezier_to(point.Point(80, 80))
+            .arc_to(
+                point.Point(90, 90),
+                0,
+                point.Point(100, 100),
+                large=True,
+                sweep=False,
+            )
+            .smooth_quadratic_bezier_to(point.Point(110, 110))
+            .close()
+            .horizontal_line_to(120)
+            .vertical_line_to(130)
+            .line_to(point.Point(140, 140))
+            .close(),
+        ),
+    ],
+)
+def test_path_data_parse(text: str, expected: str) -> None:
+    assert d.D.from_str(text) == expected
 
 
-@hypothesis.given(st.sampled_from(["M", "m", "L", "l"]), numbers, numbers)
-def test_path_data_parse_move_line(cmd: str, x: float, y: float) -> None:
-    path = d.D.from_str(f"{cmd} {x},{y}")
-
-    assert path == d.D().move_to(point.Point(x, y))
+def test_path_data_parse_moveto_must_be_first() -> None:
+    with pytest.raises(
+        ValueError, match="Failed to parse text with grammar 'd.lark'"
+    ):
+        d.D.from_str("L 10,10")
