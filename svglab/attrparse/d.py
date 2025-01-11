@@ -10,6 +10,7 @@ from typing_extensions import (
     Annotated,
     Final,
     Literal,
+    Protocol,
     Self,
     SupportsIndex,
     TypeAlias,
@@ -17,6 +18,7 @@ from typing_extensions import (
     final,
     overload,
     override,
+    runtime_checkable,
 )
 
 import svglab.utils
@@ -36,12 +38,18 @@ class _PathCommandBase:
     pass
 
 
+@runtime_checkable
+class HasEnd(Protocol):
+    end: point.Point
+
+
 class PhysicalPathCommand(
     _PathCommandBase,
+    HasEnd,
     point.TwoDimensionalMovement["PhysicalPathCommand"],
     metaclass=abc.ABCMeta,
 ):
-    end: point.Point
+    pass
 
 
 @final
