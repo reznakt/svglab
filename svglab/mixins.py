@@ -14,7 +14,7 @@ class AddSub(
     Generic[_T_contra, _T_co],
     metaclass=abc.ABCMeta,
 ):
-    """A mixin for implementation of objects with addition and subtraction.
+    """A mixin for implementating objects with addition and subtraction.
 
     The user must implement the `__add__` and `__sub__` methods.
 
