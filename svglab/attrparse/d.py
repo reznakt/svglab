@@ -34,19 +34,19 @@ _Flag: TypeAlias = Literal["0", "1"]
 
 
 @pydantic.dataclasses.dataclass
-class _PathCommandBase:
+class PathCommand:
     pass
 
 
 @runtime_checkable
-class HasEnd(Protocol):
+class _HasEnd(Protocol):
     end: point.Point
 
 
-class PhysicalPathCommand(
-    _PathCommandBase,
-    HasEnd,
-    point.TwoDimensionalMovement["PhysicalPathCommand"],
+class _PhysicalPathCommand(
+    PathCommand,
+    _HasEnd,
+    point.TwoDimensionalMovement["_PhysicalPathCommand"],
     metaclass=abc.ABCMeta,
 ):
     pass
@@ -54,25 +54,25 @@ class PhysicalPathCommand(
 
 @final
 @pydantic.dataclasses.dataclass
-class ClosePath(_PathCommandBase):
+class ClosePath(PathCommand):
     pass
 
 
 @final
 @pydantic.dataclasses.dataclass
-class HorizontalLineTo(_PathCommandBase):
+class HorizontalLineTo(PathCommand):
     x: float
 
 
 @final
 @pydantic.dataclasses.dataclass
-class VerticalLineTo(_PathCommandBase):
+class VerticalLineTo(PathCommand):
     y: float
 
 
 @final
 @pydantic.dataclasses.dataclass
-class SmoothQuadraticBezierTo(PhysicalPathCommand):
+class SmoothQuadraticBezierTo(_PhysicalPathCommand):
     end: point.Point
 
     @override
@@ -82,7 +82,7 @@ class SmoothQuadraticBezierTo(PhysicalPathCommand):
 
 @final
 @pydantic.dataclasses.dataclass
-class SmoothCubicBezierTo(PhysicalPathCommand):
+class SmoothCubicBezierTo(_PhysicalPathCommand):
     control2: point.Point
     end: point.Point
 
@@ -95,7 +95,7 @@ class SmoothCubicBezierTo(PhysicalPathCommand):
 
 @final
 @pydantic.dataclasses.dataclass
-class MoveTo(PhysicalPathCommand):
+class MoveTo(_PhysicalPathCommand):
     end: point.Point
 
     @override
@@ -104,7 +104,7 @@ class MoveTo(PhysicalPathCommand):
 
 
 @pydantic.dataclasses.dataclass
-class LineTo(PhysicalPathCommand):
+class LineTo(_PhysicalPathCommand):
     end: point.Point
 
     @override
@@ -114,7 +114,7 @@ class LineTo(PhysicalPathCommand):
 
 @final
 @pydantic.dataclasses.dataclass
-class QuadraticBezierTo(PhysicalPathCommand):
+class QuadraticBezierTo(_PhysicalPathCommand):
     control: point.Point
     end: point.Point
 
@@ -127,7 +127,7 @@ class QuadraticBezierTo(PhysicalPathCommand):
 
 @final
 @pydantic.dataclasses.dataclass
-class CubicBezierTo(PhysicalPathCommand):
+class CubicBezierTo(_PhysicalPathCommand):
     control1: point.Point
     control2: point.Point
     end: point.Point
@@ -143,7 +143,7 @@ class CubicBezierTo(PhysicalPathCommand):
 
 @final
 @pydantic.dataclasses.dataclass
-class ArcTo(PhysicalPathCommand):
+class ArcTo(_PhysicalPathCommand):
     radius: point.Point
     angle: float
     large: bool
@@ -159,20 +159,6 @@ class ArcTo(PhysicalPathCommand):
             sweep=self.sweep,
             end=self.end + other,
         )
-
-
-PathCommand: TypeAlias = (
-    ArcTo
-    | ClosePath
-    | CubicBezierTo
-    | HorizontalLineTo
-    | LineTo
-    | MoveTo
-    | QuadraticBezierTo
-    | SmoothCubicBezierTo
-    | SmoothQuadraticBezierTo
-    | VerticalLineTo
-)
 
 
 def _get_end(d: D, command: PathCommand) -> point.Point:
@@ -198,7 +184,7 @@ def _get_end(d: D, command: PathCommand) -> point.Point:
 
     """
     match command:
-        case PhysicalPathCommand(end=end):
+        case _PhysicalPathCommand(end=end):
             return end
         case ClosePath():
             return _get_end(d, utils.prev(d, command))
@@ -290,7 +276,7 @@ def _apply_mode(d: D) -> D:
     for command in d:
         match formatter.path_data_mode:
             case "relative":
-                if isinstance(command, PhysicalPathCommand):
+                if isinstance(command, _PhysicalPathCommand):
                     # TODO: this cast can be removed fairly easily
                     result.append(cast(PathCommand, command - pos))
                 else:
@@ -365,7 +351,7 @@ class D(
     def __add__(self, other: point.Point) -> Self:
         return type(self)(
             command + other
-            if isinstance(command, PhysicalPathCommand)
+            if isinstance(command, _PhysicalPathCommand)
             else command
             for command in self
         )
@@ -441,7 +427,7 @@ class D(
         if not self and not isinstance(command, MoveTo):
             raise ValueError("The first command must be a MoveTo command")
 
-        if relative and isinstance(command, PhysicalPathCommand):
+        if relative and isinstance(command, _PhysicalPathCommand):
             command += _get_end(self, self[-1])
 
         self.append(command)
@@ -633,6 +619,9 @@ class D(
                     )
                 case ClosePath():
                     yield self.__format_command(char="Z")
+                case _:
+                    msg = f"Unsupported command type: {type(command)}"
+                    raise TypeError(msg)
 
     @override
     def serialize(self) -> str:
@@ -807,7 +796,7 @@ class _Transformer(lark.Transformer[object, D]):
         return D(
             command
             for command in utils.flatten(commands)
-            if isinstance(command, _PathCommandBase)
+            if isinstance(command, PathCommand)
         )
 
 
