@@ -745,13 +745,8 @@ class D(
 
 
 @lark.v_args(inline=True)
+@parse_utils.visit_tokens  # there are a few terminals we want to parse
 class _Transformer(lark.Transformer[object, D]):
-    @override
-    def __init__(self) -> None:
-        super().__init__(
-            visit_tokens=True
-        )  # there are some terminals we want to parse
-
     point = point.Point
     NUMBER = float
 

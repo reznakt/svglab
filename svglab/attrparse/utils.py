@@ -1,14 +1,16 @@
+import functools
 import itertools
 import pathlib
 
 import lark
 import pydantic
-from typing_extensions import Final, LiteralString, TypeVar
+from typing_extensions import Any, Final, LiteralString, TypeVar
 
 
 _T = TypeVar("_T")
-_Leaf_T = TypeVar("_Leaf_T")
-_Return_T = TypeVar("_Return_T")
+_LeafT = TypeVar("_LeafT")
+_ReturnT = TypeVar("_ReturnT")
+_TransformerT = TypeVar("_TransformerT", bound=lark.Transformer[Any, Any])
 
 
 _CURRENT_DIR: Final = pathlib.Path(__file__).parent
@@ -20,7 +22,7 @@ def parse(
     /,
     *,
     grammar: LiteralString,
-    transformer: lark.Transformer[_Leaf_T, _Return_T],
+    transformer: lark.Transformer[_LeafT, _ReturnT],
     **kwargs: object,
 ) -> lark.ParseTree:
     parser = lark.Lark.open(
@@ -45,7 +47,7 @@ def parse(
 def get_validator(
     *,
     grammar: LiteralString,
-    transformer: lark.Transformer[_Leaf_T, _Return_T],
+    transformer: lark.Transformer[_LeafT, _ReturnT],
     **kwargs: object,
 ) -> pydantic.BeforeValidator:
     def validator(value: object) -> object:
@@ -62,3 +64,17 @@ def get_validator(
 def v_args_to_list(*values: _T) -> list[_T]:
     # drop the first value, which is the transformer instance (self)
     return list(itertools.islice(values, 1, None))
+
+
+def visit_tokens(cls: type[_TransformerT]) -> type[_TransformerT]:
+    original_init = cls.__init__
+
+    @functools.wraps(original_init)
+    def new_init(
+        self: _TransformerT, *args: object, **kwargs: object
+    ) -> None:
+        del args, kwargs
+        original_init(self, visit_tokens=True)
+
+    cls.__init__ = new_init
+    return cls
