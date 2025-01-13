@@ -746,24 +746,28 @@ class D(
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, D]):
-    number = float
+    @override
+    def __init__(self) -> None:
+        super().__init__(
+            visit_tokens=True
+        )  # there are some terminals we want to parse
+
     point = point.Point
+    NUMBER = float
+
+    def FLAG(self, value: _Flag) -> bool:  # noqa: N802
+        return value == "1"
 
     def arc(
         self,
         radius: point.Point,
-        angle: str,
-        large: _Flag,
-        sweep: _Flag,
+        angle: float,
+        large: bool,  # noqa: FBT001
+        sweep: bool,  # noqa: FBT001
         end: point.Point,
     ) -> ArcTo:
-        # FLAG and NUMBER are terminals, we have to parse them manually
         return ArcTo(
-            radius=radius,
-            angle=float(angle),
-            large=large == "1",
-            sweep=sweep == "1",
-            end=end,
+            radius=radius, angle=angle, large=large, sweep=sweep, end=end
         )
 
     cubic_bezier = CubicBezierTo
