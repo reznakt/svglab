@@ -329,7 +329,7 @@ class D(
         """
         return utils.length(self.continuous_subpaths()) <= 1
 
-    def __continuous_subpaths(self) -> Generator[D, None, None]:
+    def __continuous_subpaths(self) -> Generator[D]:
         subpath = D()
 
         for command in self:
@@ -427,7 +427,7 @@ class D(
                 msg = f"Expected a string or {cls.__name__}"
                 raise TypeError(msg)
 
-    def __apply_mode(self) -> Generator[PathCommand, None, None]:
+    def __apply_mode(self) -> Generator[PathCommand]:
         formatter = serialize.get_current_formatter()
         pos = point.Point.zero()
 
@@ -459,7 +459,7 @@ class D(
         args_str = serialize.serialize(args, bool_mode="number")
         return f"{char} {args_str}"
 
-    def __serialize_commands(self) -> Generator[str, None, None]:
+    def __serialize_commands(self) -> Generator[str]:
         for command in self.__apply_mode():
             match command:
                 case MoveTo(end):

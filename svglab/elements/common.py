@@ -288,12 +288,12 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
     @pydantic.computed_field
     @property
-    def children(self) -> Generator[Element, None, None]:
+    def children(self) -> Generator[Element]:
         yield from self.__children
 
     @pydantic.computed_field
     @property
-    def descendants(self) -> Generator[Element, None, None]:
+    def descendants(self) -> Generator[Element]:
         queue = collections.deque(self.children)
 
         while queue:
@@ -305,7 +305,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
     @pydantic.computed_field
     @property
-    def parents(self) -> Generator[Element, None, None]:
+    def parents(self) -> Generator[Element]:
         curr = self.parent
 
         while curr is not None:
@@ -314,7 +314,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
     @pydantic.computed_field
     @property
-    def next_siblings(self) -> Generator[Element, None, None]:
+    def next_siblings(self) -> Generator[Element]:
         if self.parent is None or not isinstance(self.parent, PairedTag):
             return
 
@@ -328,7 +328,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
     @pydantic.computed_field
     @property
-    def prev_siblings(self) -> Generator[Element, None, None]:
+    def prev_siblings(self) -> Generator[Element]:
         if self.parent is None or not isinstance(self.parent, PairedTag):
             return
 
@@ -340,7 +340,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
     @pydantic.computed_field
     @property
-    def siblings(self) -> Generator[Element, None, None]:
+    def siblings(self) -> Generator[Element]:
         yield from self.prev_siblings
         yield from self.next_siblings
 
@@ -413,16 +413,16 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
     @overload
     def find_all(
         self, *tags: type[_T_tag], recursive: bool = True
-    ) -> Generator[_T_tag, None, None]: ...
+    ) -> Generator[_T_tag]: ...
 
     @overload
     def find_all(
         self, *tags: type[Tag] | names.TagName, recursive: bool = True
-    ) -> Generator[Tag, None, None]: ...
+    ) -> Generator[Tag]: ...
 
     def find_all(
         self, *tags: type[Tag] | names.TagName, recursive: bool = True
-    ) -> Generator[Tag, None, None]:
+    ) -> Generator[Tag]:
         """Find all tags that match the given search criteria.
 
         Args:

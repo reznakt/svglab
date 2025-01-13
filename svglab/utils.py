@@ -145,9 +145,7 @@ def clamp(
     return max(min(value, max_value), min_value)
 
 
-def get_all_subclasses(
-    cls: type[_T], /
-) -> Generator[type[_T], None, None]:
+def get_all_subclasses(cls: type[_T], /) -> Generator[type[_T]]:
     """Recursively obtain all subclasses of a class.
 
     Args:
