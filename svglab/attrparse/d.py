@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import contextlib
 from collections.abc import Generator, Iterable, MutableSequence
 
 import lark
@@ -34,7 +35,7 @@ _Flag: TypeAlias = Literal["0", "1"]
 
 
 @pydantic.dataclasses.dataclass
-class PathCommand:
+class _PathCommandBase:
     pass
 
 
@@ -44,8 +45,7 @@ class _HasEnd(Protocol):
 
 
 class _PhysicalPathCommand(
-    PathCommand,
-    _HasEnd,
+    _PathCommandBase,
     point.TwoDimensionalMovement["_PhysicalPathCommand"],
     metaclass=abc.ABCMeta,
 ):
@@ -54,25 +54,33 @@ class _PhysicalPathCommand(
 
 @final
 @pydantic.dataclasses.dataclass
-class ClosePath(PathCommand):
+class ClosePath(_PathCommandBase):
     pass
 
 
 @final
 @pydantic.dataclasses.dataclass
-class HorizontalLineTo(PathCommand):
+class HorizontalLineTo(_PhysicalPathCommand):
     x: float
 
+    @override
+    def __add__(self, other: point.Point, /) -> Self:
+        return type(self)(x=self.x + other.x)
+
 
 @final
 @pydantic.dataclasses.dataclass
-class VerticalLineTo(PathCommand):
+class VerticalLineTo(_PhysicalPathCommand):
     y: float
 
+    @override
+    def __add__(self, other: point.Point, /) -> Self:
+        return type(self)(y=self.y + other.y)
+
 
 @final
 @pydantic.dataclasses.dataclass
-class SmoothQuadraticBezierTo(_PhysicalPathCommand):
+class SmoothQuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     end: point.Point
 
     @override
@@ -82,7 +90,7 @@ class SmoothQuadraticBezierTo(_PhysicalPathCommand):
 
 @final
 @pydantic.dataclasses.dataclass
-class SmoothCubicBezierTo(_PhysicalPathCommand):
+class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
     control2: point.Point
     end: point.Point
 
@@ -95,7 +103,7 @@ class SmoothCubicBezierTo(_PhysicalPathCommand):
 
 @final
 @pydantic.dataclasses.dataclass
-class MoveTo(_PhysicalPathCommand):
+class MoveTo(_HasEnd, _PhysicalPathCommand):
     end: point.Point
 
     @override
@@ -104,7 +112,7 @@ class MoveTo(_PhysicalPathCommand):
 
 
 @pydantic.dataclasses.dataclass
-class LineTo(_PhysicalPathCommand):
+class LineTo(_HasEnd, _PhysicalPathCommand):
     end: point.Point
 
     @override
@@ -114,7 +122,7 @@ class LineTo(_PhysicalPathCommand):
 
 @final
 @pydantic.dataclasses.dataclass
-class QuadraticBezierTo(_PhysicalPathCommand):
+class QuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     control: point.Point
     end: point.Point
 
@@ -127,7 +135,7 @@ class QuadraticBezierTo(_PhysicalPathCommand):
 
 @final
 @pydantic.dataclasses.dataclass
-class CubicBezierTo(_PhysicalPathCommand):
+class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
     control1: point.Point
     control2: point.Point
     end: point.Point
@@ -143,7 +151,7 @@ class CubicBezierTo(_PhysicalPathCommand):
 
 @final
 @pydantic.dataclasses.dataclass
-class ArcTo(_PhysicalPathCommand):
+class ArcTo(_HasEnd, _PhysicalPathCommand):
     radius: point.Point
     angle: float
     large: bool
@@ -159,6 +167,20 @@ class ArcTo(_PhysicalPathCommand):
             sweep=self.sweep,
             end=self.end + other,
         )
+
+
+PathCommand: TypeAlias = (
+    ArcTo
+    | ClosePath
+    | CubicBezierTo
+    | HorizontalLineTo
+    | LineTo
+    | MoveTo
+    | QuadraticBezierTo
+    | SmoothCubicBezierTo
+    | SmoothQuadraticBezierTo
+    | VerticalLineTo
+)
 
 
 def _get_end(d: D, command: PathCommand) -> point.Point:
@@ -184,8 +206,6 @@ def _get_end(d: D, command: PathCommand) -> point.Point:
 
     """
     match command:
-        case _PhysicalPathCommand(end=end):
-            return end
         case ClosePath():
             return _get_end(d, utils.prev(d, command))
         case HorizontalLineTo(x=x):
@@ -195,7 +215,7 @@ def _get_end(d: D, command: PathCommand) -> point.Point:
             end = _get_end(d, utils.prev(d, command))
             return point.Point(x=end.x, y=y)
         case _:
-            raise AssertionError  # this should never happen
+            return command.end
 
 
 def _quadratic_control(
@@ -381,6 +401,20 @@ def _can_use_implicit_command(
     )
 
 
+def _add_command(
+    d: D, command: PathCommand, *, relative: bool = False
+) -> None:
+    if not d and not isinstance(command, MoveTo):
+        raise ValueError("The first command must be a MoveTo command")
+
+    if relative and isinstance(command, _PhysicalPathCommand):
+        # if there is no previous command, just do nothing
+        with contextlib.suppress(IndexError):
+            command += _get_end(d, d[-1])
+
+    d.append(command)
+
+
 @final
 class D(
     MutableSequence[PathCommand],
@@ -514,13 +548,7 @@ class D(
     def __add(
         self, command: PathCommand, /, *, relative: bool = False
     ) -> Self:
-        if not self and not isinstance(command, MoveTo):
-            raise ValueError("The first command must be a MoveTo command")
-
-        if relative and isinstance(command, _PhysicalPathCommand):
-            command += _get_end(self, self[-1])
-
-        self.append(command)
+        _add_command(self, command, relative=relative)
 
         return self
 
@@ -663,7 +691,7 @@ class D(
 
         return d
 
-    def __serialize_commands(self) -> Generator[str]:  # noqa: C901, PLR0912
+    def __serialize_commands(self) -> Generator[str]:  # noqa: C901
         formatter = serialize.get_current_formatter()
 
         d = self.__apply_shorthand_formatting()
@@ -723,9 +751,6 @@ class D(
                     )
                 case ClosePath():
                     yield _serialize_command(char="Z", implicit=implicit)
-                case _:
-                    msg = f"Unsupported command type: {type(command)}"
-                    raise TypeError(msg)
 
     @override
     def serialize(self) -> str:
@@ -871,28 +896,29 @@ class _Transformer(lark.Transformer[object, D]):
     vertical_line = VerticalLineTo
     z = ClosePath
 
-    segment_sequence = parse_utils.v_args_to_list
-
-    a = parse_utils.v_args_to_list
-    c = parse_utils.v_args_to_list
-    h = parse_utils.v_args_to_list
-    l = parse_utils.v_args_to_list
-    m = parse_utils.v_args_to_list
-    q = parse_utils.v_args_to_list
-    s = parse_utils.v_args_to_list
-    t = parse_utils.v_args_to_list
-    v = parse_utils.v_args_to_list
-
     @lark.v_args(inline=False)
-    def path(self, commands: list[PathCommand | lark.Tree[object]]) -> D:
-        # our grammar is not set up ideally, so we need to filter out
-        # some garbage
-        # TODO: try to improve the grammar
-        return D(
-            command
-            for command in utils.flatten(commands)
-            if isinstance(command, PathCommand)
-        )
+    def path(
+        self, args: list[PathCommand | lark.Tree[PathCommand | lark.Token]]
+    ) -> D:
+        d = D()
+
+        for item in args:
+            match item:
+                # simple commands like `Z` require no further processing
+                case _PathCommandBase() as command:
+                    _add_command(d, command)
+                # commands that are part of a group need to be extracted;
+                # the relative flag is applied if the group is relative
+                case lark.Tree(data=name, children=commands):
+                    # sanity check for when the grammar changes
+                    assert "relative" in name or "absolute" in name
+                    relative = "relative" in name
+
+                    for command in commands:
+                        assert isinstance(command, PathCommand)
+                        _add_command(d, command, relative=relative)
+
+        return d
 
 
 DType: TypeAlias = Annotated[

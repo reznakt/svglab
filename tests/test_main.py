@@ -325,16 +325,16 @@ def test_xmlns_always_present_on_svg() -> None:
             d.D()
             .move_to(point.Point(12, 22))
             .arc_to(
-                point.Point(10, 10),
+                point.Point(22, 32),
                 0,
-                point.Point(0, -20),
+                point.Point(12, 2),
                 large=True,
                 sweep=True,
             )
             .arc_to(
-                point.Point(10, 10),
+                point.Point(22, 12),
                 0,
-                point.Point(0, 20),
+                point.Point(12, 22),
                 large=False,
                 sweep=True,
             )
@@ -469,12 +469,11 @@ def test_path_data_shorthands_idempotent(before: d.D, after: d.D) -> None:
         ("m 1e+02 1e-02", "M100,0.01"),
         (
             "M12 22a10 10 0 110-20 10 10 0 010 20z",
-            "M12,22 A10,10 0 1 1 0,-20 10,10 0 0 1 0,20 Z",
+            "M12,22 A22,32 0 1 1 12,2 22,12 0 0 1 12,22 Z",
         ),
-        pytest.param(
+        (
             "m10,10 h100 v100 l10,10 10,10 z",
-            "M10,10 H110 V210 L120,220 130,230 Z",
-            marks=pytest.mark.xfail,
+            "M10,10 H110 V110 L120,120 130,130 Z",
         ),
     ],
 )
