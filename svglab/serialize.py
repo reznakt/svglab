@@ -182,7 +182,7 @@ def set_formatter(formatter: Formatter, /) -> None:
 
 
 @contextlib.contextmanager
-def use_formatter(formatter: Formatter, /) -> Generator[None, None, None]:
+def use_formatter(formatter: Formatter, /) -> Generator[None]:
     """Temporarily use a custom formatter."""
     original_formatter = get_current_formatter()
     set_formatter(formatter)

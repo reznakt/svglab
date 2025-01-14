@@ -212,7 +212,7 @@ def basic_compare(other: object, /, *, self: _T) -> TypeIs[_T]:
     return other is self or isinstance(other, type(self))
 
 
-def flatten(iterable: _NestedIterable[_T], /) -> Generator[_T, None, None]:
+def flatten(iterable: _NestedIterable[_T], /) -> Generator[_T]:
     """Flatten a nested iterable.
 
     Args:

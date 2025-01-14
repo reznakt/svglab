@@ -590,7 +590,7 @@ class D(
 
         return d
 
-    def __serialize_commands(self) -> Generator[str, None, None]:  # noqa: C901
+    def __serialize_commands(self) -> Generator[str]:  # noqa: C901
         d = self.__apply_shorthand_formatting()
 
         for command in _apply_mode(d):
