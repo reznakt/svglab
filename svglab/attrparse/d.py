@@ -176,7 +176,7 @@ def _get_end(d: D, command: PathCommand) -> point.Point:
         The end point of the command.
 
     Examples:
-    >>> d = D().from_str("M 10,10 H 100 V 100 Z")
+    >>> d = D.from_str("M 10,10 H 100 V 100 Z")
     >>> _get_end(d, d[0])
     Point(x=10.0, y=10.0)
     >>> _get_end(d, d[1])
@@ -217,7 +217,7 @@ def _quadratic_control(
         The control point for the command.
 
     Examples:
-    >>> d = D().from_str("M 0,0 Q 20,0 20,20 T 40,40")
+    >>> d = D.from_str("M 0,0 Q 20,0 20,20 T 40,40")
     >>> _quadratic_control(d, d[2])
     Point(x=20.0, y=40.0)
 
@@ -254,7 +254,7 @@ def _cubic_control(d: D, command: SmoothCubicBezierTo) -> point.Point:
         The first control point for the command.
 
     Examples:
-    >>> d = D().from_str("M 0,0 C 20,0 20,20 40,40 S 100,100 50,50")
+    >>> d = D.from_str("M 0,0 C 20,0 20,20 40,40 S 100,100 50,50")
     >>> _cubic_control(d, d[2])
     Point(x=60.0, y=60.0)
 
@@ -268,25 +268,117 @@ def _cubic_control(d: D, command: SmoothCubicBezierTo) -> point.Point:
     return end
 
 
-def _apply_mode(d: D) -> D:
-    formatter = serialize.get_current_formatter()
+def _relativize(d: D) -> D:
+    """Recompute the coordinates of path commands as if they were relative.
+
+    This function takes a path and recomputes the coordinates of the path
+    commands as if they were relative. This is done by subtracting the
+    current position from the coordinates of each command. The resuting path
+    may be used for serialization with relative coordinates.
+
+    Args:
+        d: The path to relativize.
+
+    Returns:
+        A new `D` instance with the coordinates of the path commands recomputed
+        as if they were relative.
+
+    Examples:
+    >>> d = D.from_str("M 10,10 L 100,100")
+    >>> _relativize(d)
+    D(MoveTo(end=Point(x=10.0, y=10.0)), LineTo(end=Point(x=90.0, y=90.0)))
+
+    """
     result = D()
     pos = point.Point.zero()
 
     for command in d:
-        match formatter.path_data_mode:
-            case "relative":
-                if isinstance(command, _PhysicalPathCommand):
-                    # TODO: this cast can be removed fairly easily
-                    result.append(cast(PathCommand, command - pos))
-                else:
-                    result.append(command)
-            case "absolute":
-                result.append(command)
+        if isinstance(command, _PhysicalPathCommand):
+            # TODO: this cast can be removed fairly easily
+            result.append(cast(PathCommand, command - pos))
+        else:
+            result.append(command)
 
         pos = _get_end(d, command)
 
     return result
+
+
+def _serialize_command(
+    *args: serialize.Serializable,
+    char: _AbsolutePathCommandChar,
+    implicit: bool,
+) -> str:
+    """Serialize a path command.
+
+    Args:
+        args: The arguments of the command.
+        char: The command character, in uppercase.
+        implicit: Whether the command is implicit (i.e., the command character
+        is omitted).
+
+    Returns:
+        The serialized command.
+
+    Examples:
+    >>> _serialize_command(point.Point(10, 10), char="M", implicit=False)
+    'M10,10'
+    >>> _serialize_command(point.Point(100, 100), char="L", implicit=True)
+    '100,100'
+
+    """
+    formatter = serialize.get_current_formatter()
+    parts: list[str] = []
+
+    if not implicit:
+        cmd = (
+            char
+            if formatter.path_data_coordinates == "absolute"
+            else char.lower()
+        )
+        parts.append(cmd)
+
+    if args:
+        args_str = serialize.serialize(args, bool_mode="number")
+        parts.append(args_str)
+
+    sep = " " if formatter.path_data_space_before_args else ""
+
+    return sep.join(parts)
+
+
+def _can_use_implicit_command(
+    current: PathCommand, /, *, prev: PathCommand | None
+) -> bool:
+    """Determine whether a command can be serialized implicitly.
+
+    A command can be serialized implicitly if the previous command is of the
+    same type as the current command, or if the previous command is a `MoveTo`
+    command and the current command is a `LineTo` command.
+
+    Args:
+        prev: The previous command.
+        current: The current command.
+
+    Returns:
+        `True` if the command can be serialized implicitly, `False` otherwise.
+
+    Examples:
+    >>> _can_use_implicit_command(MoveTo(point.Point(10, 10)), prev=None)
+    False
+    >>> _can_use_implicit_command(
+    ...     LineTo(point.Point(100, 100)), prev=MoveTo(point.Point(10, 10))
+    ... )
+    True
+    >>> _can_use_implicit_command(
+    ...     LineTo(point.Point(100, 100)), prev=LineTo(point.Point(10, 10))
+    ... )
+    True
+
+    """
+    return type(prev) is type(current) or (
+        isinstance(prev, MoveTo) and isinstance(current, LineTo)
+    )
 
 
 @final
@@ -327,8 +419,6 @@ class D(
     LineTo(end=Point(x=110.0, y=110.0))
     >>> d.close()
     D(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
-    >>> d.serialize()
-    'M 10,10 Z'
 
     """
 
@@ -378,7 +468,7 @@ class D(
 
     @override
     def __getitem__(self, index: int | slice) -> PathCommand | Self:
-        if isinstance(index, SupportsIndex):
+        if isinstance(index, int):
             return self.__commands[index]
 
         return type(self)(self.__commands[index])
@@ -391,7 +481,7 @@ class D(
 
     @override
     def __delitem__(self, index: int | slice) -> None:
-        if isinstance(index, SupportsIndex):
+        if isinstance(index, int):
             del self.__commands[index]
         else:
             del self.__commands[index]
@@ -410,7 +500,7 @@ class D(
         index: int | slice,
         values: PathCommand | Iterable[PathCommand],
     ) -> None:
-        if isinstance(index, SupportsIndex):
+        if isinstance(index, int):
             assert isinstance(values, PathCommand)
             self.__commands[index] = values
         else:
@@ -422,7 +512,7 @@ class D(
         self.__commands.insert(index, value)
 
     def __add(
-        self, command: PathCommand, *, relative: bool = False
+        self, command: PathCommand, /, *, relative: bool = False
     ) -> Self:
         if not self and not isinstance(command, MoveTo):
             raise ValueError("The first command must be a MoveTo command")
@@ -553,28 +643,11 @@ class D(
                 msg = f"Expected str or D, got {type(value)}"
                 raise TypeError(msg)
 
-    @staticmethod
-    def __format_command(
-        *args: serialize.Serializable, char: _AbsolutePathCommandChar
-    ) -> str:
-        formatter = serialize.get_current_formatter()
-
-        cmd = (
-            char
-            if formatter.path_data_mode == "absolute"
-            else char.lower()
-        )
-
-        if not args:
-            return cmd
-
-        args_str = serialize.serialize(args, bool_mode="number")
-        return f"{cmd} {args_str}"
-
     def __apply_shorthand_formatting(self) -> D:
+        """Apply shorthand formatting based on the formatter settings."""
         formatter = serialize.get_current_formatter()
-        line = formatter.path_data_use_shorthand_line_commands
-        curve = formatter.path_data_use_shorthand_curve_commands
+        line = formatter.path_data_shorthand_line_commands
+        curve = formatter.path_data_shorthand_curve_commands
 
         d = self
 
@@ -590,35 +663,66 @@ class D(
 
         return d
 
-    def __serialize_commands(self) -> Generator[str]:  # noqa: C901
+    def __serialize_commands(self) -> Generator[str]:  # noqa: C901, PLR0912
+        formatter = serialize.get_current_formatter()
+
         d = self.__apply_shorthand_formatting()
 
-        for command in _apply_mode(d):
+        if formatter.path_data_coordinates == "relative":
+            d = _relativize(d)
+
+        for prev, command in utils.pairwise(d):
+            implicit = _can_use_implicit_command(command, prev=prev)
+
             match command:
                 case MoveTo(end):
-                    yield self.__format_command(end, char="M")
+                    yield _serialize_command(
+                        end, char="M", implicit=implicit
+                    )
                 case LineTo(end):
-                    yield self.__format_command(end, char="L")
+                    yield _serialize_command(
+                        end, char="L", implicit=implicit
+                    )
                 case HorizontalLineTo(x):
-                    yield self.__format_command(x, char="H")
+                    yield _serialize_command(
+                        x, char="H", implicit=implicit
+                    )
                 case VerticalLineTo(y):
-                    yield self.__format_command(y, char="V")
+                    yield _serialize_command(
+                        y, char="V", implicit=implicit
+                    )
                 case QuadraticBezierTo(control, end):
-                    yield self.__format_command(control, end, char="Q")
+                    yield _serialize_command(
+                        control, end, char="Q", implicit=implicit
+                    )
                 case SmoothQuadraticBezierTo(end):
-                    yield self.__format_command(end, char="T")
+                    yield _serialize_command(
+                        end, char="T", implicit=implicit
+                    )
                 case CubicBezierTo(control1, control2, end):
-                    yield self.__format_command(
-                        control1, control2, end, char="C"
+                    yield _serialize_command(
+                        control1,
+                        control2,
+                        end,
+                        char="C",
+                        implicit=implicit,
                     )
                 case SmoothCubicBezierTo(control2, end):
-                    yield self.__format_command(control2, end, char="S")
+                    yield _serialize_command(
+                        control2, end, char="S", implicit=implicit
+                    )
                 case ArcTo(radius, angle, large, sweep, end):
-                    yield self.__format_command(
-                        radius, angle, large, sweep, end, char="A"
+                    yield _serialize_command(
+                        radius,
+                        angle,
+                        large,
+                        sweep,
+                        end,
+                        char="A",
+                        implicit=implicit,
                     )
                 case ClosePath():
-                    yield self.__format_command(char="Z")
+                    yield _serialize_command(char="Z", implicit=implicit)
                 case _:
                     msg = f"Unsupported command type: {type(command)}"
                     raise TypeError(msg)
@@ -643,12 +747,9 @@ class D(
             replaced by their full-length equivalents (`L`, `C`, `Q`).
 
         Examples:
-        >>> d = D().from_str("M 10,10 H 100 V 100 S 100,100 50,50")
-        >>> d.resolve_shorthands().serialize()
-        'M 10,10 L 100,10 L 100,100 C 100,100 100,100 50,50'
-        >>> d = D().from_str("M 0,0 Q 20,0 20,20 T 40,40")
-        >>> d.resolve_shorthands().serialize()
-        'M 0,0 Q 20,0 20,20 Q 20,40 40,40'
+        >>> d = D.from_str("M 0,0 H 10")
+        >>> d.resolve_shorthands()
+        D(MoveTo(end=Point(x=0.0, y=0.0)), LineTo(end=Point(x=10.0, y=0.0)))
 
         """
         d = type(self)()
@@ -689,14 +790,9 @@ class D(
             replaced by their shorthand equivalents (`H`, `V`, `S`, `T`).
 
         Examples:
-        >>> d = D().from_str(
-        ...     "M 10,10 L 100,10 L 100,100 C 100,100 100,100 50,50"
-        ... )
-        >>> d.apply_shorthands().serialize()
-        'M 10,10 H 100 V 100 S 100,100 50,50'
-        >>> d = D().from_str("M 0,0 Q 20,0 20,20 Q 20,40 40,40")
-        >>> d.apply_shorthands().serialize()
-        'M 0,0 Q 20,0 20,20 T 40,40'
+        >>> d = D.from_str("M 10,10 L 100,10")
+        >>> d.apply_shorthands()
+        D(MoveTo(end=Point(x=10.0, y=10.0)), HorizontalLineTo(x=100.0))
 
         """
         d = type(self)()

@@ -8,6 +8,7 @@ from useful_types import SupportsRichComparisonT
 
 
 _T = TypeVar("_T")
+_DT = TypeVar("_DT")
 
 _NestedIterableItem: TypeAlias = _T | Iterable["_NestedIterableItem[_T]"]
 _NestedIterable: TypeAlias = Iterable[_NestedIterableItem[_T]]
@@ -276,3 +277,34 @@ def prev(sequence: Sequence[_T], item: _T) -> _T:
         raise ValueError(msg)
 
     return sequence[index - 1]
+
+
+def pairwise(
+    iterable: Iterable[_T], /, default: _DT = None
+) -> Generator[tuple[_T | _DT, _T]]:
+    """Iterate over pairs of items in an iterable.
+
+    Args:
+        iterable: The iterable to iterate over.
+        default: The default value to use for the first item.
+
+    Yields:
+        Pairs of items from the iterable. The first item in each pair is the
+        previous item, or the default value if the first item is yielded.
+
+    Examples:
+        >>> list(pairwise([]))
+        []
+        >>> list(pairwise([1]))
+        [(None, 1)]
+        >>> list(pairwise([1, 2]))
+        [(None, 1), (1, 2)]
+        >>> list(pairwise([1, 2, 3]))
+        [(None, 1), (1, 2), (2, 3)]
+
+    """
+    prev_item = default
+
+    for item in iterable:
+        yield prev_item, item
+        prev_item = item
