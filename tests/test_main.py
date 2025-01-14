@@ -4,7 +4,7 @@ import pydantic
 import pytest
 from typing_extensions import Final
 
-from svglab import elements, parse
+from svglab import elements, errors, parse
 from svglab.attrparse import d, length, point, transform
 
 
@@ -479,3 +479,23 @@ def test_path_data_shorthands_idempotent(before: d.D, after: d.D) -> None:
 )
 def test_path_data_parse_serialize(text: str, expected: str) -> None:
     assert d.D.from_str(text).serialize() == expected
+
+
+def test_path_data_first_command_is_move_to() -> None:
+    with pytest.raises(errors.SvgPathMissingMoveToError):
+        d.D().line_to(point.Point(0, 0))
+
+    path = d.D().move_to(point.Point(0, 0)).line_to(point.Point(0, 0))
+    line_to = path[1]
+
+    with pytest.raises(errors.SvgPathMissingMoveToError):
+        del path[0]
+
+    with pytest.raises(errors.SvgPathMissingMoveToError):
+        path[0] = line_to
+
+    with pytest.raises(errors.SvgPathMissingMoveToError):
+        d.D().insert(0, line_to)
+
+    with pytest.raises(errors.SvgPathMissingMoveToError):
+        d.D().append(line_to)

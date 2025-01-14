@@ -22,7 +22,7 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import models, serialize, utils
+from svglab import errors, models, serialize, utils
 from svglab.attrparse import point
 from svglab.attrparse import utils as parse_utils
 
@@ -404,9 +404,6 @@ def _can_use_implicit_command(
 def _add_command(
     d: D, command: PathCommand, *, relative: bool = False
 ) -> None:
-    if not d and not isinstance(command, MoveTo):
-        raise ValueError("The first command must be a MoveTo command")
-
     if relative and isinstance(command, _PhysicalPathCommand):
         # if there is no previous command, just do nothing
         with contextlib.suppress(IndexError):
@@ -495,33 +492,46 @@ class D(
         return all(c1 == c2 for c1, c2 in zip(self, other, strict=True))
 
     @overload
-    def __getitem__(self, index: int) -> PathCommand: ...
+    def __getitem__(self, index: SupportsIndex) -> PathCommand: ...
 
     @overload
     def __getitem__(self, index: slice) -> Self: ...
 
     @override
-    def __getitem__(self, index: int | slice) -> PathCommand | Self:
-        if isinstance(index, int):
+    def __getitem__(
+        self, index: SupportsIndex | slice
+    ) -> PathCommand | Self:
+        if isinstance(index, SupportsIndex):
             return self.__commands[index]
 
         return type(self)(self.__commands[index])
 
     @overload
-    def __delitem__(self, index: int) -> None: ...
+    def __delitem__(self, index: SupportsIndex) -> None: ...
 
     @overload
     def __delitem__(self, index: slice) -> None: ...
 
     @override
-    def __delitem__(self, index: int | slice) -> None:
-        if isinstance(index, int):
-            del self.__commands[index]
-        else:
-            del self.__commands[index]
+    def __delitem__(self, index: SupportsIndex | slice) -> None:
+        if isinstance(index, slice):
+            raise NotImplementedError(
+                "__delitem__ with a slice is not supported"
+            )
+
+        if (
+            utils.is_first_index(self, index)
+            and len(self) > 1
+            and not isinstance(self[int(index) + 1], MoveTo)
+        ):
+            raise errors.SvgPathMissingMoveToError
+
+        del self.__commands[index]
 
     @overload
-    def __setitem__(self, index: int, values: PathCommand) -> None: ...
+    def __setitem__(
+        self, index: SupportsIndex, values: PathCommand
+    ) -> None: ...
 
     @overload
     def __setitem__(
@@ -531,18 +541,30 @@ class D(
     @override
     def __setitem__(
         self,
-        index: int | slice,
+        index: SupportsIndex | slice,
         values: PathCommand | Iterable[PathCommand],
     ) -> None:
-        if isinstance(index, int):
-            assert isinstance(values, PathCommand)
-            self.__commands[index] = values
-        else:
-            assert isinstance(values, Iterable)
-            self.__commands[index] = values
+        if isinstance(index, slice):
+            raise NotImplementedError(
+                "__setitem__ with a slice is not supported"
+            )
+
+        assert isinstance(values, PathCommand)
+
+        if utils.is_first_index(self, index) and not isinstance(
+            values, MoveTo
+        ):
+            raise errors.SvgPathMissingMoveToError
+
+        self.__commands[index] = values
 
     @override
     def insert(self, index: SupportsIndex, value: PathCommand) -> None:
+        if utils.is_first_index(self, index) and not isinstance(
+            value, MoveTo
+        ):
+            raise errors.SvgPathMissingMoveToError
+
         self.__commands.insert(index, value)
 
     def __add(

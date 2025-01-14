@@ -1,9 +1,9 @@
 import collections
 import functools
-from collections.abc import Generator, Iterable, Sequence
+from collections.abc import Generator, Iterable, Sequence, Sized
 
 import bs4
-from typing_extensions import TypeAlias, TypeIs, TypeVar
+from typing_extensions import SupportsIndex, TypeAlias, TypeIs, TypeVar
 from useful_types import SupportsRichComparisonT
 
 
@@ -308,3 +308,32 @@ def pairwise(
     for item in iterable:
         yield prev_item, item
         prev_item = item
+
+
+def is_first_index(sized: Sized, index: SupportsIndex) -> bool:
+    """Check if an index resolves to the first index in a `Sized` object.
+
+    Args:
+        sized: The `Sized` object to check.
+        index: The index to check.
+
+    Returns:
+        `True` if the index is the first index in the `Sized` object,
+        `False` otherwise.
+
+    Examples:
+        >>> is_first_index([1, 2, 3], 0)
+        True
+        >>> is_first_index([1, 2, 3], 1)
+        False
+        >>> is_first_index([1, 2, 3], -1)
+        False
+        >>> is_first_index([1, 2, 3], -3)
+        True
+        >>> is_first_index([], 0)
+        True
+
+    """
+    start, *_ = slice(index, index).indices(len(sized))
+
+    return start == 0
