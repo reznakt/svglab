@@ -388,3 +388,95 @@ def test_path_data_parse_moveto_must_be_first() -> None:
         ValueError, match="Failed to parse text with grammar 'd.lark'"
     ):
         d.D.from_str("L 10,10")
+
+
+SHORTHAND_TESTS: Final[list[tuple[d.D, d.D]]] = [
+    (d.D(), d.D()),
+    (
+        d.D().move_to(point.Point(10, 10)),
+        d.D().move_to(point.Point(10, 10)),
+    ),
+    (
+        d.D().move_to(point.Point.zero()).line_to(point.Point(0, 10)),
+        d.D().move_to(point.Point.zero()).vertical_line_to(10),
+    ),
+    (
+        d.D().move_to(point.Point.zero()).line_to(point.Point(10, 0)),
+        d.D().move_to(point.Point.zero()).horizontal_line_to(10),
+    ),
+    (
+        d.D()
+        .move_to(point.Point.zero())
+        .quadratic_bezier_to(point.Point(20, 0), point.Point(20, 20))
+        .quadratic_bezier_to(point.Point(20, 40), point.Point(40, 40)),
+        d.D()
+        .move_to(point.Point.zero())
+        .quadratic_bezier_to(point.Point(20, 0), point.Point(20, 20))
+        .smooth_quadratic_bezier_to(point.Point(40, 40)),
+    ),
+    (
+        d.D()
+        .move_to(point.Point.zero())
+        .cubic_bezier_to(
+            point.Point(20, 0), point.Point(40, 0), point.Point(40, 20)
+        )
+        .cubic_bezier_to(
+            point.Point(40, 40), point.Point(20, 40), point.Point(20, 20)
+        ),
+        d.D()
+        .move_to(point.Point.zero())
+        .cubic_bezier_to(
+            point.Point(20, 0), point.Point(40, 0), point.Point(40, 20)
+        )
+        .smooth_cubic_bezier_to(point.Point(20, 40), point.Point(20, 20)),
+    ),
+]
+
+
+@pytest.mark.parametrize(("before", "after"), SHORTHAND_TESTS)
+def test_path_data_apply_shorthands(before: d.D, after: d.D) -> None:
+    assert before.apply_shorthands() == after
+
+
+@pytest.mark.parametrize(("after", "before"), SHORTHAND_TESTS)
+def test_path_data_resolve_shorthands(after: d.D, before: d.D) -> None:
+    assert before.resolve_shorthands() == after
+
+
+@pytest.mark.parametrize(("before", "after"), SHORTHAND_TESTS)
+def test_path_data_shorthands_cancel(before: d.D, after: d.D) -> None:
+    assert before.apply_shorthands().resolve_shorthands() == before
+    assert after.resolve_shorthands().apply_shorthands() == after
+
+
+@pytest.mark.parametrize(("before", "after"), SHORTHAND_TESTS)
+def test_path_data_shorthands_idempotent(before: d.D, after: d.D) -> None:
+    assert (
+        before.apply_shorthands()
+        == before.apply_shorthands().apply_shorthands()
+    )
+    assert (
+        after.apply_shorthands()
+        == after.apply_shorthands().apply_shorthands()
+    )
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("", ""),
+        ("M0 0", "M0,0"),
+        ("m 1e+02 1e-02", "M100,0.01"),
+        (
+            "M12 22a10 10 0 110-20 10 10 0 010 20z",
+            "M12,22 A10,10 0 1 1 0,-20 10,10 0 0 1 0,20 Z",
+        ),
+        pytest.param(
+            "m10,10 h100 v100 l10,10 10,10 z",
+            "M10,10 H110 V210 L120,220 130,230 Z",
+            marks=pytest.mark.xfail,
+        ),
+    ],
+)
+def test_path_data_parse_serialize(text: str, expected: str) -> None:
+    assert d.D.from_str(text).serialize() == expected
