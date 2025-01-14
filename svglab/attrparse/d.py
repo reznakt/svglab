@@ -578,15 +578,15 @@ class D(
 
         d = self
 
-        if line != "original" and curve != "original":
-            if "never" in (line, curve):
-                d = d.resolve_shorthands(
-                    lines=line == "never", curves=curve == "never"
-                )
-            if "always" in (line, curve):
-                d = d.apply_shorthands(
-                    lines=line == "always", curves=curve == "always"
-                )
+        if "never" in (line, curve):
+            d = d.resolve_shorthands(
+                lines=line == "never", curves=curve == "never"
+            )
+
+        if "always" in (line, curve):
+            d = d.apply_shorthands(
+                lines=line == "always", curves=curve == "always"
+            )
 
         return d
 
