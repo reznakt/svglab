@@ -108,7 +108,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         """
         formatter = formatter or serialize.get_current_formatter()
 
-        with formatter:
+        with serialize.use_formatter(formatter):
             soup = self.to_beautifulsoup_object()
             return utils.beautifulsoup_to_str(
                 soup, pretty=pretty, indent=formatter.indent
@@ -120,16 +120,13 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
 
     @override
     def __eq__(self, other: object) -> bool:
-        if self is other:
-            return True
-
-        if not isinstance(other, type(self)):
+        if not utils.basic_compare(other, self=self):
             return False
 
         return self._eq(other)
 
     @abc.abstractmethod
-    def _eq(self, other: Self) -> bool: ...
+    def _eq(self, other: Self, /) -> bool: ...
 
 
 class TextElement(Element, metaclass=abc.ABCMeta):

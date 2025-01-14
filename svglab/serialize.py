@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import re
-from collections.abc import Iterable, MutableSequence
-from types import TracebackType
+from collections.abc import Generator, Iterable, MutableSequence
 
 import pydantic
 import readable_number
@@ -19,34 +19,14 @@ from typing_extensions import (
 from svglab import models
 
 
-ColorSerializationMode: TypeAlias = Literal[
+_ColorMode: TypeAlias = Literal[
     "named", "hex-short", "hex-long", "rgb", "hsl", "auto", "original"
 ]
-""" Mode for serializing colors.
-
-- `named`: Serialize colors using their named representation, if possible.
-            Falls back to `hex-short`.
-- `hex-short`: Serialize colors using the short hex format
-            (for example, `#fff`).
-- `hex-long`: Serialize colors using the long hex format
-            (for example, `#ffffff`).
-- `rgb`: Serialize colors using the RGB format
-            (for example, `rgb(255, 255, 255)`).
-- `hsl`: Serialize colors using the HSL format
-            (for example, `hsl(0, 0%, 100%)`).
-- `auto`: Automatically choose the most appropriate serialization mode.
-- `original`: Serialize colors using their original representation,
-            if possible. Falls back to `auto`.
-"""
-
-Separator: TypeAlias = Literal[", ", ",", " "]
-""" Type for basic valid separators for lists of values. """
-
-PathDataSerializationMode: TypeAlias = Literal["relative", "absolute"]
-""" Mode for serializing path data."""
-
-BoolSerializationMode: TypeAlias = Literal["text", "number"]
-""" Mode for serializing boolean values."""
+_Separator: TypeAlias = Literal[", ", ",", " "]
+_BoolMode: TypeAlias = Literal["text", "number"]
+_PathDataCoordinateMode: TypeAlias = Literal["relative", "absolute"]
+_PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
+_PathDataCommandMode: TypeAlias = Literal["explicit", "implicit"]
 
 
 @runtime_checkable
@@ -86,7 +66,8 @@ def _is_serializable(value: object, /) -> TypeIs[Serializable]:
     )
 
 
-class Formatter(models.BaseModel):
+@pydantic.dataclasses.dataclass(frozen=True)
+class Formatter:
     """Formatter for serializing SVG elements.
 
     This class, together with `set_formatter()` and `get_current_formatter()`,
@@ -94,7 +75,20 @@ class Formatter(models.BaseModel):
 
     Attributes:
     `color_mode`: The color serialization mode (`hsl`, `rgb`, ...)
-    to use when serializing colors.
+    to use when serializing colors:
+        - `named`: Serialize colors using their named representation,
+                    if possible. Falls back to `hex-short`.
+        - `hex-short`: Serialize colors using the short hex format
+                    (for example, `#fff`).
+        - `hex-long`: Serialize colors using the long hex format
+                    (for example, `#ffffff`).
+        - `rgb`: Serialize colors using the RGB format
+                    (for example, `rgb(255, 255, 255)`).
+        - `hsl`: Serialize colors using the HSL format
+                    (for example, `hsl(0, 0%, 100%)`).
+        - `auto`: Automatically choose the most appropriate serialization mode.
+        - `original`: Serialize colors using their original representation,
+                    if possible. Falls back to `auto`.
 
     `show_decimal_part_if_int`: Whether to show the decimal part of a number
     even if it is an integer. For example, `1.0` instead of `1`.
@@ -109,7 +103,35 @@ class Formatter(models.BaseModel):
     For example, `1e+06` instead of `1000000`. If `None`, scientific notation
     is not used for large numbers.
 
-    `path_data_mode`: The path data serialization mode (`relative`, `absolute`)
+    `path_data_coordinates`: The coordinate mode to use when serializing
+    path data coordinates:
+        - `relative`: Serialize coordinates as relative values (e.g. use
+                    relative commands, for example, `l 10 10`).
+        - `absolute`: Serialize coordinates as absolute values (e.g., use
+                    absolute commands, for example, `L 10 10`).
+
+    `path_data_shorthand_line_commands`: Whether to use shorthand commands
+    for line segments in path data:
+        - `always`: Always use shorthand commands (e.g., `H` instead of
+                    `L`).
+        - `never`: Never use shorthand commands.
+        - `original`: Use the original commands.
+
+    `path_data_shorthand_curve_commands`: Whether to use shorthand commands
+    for curve segments in path data:
+        - `always`: Always use shorthand commands (e.g., `S` instead of
+                    `C`).
+        - `never`: Never use shorthand commands.
+        - `original`: Use the original commands.
+
+    `path_data_commands`: The command mode to use when serializing path data:
+        - `implicit`: Serialize path data using implicit commands,
+                    if possible. For example, `M 0 0 10 10` instead of
+                    `M 0 0 L 10 10`.
+        - `explicit`: Always list the commands explicitly.
+
+    `path_data_space_before_args`: Whether to add a space before the arguments
+    in path data commands. For example, `M 0 0` instead of `M0 0`.
 
     `list_separator`: The separator to use when serializing lists of values.
     `point_separator`: The separator to use when serializing points.
@@ -123,10 +145,8 @@ class Formatter(models.BaseModel):
 
     """
 
-    model_config = pydantic.ConfigDict(frozen=True)
-
     # colors
-    color_mode: models.KwOnly[ColorSerializationMode] = "auto"
+    color_mode: models.KwOnly[_ColorMode] = "auto"
 
     # numbers
     show_decimal_part_if_int: models.KwOnly[bool] = False
@@ -141,42 +161,26 @@ class Formatter(models.BaseModel):
     )
 
     # path data
-    path_data_mode: models.KwOnly[PathDataSerializationMode] = "absolute"
+    path_data_coordinates: models.KwOnly[_PathDataCoordinateMode] = (
+        "absolute"
+    )
+    path_data_shorthand_line_commands: models.KwOnly[
+        _PathDataShorthandMode
+    ] = "always"
+    path_data_shorthand_curve_commands: models.KwOnly[
+        _PathDataShorthandMode
+    ] = "always"
+    path_data_commands: models.KwOnly[_PathDataCommandMode] = "implicit"
+    path_data_space_before_args: models.KwOnly[bool] = False
 
     # separators
-    list_separator: models.KwOnly[Separator] = " "
-    point_separator: models.KwOnly[Separator] = ","
+    list_separator: models.KwOnly[_Separator] = " "
+    point_separator: models.KwOnly[_Separator] = ","
 
     # whitespace
     indent: models.KwOnly[int] = pydantic.Field(default=2, ge=0)
     spaces_around_attrs: models.KwOnly[bool] = False
     spaces_around_function_args: models.KwOnly[bool] = False
-
-    __original_formatter: Formatter | None = pydantic.PrivateAttr(
-        default=None
-    )
-
-    def __enter__(self) -> None:
-        self.__original_formatter = get_current_formatter()
-        set_formatter(self)
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        del exc_type, exc_val, exc_tb
-
-        if self.__original_formatter is None:
-            msg = (
-                "Cannot exit unentered context manager.",
-                " Call `__enter__` first",
-            )
-
-            raise RuntimeError(msg)
-
-        set_formatter(self.__original_formatter)
 
 
 DEFAULT_FORMATTER: Final = Formatter()
@@ -191,10 +195,22 @@ def get_current_formatter() -> Formatter:
     return _formatter
 
 
-def set_formatter(formatter: Formatter) -> None:
+def set_formatter(formatter: Formatter, /) -> None:
     """Set the current formatter."""
     global _formatter  # noqa: PLW0603
     _formatter = formatter
+
+
+@contextlib.contextmanager
+def use_formatter(formatter: Formatter, /) -> Generator[None]:
+    """Temporarily use a custom formatter."""
+    original_formatter = get_current_formatter()
+    set_formatter(formatter)
+
+    try:
+        yield
+    finally:
+        set_formatter(original_formatter)
 
 
 @overload
@@ -322,7 +338,7 @@ def _extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
 
 @overload
 def serialize(
-    value: Serializable, /, *, bool_mode: BoolSerializationMode = "text"
+    value: Serializable, /, *, bool_mode: _BoolMode = "text"
 ) -> str: ...
 
 
@@ -332,12 +348,12 @@ def serialize(
     second: Serializable,
     /,
     *values: Serializable,
-    bool_mode: BoolSerializationMode = "text",
+    bool_mode: _BoolMode = "text",
 ) -> tuple[str, ...]: ...
 
 
 def serialize(
-    *values: Serializable, bool_mode: BoolSerializationMode = "text"
+    *values: Serializable, bool_mode: _BoolMode = "text"
 ) -> str | tuple[str, ...]:
     """Return an SVG-friendly string representation of the given value(s)."""
     result = tuple(
@@ -346,9 +362,7 @@ def serialize(
     return result[0] if len(result) == 1 else result
 
 
-def _serialize(
-    value: Serializable, /, *, bool_mode: BoolSerializationMode
-) -> str:
+def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:
     formatter = get_current_formatter()
     result: str
 
@@ -385,7 +399,7 @@ def _serialize_bool(
     value: bool,  # noqa: FBT001
     /,
     *,
-    mode: BoolSerializationMode,
+    mode: _BoolMode,
 ) -> str:
     """Serialize a boolean value into its SVG representation.
 
