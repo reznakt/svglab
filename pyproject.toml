@@ -17,7 +17,7 @@ classifiers = [
 ]
 
 [tool.poetry.urls]
-"Homepage" = "https://github.com/reznakt/svglab"
+"GitHub" = "https://github.com/reznakt/svglab"
 "Issues" = "https://github.com/reznakt/svglab/issues"
 
 [tool.poetry-dynamic-versioning]
