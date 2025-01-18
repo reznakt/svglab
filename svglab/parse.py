@@ -48,7 +48,9 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
         A list of SVG fragments found in the document.
 
     Examples:
-        >>> soup = bs4.BeautifulSoup("<svg><rect/></svg>", features="lxml-xml")
+        >>> soup = bs4.BeautifulSoup(
+        ...     "<svg><rect/></svg>", features="lxml-xml"
+        ... )
         >>> _get_root_svg_fragments(soup)
         [<svg><rect/></svg>]
         >>> soup = bs4.BeautifulSoup(

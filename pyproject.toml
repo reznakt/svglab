@@ -58,7 +58,7 @@ pytest-sugar = "^1.0.0"
 poethepoet = "^0.32.0"
 pre-commit = "^4.0.1"
 pyright = "^1.1.391"
-ruff = "^0.8.4"
+ruff = ">=0.8.4,<0.10.0"
 vermin = "^1.6.0"
 
 [tool.poetry.scripts]
