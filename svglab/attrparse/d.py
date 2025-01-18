@@ -806,9 +806,9 @@ class D(
                 case SmoothQuadraticBezierTo(end=end) if curves:
                     control = _quadratic_control(self, command)
                     d.quadratic_bezier_to(control, end)
-                case SmoothCubicBezierTo(
-                    control2=control2, end=end
-                ) if curves:
+                case SmoothCubicBezierTo(control2=control2, end=end) if (
+                    curves
+                ):
                     control1 = _cubic_control(self, command)
                     d.cubic_bezier_to(control1, control2, end)
                 case HorizontalLineTo(x=x) if lines:
