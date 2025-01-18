@@ -1,6 +1,9 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/" # Location of package manifests
+    directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
+    groups:
+      all:
+        patterns: ["*"]
