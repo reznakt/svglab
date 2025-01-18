@@ -22,6 +22,7 @@ from svglab import models
 _ColorMode: TypeAlias = Literal[
     "named", "hex-short", "hex-long", "rgb", "hsl", "auto", "original"
 ]
+AlphaChannelMode: TypeAlias = Literal["percentage", "float"]
 _Separator: TypeAlias = Literal[", ", ",", " "]
 _BoolMode: TypeAlias = Literal["text", "number"]
 _PathDataCoordinateMode: TypeAlias = Literal["relative", "absolute"]
@@ -90,6 +91,13 @@ class Formatter:
         - `original`: Serialize colors using their original representation,
                     if possible. Falls back to `auto`.
 
+    `alpha_channel`: The mode to use when serializing the alpha
+    channel of colors:
+        - `percentage`: Serialize the alpha channel as a percentage
+                    (for example, `rgba(255, 255, 255, 50%)`).
+        - `float`: Serialize the alpha channel as a float
+                    (for example, `hsla(0, 0%, 100%, 0.5)`).
+
     `show_decimal_part_if_int`: Whether to show the decimal part of a number
     even if it is an integer. For example, `1.0` instead of `1`.
     `max_precision`: The maximum number of significant digits
@@ -147,6 +155,7 @@ class Formatter:
 
     # colors
     color_mode: models.KwOnly[_ColorMode] = "auto"
+    alpha_channel: models.KwOnly[AlphaChannelMode] = "float"
 
     # numbers
     show_decimal_part_if_int: models.KwOnly[bool] = False
