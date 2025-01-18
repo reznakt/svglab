@@ -1,7 +1,7 @@
 from typing_extensions import Literal
 
 from svglab import models
-from svglab.attrs import types
+from svglab.attrs import typedefs
 
 
 class Attr(models.BaseModel):
@@ -15,7 +15,7 @@ class Attr(models.BaseModel):
 
 class FontWeight(Attr):
     font_weight: models.Attr[
-        types.All
+        typedefs.All
         | models.List[
             Literal[
                 "normal",
@@ -33,13 +33,13 @@ class FontWeight(Attr):
                 900,
             ]
         ]
-        | types.Inherit
+        | typedefs.Inherit
     ] = None
 
 
 class FontStretch(Attr):
     font_stretch: models.Attr[
-        types.All
+        typedefs.All
         | Literal[
             "condensed ",
             "condensed",
@@ -54,23 +54,23 @@ class FontStretch(Attr):
             "ultra-expanded",
             "wider",
         ]
-        | types.Inherit
+        | typedefs.Inherit
     ] = None
 
 
 class FontStyle(Attr):
     font_style: models.Attr[
-        types.All
+        typedefs.All
         | models.List[Literal["normal", "italic", "oblique"]]
-        | types.Inherit
+        | typedefs.Inherit
     ] = None
 
 
 class FontVariant(Attr):
     font_variant: models.Attr[
-        Literal["normal", "small-caps"] | types.Inherit
+        Literal["normal", "small-caps"] | typedefs.Inherit
     ] = None
 
 
 class Fill(Attr):
-    fill: models.Attr[types.Paint | Literal["freeze", "remove"]] = None
+    fill: models.Attr[typedefs.Paint | Literal["freeze", "remove"]] = None

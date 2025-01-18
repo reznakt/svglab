@@ -1,13 +1,13 @@
 from typing_extensions import Literal
 
 from svglab import models
-from svglab.attrs import common, types
+from svglab.attrs import common, typedefs
 
 
 class AlignmentBaseline(common.Attr):
     alignment_baseline: models.Attr[
-        types.Auto
-        | types.Inherit
+        typedefs.Auto
+        | typedefs.Inherit
         | Literal[
             "baseline",
             "before-edge",
@@ -27,70 +27,74 @@ class AlignmentBaseline(common.Attr):
 class BaselineShift(common.Attr):
     baseline_shift: models.Attr[
         Literal["baseline", "sub", "super"]
-        | types.Percentage
-        | types.Length
-        | types.Inherit
+        | typedefs.Percentage
+        | typedefs.Length
+        | typedefs.Inherit
     ] = None
 
 
 class ClipPath(common.Attr):
-    clip_path: models.Attr[types.FuncIri | types.None_ | types.Inherit] = (
-        None
-    )
+    clip_path: models.Attr[
+        typedefs.FuncIri | typedefs.None_ | typedefs.Inherit
+    ] = None
 
 
 class ClipRule(common.Attr):
     clip_rule: models.Attr[
-        Literal["nonzero", "evenodd"] | types.Inherit
+        Literal["nonzero", "evenodd"] | typedefs.Inherit
     ] = None
 
 
 class Clip(common.Attr):
-    clip: models.Attr[types.Shape | types.Auto | types.Inherit] = None
+    clip: models.Attr[
+        typedefs.Shape | typedefs.Auto | typedefs.Inherit
+    ] = None
 
 
 class ColorInterpolationFilters(common.Attr):
     color_interpolation_filters: models.Attr[
-        types.Auto | Literal["sRGB", "linearRGB"] | types.Inherit
+        typedefs.Auto | Literal["sRGB", "linearRGB"] | typedefs.Inherit
     ] = None
 
 
 class ColorInterpolation(common.Attr):
     color_interpolation: models.Attr[
-        types.Auto | Literal["sRGB", "linearRGB"] | types.Inherit
+        typedefs.Auto | Literal["sRGB", "linearRGB"] | typedefs.Inherit
     ] = None
 
 
 class ColorProfile(common.Attr):
     color_profile: models.Attr[
-        types.Auto
+        typedefs.Auto
         | Literal["sRGB"]
-        | types.Name
-        | types.Iri
-        | types.Inherit
+        | typedefs.Name
+        | typedefs.Iri
+        | typedefs.Inherit
     ] = None
 
 
 class ColorRendering(common.Attr):
     color_rendering: models.Attr[
-        types.Auto
+        typedefs.Auto
         | Literal["optimizeSpeed", "optimizeQuality"]
-        | types.Inherit
+        | typedefs.Inherit
     ] = None
 
 
 class Color(common.Attr):
-    color: models.Attr[types.Color | types.Inherit] = None
+    color: models.Attr[typedefs.Color | typedefs.Inherit] = None
 
 
 class Cursor(common.Attr):
     cursor: models.Attr[
-        types.CursorValue | types.Inherit | models.List[types.CursorValue]
+        typedefs.CursorValue
+        | typedefs.Inherit
+        | models.List[typedefs.CursorValue]
     ] = None
 
 
 class Direction(common.Attr):
-    direction: models.Attr[Literal["ltr", "rtl"] | types.Inherit] = None
+    direction: models.Attr[Literal["ltr", "rtl"] | typedefs.Inherit] = None
 
 
 class Display(common.Attr):
@@ -113,14 +117,14 @@ class Display(common.Attr):
             "table-row",
             "table",
         ]
-        | types.None_
-        | types.Inherit
+        | typedefs.None_
+        | typedefs.Inherit
     ] = None
 
 
 class DominantBaseline(common.Attr):
     dominant_baseline: models.Attr[
-        types.Auto
+        typedefs.Auto
         | Literal[
             "use-script",
             "no-change",
@@ -134,129 +138,141 @@ class DominantBaseline(common.Attr):
             "text-after-edge",
             "text-before-edge",
         ]
-        | types.Inherit
+        | typedefs.Inherit
     ] = None
 
 
 class EnableBackground(common.Attr):
     enable_background: models.Attr[
         Literal["accumulate"]
-        | types.Inherit
-        | types.Unparsed  # new [ <x> <y> <width> <height> ]
+        | typedefs.Inherit
+        | typedefs.Unparsed  # new [ <x> <y> <width> <height> ]
     ] = None
 
 
 class FillOpacity(common.Attr):
-    fill_opacity: models.Attr[types.OpacityValue | types.Inherit] = None
+    fill_opacity: models.Attr[typedefs.OpacityValue | typedefs.Inherit] = (
+        None
+    )
 
 
 class FillRule(common.Attr):
     fill_rule: models.Attr[
-        Literal["nonzero", "evenodd"] | types.Inherit
+        Literal["nonzero", "evenodd"] | typedefs.Inherit
     ] = None
 
 
 class Filter(common.Attr):
-    filter: models.Attr[types.FuncIri | types.None_ | types.Inherit] = None
+    filter: models.Attr[
+        typedefs.FuncIri | typedefs.None_ | typedefs.Inherit
+    ] = None
 
 
 class FloodColor(common.Attr):
     flood_color: models.Attr[
         Literal["currentColor"]
-        | types.Color
-        | types.Inherit
-        | types.Unparsed  # <color> [<icccolor>]
+        | typedefs.Color
+        | typedefs.Inherit
+        | typedefs.Unparsed  # <color> [<icccolor>]
     ] = None
 
 
 class FloodOpacity(common.Attr):
-    flood_opacity: models.Attr[types.OpacityValue | types.Inherit] = None
+    flood_opacity: models.Attr[
+        typedefs.OpacityValue | typedefs.Inherit
+    ] = None
 
 
 class FontSizeAdjust(common.Attr):
     font_size_adjust: models.Attr[
-        types.Number | types.None_ | types.Inherit
+        typedefs.Number | typedefs.None_ | typedefs.Inherit
     ] = None
 
 
 class FontSize(common.Attr):
     font_size: models.Attr[
-        types.AbsoluteSize
-        | types.RelativeSize
-        | types.Length
-        | types.Percentage
-        | types.Inherit
+        typedefs.AbsoluteSize
+        | typedefs.RelativeSize
+        | typedefs.Length
+        | typedefs.Percentage
+        | typedefs.Inherit
     ] = None
 
 
 class GlyphOrientationHorizontal(common.Attr):
     glyph_orientation_horizontal: models.Attr[
-        types.Angle | types.Inherit
+        typedefs.Angle | typedefs.Inherit
     ] = None
 
 
 class GlyphOrientationVertical(common.Attr):
     glyph_orientation_vertical: models.Attr[
-        types.Auto | types.Angle | types.Inherit
+        typedefs.Auto | typedefs.Angle | typedefs.Inherit
     ] = None
 
 
 class ImageRendering(common.Attr):
     image_rendering: models.Attr[
-        types.Auto
+        typedefs.Auto
         | Literal["optimizeSpeed", "optimizeQuality"]
-        | types.Inherit
+        | typedefs.Inherit
     ] = None
 
 
 class Kerning(common.Attr):
-    kerning: models.Attr[types.Auto | types.Length | types.Inherit] = None
+    kerning: models.Attr[
+        typedefs.Auto | typedefs.Length | typedefs.Inherit
+    ] = None
 
 
 class LetterSpacing(common.Attr):
     letter_spacing: models.Attr[
-        Literal["normal"] | types.Length | types.Inherit
+        Literal["normal"] | typedefs.Length | typedefs.Inherit
     ] = None
 
 
 class LightingColor(common.Attr):
     lighting_color: models.Attr[
         Literal["currentColor"]
-        | types.Color
-        | types.Inherit
-        | types.Unparsed
+        | typedefs.Color
+        | typedefs.Inherit
+        | typedefs.Unparsed
     ] = None
 
 
 class MarkerEnd(common.Attr):
     marker_end: models.Attr[
-        types.FuncIri | types.None_ | types.Inherit
+        typedefs.FuncIri | typedefs.None_ | typedefs.Inherit
     ] = None
 
 
 class MarkerMid(common.Attr):
     marker_mid: models.Attr[
-        types.FuncIri | types.None_ | types.Inherit
+        typedefs.FuncIri | typedefs.None_ | typedefs.Inherit
     ] = None
 
 
 class MarkerStart(common.Attr):
     marker_start: models.Attr[
-        types.FuncIri | types.None_ | types.Inherit
+        typedefs.FuncIri | typedefs.None_ | typedefs.Inherit
     ] = None
 
 
 class Mask(common.Attr):
-    mask: models.Attr[types.FuncIri | types.None_ | types.Inherit] = None
+    mask: models.Attr[
+        typedefs.FuncIri | typedefs.None_ | typedefs.Inherit
+    ] = None
 
 
 class Opacity(common.Attr):
-    opacity: models.Attr[types.OpacityValue | types.Inherit] = None
+    opacity: models.Attr[typedefs.OpacityValue | typedefs.Inherit] = None
 
 
 class Overflow(common.Attr):
     overflow: models.Attr[
-        Literal["visible", "hidden", "scroll"] | types.Auto | types.Inherit
+        Literal["visible", "hidden", "scroll"]
+        | typedefs.Auto
+        | typedefs.Inherit
     ] = None
 
 
@@ -271,118 +287,124 @@ class PointerEvents(common.Attr):
             "fill",
             "stroke",
         ]
-        | types.All
-        | types.None_
-        | types.Inherit
+        | typedefs.All
+        | typedefs.None_
+        | typedefs.Inherit
     ] = None
 
 
 class ShapeRendering(common.Attr):
     shape_rendering: models.Attr[
-        types.Auto
+        typedefs.Auto
         | Literal["optimizeSpeed", "crispEdges", "geometricPrecision"]
-        | types.Inherit
+        | typedefs.Inherit
     ] = None
 
 
 class StopColor(common.Attr):
     stop_color: models.Attr[
         Literal["currentColor"]
-        | types.Inherit
-        | types.Unparsed  # <color> <icccolor>
+        | typedefs.Inherit
+        | typedefs.Unparsed  # <color> <icccolor>
     ] = None
 
 
 class StopOpacity(common.Attr):
-    stop_opacity: models.Attr[types.OpacityValue | types.Inherit] = None
+    stop_opacity: models.Attr[typedefs.OpacityValue | typedefs.Inherit] = (
+        None
+    )
 
 
 class StrokeDasharray(common.Attr):
     stroke_dasharray: models.Attr[
-        types.None_ | types.Dasharray | types.Inherit
+        typedefs.None_ | typedefs.Dasharray | typedefs.Inherit
     ] = None
 
 
 class StrokeDashoffset(common.Attr):
     stroke_dashoffset: models.Attr[
-        types.Percentage | types.Length | types.Inherit
+        typedefs.Percentage | typedefs.Length | typedefs.Inherit
     ] = None
 
 
 class StrokeLinecap(common.Attr):
     stroke_linecap: models.Attr[
-        Literal["butt", "round", "square"] | types.Inherit
+        Literal["butt", "round", "square"] | typedefs.Inherit
     ] = None
 
 
 class StrokeLinejoin(common.Attr):
     stroke_linejoin: models.Attr[
-        Literal["miter", "round", "bevel"] | types.Inherit
+        Literal["miter", "round", "bevel"] | typedefs.Inherit
     ] = None
 
 
 class StrokeMiterlimit(common.Attr):
-    stroke_miterlimit: models.Attr[types.Miterlimit | types.Inherit] = None
+    stroke_miterlimit: models.Attr[
+        typedefs.Miterlimit | typedefs.Inherit
+    ] = None
 
 
 class StrokeOpacity(common.Attr):
-    stroke_opacity: models.Attr[types.OpacityValue | types.Inherit] = None
+    stroke_opacity: models.Attr[
+        typedefs.OpacityValue | typedefs.Inherit
+    ] = None
 
 
 class StrokeWidth(common.Attr):
     stroke_width: models.Attr[
-        types.Percentage | types.Length | types.Inherit
+        typedefs.Percentage | typedefs.Length | typedefs.Inherit
     ] = None
 
 
 class Stroke(common.Attr):
-    stroke: models.Attr[types.Paint] = None
+    stroke: models.Attr[typedefs.Paint] = None
 
 
 class TextAnchor(common.Attr):
     text_anchor: models.Attr[
-        Literal["start", "middle", "end"] | types.Inherit
+        Literal["start", "middle", "end"] | typedefs.Inherit
     ] = None
 
 
 class TextDecoration(common.Attr):
     text_decoration: models.Attr[
-        types.None_
+        typedefs.None_
         | Literal["underline", "overline", "line-through", "blink"]
-        | types.Inherit
+        | typedefs.Inherit
     ] = None
 
 
 class TextRendering(common.Attr):
     text_rendering: models.Attr[
-        types.Auto
+        typedefs.Auto
         | Literal[
             "optimizeSpeed", "optimizeLegibility", "geometricPrecision"
         ]
-        | types.Inherit
+        | typedefs.Inherit
     ] = None
 
 
 class UnicodeBidi(common.Attr):
     unicode_bidi: models.Attr[
-        Literal["normal", "embed", "bidi-override"] | types.Inherit
+        Literal["normal", "embed", "bidi-override"] | typedefs.Inherit
     ] = None
 
 
 class Visibility(common.Attr):
     visibility: models.Attr[
-        Literal["visible", "hidden", "collapse"] | types.Inherit
+        Literal["visible", "hidden", "collapse"] | typedefs.Inherit
     ] = None
 
 
 class WordSpacing(common.Attr):
     word_spacing: models.Attr[
-        Literal["normal"] | types.Length | types.Inherit
+        Literal["normal"] | typedefs.Length | typedefs.Inherit
     ] = None
 
 
 class WritingMode(common.Attr):
     writing_mode: models.Attr[
         Literal["lr-tb", "rl-tb", "tb-rl", "lr", "rl", "tb"]
-        | types.Inherit
+        | typedefs.Inherit
     ] = None
