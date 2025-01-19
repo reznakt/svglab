@@ -389,6 +389,22 @@ class TextAlignAll(common.Attr):
     ] = None
 
 
+class TextAlignLast(common.Attr):
+    text_align_last: models.Attr[
+        typedefs.Auto
+        | Literal[
+            "start",
+            "end",
+            "left",
+            "right",
+            "center",
+            "justify",
+            "match-parent",
+        ]
+        | typedefs.Inherit
+    ] = None
+
+
 class TextAnchor(common.Attr):
     text_anchor: models.Attr[
         Literal["start", "middle", "end"] | typedefs.Inherit
