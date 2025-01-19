@@ -43,6 +43,7 @@ class Presentation(
     presentation.Mask,
     presentation.Opacity,
     presentation.Overflow,
+    presentation.PaintOrder,
     presentation.PointerEvents,
     presentation.ShapeRendering,
     presentation.StopColor,

@@ -276,6 +276,13 @@ class Overflow(common.Attr):
     ] = None
 
 
+class PaintOrder(common.Attr):
+    paint_order: (
+        models.Attr[Literal["normal", "fill", "stroke", "markers"]]
+        | typedefs.Inherit
+    ) = None
+
+
 class PointerEvents(common.Attr):
     pointer_events: models.Attr[
         Literal[
