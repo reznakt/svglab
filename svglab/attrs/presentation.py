@@ -382,6 +382,18 @@ class TextRendering(common.Attr):
     ] = None
 
 
+class TransformBox(common.Attr):
+    transform_box: models.Attr[
+        Literal[
+            "content-box",
+            "border-box",
+            "fill-box",
+            "stroke-box",
+            "view-box",
+        ]
+    ] = None
+
+
 class TransformOrigin(common.Attr):
     transform_origin: models.Attr[
         typedefs.TransformOrigin | typedefs.Inherit

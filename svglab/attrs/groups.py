@@ -59,6 +59,7 @@ class Presentation(
     presentation.TextAnchor,
     presentation.TextDecoration,
     presentation.TextRendering,
+    presentation.TransformBox,
     presentation.TransformOrigin,
     presentation.UnicodeBidi,
     presentation.VectorEffect,
