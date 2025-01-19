@@ -408,3 +408,9 @@ class WritingMode(common.Attr):
         Literal["lr-tb", "rl-tb", "tb-rl", "lr", "rl", "tb"]
         | typedefs.Inherit
     ] = None
+
+
+class ZIndex(common.Attr):
+    z_index: models.Attr[
+        typedefs.Integer | typedefs.Auto | typedefs.Inherit
+    ] = None

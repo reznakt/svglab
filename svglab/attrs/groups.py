@@ -62,6 +62,7 @@ class Presentation(
     presentation.Visibility,
     presentation.WordSpacing,
     presentation.WritingMode,
+    presentation.ZIndex,
 ):
     pass
 
