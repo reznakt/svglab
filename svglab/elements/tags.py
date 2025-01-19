@@ -764,7 +764,6 @@ class Path(
     regular.Class,
     regular.D,
     regular.ExternalResourcesRequired,
-    regular.PathLength,
     regular.Style,
     regular.Transform,
     traits.Shape,
