@@ -332,7 +332,8 @@ class StrokeLinecap(common.Attr):
 
 class StrokeLinejoin(common.Attr):
     stroke_linejoin: models.Attr[
-        Literal["miter", "round", "bevel"] | typedefs.Inherit
+        Literal["miter", "round", "bevel", "miter-clip", "arcs"]
+        | typedefs.Inherit
     ] = None
 
 
