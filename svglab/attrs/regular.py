@@ -258,6 +258,10 @@ class HorizOriginY(common.Attr):
     horiz_origin_y: models.Attr[typedefs.Number] = None
 
 
+class Href(common.Attr):
+    href: models.Attr[typedefs.Url] = None
+
+
 class Id(common.Attr):
     id: models.Attr[typedefs.Name] = None
 
@@ -327,6 +331,10 @@ class KeyTimes(common.Attr):
 
 
 class Lang(common.Attr):
+    lang: models.Attr[typedefs.LanguageTag] = None
+
+
+class LangGlyph(common.Attr):
     lang: models.Attr[typedefs.LanguageCodes] = None
 
 

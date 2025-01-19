@@ -602,7 +602,7 @@ class Glyph(
     regular.D,
     regular.GlyphName,
     regular.HorizAdvX,
-    regular.Lang,
+    regular.LangGlyph,
     regular.Orientation,
     regular.Style,
     regular.Unicode,

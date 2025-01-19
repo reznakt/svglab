@@ -1,7 +1,13 @@
 from svglab.attrs import common, presentation, regular
 
 
-class Core(regular.Id, regular.XmlBase, regular.XmlLang, regular.XmlSpace):
+class Core(
+    regular.Id,
+    regular.Lang,
+    regular.XmlBase,
+    regular.XmlLang,
+    regular.XmlSpace,
+):
     pass
 
 
@@ -151,6 +157,7 @@ class FilterPrimitives(
 
 
 class Xlink(
+    regular.Href,
     regular.XlinkActuateOnLoad,
     regular.XlinkArcrole,
     regular.XlinkHref,

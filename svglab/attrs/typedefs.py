@@ -28,6 +28,7 @@ GenericFamily: TypeAlias = Unparsed
 Iri: TypeAlias = Unparsed
 LanguageCodes: TypeAlias = Unparsed
 LanguageId: TypeAlias = Unparsed
+LanguageTag: TypeAlias = Unparsed
 ListOfCoordinates: TypeAlias = Unparsed
 ListOfLengths: TypeAlias = Unparsed
 MediaDescriptors: TypeAlias = Unparsed
@@ -62,6 +63,8 @@ Number: TypeAlias = float
 PathData: TypeAlias = attrparse.DType
 RelativeSize: TypeAlias = Literal["smaller", "larger"]
 TransformList: TypeAlias = attrparse.TransformType
+Url: TypeAlias = pydantic.AnyUrl
+
 
 # composite types
 Coordinate: TypeAlias = Length
