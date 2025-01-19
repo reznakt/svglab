@@ -56,6 +56,7 @@ class Presentation(
     presentation.StrokeMiterlimit,
     presentation.StrokeOpacity,
     presentation.StrokeWidth,
+    presentation.TextAlign,
     presentation.TextAnchor,
     presentation.TextDecoration,
     presentation.TextRendering,

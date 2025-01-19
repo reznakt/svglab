@@ -358,6 +358,22 @@ class Stroke(common.Attr):
     stroke: models.Attr[typedefs.Paint] = None
 
 
+class TextAlign(common.Attr):
+    text_align: models.Attr[
+        Literal[
+            "start",
+            "end",
+            "left",
+            "right",
+            "center",
+            "justify",
+            "match-parent",
+            "justify-all",
+        ]
+        | typedefs.Inherit
+    ] = None
+
+
 class TextAnchor(common.Attr):
     text_anchor: models.Attr[
         Literal["start", "middle", "end"] | typedefs.Inherit
