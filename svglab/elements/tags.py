@@ -519,7 +519,6 @@ class FontFace(
     regular.CapHeight,
     regular.Descent,
     regular.FontFamily,
-    regular.FontSize,
     regular.Hanging,
     regular.Ideographic,
     regular.Mathematical,

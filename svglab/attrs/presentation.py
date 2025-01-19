@@ -189,16 +189,6 @@ class FontSizeAdjust(common.Attr):
     ] = None
 
 
-class FontSize(common.Attr):
-    font_size: models.Attr[
-        typedefs.AbsoluteSize
-        | typedefs.RelativeSize
-        | typedefs.Length
-        | typedefs.Percentage
-        | typedefs.Inherit
-    ] = None
-
-
 class GlyphOrientationHorizontal(common.Attr):
     glyph_orientation_horizontal: models.Attr[
         typedefs.Angle | typedefs.Inherit

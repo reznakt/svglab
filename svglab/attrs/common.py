@@ -72,5 +72,17 @@ class FontVariant(Attr):
     ] = None
 
 
+class FontSize(Attr):
+    font_size: models.Attr[
+        typedefs.AbsoluteSize
+        | typedefs.RelativeSize
+        | typedefs.Length
+        | typedefs.Percentage
+        | typedefs.Inherit
+        | typedefs.All
+        | typedefs.ListOfLengths
+    ] = None
+
+
 class Fill(Attr):
     fill: models.Attr[typedefs.Paint | Literal["freeze", "remove"]] = None

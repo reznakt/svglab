@@ -192,10 +192,6 @@ class FontFamily(common.Attr):
     ] = None
 
 
-class FontSize(common.Attr):
-    font_size: models.Attr[typedefs.All | typedefs.ListOfLengths] = None
-
-
 class Format(common.Attr):
     format: models.Attr[typedefs.Unparsed] = None
 

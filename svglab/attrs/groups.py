@@ -13,6 +13,7 @@ class Core(
 
 class Presentation(
     common.Fill,
+    common.FontSize,
     common.FontStretch,
     common.FontStyle,
     common.FontVariant,
@@ -30,7 +31,6 @@ class Presentation(
     presentation.DominantBaseline,
     presentation.FillOpacity,
     presentation.FillRule,
-    presentation.FontSize,
     presentation.FontSizeAdjust,
     presentation.GlyphOrientationHorizontal,
     presentation.GlyphOrientationVertical,

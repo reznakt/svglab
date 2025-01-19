@@ -33,7 +33,6 @@ ListOfCoordinates: TypeAlias = Unparsed
 ListOfLengths: TypeAlias = Unparsed
 MediaDescriptors: TypeAlias = Unparsed
 Name: TypeAlias = Unparsed
-Percentage: TypeAlias = Unparsed
 ProfileName: TypeAlias = Unparsed
 Shape: TypeAlias = Unparsed
 Urange: TypeAlias = Unparsed
@@ -111,3 +110,4 @@ Paint: TypeAlias = (
     # <funciri> [ none | currentColor | <color> [<icccolor>] ]
     | Unparsed
 )
+Percentage: TypeAlias = Length
