@@ -68,6 +68,7 @@ class Presentation(
     presentation.UnicodeBidi,
     presentation.VectorEffect,
     presentation.Visibility,
+    presentation.WhiteSpace,
     presentation.WordSpacing,
     presentation.WritingMode,
     presentation.ZIndex,

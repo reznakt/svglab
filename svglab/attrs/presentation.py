@@ -480,6 +480,20 @@ class Visibility(common.Attr):
     ] = None
 
 
+class WhiteSpace(common.Attr):
+    white_space: models.Attr[
+        Literal[
+            "normal",
+            "pre",
+            "nowrap",
+            "pre-wrap",
+            "break-spaces",
+            "pre-line",
+        ]
+        | typedefs.Inherit
+    ] = None
+
+
 class WordSpacing(common.Attr):
     word_spacing: models.Attr[
         Literal["normal"] | typedefs.Length | typedefs.Inherit
