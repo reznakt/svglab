@@ -398,6 +398,18 @@ class UnicodeBidi(common.Attr):
     ] = None
 
 
+class VectorEffect(common.Attr):
+    vector_effect: models.Attr[
+        Literal[
+            "non-scaling-stroke",
+            "non-scaling-size",
+            "non-rotation",
+            "fixed-position",
+        ]
+        | typedefs.None_
+    ] = None
+
+
 class Visibility(common.Attr):
     visibility: models.Attr[
         Literal["visible", "hidden", "collapse"] | typedefs.Inherit

@@ -60,6 +60,7 @@ class Presentation(
     presentation.TextDecoration,
     presentation.TextRendering,
     presentation.UnicodeBidi,
+    presentation.VectorEffect,
     presentation.Visibility,
     presentation.WordSpacing,
     presentation.WritingMode,
