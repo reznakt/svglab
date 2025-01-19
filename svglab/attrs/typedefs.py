@@ -111,3 +111,15 @@ Paint: TypeAlias = (
     | Unparsed
 )
 Percentage: TypeAlias = Length
+
+_TransformOriginDirection: TypeAlias = Literal[
+    "left", "center", "right", "top", "bottom"
+]
+_TransformOriginValue: TypeAlias = (
+    _TransformOriginDirection | Percentage | Length
+)
+TransformOrigin: TypeAlias = (
+    _TransformOriginValue
+    | models.Tuple2[_TransformOriginValue, _TransformOriginValue]
+    | models.Tuple3[_TransformOriginValue, _TransformOriginValue, Length]
+)
