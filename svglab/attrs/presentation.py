@@ -419,6 +419,15 @@ class TextDecoration(common.Attr):
     ] = None
 
 
+class TextIndent(common.Attr):
+    text_indent: models.Attr[
+        typedefs.Length
+        | typedefs.Percentage
+        | Literal["each-line", "hanging"]
+        | typedefs.Inherit
+    ] = None
+
+
 class TextRendering(common.Attr):
     text_rendering: models.Attr[
         typedefs.Auto

@@ -61,6 +61,7 @@ class Presentation(
     presentation.TextAlignLast,
     presentation.TextAnchor,
     presentation.TextDecoration,
+    presentation.TextIndent,
     presentation.TextRendering,
     presentation.TransformBox,
     presentation.TransformOrigin,
