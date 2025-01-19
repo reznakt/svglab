@@ -104,7 +104,7 @@ OpacityValue: TypeAlias = Annotated[
 ]
 Paint: TypeAlias = (
     None_
-    | Literal["currentColor"]
+    | Literal["currentColor", "context-fill", "context-stroke"]
     | Inherit
     | Color
     # <funciri> [ none | currentColor | <color> [<icccolor>] ]
