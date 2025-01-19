@@ -196,6 +196,10 @@ class Format(common.Attr):
     format: models.Attr[typedefs.Unparsed] = None
 
 
+class Fr(common.Attr):
+    fr: models.Attr[typedefs.Length] = None
+
+
 class From(common.Attr):
     from_: models.Attr[typedefs.Unparsed] = None
 

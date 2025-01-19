@@ -827,6 +827,7 @@ class RadialGradient(
     regular.Cx,
     regular.Cy,
     regular.ExternalResourcesRequired,
+    regular.Fr,
     regular.Fx,
     regular.Fy,
     regular.GradientTransform,
