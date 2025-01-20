@@ -50,7 +50,7 @@ def test_invalid_length(value: str) -> None:
 def test_valid_scale(x: float, y: float | None) -> None:
     util_test_transform(
         f"scale({x}, {y})" if y is not None else f"scale({x})",
-        [transform.Scale(x, y)],
+        [transform.Scale(x) if y is None else transform.Scale(x, y)],
     )
 
 
@@ -58,7 +58,11 @@ def test_valid_scale(x: float, y: float | None) -> None:
 def test_valid_translate(x: float, y: float | None) -> None:
     util_test_transform(
         f"translate({x}, {y})" if y is not None else f"translate({x})",
-        [transform.Translate(x, y)],
+        [
+            transform.Translate(x)
+            if y is None
+            else transform.Translate(x, y)
+        ],
     )
 
 

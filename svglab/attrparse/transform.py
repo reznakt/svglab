@@ -1,22 +1,63 @@
+from __future__ import annotations
+
+import abc
+import math
+
 import lark
 import pydantic
 from typing_extensions import (
     Annotated,
+    Protocol,
     Self,
     TypeAlias,
-    cast,
     final,
     overload,
     override,
+    runtime_checkable,
 )
 
 from svglab import serialize
-from svglab.attrparse import utils
+from svglab.attrparse import point, utils
 
 
-@final
+@runtime_checkable
+class _SupportsToMatrix(Protocol):
+    def to_matrix(self) -> Matrix: ...
+
+
+class _MatrixMultiplication(_SupportsToMatrix, metaclass=abc.ABCMeta):
+    @overload
+    def __matmul__(self, other: _SupportsToMatrix) -> Matrix: ...
+
+    @overload
+    def __matmul__(self, other: point.Point) -> point.Point: ...
+
+    def __matmul__(
+        self, other: _SupportsToMatrix | point.Point
+    ) -> Matrix | point.Point:
+        matrix = self.to_matrix()
+
+        match other:
+            case point.Point(x, y):
+                return point.Point(
+                    x=matrix.a * x + matrix.c * y + matrix.e,
+                    y=matrix.b * x + matrix.d * y + matrix.f,
+                )
+            case Matrix():
+                return Matrix(
+                    a=matrix.a * other.a + matrix.c * other.b,
+                    b=matrix.b * other.a + matrix.d * other.b,
+                    c=matrix.a * other.c + matrix.c * other.d,
+                    d=matrix.b * other.c + matrix.d * other.d,
+                    e=matrix.a * other.e + matrix.c * other.f + matrix.e,
+                    f=matrix.b * other.e + matrix.d * other.f + matrix.f,
+                )
+            case _SupportsToMatrix():
+                return matrix @ other.to_matrix()
+
+
 @pydantic.dataclasses.dataclass
-class Translate(serialize.CustomSerializable):
+class _Translate(serialize.CustomSerializable, _MatrixMultiplication):
     x: float
     y: float | None = None
 
@@ -31,10 +72,28 @@ class Translate(serialize.CustomSerializable):
 
         return f"translate({x}, {y})"
 
+    @override
+    def to_matrix(self) -> Matrix:
+        tx = self.x
+        ty = self.y if self.y is not None else 0
+
+        return Matrix(1, 0, 0, 1, tx, ty or 0)
+
 
 @final
+class Translate(_Translate):
+    @overload
+    def __init__(self, x: float, /) -> None: ...
+
+    @overload
+    def __init__(self, x: float, y: float, /) -> None: ...
+
+    def __init__(self, x: float, y: float | None = None, /) -> None:
+        super().__init__(x=x, y=y)
+
+
 @pydantic.dataclasses.dataclass
-class Scale(serialize.CustomSerializable):
+class _Scale(serialize.CustomSerializable, _MatrixMultiplication):
     x: float
     y: float | None = None
 
@@ -49,9 +108,28 @@ class Scale(serialize.CustomSerializable):
 
         return f"scale({x}, {y})"
 
+    @override
+    def to_matrix(self) -> Matrix:
+        sx = self.x
+        sy = self.y if self.y is not None else self.x
+
+        return Matrix(sx, 0, 0, sy, 0, 0)
+
+
+@final
+class Scale(_Scale):
+    @overload
+    def __init__(self, x: float, /) -> None: ...
+
+    @overload
+    def __init__(self, x: float, y: float, /) -> None: ...
+
+    def __init__(self, x: float, y: float | None = None, /) -> None:
+        super().__init__(x=x, y=y)
+
 
 @pydantic.dataclasses.dataclass
-class _Rotate(serialize.CustomSerializable):
+class _Rotate(serialize.CustomSerializable, _MatrixMultiplication):
     angle: float
     cx: float | None
     cy: float | None
@@ -75,11 +153,34 @@ class _Rotate(serialize.CustomSerializable):
         if self.cx is None:
             return f"rotate({angle})"
 
-        cx, cy = serialize.serialize(self.cx, cast(float, self.cy))
+        assert self.cy is not None
+
+        cx, cy = serialize.serialize(self.cx, self.cy)
 
         return f"rotate({angle} {cx} {cy})"
 
+    @override
+    def to_matrix(self) -> Matrix:
+        a = math.radians(self.angle)
 
+        cos_a = math.cos(a)
+        sin_a = math.sin(a)
+
+        rotation = Matrix(cos_a, sin_a, -sin_a, cos_a, 0, 0)
+
+        if self.cx is None:
+            return rotation
+
+        assert self.cy is not None
+
+        return (
+            Translate(self.cx, self.cy)
+            @ rotation
+            @ Translate(-self.cx, -self.cy)
+        )
+
+
+@final
 class Rotate(_Rotate):
     @overload
     def __init__(self, angle: float, /) -> None: ...
@@ -99,7 +200,7 @@ class Rotate(_Rotate):
 
 @final
 @pydantic.dataclasses.dataclass
-class SkewX(serialize.CustomSerializable):
+class SkewX(serialize.CustomSerializable, _MatrixMultiplication):
     angle: float
 
     @override
@@ -108,10 +209,16 @@ class SkewX(serialize.CustomSerializable):
 
         return f"skewX({angle})"
 
+    @override
+    def to_matrix(self) -> Matrix:
+        a = math.radians(self.angle)
+
+        return Matrix(1, 0, math.tan(a), 1, 0, 0)
+
 
 @final
 @pydantic.dataclasses.dataclass
-class SkewY(serialize.CustomSerializable):
+class SkewY(serialize.CustomSerializable, _MatrixMultiplication):
     angle: float
 
     @override
@@ -120,10 +227,16 @@ class SkewY(serialize.CustomSerializable):
 
         return f"skewY({angle})"
 
+    @override
+    def to_matrix(self) -> Matrix:
+        a = math.radians(self.angle)
+
+        return Matrix(1, math.tan(a), 0, 1, 0, 0)
+
 
 @final
 @pydantic.dataclasses.dataclass
-class Matrix(serialize.CustomSerializable):
+class Matrix(serialize.CustomSerializable, _MatrixMultiplication):
     a: float
     b: float
     c: float
@@ -138,6 +251,10 @@ class Matrix(serialize.CustomSerializable):
         )
 
         return f"matrix({a} {b} {c} {d} {e} {f})"
+
+    @override
+    def to_matrix(self) -> Self:
+        return self
 
 
 TransformAction: TypeAlias = (

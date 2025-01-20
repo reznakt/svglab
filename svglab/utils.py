@@ -1,10 +1,19 @@
 import collections
 import functools
+import math
 from collections.abc import Generator, Iterable, Sequence, Sized
 
 import bs4
-from typing_extensions import SupportsIndex, TypeAlias, TypeIs, TypeVar
+from typing_extensions import (
+    SupportsFloat,
+    SupportsIndex,
+    TypeAlias,
+    TypeIs,
+    TypeVar,
+)
 from useful_types import SupportsRichComparisonT
+
+from svglab import constants
 
 
 _T = TypeVar("_T")
@@ -337,3 +346,14 @@ def is_first_index(sized: Sized, index: SupportsIndex) -> bool:
     start, *_ = slice(index, index).indices(len(sized))
 
     return start == 0
+
+
+def is_close(
+    a: SupportsFloat | SupportsIndex, b: SupportsFloat | SupportsIndex, /
+) -> bool:
+    return math.isclose(
+        a,
+        b,
+        rel_tol=constants.FLOAT_RELATIVE_TOLERANCE,
+        abs_tol=constants.FLOAT_ABSOLUTE_TOLERANCE,
+    )

@@ -16,8 +16,8 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import mixins, protocols, serialize
-from svglab.attrparse import utils
+from svglab import mixins, protocols, serialize, utils
+from svglab.attrparse import utils as parse_utils
 
 
 _Supports2DMovementT_co = TypeVar(
@@ -111,6 +111,18 @@ class Point(
     def __complex__(self) -> complex:
         return complex(self.x, self.y)
 
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return utils.is_close(self.x, other.x) and utils.is_close(
+            self.y, other.y
+        )
+
+    def __bool__(self) -> bool:
+        return self == self.zero()
+
     @classmethod
     def from_complex(cls, value: complex, /) -> Self:
         return cls(value.real, value.imag)
@@ -151,5 +163,7 @@ class _Transformer(lark.Transformer[object, Point]):
 
 PointType: TypeAlias = Annotated[
     Point,
-    utils.get_validator(grammar="point.lark", transformer=_Transformer()),
+    parse_utils.get_validator(
+        grammar="point.lark", transformer=_Transformer()
+    ),
 ]
