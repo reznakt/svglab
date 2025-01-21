@@ -1,4 +1,4 @@
-from svglab.attrs import groups
+from svglab.attrs import groups, regular
 from svglab.elements import common
 
 
@@ -17,7 +17,7 @@ class Shape(GraphicsElement):
     pass
 
 
-class BasicShape(Shape):
+class BasicShape(regular.PathLength, Shape):
     pass
 
 

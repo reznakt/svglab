@@ -192,12 +192,12 @@ class FontFamily(common.Attr):
     ] = None
 
 
-class FontSize(common.Attr):
-    font_size: models.Attr[typedefs.All | typedefs.ListOfLengths] = None
-
-
 class Format(common.Attr):
     format: models.Attr[typedefs.Unparsed] = None
+
+
+class Fr(common.Attr):
+    fr: models.Attr[typedefs.Length] = None
 
 
 class From(common.Attr):
@@ -256,6 +256,10 @@ class HorizOriginX(common.Attr):
 
 class HorizOriginY(common.Attr):
     horiz_origin_y: models.Attr[typedefs.Number] = None
+
+
+class Href(common.Attr):
+    href: models.Attr[typedefs.Url] = None
 
 
 class Id(common.Attr):
@@ -327,6 +331,10 @@ class KeyTimes(common.Attr):
 
 
 class Lang(common.Attr):
+    lang: models.Attr[typedefs.LanguageTag] = None
+
+
+class LangGlyph(common.Attr):
     lang: models.Attr[typedefs.LanguageCodes] = None
 
 

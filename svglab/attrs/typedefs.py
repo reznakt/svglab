@@ -28,11 +28,11 @@ GenericFamily: TypeAlias = Unparsed
 Iri: TypeAlias = Unparsed
 LanguageCodes: TypeAlias = Unparsed
 LanguageId: TypeAlias = Unparsed
+LanguageTag: TypeAlias = Unparsed
 ListOfCoordinates: TypeAlias = Unparsed
 ListOfLengths: TypeAlias = Unparsed
 MediaDescriptors: TypeAlias = Unparsed
 Name: TypeAlias = Unparsed
-Percentage: TypeAlias = Unparsed
 ProfileName: TypeAlias = Unparsed
 Shape: TypeAlias = Unparsed
 Urange: TypeAlias = Unparsed
@@ -62,6 +62,8 @@ Number: TypeAlias = float
 PathData: TypeAlias = attrparse.DType
 RelativeSize: TypeAlias = Literal["smaller", "larger"]
 TransformList: TypeAlias = attrparse.TransformType
+Url: TypeAlias = pydantic.AnyUrl
+
 
 # composite types
 Coordinate: TypeAlias = Length
@@ -102,9 +104,22 @@ OpacityValue: TypeAlias = Annotated[
 ]
 Paint: TypeAlias = (
     None_
-    | Literal["currentColor"]
+    | Literal["currentColor", "context-fill", "context-stroke"]
     | Inherit
     | Color
     # <funciri> [ none | currentColor | <color> [<icccolor>] ]
     | Unparsed
+)
+Percentage: TypeAlias = Length
+
+_TransformOriginDirection: TypeAlias = Literal[
+    "left", "center", "right", "top", "bottom"
+]
+_TransformOriginValue: TypeAlias = (
+    _TransformOriginDirection | Percentage | Length
+)
+TransformOrigin: TypeAlias = (
+    _TransformOriginValue
+    | models.Tuple2[_TransformOriginValue, _TransformOriginValue]
+    | models.Tuple3[_TransformOriginValue, _TransformOriginValue, Length]
 )

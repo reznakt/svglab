@@ -189,16 +189,6 @@ class FontSizeAdjust(common.Attr):
     ] = None
 
 
-class FontSize(common.Attr):
-    font_size: models.Attr[
-        typedefs.AbsoluteSize
-        | typedefs.RelativeSize
-        | typedefs.Length
-        | typedefs.Percentage
-        | typedefs.Inherit
-    ] = None
-
-
 class GlyphOrientationHorizontal(common.Attr):
     glyph_orientation_horizontal: models.Attr[
         typedefs.Angle | typedefs.Inherit
@@ -276,6 +266,13 @@ class Overflow(common.Attr):
     ] = None
 
 
+class PaintOrder(common.Attr):
+    paint_order: (
+        models.Attr[Literal["normal", "fill", "stroke", "markers"]]
+        | typedefs.Inherit
+    ) = None
+
+
 class PointerEvents(common.Attr):
     pointer_events: models.Attr[
         Literal[
@@ -335,7 +332,8 @@ class StrokeLinecap(common.Attr):
 
 class StrokeLinejoin(common.Attr):
     stroke_linejoin: models.Attr[
-        Literal["miter", "round", "bevel"] | typedefs.Inherit
+        Literal["miter", "round", "bevel", "miter-clip", "arcs"]
+        | typedefs.Inherit
     ] = None
 
 
@@ -361,6 +359,53 @@ class Stroke(common.Attr):
     stroke: models.Attr[typedefs.Paint] = None
 
 
+class TextAlign(common.Attr):
+    text_align: models.Attr[
+        Literal[
+            "start",
+            "end",
+            "left",
+            "right",
+            "center",
+            "justify",
+            "match-parent",
+            "justify-all",
+        ]
+        | typedefs.Inherit
+    ] = None
+
+
+class TextAlignAll(common.Attr):
+    text_align_all: models.Attr[
+        Literal[
+            "start",
+            "end",
+            "left",
+            "right",
+            "center",
+            "justify",
+            "match-parent",
+        ]
+        | typedefs.Inherit
+    ] = None
+
+
+class TextAlignLast(common.Attr):
+    text_align_last: models.Attr[
+        typedefs.Auto
+        | Literal[
+            "start",
+            "end",
+            "left",
+            "right",
+            "center",
+            "justify",
+            "match-parent",
+        ]
+        | typedefs.Inherit
+    ] = None
+
+
 class TextAnchor(common.Attr):
     text_anchor: models.Attr[
         Literal["start", "middle", "end"] | typedefs.Inherit
@@ -375,6 +420,15 @@ class TextDecoration(common.Attr):
     ] = None
 
 
+class TextIndent(common.Attr):
+    text_indent: models.Attr[
+        typedefs.Length
+        | typedefs.Percentage
+        | Literal["each-line", "hanging"]
+        | typedefs.Inherit
+    ] = None
+
+
 class TextRendering(common.Attr):
     text_rendering: models.Attr[
         typedefs.Auto
@@ -385,15 +439,59 @@ class TextRendering(common.Attr):
     ] = None
 
 
+class TransformBox(common.Attr):
+    transform_box: models.Attr[
+        Literal[
+            "content-box",
+            "border-box",
+            "fill-box",
+            "stroke-box",
+            "view-box",
+        ]
+    ] = None
+
+
+class TransformOrigin(common.Attr):
+    transform_origin: models.Attr[
+        typedefs.TransformOrigin | typedefs.Inherit
+    ] = None
+
+
 class UnicodeBidi(common.Attr):
     unicode_bidi: models.Attr[
         Literal["normal", "embed", "bidi-override"] | typedefs.Inherit
     ] = None
 
 
+class VectorEffect(common.Attr):
+    vector_effect: models.Attr[
+        Literal[
+            "non-scaling-stroke",
+            "non-scaling-size",
+            "non-rotation",
+            "fixed-position",
+        ]
+        | typedefs.None_
+    ] = None
+
+
 class Visibility(common.Attr):
     visibility: models.Attr[
         Literal["visible", "hidden", "collapse"] | typedefs.Inherit
+    ] = None
+
+
+class WhiteSpace(common.Attr):
+    white_space: models.Attr[
+        Literal[
+            "normal",
+            "pre",
+            "nowrap",
+            "pre-wrap",
+            "break-spaces",
+            "pre-line",
+        ]
+        | typedefs.Inherit
     ] = None
 
 
@@ -407,4 +505,10 @@ class WritingMode(common.Attr):
     writing_mode: models.Attr[
         Literal["lr-tb", "rl-tb", "tb-rl", "lr", "rl", "tb"]
         | typedefs.Inherit
+    ] = None
+
+
+class ZIndex(common.Attr):
+    z_index: models.Attr[
+        typedefs.Integer | typedefs.Auto | typedefs.Inherit
     ] = None

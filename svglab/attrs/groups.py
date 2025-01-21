@@ -1,12 +1,19 @@
 from svglab.attrs import common, presentation, regular
 
 
-class Core(regular.Id, regular.XmlBase, regular.XmlLang, regular.XmlSpace):
+class Core(
+    regular.Id,
+    regular.Lang,
+    regular.XmlBase,
+    regular.XmlLang,
+    regular.XmlSpace,
+):
     pass
 
 
 class Presentation(
     common.Fill,
+    common.FontSize,
     common.FontStretch,
     common.FontStyle,
     common.FontVariant,
@@ -24,7 +31,6 @@ class Presentation(
     presentation.DominantBaseline,
     presentation.FillOpacity,
     presentation.FillRule,
-    presentation.FontSize,
     presentation.FontSizeAdjust,
     presentation.GlyphOrientationHorizontal,
     presentation.GlyphOrientationVertical,
@@ -37,6 +43,7 @@ class Presentation(
     presentation.Mask,
     presentation.Opacity,
     presentation.Overflow,
+    presentation.PaintOrder,
     presentation.PointerEvents,
     presentation.ShapeRendering,
     presentation.StopColor,
@@ -49,13 +56,22 @@ class Presentation(
     presentation.StrokeMiterlimit,
     presentation.StrokeOpacity,
     presentation.StrokeWidth,
+    presentation.TextAlign,
+    presentation.TextAlignAll,
+    presentation.TextAlignLast,
     presentation.TextAnchor,
     presentation.TextDecoration,
+    presentation.TextIndent,
     presentation.TextRendering,
+    presentation.TransformBox,
+    presentation.TransformOrigin,
     presentation.UnicodeBidi,
+    presentation.VectorEffect,
     presentation.Visibility,
+    presentation.WhiteSpace,
     presentation.WordSpacing,
     presentation.WritingMode,
+    presentation.ZIndex,
 ):
     pass
 
@@ -151,6 +167,7 @@ class FilterPrimitives(
 
 
 class Xlink(
+    regular.Href,
     regular.XlinkActuateOnLoad,
     regular.XlinkArcrole,
     regular.XlinkHref,
