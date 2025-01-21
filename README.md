@@ -52,6 +52,7 @@
 
 - SVG parsing, manipulation, and writing
 - Support for all SVG 1.1 elements and attributes
+- Partial support for SVG 2
 - Support for special XML elements (`CDATA`, comments, text)
 - Attributes are parsed into native Python types for easy manipulation
 - Highly configurable formatting options:
