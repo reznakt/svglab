@@ -503,3 +503,37 @@ def test_path_data_first_command_is_move_to() -> None:
 
     with pytest.raises(errors.SvgPathMissingMoveToError):
         d.D().append(line_to)
+
+
+@pytest.mark.parametrize(
+    ("transforms", "before", "after"),
+    [
+        (
+            [transform.Translate(1, 2)],
+            point.Point(1, 2),
+            point.Point(2, 4),
+        ),
+        ([transform.Scale(2)], point.Point(1, 2), point.Point(2, 4)),
+        (
+            [transform.Rotate(45, 1, 1)],
+            point.Point(1, 1),
+            point.Point(1, 1),
+        ),
+        (
+            [transform.Rotate(90, 2, 2)],
+            point.Point(1, 1),
+            point.Point(3, 1),
+        ),
+        ([transform.Rotate(90)], point.Point(1, 2), point.Point(-2, 1)),
+        ([transform.SkewX(45)], point.Point(1, 2), point.Point(3, 2)),
+        ([transform.SkewY(45)], point.Point(1, 2), point.Point(1, 3)),
+    ],
+)
+def test_matrix_multiplication(
+    transforms: transform.Transform,
+    before: transform.Matrix,
+    after: transform.Matrix,
+) -> None:
+    transformed = transform.compose(transforms) @ before
+
+    assert transformed == after

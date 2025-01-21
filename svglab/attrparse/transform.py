@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import abc
+import functools
 import math
+from collections.abc import Iterable
 
 import lark
 import pydantic
@@ -18,6 +20,28 @@ from typing_extensions import (
 
 from svglab import serialize
 from svglab.attrparse import point, utils
+
+
+def compose(matrices: Iterable[_SupportsToMatrix], /) -> Matrix:
+    """Compose a series of matrices.
+
+    Args:
+        matrices: The matrices to compose.
+
+    Returns:
+        The result of composing the matrices.
+
+    Examples:
+        >>> m1 = Matrix(1, 0, 0, 1, 2, 3)
+        >>> m2 = Matrix(1, 0, 0, 1, 4, 5)
+        >>> m3 = Matrix(1, 0, 0, 1, 6, 7)
+        >>> compose([m1, m2, m3])
+        Matrix(a=1.0, b=0.0, c=0.0, d=1.0, e=12.0, f=15.0)
+
+    """
+    return functools.reduce(
+        lambda a, b: a @ b, (m.to_matrix() for m in matrices)
+    )
 
 
 @runtime_checkable

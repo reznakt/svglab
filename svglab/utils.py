@@ -351,6 +351,27 @@ def is_first_index(sized: Sized, index: SupportsIndex) -> bool:
 def is_close(
     a: SupportsFloat | SupportsIndex, b: SupportsFloat | SupportsIndex, /
 ) -> bool:
+    """Check if two floating-point numbers are almost equal.
+
+    Args:
+        a: The first number to compare.
+        b: The second number to compare.
+
+    Returns:
+        `True` if the two numbers are almost equal, `False` otherwise.
+
+    Examples:
+        import math
+        >>> is_close(1.0, 1.0)
+        True
+        >>> is_close(1.0, 1.0 + 1e-20)
+        True
+        >>> is_close(1.0, 1.0 + 0.001)
+        False
+        >>> is_close(0, math.sin(math.pi))
+        True
+
+    """
     return math.isclose(
         a,
         b,
