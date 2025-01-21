@@ -3,7 +3,7 @@ from __future__ import annotations
 import abc
 import functools
 import math
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 
 import lark
 import pydantic
@@ -56,9 +56,15 @@ class _MatrixMultiplication(_SupportsToMatrix, metaclass=abc.ABCMeta):
     @overload
     def __matmul__(self, other: point.Point) -> point.Point: ...
 
+    @overload
     def __matmul__(
-        self, other: _SupportsToMatrix | point.Point
-    ) -> Matrix | point.Point:
+        self, other: Iterable[point.Point]
+    ) -> Iterator[point.Point]: ...
+
+    def __matmul__(
+        self,
+        other: _SupportsToMatrix | point.Point | Iterable[point.Point],
+    ) -> Matrix | point.Point | Iterator[point.Point]:
         matrix = self.to_matrix()
 
         match other:
@@ -78,6 +84,8 @@ class _MatrixMultiplication(_SupportsToMatrix, metaclass=abc.ABCMeta):
                 )
             case _SupportsToMatrix():
                 return matrix @ other.to_matrix()
+            case Iterable():
+                return (matrix @ p for p in other)
 
 
 @pydantic.dataclasses.dataclass

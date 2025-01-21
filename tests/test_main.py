@@ -531,9 +531,25 @@ def test_path_data_first_command_is_move_to() -> None:
 )
 def test_matrix_multiplication(
     transforms: transform.Transform,
-    before: transform.Matrix,
-    after: transform.Matrix,
+    before: point.Point,
+    after: point.Point,
 ) -> None:
     transformed = transform.compose(transforms) @ before
 
     assert transformed == after
+
+
+@hypothesis.given(st.lists(st.tuples(numbers, numbers)))
+def test_matrix_multiplication_on_collection(
+    coordinates: list[tuple[float, float]],
+) -> None:
+    points = [point.Point(x, y) for x, y in coordinates]
+
+    matrix = transform.compose(
+        [transform.Translate(1, 2), transform.Scale(2)]
+    )
+
+    transformed = matrix @ points
+
+    for (x, y), point_ in zip(coordinates, transformed, strict=True):
+        assert point_ == point.Point(2 * x + 1, 2 * y + 2)
