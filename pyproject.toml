@@ -81,6 +81,9 @@ filterwarnings = [
   "ignore:The 'strip_cdata' option of HTMLParser\\(\\) has never done anything and will eventually be removed.",
 ]
 
+[tool.coverage.run]
+omit = ["tests/*"]
+
 [tool.pyright]
 deprecateTypingAliases = false        # covered by Ruff + shows false positives
 enableReachabilityAnalysis = true
