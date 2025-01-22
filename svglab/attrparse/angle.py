@@ -8,7 +8,7 @@ from svglab import serialize
 from svglab.attrparse import utils
 
 
-AngleUnit: TypeAlias = Literal["deg", "grad", "rad"]
+AngleUnit: TypeAlias = Literal["deg", "grad", "rad", "turn"]
 
 
 @pydantic.dataclasses.dataclass
@@ -20,6 +20,7 @@ class Angle(serialize.CustomSerializable):
     - `deg`: degrees
     - `grad`: gradians
     - `rad`: radians
+    - `turn`: turns
     """
 
     value: float
