@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import abc
 import functools
 import math
+import operator
 from collections.abc import Iterable, Iterator
 
 import lark
@@ -22,14 +22,14 @@ from svglab import serialize
 from svglab.attrparse import point, utils
 
 
-def compose(matrices: Iterable[_SupportsToMatrix], /) -> Matrix:
-    """Compose a series of matrices.
+def compose(transforms: Iterable[_SupportsToMatrix], /) -> Matrix:
+    """Compose a series of transformations into a single matrix.
 
     Args:
-        matrices: The matrices to compose.
+        transforms: The transformations to compose.
 
     Returns:
-        The result of composing the matrices.
+        The result of composing the transformations.
 
     Examples:
         >>> m1 = Matrix(1, 0, 0, 1, 2, 3)
@@ -40,7 +40,8 @@ def compose(matrices: Iterable[_SupportsToMatrix], /) -> Matrix:
 
     """
     return functools.reduce(
-        lambda a, b: a @ b, (m.to_matrix() for m in matrices)
+        operator.matmul,
+        (transform.to_matrix() for transform in transforms),
     )
 
 
@@ -48,8 +49,6 @@ def compose(matrices: Iterable[_SupportsToMatrix], /) -> Matrix:
 class _SupportsToMatrix(Protocol):
     def to_matrix(self) -> Matrix: ...
 
-
-class _MatrixMultiplication(_SupportsToMatrix, metaclass=abc.ABCMeta):
     @overload
     def __matmul__(self, other: _SupportsToMatrix) -> Matrix: ...
 
@@ -88,8 +87,14 @@ class _MatrixMultiplication(_SupportsToMatrix, metaclass=abc.ABCMeta):
                 return (matrix @ p for p in other)
 
 
+class _TransformActionBase(
+    serialize.CustomSerializable, _SupportsToMatrix
+):
+    pass
+
+
 @pydantic.dataclasses.dataclass
-class _Translate(serialize.CustomSerializable, _MatrixMultiplication):
+class _Translate(_TransformActionBase):
     x: float
     y: float | None = None
 
@@ -125,7 +130,7 @@ class Translate(_Translate):
 
 
 @pydantic.dataclasses.dataclass
-class _Scale(serialize.CustomSerializable, _MatrixMultiplication):
+class _Scale(_TransformActionBase):
     x: float
     y: float | None = None
 
@@ -161,7 +166,7 @@ class Scale(_Scale):
 
 
 @pydantic.dataclasses.dataclass
-class _Rotate(serialize.CustomSerializable, _MatrixMultiplication):
+class _Rotate(_TransformActionBase):
     angle: float
     cx: float | None
     cy: float | None
@@ -232,7 +237,7 @@ class Rotate(_Rotate):
 
 @final
 @pydantic.dataclasses.dataclass
-class SkewX(serialize.CustomSerializable, _MatrixMultiplication):
+class SkewX(_TransformActionBase):
     angle: float
 
     @override
@@ -250,7 +255,7 @@ class SkewX(serialize.CustomSerializable, _MatrixMultiplication):
 
 @final
 @pydantic.dataclasses.dataclass
-class SkewY(serialize.CustomSerializable, _MatrixMultiplication):
+class SkewY(_TransformActionBase):
     angle: float
 
     @override
@@ -268,7 +273,7 @@ class SkewY(serialize.CustomSerializable, _MatrixMultiplication):
 
 @final
 @pydantic.dataclasses.dataclass
-class Matrix(serialize.CustomSerializable, _MatrixMultiplication):
+class Matrix(_TransformActionBase):
     a: float
     b: float
     c: float
@@ -285,7 +290,7 @@ class Matrix(serialize.CustomSerializable, _MatrixMultiplication):
         return f"matrix({a} {b} {c} {d} {e} {f})"
 
     @override
-    def to_matrix(self) -> Self:
+    def to_matrix(self) -> Matrix:
         return self
 
 

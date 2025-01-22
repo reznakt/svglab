@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing_extensions
 from typing_extensions import Protocol, TypeVar, runtime_checkable
 from useful_types import (
