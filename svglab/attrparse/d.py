@@ -722,7 +722,10 @@ class D(
             d = _relativize(d)
 
         for prev, command in utils.pairwise(d):
-            implicit = _can_use_implicit_command(command, prev=prev)
+            implicit = (
+                formatter.path_data_commands == "implicit"
+                and _can_use_implicit_command(command, prev=prev)
+            )
 
             match command:
                 case MoveTo(end):
