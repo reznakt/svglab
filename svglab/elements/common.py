@@ -50,33 +50,6 @@ def tag_name(tag: Tag | type[Tag], /) -> names.TagName:
     return names.TAG_NAME_TO_NORMALIZED.inverse[tag_cls.__name__]
 
 
-def _match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
-    """Check if a tag matches the given search criteria.
-
-    Args:
-    tag: The tag to check.
-    search: The search criteria. Can be a tag name or a tag class.
-
-    Returns:
-    `True` if the tag matches the search criteria, `False` otherwise.
-
-    Examples:
-    >>> from svglab import Rect
-    >>> rect = Rect()
-    >>> _match_tag(rect, search="rect")
-    True
-    >>> _match_tag(rect, search=Rect)
-    True
-    >>> _match_tag(rect, search="circle")
-    False
-
-    """
-    if isinstance(search, type):
-        return isinstance(tag, search)
-
-    return tag_name(tag) == search
-
-
 class Element(models.BaseModel, metaclass=abc.ABCMeta):
     """The base class of the SVG element hierarchy."""
 
@@ -118,40 +91,15 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
     def to_beautifulsoup_object(self) -> bs4.PageElement:
         """Convert the element to a corresponding `BeautifulSoup` object."""
 
+    @abc.abstractmethod
+    def _eq(self, other: Self, /) -> bool: ...
+
     @override
     def __eq__(self, other: object) -> bool:
         if not utils.basic_compare(other, self=self):
             return False
 
         return self._eq(other)
-
-    @abc.abstractmethod
-    def _eq(self, other: Self, /) -> bool: ...
-
-
-class TextElement(Element, metaclass=abc.ABCMeta):
-    """The base class of text-based elements.
-
-    Text-based elements are elements that are represented by a single string.
-
-    Common examples of text-based elements in XML are:
-    - `CDATA` sections (`CData`)
-    - comments (`Comment`)
-    - text (`Text`)
-    - processing instructions (for example, `<?xml version="1.0"?>`)
-    - Document Type Definitions (DTDs; for example, `<!DOCTYPE html>`)
-    """
-
-    content: str = pydantic.Field(frozen=True, min_length=1)
-
-    @override
-    def __repr__(self) -> str:
-        name = type(self).__name__
-        return f"{name}({self.content!r})"
-
-    @override
-    def _eq(self, other: Self) -> bool:
-        return self.content == other.content
 
 
 class Tag(Element, metaclass=abc.ABCMeta):
@@ -203,19 +151,6 @@ class Tag(Element, metaclass=abc.ABCMeta):
 
         return self
 
-    def __getitem__(self, key: str) -> str:
-        assert self.model_extra is not None, "model_extra is None"
-        value: str = self.model_extra[key]
-        return value
-
-    def __setitem__(self, key: str, value: str) -> None:
-        assert self.model_extra is not None, "model_extra is None"
-        self.model_extra[key] = value
-
-    def __delitem__(self, key: str) -> None:
-        assert self.model_extra is not None, "model_extra is None"
-        del self.model_extra[key]
-
     def extra_attrs(self) -> Mapping[str, str]:
         assert self.model_extra is not None, "model_extra is None"
         return self.model_extra
@@ -235,21 +170,6 @@ class Tag(Element, metaclass=abc.ABCMeta):
         extra = self.extra_attrs()
 
         return {**standard, **extra}
-
-    @reprlib.recursive_repr()
-    @override
-    def __repr__(self) -> str:
-        name = type(self).__name__
-        attrs = dict(self.all_attrs())
-
-        if isinstance(self, PairedTag):
-            attrs["children"] = list(self.children)
-
-        attr_repr = ", ".join(
-            f"{key}={value!r}" for key, value in attrs.items()
-        )
-
-        return f"{name}({attr_repr})"
 
     @override
     def to_beautifulsoup_object(self) -> bs4.Tag:
@@ -271,6 +191,86 @@ class Tag(Element, metaclass=abc.ABCMeta):
             self.prefix == other.prefix
             and self.all_attrs() == other.all_attrs()
         )
+
+    def __getitem__(self, key: str) -> str:
+        assert self.model_extra is not None, "model_extra is None"
+        value: str = self.model_extra[key]
+        return value
+
+    def __setitem__(self, key: str, value: str) -> None:
+        assert self.model_extra is not None, "model_extra is None"
+        self.model_extra[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        assert self.model_extra is not None, "model_extra is None"
+        del self.model_extra[key]
+
+    @reprlib.recursive_repr()
+    @override
+    def __repr__(self) -> str:
+        name = type(self).__name__
+        attrs = dict(self.all_attrs())
+
+        if isinstance(self, PairedTag):
+            attrs["children"] = list(self.children)
+
+        attr_repr = ", ".join(
+            f"{key}={value!r}" for key, value in attrs.items()
+        )
+
+        return f"{name}({attr_repr})"
+
+
+def _match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
+    """Check if a tag matches the given search criteria.
+
+    Args:
+    tag: The tag to check.
+    search: The search criteria. Can be a tag name or a tag class.
+
+    Returns:
+    `True` if the tag matches the search criteria, `False` otherwise.
+
+    Examples:
+    >>> from svglab import Rect
+    >>> rect = Rect()
+    >>> _match_tag(rect, search="rect")
+    True
+    >>> _match_tag(rect, search=Rect)
+    True
+    >>> _match_tag(rect, search="circle")
+    False
+
+    """
+    if isinstance(search, type):
+        return isinstance(tag, search)
+
+    return tag_name(tag) == search
+
+
+class TextElement(Element, metaclass=abc.ABCMeta):
+    """The base class of text-based elements.
+
+    Text-based elements are elements that are represented by a single string.
+
+    Common examples of text-based elements in XML are:
+    - `CDATA` sections (`CData`)
+    - comments (`Comment`)
+    - text (`Text`)
+    - processing instructions (for example, `<?xml version="1.0"?>`)
+    - Document Type Definitions (DTDs; for example, `<!DOCTYPE html>`)
+    """
+
+    content: str = pydantic.Field(frozen=True, min_length=1)
+
+    @override
+    def _eq(self, other: Self) -> bool:
+        return self.content == other.content
+
+    @override
+    def __repr__(self) -> str:
+        name = type(self).__name__
+        return f"{name}({self.content!r})"
 
 
 class PairedTag(Tag, metaclass=abc.ABCMeta):

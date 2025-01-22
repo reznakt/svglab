@@ -275,39 +275,6 @@ def _serialize_number(*numbers: float) -> str | tuple[str, ...]:
     return utils.apply_single_or_many(rn.of, *numbers)
 
 
-def serialize_attr(value: object, /) -> str:
-    """Serialize an attribute value into its SVG representation.
-
-    Args:
-    value: The value to serialize.
-
-    Returns:
-    The SVG representation of the value.
-
-    Examples:
-    >>> serialize_attr(42)
-    '42'
-    >>> serialize_attr(3.14)
-    '3.14'
-    >>> serialize_attr("foo")
-    'foo'
-    >>> serialize_attr(["foo", "bar"])
-    'foo bar'
-
-    """
-    if not _is_serializable(value):
-        msg = f"Type {type(value)} is not serializable."
-        raise TypeError(msg)
-
-    formatter = get_current_formatter()
-    result = serialize(value)
-
-    if formatter.spaces_around_attrs:
-        result = f" {result} "
-
-    return result
-
-
 def _extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     """Extract function name and arguments from a function-call-like attribute.
 
@@ -359,13 +326,39 @@ def serialize(
 ) -> tuple[str, ...]: ...
 
 
-def serialize(
-    *values: Serializable, bool_mode: _BoolMode = "text"
-) -> str | tuple[str, ...]:
-    """Return an SVG-friendly string representation of the given value(s)."""
-    return utils.apply_single_or_many(
-        functools.partial(_serialize, bool_mode=bool_mode), *values
-    )
+def _serialize_bool(
+    value: bool,  # noqa: FBT001
+    /,
+    *,
+    mode: _BoolMode,
+) -> str:
+    """Serialize a boolean value into its SVG representation.
+
+    Args:
+    value: The boolean value to serialize.
+    mode: The serialization mode to use. Can be either "text" or "number".
+    If set to "text", the value is serialized as "true" or "false".
+    If set to "number", the value is serialized as "1" or "0".
+
+    Returns:
+    The SVG representation of the boolean value.
+
+    Examples:
+    >>> _serialize_bool(True, mode="text")
+    'true'
+    >>> _serialize_bool(False, mode="text")
+    'false'
+    >>> _serialize_bool(True, mode="number")
+    '1'
+    >>> _serialize_bool(False, mode="number")
+    '0'
+
+    """
+    match mode:
+        case "text":
+            return "true" if value else "false"
+        case "number":
+            return "1" if value else "0"
 
 
 def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:
@@ -401,36 +394,43 @@ def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:
     return result
 
 
-def _serialize_bool(
-    value: bool,  # noqa: FBT001
-    /,
-    *,
-    mode: _BoolMode,
-) -> str:
-    """Serialize a boolean value into its SVG representation.
+def serialize(
+    *values: Serializable, bool_mode: _BoolMode = "text"
+) -> str | tuple[str, ...]:
+    """Return an SVG-friendly string representation of the given value(s)."""
+    return utils.apply_single_or_many(
+        functools.partial(_serialize, bool_mode=bool_mode), *values
+    )
+
+
+def serialize_attr(value: object, /) -> str:
+    """Serialize an attribute value into its SVG representation.
 
     Args:
-    value: The boolean value to serialize.
-    mode: The serialization mode to use. Can be either "text" or "number".
-    If set to "text", the value is serialized as "true" or "false".
-    If set to "number", the value is serialized as "1" or "0".
+    value: The value to serialize.
 
     Returns:
-    The SVG representation of the boolean value.
+    The SVG representation of the value.
 
     Examples:
-    >>> _serialize_bool(True, mode="text")
-    'true'
-    >>> _serialize_bool(False, mode="text")
-    'false'
-    >>> _serialize_bool(True, mode="number")
-    '1'
-    >>> _serialize_bool(False, mode="number")
-    '0'
+    >>> serialize_attr(42)
+    '42'
+    >>> serialize_attr(3.14)
+    '3.14'
+    >>> serialize_attr("foo")
+    'foo'
+    >>> serialize_attr(["foo", "bar"])
+    'foo bar'
 
     """
-    match mode:
-        case "text":
-            return "true" if value else "false"
-        case "number":
-            return "1" if value else "0"
+    if not _is_serializable(value):
+        msg = f"Type {type(value)} is not serializable."
+        raise TypeError(msg)
+
+    formatter = get_current_formatter()
+    result = serialize(value)
+
+    if formatter.spaces_around_attrs:
+        result = f" {result} "
+
+    return result

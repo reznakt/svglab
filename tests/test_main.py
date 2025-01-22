@@ -46,6 +46,18 @@ def test_invalid_length(value: str) -> None:
         parse.parse_svg(xml)
 
 
+def util_test_transform(text: str, parsed: transform.Transform) -> None:
+    xml = f"<svg><rect transform='{text}'/></svg>"
+    svg = parse.parse_svg(xml)
+
+    assert isinstance(svg, elements.Svg)
+
+    rect = next(iter(svg.children))
+    assert isinstance(rect, elements.Rect)
+
+    assert rect.transform == parsed
+
+
 @hypothesis.given(numbers, st.one_of(numbers, st.none()))
 def test_valid_scale(x: float, y: float | None) -> None:
     util_test_transform(
@@ -85,18 +97,6 @@ def test_valid_matrix(
         f"matrix({a}, {b}, {c}, {d}, {e}, {f})",
         [transform.Matrix(a, b, c, d, e, f)],
     )
-
-
-def util_test_transform(text: str, parsed: transform.Transform) -> None:
-    xml = f"<svg><rect transform='{text}'/></svg>"
-    svg = parse.parse_svg(xml)
-
-    assert isinstance(svg, elements.Svg)
-
-    rect = next(iter(svg.children))
-    assert isinstance(rect, elements.Rect)
-
-    assert rect.transform == parsed
 
 
 def test_valid_transform_sequence() -> None:

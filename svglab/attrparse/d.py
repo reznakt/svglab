@@ -453,6 +453,13 @@ class D(
 
     """
 
+    def __add(
+        self, command: PathCommand, /, *, relative: bool = False
+    ) -> Self:
+        _add_command(self, command, relative=relative)
+
+        return self
+
     def __init__(
         self,
         iterable: Iterable[PathCommand] = (),
@@ -469,96 +476,6 @@ class D(
             self.__add(command)
 
     @override
-    def __add__(self, other: point.Point) -> Self:
-        return type(self)(
-            command + other
-            if isinstance(command, _PhysicalPathCommand)
-            else command
-            for command in self
-        )
-
-    @override
-    def __len__(self) -> int:
-        return len(self.__commands)
-
-    @override
-    def __eq__(self, other: object) -> bool:
-        if not utils.basic_compare(other, self=self):
-            return False
-
-        if len(self) != len(other):
-            return False
-
-        return all(c1 == c2 for c1, c2 in zip(self, other, strict=True))
-
-    @overload
-    def __getitem__(self, index: SupportsIndex) -> PathCommand: ...
-
-    @overload
-    def __getitem__(self, index: slice) -> Self: ...
-
-    @override
-    def __getitem__(
-        self, index: SupportsIndex | slice
-    ) -> PathCommand | Self:
-        if isinstance(index, SupportsIndex):
-            return self.__commands[index]
-
-        return type(self)(self.__commands[index])
-
-    @overload
-    def __delitem__(self, index: SupportsIndex) -> None: ...
-
-    @overload
-    def __delitem__(self, index: slice) -> None: ...
-
-    @override
-    def __delitem__(self, index: SupportsIndex | slice) -> None:
-        if isinstance(index, slice):
-            raise NotImplementedError(
-                "__delitem__ with a slice is not supported"
-            )
-
-        if (
-            utils.is_first_index(self, index)
-            and len(self) > 1
-            and not isinstance(self[int(index) + 1], MoveTo)
-        ):
-            raise errors.SvgPathMissingMoveToError
-
-        del self.__commands[index]
-
-    @overload
-    def __setitem__(
-        self, index: SupportsIndex, values: PathCommand
-    ) -> None: ...
-
-    @overload
-    def __setitem__(
-        self, index: slice, values: Iterable[PathCommand]
-    ) -> None: ...
-
-    @override
-    def __setitem__(
-        self,
-        index: SupportsIndex | slice,
-        values: PathCommand | Iterable[PathCommand],
-    ) -> None:
-        if isinstance(index, slice):
-            raise NotImplementedError(
-                "__setitem__ with a slice is not supported"
-            )
-
-        assert isinstance(values, PathCommand)
-
-        if utils.is_first_index(self, index) and not isinstance(
-            values, MoveTo
-        ):
-            raise errors.SvgPathMissingMoveToError
-
-        self.__commands[index] = values
-
-    @override
     def insert(self, index: SupportsIndex, value: PathCommand) -> None:
         if utils.is_first_index(self, index) and not isinstance(
             value, MoveTo
@@ -566,13 +483,6 @@ class D(
             raise errors.SvgPathMissingMoveToError
 
         self.__commands.insert(index, value)
-
-    def __add(
-        self, command: PathCommand, /, *, relative: bool = False
-    ) -> Self:
-        _add_command(self, command, relative=relative)
-
-        return self
 
     def move_to(
         self, end: point.Point, /, *, relative: bool = False
@@ -662,12 +572,6 @@ class D(
 
     def close(self) -> Self:
         return self.__add(ClosePath())
-
-    @override
-    def __repr__(self) -> str:
-        name = type(self).__name__
-        commands = ", ".join(repr(command) for command in self)
-        return f"{name}({commands})"
 
     @classmethod
     def from_str(cls, text: str) -> Self:
@@ -889,12 +793,118 @@ class D(
 
         return d
 
+    @overload
+    def __getitem__(self, index: SupportsIndex) -> PathCommand: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> Self: ...
+
+    @override
+    def __getitem__(
+        self, index: SupportsIndex | slice
+    ) -> PathCommand | Self:
+        if isinstance(index, SupportsIndex):
+            return self.__commands[index]
+
+        return type(self)(self.__commands[index])
+
+    @overload
+    def __setitem__(
+        self, index: SupportsIndex, values: PathCommand
+    ) -> None: ...
+
+    @overload
+    def __setitem__(
+        self, index: slice, values: Iterable[PathCommand]
+    ) -> None: ...
+
+    @override
+    def __setitem__(
+        self,
+        index: SupportsIndex | slice,
+        values: PathCommand | Iterable[PathCommand],
+    ) -> None:
+        if isinstance(index, slice):
+            raise NotImplementedError(
+                "__setitem__ with a slice is not supported"
+            )
+
+        assert isinstance(values, PathCommand)
+
+        if utils.is_first_index(self, index) and not isinstance(
+            values, MoveTo
+        ):
+            raise errors.SvgPathMissingMoveToError
+
+        self.__commands[index] = values
+
+    @overload
+    def __delitem__(self, index: SupportsIndex) -> None: ...
+
+    @overload
+    def __delitem__(self, index: slice) -> None: ...
+
+    @override
+    def __delitem__(self, index: SupportsIndex | slice) -> None:
+        if isinstance(index, slice):
+            raise NotImplementedError(
+                "__delitem__ with a slice is not supported"
+            )
+
+        if (
+            utils.is_first_index(self, index)
+            and len(self) > 1
+            and not isinstance(self[int(index) + 1], MoveTo)
+        ):
+            raise errors.SvgPathMissingMoveToError
+
+        del self.__commands[index]
+
+    @override
+    def __len__(self) -> int:
+        return len(self.__commands)
+
+    @override
+    def __add__(self, other: point.Point) -> Self:
+        return type(self)(
+            command + other
+            if isinstance(command, _PhysicalPathCommand)
+            else command
+            for command in self
+        )
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        if len(self) != len(other):
+            return False
+
+        return all(c1 == c2 for c1, c2 in zip(self, other, strict=True))
+
+    @override
+    def __repr__(self) -> str:
+        name = type(self).__name__
+        commands = ", ".join(repr(command) for command in self)
+        return f"{name}({commands})"
+
 
 @lark.v_args(inline=True)
 @parse_utils.visit_tokens  # there are a few terminals we want to parse
 class _Transformer(lark.Transformer[object, D]):
     point = point.Point
     NUMBER = float
+
+    cubic_bezier = CubicBezierTo
+    horizontal_line = HorizontalLineTo
+    line = LineTo
+    move = MoveTo
+    quadratic_bezier = QuadraticBezierTo
+    smooth_cubic_bezier = SmoothCubicBezierTo
+    smooth_quadratic_bezier = SmoothQuadraticBezierTo
+    vertical_line = VerticalLineTo
+    z = ClosePath
 
     def FLAG(self, value: _Flag) -> bool:  # noqa: N802
         return value == "1"
@@ -910,16 +920,6 @@ class _Transformer(lark.Transformer[object, D]):
         return ArcTo(
             radius=radius, angle=angle, large=large, sweep=sweep, end=end
         )
-
-    cubic_bezier = CubicBezierTo
-    horizontal_line = HorizontalLineTo
-    line = LineTo
-    move = MoveTo
-    quadratic_bezier = QuadraticBezierTo
-    smooth_cubic_bezier = SmoothCubicBezierTo
-    smooth_quadratic_bezier = SmoothQuadraticBezierTo
-    vertical_line = VerticalLineTo
-    z = ClosePath
 
     @lark.v_args(inline=False)
     def path(

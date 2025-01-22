@@ -94,23 +94,6 @@ class Point(
 
         return f"{x}{formatter.point_separator}{y}"
 
-    @override
-    def __add__(self, other: Self) -> Self:
-        return type(self)(self.x + other.x, self.y + other.y)
-
-    def __neg__(self) -> Self:
-        return self * -1
-
-    @override
-    def __mul__(self, scalar: float) -> Self:
-        return type(self)(self.x * scalar, self.y * scalar)
-
-    def __truediv__(self, scalar: float) -> Self:
-        return type(self)(self.x / scalar, self.y / scalar)
-
-    def __complex__(self) -> complex:
-        return complex(self.x, self.y)
-
     @classmethod
     def from_complex(cls, value: complex, /) -> Self:
         return cls(value.real, value.imag)
@@ -141,6 +124,23 @@ class Point(
 
         """
         return center + (center - self)
+
+    @override
+    def __add__(self, other: Self) -> Self:
+        return type(self)(self.x + other.x, self.y + other.y)
+
+    @override
+    def __mul__(self, scalar: float) -> Self:
+        return type(self)(self.x * scalar, self.y * scalar)
+
+    def __truediv__(self, scalar: float) -> Self:
+        return type(self)(self.x / scalar, self.y / scalar)
+
+    def __neg__(self) -> Self:
+        return self * -1
+
+    def __complex__(self) -> complex:
+        return complex(self.x, self.y)
 
 
 @lark.v_args(inline=True)

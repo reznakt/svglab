@@ -106,16 +106,16 @@ class BaseModel(pydantic.BaseModel):
         validate_return=True,
     )
 
-    @override
-    def __str__(self) -> str:
-        return repr(self)
-
     # patch pydantic's __repr__ so that is doesn't break on cyclic models
     # see https://github.com/pydantic/pydantic/issues/9424
     @reprlib.recursive_repr()
     @override
     def __repr__(self) -> str:
         return super().__repr__()
+
+    @override
+    def __str__(self) -> str:
+        return repr(self)
 
 
 @runtime_checkable
