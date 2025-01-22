@@ -17,9 +17,9 @@ transform_: transform_action (","? transform_action)*
 
 number: SIGNED_NUMBER
 
-translate: "translate" "(" number ("," number)? ")"
-scale: "scale" "(" number ("," number)? ")"
-rotate: "rotate" "(" number ("," number "," number)? ")"
+translate: "translate" "(" number (","? number)? ")"
+scale: "scale" "(" number (","? number)? ")"
+rotate: "rotate" "(" number (","? number ","? number)? ")"
 skew_x: "skewX" "(" number ")"
 skew_y: "skewY" "(" number ")"
-matrix: "matrix" "(" number ("," number)~5 ")"
+matrix: "matrix" "(" number (","? number)~5 ")"
