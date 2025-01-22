@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import functools
 import re
 from collections.abc import Generator, Iterable, MutableSequence
 
@@ -16,7 +17,7 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import models
+from svglab import models, utils
 
 
 _ColorMode: TypeAlias = Literal[
@@ -271,10 +272,7 @@ def _serialize_number(*numbers: float) -> str | tuple[str, ...]:
         large_number_threshold=formatter.large_number_scientific_threshold
         or 0,
     )
-
-    result = tuple(rn.of(number) for number in numbers)
-
-    return result[0] if len(result) == 1 else result
+    return utils.apply_single_or_many(rn.of, *numbers)
 
 
 def serialize_attr(value: object, /) -> str:
@@ -365,10 +363,9 @@ def serialize(
     *values: Serializable, bool_mode: _BoolMode = "text"
 ) -> str | tuple[str, ...]:
     """Return an SVG-friendly string representation of the given value(s)."""
-    result = tuple(
-        _serialize(value, bool_mode=bool_mode) for value in values
+    return utils.apply_single_or_many(
+        functools.partial(_serialize, bool_mode=bool_mode), *values
     )
-    return result[0] if len(result) == 1 else result
 
 
 def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:

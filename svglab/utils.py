@@ -1,17 +1,26 @@
 import collections
 import functools
-from collections.abc import Generator, Iterable, Sequence, Sized
+from collections.abc import Callable, Generator, Iterable, Sequence, Sized
 
 import bs4
-from typing_extensions import SupportsIndex, TypeAlias, TypeIs, TypeVar
+from typing_extensions import (
+    SupportsIndex,
+    TypeAlias,
+    TypeIs,
+    TypeVar,
+    overload,
+)
 from useful_types import SupportsRichComparisonT
 
 
 _T = TypeVar("_T")
 _DT = TypeVar("_DT")
+_NT = TypeVar("_NT")
 
 _NestedIterableItem: TypeAlias = _T | Iterable["_NestedIterableItem[_T]"]
 _NestedIterable: TypeAlias = Iterable[_NestedIterableItem[_T]]
+
+_Map: TypeAlias = Callable[[_T], _NT]
 
 
 def is_empty(iterable: Iterable[object], /) -> bool:
@@ -337,3 +346,38 @@ def is_first_index(sized: Sized, index: SupportsIndex) -> bool:
     start, *_ = slice(index, index).indices(len(sized))
 
     return start == 0
+
+
+@overload
+def apply_single_or_many(func: _Map[_T, _NT], value: _T, /) -> _NT: ...
+
+
+@overload
+def apply_single_or_many(
+    func: _Map[_T, _NT], first: _T, second: _T, /, *values: _T
+) -> tuple[_NT, ...]: ...
+
+
+def apply_single_or_many(
+    func: _Map[_T, _NT], /, *values: _T
+) -> _NT | tuple[_NT, ...]:
+    """Apply a function to one or more values.
+
+    Args:
+        func: The function to apply.
+        values: The values to apply the function to.
+
+    Returns:
+        The result of applying the function to the value, or a tuple of
+        such results if multiple values are provided.
+
+    Examples:
+        >>> apply_single_or_many(str, 1)
+        '1'
+        >>> apply_single_or_many(str, 1, 2, 3)
+        ('1', '2', '3')
+
+    """
+    result = tuple(map(func, values))
+
+    return result[0] if len(result) == 1 else result
