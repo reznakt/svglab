@@ -108,6 +108,9 @@ def _convert_element(backend: bs4.PageElement) -> elements.Element | None:
                 cast(elements.TagName, backend.name)
             ]
 
+            for key, value in backend.attrs.items():
+                backend.attrs[key] = str(value).strip()
+
             tag = tag_class.model_validate(
                 {"prefix": backend.prefix, **backend.attrs}, strict=False
             )
