@@ -683,7 +683,7 @@ class D(
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize(self.__serialize_commands())
+        return " ".join(self.__serialize_commands())
 
     def resolve_shorthands(
         self, *, lines: bool = True, curves: bool = True
