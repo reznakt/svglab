@@ -152,7 +152,11 @@ def test_invalid_rotate() -> None:
 
 def test_attribute_normalization_native() -> None:
     rect = elements.Rect(
-        stroke_dasharray="1 2 3",
+        stroke_dasharray=[
+            length.Length(1),
+            length.Length(2),
+            length.Length(3),
+        ],
         stroke_dashoffset=length.Length(1),
         stroke_linecap="round",
         stroke_linejoin="round",
@@ -165,7 +169,11 @@ def test_attribute_normalization_native() -> None:
 
     assert rect.extra_attrs() == {}
 
-    assert rect.stroke_dasharray == "1 2 3"
+    assert rect.stroke_dasharray == [
+        length.Length(1),
+        length.Length(2),
+        length.Length(3),
+    ]
     assert rect.stroke_dashoffset == length.Length(1)
     assert rect.stroke_linecap == "round"
     assert rect.stroke_linejoin == "round"
@@ -193,7 +201,11 @@ def test_attribute_normalization_validate() -> None:
 
     assert rect.extra_attrs() == {}
 
-    assert rect.stroke_dasharray == "1 2 3"
+    assert rect.stroke_dasharray == [
+        length.Length(1),
+        length.Length(2),
+        length.Length(3),
+    ]
     assert rect.stroke_dashoffset == length.Length(1)
     assert rect.stroke_linecap == "round"
     assert rect.stroke_linejoin == "round"
@@ -206,7 +218,11 @@ def test_attribute_normalization_validate() -> None:
 
 def test_attribute_normalization_serialize() -> None:
     rect = elements.Rect(
-        stroke_dasharray="1 2 3",
+        stroke_dasharray=[
+            length.Length(1),
+            length.Length(2),
+            length.Length(3),
+        ],
         stroke_dashoffset=length.Length(1),
         stroke_linecap="round",
         stroke_linejoin="round",
@@ -218,7 +234,11 @@ def test_attribute_normalization_serialize() -> None:
     )
 
     attrs = {
-        "stroke-dasharray": "1 2 3",
+        "stroke-dasharray": [
+            {"value": 1.0},
+            {"value": 2.0},
+            {"value": 3.0},
+        ],
         "stroke-dashoffset": {"value": 1},
         "stroke-linecap": "round",
         "stroke-linejoin": "round",
