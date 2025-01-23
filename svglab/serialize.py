@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import functools
-import re
 from collections.abc import Generator, Iterable, MutableSequence
 
 import pydantic
@@ -285,41 +284,6 @@ def _serialize_number(*numbers: float) -> str | tuple[str, ...]:
     return utils.apply_single_or_many(rn.of, *numbers)
 
 
-def _extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
-    """Extract function name and arguments from a function-call-like attribute.
-
-    An attribute is considered to be a function call if it has the form
-    `name(args)`. This function extracts the name and the arguments from such
-    an attribute. If the attribute is not a function call, `None` is returned.
-
-    Args:
-    attr: The attribute to extract the function name and arguments from.
-
-    Returns:
-    A tuple containing the function name and the arguments,
-    or `None` if the attribute is not a function call.
-
-    Examples:
-    >>> _extract_function_name_and_args("foo()") is None  # no arguments
-    True
-    >>> _extract_function_name_and_args("foo(42)")
-    ('foo', '42')
-    >>> _extract_function_name_and_args("foo(42, 'bar')")
-    ('foo', "42, 'bar'")
-    >>> _extract_function_name_and_args(
-    ...     "bar"
-    ... ) is None  # not a function call
-    True
-
-    """
-    match = re.match(r"^([^\(\)]+)\(([^\(\)]+)\)$", attr)
-
-    if match is None:
-        return None
-
-    return match.group(1), match.group(2)
-
-
 @overload
 def serialize(
     value: Serializable, /, *, bool_mode: _BoolMode = "text"
@@ -381,7 +345,9 @@ def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:
 
             if (
                 formatter.spaces_around_function_args
-                and (fn_call := _extract_function_name_and_args(result))
+                and (
+                    fn_call := utils.extract_function_name_and_args(result)
+                )
                 is not None
             ):
                 fn, args = fn_call

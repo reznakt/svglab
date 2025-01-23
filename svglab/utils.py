@@ -1,5 +1,6 @@
 import collections
 import functools
+import re
 from collections.abc import Callable, Generator, Iterable, Sequence, Sized
 
 import bs4
@@ -381,3 +382,38 @@ def apply_single_or_many(
     result = tuple(map(func, values))
 
     return result[0] if len(result) == 1 else result
+
+
+def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
+    """Extract function name and arguments from a function-call-like attribute.
+
+    An attribute is considered to be a function call if it has the form
+    `name(args)`. This function extracts the name and the arguments from such
+    an attribute. If the attribute is not a function call, `None` is returned.
+
+    Args:
+    attr: The attribute to extract the function name and arguments from.
+
+    Returns:
+    A tuple containing the function name and the arguments,
+    or `None` if the attribute is not a function call.
+
+    Examples:
+    >>> extract_function_name_and_args("foo()") is None  # no arguments
+    True
+    >>> extract_function_name_and_args("foo(42)")
+    ('foo', '42')
+    >>> extract_function_name_and_args("foo(42, 'bar')")
+    ('foo', "42, 'bar'")
+    >>> extract_function_name_and_args(
+    ...     "bar"
+    ... ) is None  # not a function call
+    True
+
+    """
+    match = re.match(r"^([^\(\)]+)\(([^\(\)]+)\)$", attr)
+
+    if match is None:
+        return None
+
+    return match.group(1), match.group(2)
