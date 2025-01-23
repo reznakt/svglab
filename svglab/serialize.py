@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import math
 from collections.abc import Generator, Iterable, MutableSequence
 
 import pydantic
-import readable_number
 from typing_extensions import (
     Final,
     Literal,
@@ -101,16 +101,22 @@ class Formatter:
 
     `show_decimal_part_if_int`: Whether to show the decimal part of a number
     even if it is an integer. For example, `1.0` instead of `1`.
-    `max_precision`: The maximum number of significant digits
-    after the decimal point to use when serializing numbers.
+    `max_precision`: The maximum number of digits
+    after the decimal point to use when serializing numbers. Must be between 0
+    and 15 (inclusive) due to the limitations of double-precision
+    floating-point numbers (IEEE 754). The number is rounded to the nearest
+    value.
     `small_number_scientific_threshold`: The magnitude threshold below which
     numbers are serialized using scientific notation.
     For example, `1e-06` instead of `0.000001`. If `None`, scientific notation
-    is not used for small numbers.
+    is not used for small numbers. Must be between 0 (exclusive) and 0.1
+    (inclusive). Scientific notation is never used for 0.
     `large_number_scientific_threshold`: The magnitude threshold above which
     numbers are serialized using scientific notation.
     For example, `1e+06` instead of `1000000`. If `None`, scientific notation
-    is not used for large numbers.
+    is not used for large numbers. Must be greater than 0.
+    `strip_leading_zero`: Whether to strip the leading zero from numbers
+    between -1 and 1. For example, `.5` instead of `0.5`.
 
     `path_data_coordinates`: The coordinate mode to use when serializing
     path data coordinates:
@@ -166,15 +172,16 @@ class Formatter:
 
     # numbers
     show_decimal_part_if_int: models.KwOnly[bool] = False
-    max_precision: models.KwOnly[int | None] = pydantic.Field(
-        default=None, ge=0
+    max_precision: models.KwOnly[int] = pydantic.Field(
+        default=15, ge=0, le=15
     )
     small_number_scientific_threshold: models.KwOnly[float | None] = (
-        pydantic.Field(default=1e-6, ge=0)
+        pydantic.Field(default=1e-6, gt=0, le=0.1)
     )
     large_number_scientific_threshold: models.KwOnly[int | None] = (
-        pydantic.Field(default=int(1e6), ge=0)
+        pydantic.Field(default=int(1e6), gt=0)
     )
+    strip_leading_zero: models.KwOnly[bool] = True
 
     # path data
     path_data_coordinates: models.KwOnly[_PathDataCoordinateMode] = (
@@ -232,56 +239,77 @@ def use_formatter(formatter: Formatter, /) -> Generator[None]:
         set_formatter(original_formatter)
 
 
-@overload
-def _serialize_number(number: float, /) -> str: ...
-
-
-@overload
-def _serialize_number(
-    first: float, second: float, /, *numbers: float
-) -> tuple[str, ...]: ...
-
-
-def _serialize_number(*numbers: float) -> str | tuple[str, ...]:
-    """Format a number or a sequence of numbers for SVG serialization.
+def _serialize_number(number: float) -> str:
+    """Format a number into a string based on current formatter settings.
 
     Args:
-    numbers: The numbers to format.
+    number: The number to format.
 
     Returns:
-    The formatted number or numbers.
+    The formatted number as a string.
 
     Examples:
     >>> _serialize_number(42)
     '42'
     >>> _serialize_number(3.14)
     '3.14'
-    >>> _serialize_number(1, 2, 3)
-    ('1', '2', '3')
-    >>> _serialize_number(1.0, 2.0, 3.0)
-    ('1', '2', '3')
+    >>> _serialize_number(1.0)
+    '1'
     >>> _serialize_number(1e9)
     '1e+09'
+    >>> _serialize_number(-0.1)
+    '-.1'
+    >>> _serialize_number(0.12345678912345679)
+    '.123456789123457'
+    >>> _serialize_number(1e-10)
+    '1e-10'
 
     """
     formatter = get_current_formatter()
 
-    rn = readable_number.ReadableNumber(
-        digit_group_delimiter="",  # group separators are not allowed in SVG
-        significant_figures_after_decimal_point=formatter.max_precision,
-        show_decimal_part_if_integer=formatter.show_decimal_part_if_int,
-        use_exponent_for_small_numbers=(
+    # make sure the number is always a float and not an int, so that str()
+    # always includes the decimal point
+    number = float(number)
+
+    number = round(float(number), formatter.max_precision)
+    abs_value = abs(number)
+
+    use_scientific = number != 0 and (
+        (
             formatter.small_number_scientific_threshold is not None
-        ),
-        small_number_threshold=formatter.small_number_scientific_threshold
-        or 0,
-        use_exponent_for_large_numbers=(
+            and abs_value <= formatter.small_number_scientific_threshold
+        )
+        or (
             formatter.large_number_scientific_threshold is not None
-        ),
-        large_number_threshold=formatter.large_number_scientific_threshold
-        or 0,
+            and abs_value >= formatter.large_number_scientific_threshold
+        )
     )
-    return utils.apply_single_or_many(rn.of, *numbers)
+
+    exponent = 0
+
+    # the mantissa gets formatted just like a regular number, at the end we add
+    # the sign and the exponent
+    if use_scientific:
+        exponent = math.floor(math.log10(abs_value))
+        number = abs_value / 10**exponent
+
+    result = str(number)
+
+    if not formatter.show_decimal_part_if_int:
+        result = result.removesuffix(".0")
+
+    sign = "-" if number < 0 else ""
+
+    if formatter.strip_leading_zero and result.startswith(("0.", "-0.")):
+        no_sign = result.removeprefix("-")
+        result = sign + no_sign[1:]
+
+    if use_scientific:
+        exponent_sign = "-" if exponent < 0 else "+"
+        exponent_str = str(abs(exponent)).zfill(2)
+        result = f"{sign}{result}e{exponent_sign}{exponent_str}"
+
+    return result
 
 
 @overload
