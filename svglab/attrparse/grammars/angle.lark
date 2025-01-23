@@ -7,6 +7,6 @@
 
 angle: number unit?
 
-?!unit: "deg"i | "grad"i | "rad"i | "turn"i
+?!unit: "deg" | "grad" | "rad" | "turn"
 
 number: SIGNED_NUMBER
