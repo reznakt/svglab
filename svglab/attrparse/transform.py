@@ -128,11 +128,11 @@ class Matrix(serialize.CustomSerializable):
         )
 
 
-TransformAction: TypeAlias = (
+TransformFunction: TypeAlias = (
     Translate | Scale | Rotate | SkewX | SkewY | Matrix
 )
 
-Transform: TypeAlias = list[TransformAction]
+Transform: TypeAlias = list[TransformFunction]
 
 
 @lark.v_args(inline=True)

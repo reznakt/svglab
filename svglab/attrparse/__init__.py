@@ -19,7 +19,7 @@ from svglab.attrparse.transform import (
     SkewX,
     SkewY,
     Transform,
-    TransformAction,
+    TransformFunction,
     TransformType,
     Translate,
 )
@@ -51,7 +51,7 @@ __all__ = [
     "SkewX",
     "SkewY",
     "Transform",
-    "TransformAction",
+    "TransformFunction",
     "TransformType",
     "Translate",
 ]

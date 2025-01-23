@@ -100,7 +100,7 @@ def test_valid_matrix(
 
 
 def test_valid_transform_sequence() -> None:
-    transforms: dict[str, transform.TransformAction] = {
+    transforms: dict[str, transform.TransformFunction] = {
         "scale(1.5, 2)": transform.Scale(1.5, 2),
         "scale(1.5)": transform.Scale(1.5),
         "translate(1, 2)": transform.Translate(1, 2),
