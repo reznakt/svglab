@@ -63,7 +63,7 @@ class RootElement(traits.Element):
         ...     trailing_newline=False,
         ...     formatter=formatter,
         ... )
-        <svg id="foo" xmlns="http://www.w3.org/2000/svg">
+        <svg id="foo">
             <rect/>
         </svg>
 

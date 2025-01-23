@@ -18,7 +18,7 @@ from typing_extensions import (
     override,
 )
 
-from svglab import errors, models, serialize, utils
+from svglab import constants, errors, models, serialize, utils
 from svglab.attrs import names as attr_names
 from svglab.elements import names
 
@@ -182,6 +182,14 @@ class Tag(Element, metaclass=abc.ABCMeta):
 
         for key, value in self.all_attrs().items():
             tag[key] = serialize.serialize_attr(value)
+
+        if tag_name(self) == "svg":
+            formatter = serialize.get_current_formatter()
+
+            if formatter.xmlns == "always":
+                tag["xmlns"] = constants.SVG_XMLNS
+            elif formatter.xmlns == "never":
+                del tag["xmlns"]
 
         return tag
 

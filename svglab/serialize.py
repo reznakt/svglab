@@ -29,6 +29,7 @@ _BoolMode: TypeAlias = Literal["text", "number"]
 _PathDataCoordinateMode: TypeAlias = Literal["relative", "absolute"]
 _PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
 _PathDataCommandMode: TypeAlias = Literal["explicit", "implicit"]
+_Xmlns: TypeAlias = Literal["always", "never", "original"]
 
 
 @runtime_checkable
@@ -152,6 +153,12 @@ class Formatter:
     `spaces_around_function_args`: Whether to add spaces around function
     arguments. For example, `rotate( 45 )` instead of `rotate(45)`.
 
+    `xmlns`: Whether to add, remove, or keep the `xmlns` attribute in the
+    resulting SVG document:
+        - `always`: Always add the `xmlns` attribute.
+        - `never`: Always remove the `xmlns` attribute.
+        - `original`: Serialize the `xmlns` attribute as-is.
+
     """
 
     # colors
@@ -191,6 +198,9 @@ class Formatter:
     indent: models.KwOnly[int] = pydantic.Field(default=2, ge=0)
     spaces_around_attrs: models.KwOnly[bool] = False
     spaces_around_function_args: models.KwOnly[bool] = False
+
+    # misc
+    xmlns: models.KwOnly[_Xmlns] = "original"
 
 
 DEFAULT_FORMATTER: Final = Formatter()

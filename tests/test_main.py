@@ -295,13 +295,6 @@ def test_eq_tag_prefix(prefix: str) -> None:
     assert elements.Rect(prefix=prefix) == elements.Rect(prefix=prefix)
 
 
-def test_xmlns_always_present_on_svg() -> None:
-    svg = elements.Svg()
-
-    assert "xmlns" in svg.standard_attrs()
-    assert svg.xmlns == "http://www.w3.org/2000/svg"
-
-
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
