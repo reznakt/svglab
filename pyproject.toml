@@ -73,7 +73,7 @@ typecheck = "pyright --warnings"
 versioncheck = "vermin ."
 
 _ruff-format = "ruff format --diff"
-_ssort = "ssort --diff"
+_ssort = "ssort --check"
 format = ["_ruff-format", "_ssort"]
 
 _ruff-format-fix = "ruff format"
