@@ -38,7 +38,7 @@ class Length(serialize.CustomSerializable):
     """
 
     value: float
-    unit: LengthUnit | None = None
+    unit: LengthUnit | None = pydantic.Field(default=None, frozen=True)
 
     @override
     def serialize(self) -> str:
