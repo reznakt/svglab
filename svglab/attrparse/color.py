@@ -1,9 +1,7 @@
-import re
-
 import pydantic_extra_types.color
 from typing_extensions import TypeAlias, override
 
-from svglab import serialize
+from svglab import serialize, utils
 
 
 def _alpha_channel_as_percentage(original: str) -> str:
@@ -23,7 +21,13 @@ def _alpha_channel_as_percentage(original: str) -> str:
         'hsla(0, 0%, 0%, 75%)'
 
     """
-    func, args, *_ = re.split(r"[\(\)]", original)
+    name_and_args = utils.extract_function_name_and_args(original)
+
+    if name_and_args is None:
+        msg = f"Invalid color string: {original!r}"
+        raise ValueError(msg)
+
+    func, args = name_and_args
 
     values = args.split(", ")
     values[-1] = f"{float(values[-1]):0.0%}"
@@ -81,6 +85,15 @@ class Color(
                 result = self.as_rgb(alpha_channel=formatter.alpha_channel)
             case "hsl":
                 result = self.as_hsl(alpha_channel=formatter.alpha_channel)
+
+        if result.endswith(")"):  # just to make this a bit faster
+            name_and_args = utils.extract_function_name_and_args(result)
+            assert name_and_args is not None
+
+            func, args_str = name_and_args
+            args = args_str.split(", ")
+
+            result = f"{func}({formatter.list_separator.join(args)})"
 
         return result
 

@@ -19,7 +19,6 @@ AdvisoryTitle: TypeAlias = Unparsed
 BeginValueList: TypeAlias = Unparsed
 ClockValue: TypeAlias = Unparsed
 ContentType: TypeAlias = Unparsed  # MIME type
-Dasharray: TypeAlias = Unparsed  # list of percentages and lengths
 EndValueList: TypeAlias = Unparsed
 FamilyName: TypeAlias = Unparsed
 FilterPrimitiveReference: TypeAlias = Unparsed
@@ -29,8 +28,6 @@ Iri: TypeAlias = Unparsed
 LanguageCodes: TypeAlias = Unparsed
 LanguageId: TypeAlias = Unparsed
 LanguageTag: TypeAlias = Unparsed
-ListOfCoordinates: TypeAlias = Unparsed
-ListOfLengths: TypeAlias = Unparsed
 MediaDescriptors: TypeAlias = Unparsed
 Name: TypeAlias = Unparsed
 ProfileName: TypeAlias = Unparsed
@@ -88,8 +85,10 @@ CursorValue: TypeAlias = (
         "help",
     ]
 )
+ListOfCoordinates: TypeAlias = models.List[Coordinate]
 ListOfExtensions: TypeAlias = models.List[Iri]
 ListOfFeatures: TypeAlias = models.List[Unparsed]
+ListOfLengths: TypeAlias = models.List[Length]
 ListOfNames: TypeAlias = models.List[Name]
 ListOfNumbers: TypeAlias = models.List[Number]
 ListOfStrings: TypeAlias = models.List[Anything]
@@ -123,3 +122,4 @@ TransformOrigin: TypeAlias = (
     | models.Tuple2[_TransformOriginValue, _TransformOriginValue]
     | models.Tuple3[_TransformOriginValue, _TransformOriginValue, Length]
 )
+Dasharray: TypeAlias = models.List[Length | Percentage]

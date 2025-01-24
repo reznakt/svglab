@@ -1,7 +1,8 @@
 import collections
 import functools
 import math
-from collections.abc import Generator, Iterable, Sequence, Sized
+import re
+from collections.abc import Callable, Generator, Iterable, Sequence, Sized
 
 import bs4
 from typing_extensions import (
@@ -10,6 +11,7 @@ from typing_extensions import (
     TypeAlias,
     TypeIs,
     TypeVar,
+    overload,
 )
 from useful_types import SupportsRichComparisonT
 
@@ -18,9 +20,12 @@ from svglab import constants
 
 _T = TypeVar("_T")
 _DT = TypeVar("_DT")
+_NT = TypeVar("_NT")
 
 _NestedIterableItem: TypeAlias = _T | Iterable["_NestedIterableItem[_T]"]
 _NestedIterable: TypeAlias = Iterable[_NestedIterableItem[_T]]
+
+_Map: TypeAlias = Callable[[_T], _NT]
 
 
 def is_empty(iterable: Iterable[object], /) -> bool:
@@ -378,3 +383,73 @@ def is_close(
         rel_tol=constants.FLOAT_RELATIVE_TOLERANCE,
         abs_tol=constants.FLOAT_ABSOLUTE_TOLERANCE,
     )
+
+
+@overload
+def apply_single_or_many(func: _Map[_T, _NT], value: _T, /) -> _NT: ...
+
+
+@overload
+def apply_single_or_many(
+    func: _Map[_T, _NT], first: _T, second: _T, /, *values: _T
+) -> tuple[_NT, ...]: ...
+
+
+def apply_single_or_many(
+    func: _Map[_T, _NT], /, *values: _T
+) -> _NT | tuple[_NT, ...]:
+    """Apply a function to one or more values.
+
+    Args:
+        func: The function to apply.
+        values: The values to apply the function to.
+
+    Returns:
+        The result of applying the function to the value, or a tuple of
+        such results if multiple values are provided.
+
+    Examples:
+        >>> apply_single_or_many(str, 1)
+        '1'
+        >>> apply_single_or_many(str, 1, 2, 3)
+        ('1', '2', '3')
+
+    """
+    result = tuple(map(func, values))
+
+    return result[0] if len(result) == 1 else result
+
+
+def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
+    """Extract function name and arguments from a function-call-like attribute.
+
+    An attribute is considered to be a function call if it has the form
+    `name(args)`. This function extracts the name and the arguments from such
+    an attribute. If the attribute is not a function call, `None` is returned.
+
+    Args:
+    attr: The attribute to extract the function name and arguments from.
+
+    Returns:
+    A tuple containing the function name and the arguments,
+    or `None` if the attribute is not a function call.
+
+    Examples:
+    >>> extract_function_name_and_args("foo()") is None  # no arguments
+    True
+    >>> extract_function_name_and_args("foo(42)")
+    ('foo', '42')
+    >>> extract_function_name_and_args("foo(42, 'bar')")
+    ('foo', "42, 'bar'")
+    >>> extract_function_name_and_args(
+    ...     "bar"
+    ... ) is None  # not a function call
+    True
+
+    """
+    match = re.match(r"^([^\(\)]+)\(([^\(\)]+)\)$", attr)
+
+    if match is None:
+        return None
+
+    return match.group(1), match.group(2)

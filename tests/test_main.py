@@ -46,6 +46,18 @@ def test_invalid_length(value: str) -> None:
         parse.parse_svg(xml)
 
 
+def util_test_transform(text: str, parsed: transform.Transform) -> None:
+    xml = f"<svg><rect transform='{text}'/></svg>"
+    svg = parse.parse_svg(xml)
+
+    assert isinstance(svg, elements.Svg)
+
+    rect = next(iter(svg.children))
+    assert isinstance(rect, elements.Rect)
+
+    assert rect.transform == parsed
+
+
 @hypothesis.given(numbers, st.one_of(numbers, st.none()))
 def test_valid_scale(x: float, y: float | None) -> None:
     util_test_transform(
@@ -91,20 +103,8 @@ def test_valid_matrix(
     )
 
 
-def util_test_transform(text: str, parsed: transform.Transform) -> None:
-    xml = f"<svg><rect transform='{text}'/></svg>"
-    svg = parse.parse_svg(xml)
-
-    assert isinstance(svg, elements.Svg)
-
-    rect = next(iter(svg.children))
-    assert isinstance(rect, elements.Rect)
-
-    assert rect.transform == parsed
-
-
 def test_valid_transform_sequence() -> None:
-    transforms: dict[str, transform.TransformAction] = {
+    transforms: dict[str, transform.TransformFunction] = {
         "scale(1.5, 2)": transform.Scale(1.5, 2),
         "scale(1.5)": transform.Scale(1.5),
         "translate(1, 2)": transform.Translate(1, 2),
@@ -156,7 +156,11 @@ def test_invalid_rotate() -> None:
 
 def test_attribute_normalization_native() -> None:
     rect = elements.Rect(
-        stroke_dasharray="1 2 3",
+        stroke_dasharray=[
+            length.Length(1),
+            length.Length(2),
+            length.Length(3),
+        ],
         stroke_dashoffset=length.Length(1),
         stroke_linecap="round",
         stroke_linejoin="round",
@@ -169,7 +173,11 @@ def test_attribute_normalization_native() -> None:
 
     assert rect.extra_attrs() == {}
 
-    assert rect.stroke_dasharray == "1 2 3"
+    assert rect.stroke_dasharray == [
+        length.Length(1),
+        length.Length(2),
+        length.Length(3),
+    ]
     assert rect.stroke_dashoffset == length.Length(1)
     assert rect.stroke_linecap == "round"
     assert rect.stroke_linejoin == "round"
@@ -197,7 +205,11 @@ def test_attribute_normalization_validate() -> None:
 
     assert rect.extra_attrs() == {}
 
-    assert rect.stroke_dasharray == "1 2 3"
+    assert rect.stroke_dasharray == [
+        length.Length(1),
+        length.Length(2),
+        length.Length(3),
+    ]
     assert rect.stroke_dashoffset == length.Length(1)
     assert rect.stroke_linecap == "round"
     assert rect.stroke_linejoin == "round"
@@ -210,7 +222,11 @@ def test_attribute_normalization_validate() -> None:
 
 def test_attribute_normalization_serialize() -> None:
     rect = elements.Rect(
-        stroke_dasharray="1 2 3",
+        stroke_dasharray=[
+            length.Length(1),
+            length.Length(2),
+            length.Length(3),
+        ],
         stroke_dashoffset=length.Length(1),
         stroke_linecap="round",
         stroke_linejoin="round",
@@ -222,7 +238,11 @@ def test_attribute_normalization_serialize() -> None:
     )
 
     attrs = {
-        "stroke-dasharray": "1 2 3",
+        "stroke-dasharray": [
+            {"value": 1.0},
+            {"value": 2.0},
+            {"value": 3.0},
+        ],
         "stroke-dashoffset": {"value": 1},
         "stroke-linecap": "round",
         "stroke-linejoin": "round",
@@ -297,13 +317,6 @@ def test_eq_tag_group() -> None:
 @hypothesis.given(st.text())
 def test_eq_tag_prefix(prefix: str) -> None:
     assert elements.Rect(prefix=prefix) == elements.Rect(prefix=prefix)
-
-
-def test_xmlns_always_present_on_svg() -> None:
-    svg = elements.Svg()
-
-    assert "xmlns" in svg.standard_attrs()
-    assert svg.xmlns == "http://www.w3.org/2000/svg"
 
 
 @pytest.mark.parametrize(
@@ -470,7 +483,7 @@ def test_path_data_shorthands_idempotent(before: d.D, after: d.D) -> None:
     [
         ("", ""),
         ("M0 0", "M0,0"),
-        ("m 1e+02 1e-02", "M100,0.01"),
+        ("m 1e+02 1e-02", "M100,.01"),
         (
             "M12 22a10 10 0 110-20 10 10 0 010 20z",
             "M12,22 A22,32 0 1 1 12,2 22,12 0 0 1 12,22 Z",

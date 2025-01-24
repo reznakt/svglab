@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import contextlib
-import re
+import functools
+import math
 from collections.abc import Generator, Iterable, MutableSequence
 
 import pydantic
-import readable_number
 from typing_extensions import (
     Final,
     Literal,
@@ -16,7 +16,7 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import models
+from svglab import models, utils
 
 
 _ColorMode: TypeAlias = Literal[
@@ -28,6 +28,7 @@ _BoolMode: TypeAlias = Literal["text", "number"]
 _PathDataCoordinateMode: TypeAlias = Literal["relative", "absolute"]
 _PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
 _PathDataCommandMode: TypeAlias = Literal["explicit", "implicit"]
+_Xmlns: TypeAlias = Literal["always", "never", "original"]
 
 
 @runtime_checkable
@@ -100,16 +101,22 @@ class Formatter:
 
     `show_decimal_part_if_int`: Whether to show the decimal part of a number
     even if it is an integer. For example, `1.0` instead of `1`.
-    `max_precision`: The maximum number of significant digits
-    after the decimal point to use when serializing numbers.
+    `max_precision`: The maximum number of digits
+    after the decimal point to use when serializing numbers. Must be between 0
+    and 15 (inclusive) due to the limitations of double-precision
+    floating-point numbers (IEEE 754). The number is rounded to the nearest
+    value.
     `small_number_scientific_threshold`: The magnitude threshold below which
     numbers are serialized using scientific notation.
     For example, `1e-06` instead of `0.000001`. If `None`, scientific notation
-    is not used for small numbers.
+    is not used for small numbers. Must be between 0 (exclusive) and 0.1
+    (inclusive). Scientific notation is never used for 0.
     `large_number_scientific_threshold`: The magnitude threshold above which
     numbers are serialized using scientific notation.
     For example, `1e+06` instead of `1000000`. If `None`, scientific notation
-    is not used for large numbers.
+    is not used for large numbers. Must be greater than 0.
+    `strip_leading_zero`: Whether to strip the leading zero from numbers
+    between -1 and 1. For example, `.5` instead of `0.5`.
 
     `path_data_coordinates`: The coordinate mode to use when serializing
     path data coordinates:
@@ -151,6 +158,12 @@ class Formatter:
     `spaces_around_function_args`: Whether to add spaces around function
     arguments. For example, `rotate( 45 )` instead of `rotate(45)`.
 
+    `xmlns`: Whether to add, remove, or keep the `xmlns` attribute in the
+    resulting SVG document:
+        - `always`: Always add the `xmlns` attribute.
+        - `never`: Always remove the `xmlns` attribute.
+        - `original`: Serialize the `xmlns` attribute as-is.
+
     """
 
     # colors
@@ -159,15 +172,16 @@ class Formatter:
 
     # numbers
     show_decimal_part_if_int: models.KwOnly[bool] = False
-    max_precision: models.KwOnly[int | None] = pydantic.Field(
-        default=None, ge=0
+    max_precision: models.KwOnly[int] = pydantic.Field(
+        default=15, ge=0, le=15
     )
     small_number_scientific_threshold: models.KwOnly[float | None] = (
-        pydantic.Field(default=1e-6, ge=0)
+        pydantic.Field(default=1e-6, gt=0, le=0.1)
     )
     large_number_scientific_threshold: models.KwOnly[int | None] = (
-        pydantic.Field(default=int(1e6), ge=0)
+        pydantic.Field(default=int(1e6), gt=0)
     )
+    strip_leading_zero: models.KwOnly[bool] = True
 
     # path data
     path_data_coordinates: models.KwOnly[_PathDataCoordinateMode] = (
@@ -190,6 +204,9 @@ class Formatter:
     indent: models.KwOnly[int] = pydantic.Field(default=2, ge=0)
     spaces_around_attrs: models.KwOnly[bool] = False
     spaces_around_function_args: models.KwOnly[bool] = False
+
+    # misc
+    xmlns: models.KwOnly[_Xmlns] = "original"
 
 
 DEFAULT_FORMATTER: Final = Formatter()
@@ -222,127 +239,77 @@ def use_formatter(formatter: Formatter, /) -> Generator[None]:
         set_formatter(original_formatter)
 
 
-@overload
-def _serialize_number(number: float, /) -> str: ...
-
-
-@overload
-def _serialize_number(
-    first: float, second: float, /, *numbers: float
-) -> tuple[str, ...]: ...
-
-
-def _serialize_number(*numbers: float) -> str | tuple[str, ...]:
-    """Format a number or a sequence of numbers for SVG serialization.
+def _serialize_number(number: float) -> str:
+    """Format a number into a string based on current formatter settings.
 
     Args:
-    numbers: The numbers to format.
+    number: The number to format.
 
     Returns:
-    The formatted number or numbers.
+    The formatted number as a string.
 
     Examples:
     >>> _serialize_number(42)
     '42'
     >>> _serialize_number(3.14)
     '3.14'
-    >>> _serialize_number(1, 2, 3)
-    ('1', '2', '3')
-    >>> _serialize_number(1.0, 2.0, 3.0)
-    ('1', '2', '3')
+    >>> _serialize_number(1.0)
+    '1'
     >>> _serialize_number(1e9)
     '1e+09'
+    >>> _serialize_number(-0.1)
+    '-.1'
+    >>> _serialize_number(0.12345678912345679)
+    '.123456789123457'
+    >>> _serialize_number(1e-10)
+    '1e-10'
 
     """
     formatter = get_current_formatter()
 
-    rn = readable_number.ReadableNumber(
-        digit_group_delimiter="",  # group separators are not allowed in SVG
-        significant_figures_after_decimal_point=formatter.max_precision,
-        show_decimal_part_if_integer=formatter.show_decimal_part_if_int,
-        use_exponent_for_small_numbers=(
+    # make sure the number is always a float and not an int, so that str()
+    # always includes the decimal point
+    number = float(number)
+
+    number = round(float(number), formatter.max_precision)
+    abs_value = abs(number)
+
+    use_scientific = number != 0 and (
+        (
             formatter.small_number_scientific_threshold is not None
-        ),
-        small_number_threshold=formatter.small_number_scientific_threshold
-        or 0,
-        use_exponent_for_large_numbers=(
+            and abs_value <= formatter.small_number_scientific_threshold
+        )
+        or (
             formatter.large_number_scientific_threshold is not None
-        ),
-        large_number_threshold=formatter.large_number_scientific_threshold
-        or 0,
+            and abs_value >= formatter.large_number_scientific_threshold
+        )
     )
 
-    result = tuple(rn.of(number) for number in numbers)
+    exponent = 0
 
-    return result[0] if len(result) == 1 else result
+    # the mantissa gets formatted just like a regular number, at the end we add
+    # the sign and the exponent
+    if use_scientific:
+        exponent = math.floor(math.log10(abs_value))
+        number = abs_value / 10**exponent
 
+    result = str(number)
 
-def serialize_attr(value: object, /) -> str:
-    """Serialize an attribute value into its SVG representation.
+    if not formatter.show_decimal_part_if_int:
+        result = result.removesuffix(".0")
 
-    Args:
-    value: The value to serialize.
+    sign = "-" if number < 0 else ""
 
-    Returns:
-    The SVG representation of the value.
+    if formatter.strip_leading_zero and result.startswith(("0.", "-0.")):
+        no_sign = result.removeprefix("-")
+        result = sign + no_sign[1:]
 
-    Examples:
-    >>> serialize_attr(42)
-    '42'
-    >>> serialize_attr(3.14)
-    '3.14'
-    >>> serialize_attr("foo")
-    'foo'
-    >>> serialize_attr(["foo", "bar"])
-    'foo bar'
-
-    """
-    if not _is_serializable(value):
-        msg = f"Type {type(value)} is not serializable."
-        raise TypeError(msg)
-
-    formatter = get_current_formatter()
-    result = serialize(value)
-
-    if formatter.spaces_around_attrs:
-        result = f" {result} "
+    if use_scientific:
+        exponent_sign = "-" if exponent < 0 else "+"
+        exponent_str = str(abs(exponent)).zfill(2)
+        result = f"{sign}{result}e{exponent_sign}{exponent_str}"
 
     return result
-
-
-def _extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
-    """Extract function name and arguments from a function-call-like attribute.
-
-    An attribute is considered to be a function call if it has the form
-    `name(args)`. This function extracts the name and the arguments from such
-    an attribute. If the attribute is not a function call, `None` is returned.
-
-    Args:
-    attr: The attribute to extract the function name and arguments from.
-
-    Returns:
-    A tuple containing the function name and the arguments,
-    or `None` if the attribute is not a function call.
-
-    Examples:
-    >>> _extract_function_name_and_args("foo()") is None  # no arguments
-    True
-    >>> _extract_function_name_and_args("foo(42)")
-    ('foo', '42')
-    >>> _extract_function_name_and_args("foo(42, 'bar')")
-    ('foo', "42, 'bar'")
-    >>> _extract_function_name_and_args(
-    ...     "bar"
-    ... ) is None  # not a function call
-    True
-
-    """
-    match = re.match(r"^([^\(\)]+)\(([^\(\)]+)\)$", attr)
-
-    if match is None:
-        return None
-
-    return match.group(1), match.group(2)
 
 
 @overload
@@ -359,49 +326,6 @@ def serialize(
     *values: Serializable,
     bool_mode: _BoolMode = "text",
 ) -> tuple[str, ...]: ...
-
-
-def serialize(
-    *values: Serializable, bool_mode: _BoolMode = "text"
-) -> str | tuple[str, ...]:
-    """Return an SVG-friendly string representation of the given value(s)."""
-    result = tuple(
-        _serialize(value, bool_mode=bool_mode) for value in values
-    )
-    return result[0] if len(result) == 1 else result
-
-
-def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:
-    formatter = get_current_formatter()
-    result: str
-
-    match value:
-        case CustomSerializable():
-            result = value.serialize()
-
-            if (
-                formatter.spaces_around_function_args
-                and (fn_call := _extract_function_name_and_args(result))
-                is not None
-            ):
-                fn, args = fn_call
-                result = f"{fn}( {args} )"
-        # needs to be before int (bool is a subclass of int)
-        case bool():
-            result = _serialize_bool(value, mode=bool_mode)
-        case int() | float():
-            result = _serialize_number(value)
-        case str():
-            result = value
-        case bytes():
-            result = value.decode()
-        # this should go last to avoid classifying strings as iterables, etc.
-        case Iterable():
-            result = formatter.list_separator.join(
-                _serialize(v, bool_mode=bool_mode) for v in value
-            )
-
-    return result
 
 
 def _serialize_bool(
@@ -437,3 +361,80 @@ def _serialize_bool(
             return "true" if value else "false"
         case "number":
             return "1" if value else "0"
+
+
+def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:
+    formatter = get_current_formatter()
+    result: str
+
+    match value:
+        case CustomSerializable():
+            result = value.serialize()
+
+            if (
+                formatter.spaces_around_function_args
+                and (
+                    fn_call := utils.extract_function_name_and_args(result)
+                )
+                is not None
+            ):
+                fn, args = fn_call
+                result = f"{fn}( {args} )"
+        # needs to be before int (bool is a subclass of int)
+        case bool():
+            result = _serialize_bool(value, mode=bool_mode)
+        case int() | float():
+            result = _serialize_number(value)
+        case str():
+            result = value
+        case bytes():
+            result = value.decode()
+        # this should go last to avoid classifying strings as iterables, etc.
+        case Iterable():
+            result = formatter.list_separator.join(
+                _serialize(v, bool_mode=bool_mode) for v in value
+            )
+
+    return result
+
+
+def serialize(
+    *values: Serializable, bool_mode: _BoolMode = "text"
+) -> str | tuple[str, ...]:
+    """Return an SVG-friendly string representation of the given value(s)."""
+    return utils.apply_single_or_many(
+        functools.partial(_serialize, bool_mode=bool_mode), *values
+    )
+
+
+def serialize_attr(value: object, /) -> str:
+    """Serialize an attribute value into its SVG representation.
+
+    Args:
+    value: The value to serialize.
+
+    Returns:
+    The SVG representation of the value.
+
+    Examples:
+    >>> serialize_attr(42)
+    '42'
+    >>> serialize_attr(3.14)
+    '3.14'
+    >>> serialize_attr("foo")
+    'foo'
+    >>> serialize_attr(["foo", "bar"])
+    'foo bar'
+
+    """
+    if not _is_serializable(value):
+        msg = f"Type {type(value)} is not serializable."
+        raise TypeError(msg)
+
+    formatter = get_current_formatter()
+    result = serialize(value)
+
+    if formatter.spaces_around_attrs:
+        result = f" {result} "
+
+    return result

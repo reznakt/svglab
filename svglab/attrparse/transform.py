@@ -9,6 +9,7 @@ import lark
 import pydantic
 from typing_extensions import (
     Annotated,
+    Literal,
     Protocol,
     Self,
     TypeAlias,
@@ -22,27 +23,17 @@ from svglab import serialize
 from svglab.attrparse import point, utils
 
 
-def compose(transforms: Iterable[_SupportsToMatrix], /) -> Matrix:
-    """Compose a series of transformations into a single matrix.
+_TransformFunctionName: TypeAlias = Literal[
+    "translate", "scale", "rotate", "skewX", "skewY", "matrix"
+]
 
-    Args:
-        transforms: The transformations to compose.
 
-    Returns:
-        The result of composing the transformations.
+def _serialize_transform_function(
+    name: _TransformFunctionName, *args: serialize.Serializable | None
+) -> str:
+    args_str = serialize.serialize(arg for arg in args if arg is not None)
 
-    Examples:
-        >>> m1 = Matrix(1, 0, 0, 1, 2, 3)
-        >>> m2 = Matrix(1, 0, 0, 1, 4, 5)
-        >>> m3 = Matrix(1, 0, 0, 1, 6, 7)
-        >>> compose([m1, m2, m3])
-        Matrix(a=1.0, b=0.0, c=0.0, d=1.0, e=12.0, f=15.0)
-
-    """
-    return functools.reduce(
-        operator.matmul,
-        (transform.to_matrix() for transform in transforms),
-    )
+    return f"{name}({args_str})"
 
 
 @runtime_checkable
@@ -93,6 +84,50 @@ class _TransformActionBase(
     pass
 
 
+@final
+@pydantic.dataclasses.dataclass
+class Matrix(_TransformActionBase):
+    a: float
+    b: float
+    c: float
+    d: float
+    e: float
+    f: float
+
+    @override
+    def serialize(self) -> str:
+        return _serialize_transform_function(
+            "matrix", self.a, self.b, self.c, self.d, self.e, self.f
+        )
+
+    @override
+    def to_matrix(self) -> Matrix:
+        return self
+
+
+def compose(transforms: Iterable[_SupportsToMatrix], /) -> Matrix:
+    """Compose a series of transformations into a single matrix.
+
+    Args:
+        transforms: The transformations to compose.
+
+    Returns:
+        The result of composing the transformations.
+
+    Examples:
+        >>> m1 = Matrix(1, 0, 0, 1, 2, 3)
+        >>> m2 = Matrix(1, 0, 0, 1, 4, 5)
+        >>> m3 = Matrix(1, 0, 0, 1, 6, 7)
+        >>> compose([m1, m2, m3])
+        Matrix(a=1.0, b=0.0, c=0.0, d=1.0, e=12.0, f=15.0)
+
+    """
+    return functools.reduce(
+        operator.matmul,
+        (transform.to_matrix() for transform in transforms),
+    )
+
+
 @pydantic.dataclasses.dataclass
 class _Translate(_TransformActionBase):
     x: float
@@ -100,14 +135,7 @@ class _Translate(_TransformActionBase):
 
     @override
     def serialize(self) -> str:
-        x = serialize.serialize(self.x)
-
-        if self.y is None:
-            return f"translate({x})"
-
-        y = serialize.serialize(self.y)
-
-        return f"translate({x}, {y})"
+        return _serialize_transform_function("translate", self.x, self.y)
 
     @override
     def to_matrix(self) -> Matrix:
@@ -136,14 +164,7 @@ class _Scale(_TransformActionBase):
 
     @override
     def serialize(self) -> str:
-        x = serialize.serialize(self.x)
-
-        if self.y is None:
-            return f"scale({x})"
-
-        y = serialize.serialize(self.y)
-
-        return f"scale({x}, {y})"
+        return _serialize_transform_function("scale", self.x, self.y)
 
     @override
     def to_matrix(self) -> Matrix:
@@ -185,16 +206,9 @@ class _Rotate(_TransformActionBase):
 
     @override
     def serialize(self) -> str:
-        angle = serialize.serialize(self.angle)
-
-        if self.cx is None:
-            return f"rotate({angle})"
-
-        assert self.cy is not None
-
-        cx, cy = serialize.serialize(self.cx, self.cy)
-
-        return f"rotate({angle} {cx} {cy})"
+        return _serialize_transform_function(
+            "rotate", self.angle, self.cx, self.cy
+        )
 
     @override
     def to_matrix(self) -> Matrix:
@@ -242,9 +256,7 @@ class SkewX(_TransformActionBase):
 
     @override
     def serialize(self) -> str:
-        angle = serialize.serialize(self.angle)
-
-        return f"skewX({angle})"
+        return _serialize_transform_function("skewX", self.angle)
 
     @override
     def to_matrix(self) -> Matrix:
@@ -260,9 +272,7 @@ class SkewY(_TransformActionBase):
 
     @override
     def serialize(self) -> str:
-        angle = serialize.serialize(self.angle)
-
-        return f"skewY({angle})"
+        return _serialize_transform_function("skewY", self.angle)
 
     @override
     def to_matrix(self) -> Matrix:
@@ -271,34 +281,10 @@ class SkewY(_TransformActionBase):
         return Matrix(1, math.tan(a), 0, 1, 0, 0)
 
 
-@final
-@pydantic.dataclasses.dataclass
-class Matrix(_TransformActionBase):
-    a: float
-    b: float
-    c: float
-    d: float
-    e: float
-    f: float
-
-    @override
-    def serialize(self) -> str:
-        a, b, c, d, e, f = serialize.serialize(
-            self.a, self.b, self.c, self.d, self.e, self.f
-        )
-
-        return f"matrix({a} {b} {c} {d} {e} {f})"
-
-    @override
-    def to_matrix(self) -> Matrix:
-        return self
-
-
-TransformAction: TypeAlias = (
+TransformFunction: TypeAlias = (
     Translate | Scale | Rotate | SkewX | SkewY | Matrix
 )
-
-Transform: TypeAlias = list[TransformAction]
+Transform: TypeAlias = list[TransformFunction]
 
 
 @lark.v_args(inline=True)

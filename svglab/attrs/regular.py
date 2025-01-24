@@ -1,6 +1,5 @@
 # ruff: noqa: N815
 
-import pydantic
 from typing_extensions import Literal
 
 from svglab import constants, models
@@ -1003,11 +1002,7 @@ class XmlLang(common.Attr):
 
 
 class Xmlns(common.Attr):
-    # cannot use Final here because pydantic will consider the field a ClassVar
-    # see https://github.com/pydantic/pydantic/issues/6253
-    xmlns: constants.Xmlns = pydantic.Field(
-        default=constants.DEFAULT_XMLNS, frozen=True
-    )
+    xmlns: models.Attr[constants.Xmlns] = None
 
 
 class XmlSpace(common.Attr):

@@ -5,7 +5,7 @@
 ?start: path
 
 path: _segment_sequence?
-_segment_sequence: m (","? segment)*
+_segment_sequence: m (segment)*
 
 ?segment: a | c | h | l | m | q | s | t | v | z
 
