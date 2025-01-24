@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import lark
 import pydantic
-from typing_extensions import Annotated, Literal, TypeAlias, override
+from typing_extensions import (
+    Annotated,
+    Literal,
+    TypeAlias,
+    final,
+    override,
+)
 
 from svglab import serialize
 from svglab.attrparse import utils
@@ -13,6 +19,7 @@ LengthUnit: TypeAlias = Literal[
 ]
 
 
+@final
 @pydantic.dataclasses.dataclass
 class Length(serialize.CustomSerializable):
     """Represents the SVG `<length>` type.
@@ -31,7 +38,7 @@ class Length(serialize.CustomSerializable):
     """
 
     value: float
-    unit: LengthUnit | None = None
+    unit: LengthUnit | None = pydantic.Field(default=None, frozen=True)
 
     @override
     def serialize(self) -> str:
