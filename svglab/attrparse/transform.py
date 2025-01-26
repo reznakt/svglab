@@ -37,11 +37,11 @@ def _serialize_transform_function(
 
 
 @runtime_checkable
-class _SupportsToMatrix(Protocol):
+class SupportsToMatrix(Protocol):
     def to_matrix(self) -> Matrix: ...
 
     @overload
-    def __matmul__(self, other: _SupportsToMatrix) -> Matrix: ...
+    def __matmul__(self, other: SupportsToMatrix) -> Matrix: ...
 
     @overload
     def __matmul__(self, other: point.Point) -> point.Point: ...
@@ -52,8 +52,7 @@ class _SupportsToMatrix(Protocol):
     ) -> Iterator[point.Point]: ...
 
     def __matmul__(
-        self,
-        other: _SupportsToMatrix | point.Point | Iterable[point.Point],
+        self, other: SupportsToMatrix | point.Point | Iterable[point.Point]
     ) -> Matrix | point.Point | Iterator[point.Point]:
         matrix = self.to_matrix()
 
@@ -72,15 +71,13 @@ class _SupportsToMatrix(Protocol):
                     e=matrix.a * other.e + matrix.c * other.f + matrix.e,
                     f=matrix.b * other.e + matrix.d * other.f + matrix.f,
                 )
-            case _SupportsToMatrix():
+            case SupportsToMatrix():
                 return matrix @ other.to_matrix()
             case Iterable():
                 return (matrix @ p for p in other)
 
 
-class _TransformActionBase(
-    serialize.CustomSerializable, _SupportsToMatrix
-):
+class _TransformActionBase(serialize.CustomSerializable, SupportsToMatrix):
     pass
 
 
@@ -105,7 +102,7 @@ class Matrix(_TransformActionBase):
         return self
 
 
-def compose(transforms: Iterable[_SupportsToMatrix], /) -> Matrix:
+def compose(transforms: Iterable[SupportsToMatrix], /) -> Matrix:
     """Compose a series of transformations into a single matrix.
 
     Args:

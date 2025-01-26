@@ -1,17 +1,37 @@
 from __future__ import annotations
 
+import math
+
 import lark
 import pydantic
-from typing_extensions import Annotated, Literal, TypeAlias, override
+from typing_extensions import (
+    Annotated,
+    Final,
+    Literal,
+    Self,
+    TypeAlias,
+    final,
+    override,
+)
 
-from svglab import serialize
+from svglab import serialize, units
 from svglab.attrparse import utils
 
 
-AngleUnit: TypeAlias = Literal["deg", "grad", "rad", "turn"]
+AngleUnit: TypeAlias = Literal["deg", "grad", "rad", "turn"] | None
+
+_convert: Final[units.Converter[Angle, AngleUnit]] = units.make_converter(
+    conversion_table={
+        ("deg", "grad"): 10 / 9,
+        ("rad", "deg"): 180 / math.pi,
+        ("turn", "deg"): 360,
+        (None, "deg"): 1,
+    }
+)
 
 
-@pydantic.dataclasses.dataclass
+@final
+@pydantic.dataclasses.dataclass(frozen=True)
 class Angle(serialize.CustomSerializable):
     """Represents the SVG `<angle>` type.
 
@@ -24,12 +44,53 @@ class Angle(serialize.CustomSerializable):
     """
 
     value: float
-    unit: AngleUnit | None = "deg"
+    unit: AngleUnit = None
+
+    def to(self, unit: AngleUnit) -> Angle:
+        """Convert the angle to a different unit.
+
+        Args:
+            unit: The unit to convert to.
+
+        Returns:
+            A new `Angle` object with the converted value and new unit.
+
+        Raises:
+            SvgUnitConversionError: If the conversion is not possible.
+
+        Examples:
+            >>> angle = Angle(360, "deg")
+            >>> angle.to("grad")
+            Angle(value=400.0, unit='grad')
+
+        """
+        return _convert(self, unit)
 
     @override
     def serialize(self) -> str:
         value = serialize.serialize(self.value)
         return f"{value}{self.unit or ''}"
+
+    def __add__(self, other: Angle) -> Self:
+        other_value = other.to(self.unit).value
+
+        return type(self)(value=self.value + other_value, unit=self.unit)
+
+    def __sub__(self, other: Angle) -> Self:
+        return self + -other
+
+    def __mul__(self, other: Angle) -> Self:
+        other_value = other.to(self.unit).value
+
+        return type(self)(value=self.value * other_value, unit=self.unit)
+
+    def __truediv__(self, other: Angle) -> Self:
+        other_value = other.to(self.unit).value
+
+        return type(self)(value=self.value / other_value, unit=self.unit)
+
+    def __neg__(self) -> Self:
+        return type(self)(value=-self.value, unit=self.unit)
 
 
 @lark.v_args(inline=True)
