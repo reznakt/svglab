@@ -2,13 +2,35 @@ import contextlib
 import os
 import pathlib
 
-from typing_extensions import overload
+from typing_extensions import final, overload
 
 from svglab import protocols, serialize
+from svglab.attrs import groups, regular
 from svglab.elements import traits
 
 
-class RootElement(traits.Element):
+@final
+class Svg(
+    groups.ConditionalProcessing,
+    groups.DocumentEvents,
+    regular.BaseProfile,
+    regular.Class,
+    regular.ContentScriptType,
+    regular.ContentStyleType,
+    regular.ExternalResourcesRequired,
+    regular.Height,
+    regular.PreserveAspectRatio,
+    regular.Style,
+    regular.Version,
+    regular.ViewBox,
+    regular.Width,
+    regular.XCoordinate,
+    regular.Xmlns,
+    regular.YCoordinate,
+    regular.ZoomAndPan,
+    traits.StructuralElement,
+    traits.ContainerElement,
+):
     @overload
     def save(
         self,

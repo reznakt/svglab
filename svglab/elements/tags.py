@@ -1,7 +1,7 @@
 from typing_extensions import final
 
 from svglab.attrs import groups, regular
-from svglab.elements import root, traits
+from svglab.elements import traits
 
 
 # ! WARNING: `Element` and `ContainerElement` must always go last
@@ -895,32 +895,6 @@ class Stop(
 @final
 class Style(
     regular.Media, regular.Title, regular.TypeContentType, traits.Element
-):
-    pass
-
-
-@final
-class Svg(
-    groups.ConditionalProcessing,
-    groups.DocumentEvents,
-    regular.BaseProfile,
-    regular.Class,
-    regular.ContentScriptType,
-    regular.ContentStyleType,
-    regular.ExternalResourcesRequired,
-    regular.Height,
-    regular.PreserveAspectRatio,
-    regular.Style,
-    regular.Version,
-    regular.ViewBox,
-    regular.Width,
-    regular.XCoordinate,
-    regular.Xmlns,
-    regular.YCoordinate,
-    regular.ZoomAndPan,
-    root.RootElement,
-    traits.StructuralElement,
-    traits.ContainerElement,
 ):
     pass
 
