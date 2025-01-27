@@ -28,9 +28,45 @@ from svglab.elements import names
 
 _T = TypeVar("_T")
 _T_tag = TypeVar("_T_tag", bound="Tag")
+_T_distance = TypeVar("_T_distance", length.Length, float)
 
 _EMPTY_PARAM: Final = object()
 """A sentinel value for an empty parameter."""
+
+
+def _translate_distance(
+    distance: _T_distance | None, by: float
+) -> _T_distance | None:
+    """Translate a distance by the given amount.
+
+    This is a helper function for translating distances. If the distance is
+    `None` or a percentage, it is returned as is. Otherwise, the distance is
+    translated by the given amount, converting `by` to a `Length` if necessary.
+
+    Args:
+    distance: The distance to translate.
+    by: The amount by which to translate the distance.
+
+    Returns:
+    The translated distance.
+
+    Examples:
+    >>> from svglab.attrparse import Length
+    >>> _translate_distance(Length(10), 5)
+    Length(value=15.0, unit=None)
+    >>> _translate_distance(None, 5) is None
+    True
+    >>> _translate_distance(Length(10, "%"), 5)
+    Length(value=10.0, unit='%')
+
+    """
+    match distance:
+        case int() | float():
+            return distance + by
+        case None | length.Length(_, "%"):
+            return distance
+        case length.Length():
+            return distance + length.Length(by)
 
 
 def tag_name(tag: Tag | type[Tag], /) -> names.TagName:
@@ -199,34 +235,35 @@ class Tag(Element, metaclass=abc.ABCMeta):
     def __translate(self, by: point.Point) -> None:  # noqa: C901
         x, y = by
 
-        x_length = length.Length(x)
-        y_length = length.Length(y)
-
-        if isinstance(self, regular.X1) and self.x1 is not None:
-            self.x1 += x_length
-        if isinstance(self, regular.Y1) and self.y1 is not None:
-            self.y1 += y_length
-        if isinstance(self, regular.X2) and self.x2 is not None:
-            self.x2 += x_length
-        if isinstance(self, regular.Y2) and self.y2 is not None:
-            self.y2 += y_length
-        if isinstance(self, regular.XNumber) and self.x is not None:
-            self.x += x
-        if isinstance(self, regular.YNumber) and self.y is not None:
-            self.y += y
-        if isinstance(self, regular.Cx) and self.cx is not None:
-            self.cx += x_length
-        if isinstance(self, regular.Cy) and self.cy is not None:
-            self.cy += y_length
-        if isinstance(self, regular.XCoordinate) and self.x is not None:
-            # for some reason, pyright is getting a stroke over this
-            self.x += x_length  # type: ignore[reportAttributeAccessIssue]
-        if isinstance(self, regular.YCoordinate) and self.y is not None:
-            self.y += y_length  # type: ignore[reportAttributeAccessIssue]
+        if isinstance(self, regular.X1):
+            self.x1 = _translate_distance(self.x1, x)
+        if isinstance(self, regular.Y1):
+            self.y1 = _translate_distance(self.y1, y)
+        if isinstance(self, regular.X2):
+            self.x2 = _translate_distance(self.x2, x)
+        if isinstance(self, regular.Y2):
+            self.y2 = _translate_distance(self.y2, y)
+        if isinstance(self, regular.Cx):
+            self.cx = _translate_distance(self.cx, x)
+        if isinstance(self, regular.Cy):
+            self.cy = _translate_distance(self.cy, y)
         if isinstance(self, regular.Points) and self.points is not None:
             self.points = [point + by for point in self.points]
         if isinstance(self, regular.D) and self.d is not None:
             self.d += by
+
+        # these assignments have to be mutually exclusive, because the
+        # type checker doesn't know that x being a <number> implies that x is
+        # not a <coordinate> and vice versa
+        if isinstance(self, regular.XNumber):  # noqa: SIM114
+            self.x = _translate_distance(self.x, x)
+        elif isinstance(self, regular.XCoordinate):
+            self.x = _translate_distance(self.x, x)
+
+        if isinstance(self, regular.YNumber):  # noqa: SIM114
+            self.y = _translate_distance(self.y, y)
+        elif isinstance(self, regular.YCoordinate):
+            self.y = _translate_distance(self.y, y)
 
     def translate(self, by: point.Point) -> None:
         """Translate the tag by the given vector, given as a point.
