@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+from collections.abc import Iterator
 
 import lark
 import pydantic
@@ -124,6 +125,9 @@ class Point(
 
         """
         return center + (center - self)
+
+    def __iter__(self) -> Iterator[float]:
+        return iter((self.x, self.y))
 
     @override
     def __add__(self, other: Self) -> Self:

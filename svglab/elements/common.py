@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import contextlib
 import reprlib
 import sys
 from collections.abc import Generator, Mapping
@@ -19,7 +20,9 @@ from typing_extensions import (
 )
 
 from svglab import constants, errors, models, serialize, utils
+from svglab.attrparse import length, point
 from svglab.attrs import names as attr_names
+from svglab.attrs import regular
 from svglab.elements import names
 
 
@@ -192,6 +195,69 @@ class Tag(Element, metaclass=abc.ABCMeta):
                 del tag["xmlns"]
 
         return tag
+
+    def __translate(self, by: point.Point) -> None:  # noqa: C901
+        x, y = by
+
+        x_length = length.Length(x)
+        y_length = length.Length(y)
+
+        if isinstance(self, regular.X1) and self.x1 is not None:
+            self.x1 += x_length
+        if isinstance(self, regular.Y1) and self.y1 is not None:
+            self.y1 += y_length
+        if isinstance(self, regular.X2) and self.x2 is not None:
+            self.x2 += x_length
+        if isinstance(self, regular.Y2) and self.y2 is not None:
+            self.y2 += y_length
+        if isinstance(self, regular.XNumber) and self.x is not None:
+            self.x += x
+        if isinstance(self, regular.YNumber) and self.y is not None:
+            self.y += y
+        if isinstance(self, regular.Cx) and self.cx is not None:
+            self.cx += x_length
+        if isinstance(self, regular.Cy) and self.cy is not None:
+            self.cy += y_length
+        if isinstance(self, regular.XCoordinate) and self.x is not None:
+            # for some reason, pyright is getting a stroke over this
+            self.x += x_length  # type: ignore[reportAttributeAccessIssue]
+        if isinstance(self, regular.YCoordinate) and self.y is not None:
+            self.y += y_length  # type: ignore[reportAttributeAccessIssue]
+        if isinstance(self, regular.Points) and self.points is not None:
+            self.points = [point + by for point in self.points]
+        if isinstance(self, regular.D) and self.d is not None:
+            self.d += by
+
+    def translate(self, by: point.Point) -> None:
+        """Translate the tag by the given vector, given as a point.
+
+        This method modifies the tag in place.
+
+        Args:
+        by: The vector by which to translate the tag.
+
+        Raises:
+        SvgUnitConversionError: If the translation cannot be performed due to
+        unit conversion issues.
+
+        Example:
+        >>> from svglab import Rect
+        >>> from svglab.attrparse import Point, Length
+        >>> rect = Rect(x=Length(10), y=Length(20))
+        >>> rect.translate(Point(1, 2))
+        >>> rect.x, rect.y
+        (Length(value=11.0, unit=None), Length(value=22.0, unit=None))
+
+        """
+        try:
+            self.__translate(by)
+        except errors.SvgUnitConversionError:
+            # revert all changes made so far (not great, but probably better
+            # than creating a deep copy of the tag)
+            with contextlib.suppress(errors.SvgUnitConversionError):
+                self.__translate(-by)
+
+            raise
 
     @override
     def _eq(self, other: Self) -> bool:
@@ -526,6 +592,17 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
             msg = f"Unable to find tag by search criteria: {tags}"
             raise errors.SvgElementNotFoundError(msg) from e
+
+    @override
+    def translate(
+        self, by: point.Point, *, recursive: bool = True
+    ) -> None:
+        super().translate(by)
+
+        if recursive:
+            for child in self.children:
+                if isinstance(child, Tag):
+                    child.translate(by)
 
     @override
     def _eq(self, other: Self) -> bool:
