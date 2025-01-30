@@ -473,6 +473,16 @@ def is_type(obj: object, type_: type[_T], /) -> TypeIs[_T]:
     Returns:
         `True` if the object is of the given type, `False` otherwise.
 
+    Examples:
+        >>> is_type(1, int)
+        True
+        >>> is_type(1, str)
+        False
+        >>> is_type([1, 2, 3], list[int])
+        True
+        >>> is_type([1, 2, 3], list[str])
+        False
+
     """
     try:
         typeguard.check_type(obj, type_)
