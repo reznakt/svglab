@@ -14,8 +14,8 @@ from typing_extensions import (
     override,
 )
 
-from svglab import serialize, units
-from svglab.attrparse import utils
+from svglab import mixins, protocols, serialize, units
+from svglab.attrparse import parse
 
 
 AngleUnit: TypeAlias = Literal["deg", "grad", "rad", "turn"] | None
@@ -32,7 +32,11 @@ _convert: Final[units.Converter[Angle, AngleUnit]] = units.make_converter(
 
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
-class Angle(serialize.CustomSerializable):
+class Angle(
+    mixins.AddSub["Angle"],
+    mixins.FloatMulDiv,
+    protocols.CustomSerializable,
+):
     """Represents the SVG `<angle>` type.
 
     An angle is a number optionally followed by a unit. Available units are:
@@ -71,26 +75,15 @@ class Angle(serialize.CustomSerializable):
         value = serialize.serialize(self.value)
         return f"{value}{self.unit or ''}"
 
+    @override
     def __add__(self, other: Angle) -> Self:
         other_value = other.to(self.unit).value
 
         return type(self)(value=self.value + other_value, unit=self.unit)
 
-    def __sub__(self, other: Angle) -> Self:
-        return self + -other
-
-    def __mul__(self, other: Angle) -> Self:
-        other_value = other.to(self.unit).value
-
-        return type(self)(value=self.value * other_value, unit=self.unit)
-
-    def __truediv__(self, other: Angle) -> Self:
-        other_value = other.to(self.unit).value
-
-        return type(self)(value=self.value / other_value, unit=self.unit)
-
-    def __neg__(self) -> Self:
-        return type(self)(value=-self.value, unit=self.unit)
+    @override
+    def __mul__(self, other: float) -> Self:
+        return type(self)(value=self.value * other, unit=self.unit)
 
 
 @lark.v_args(inline=True)
@@ -101,5 +94,5 @@ class _Transformer(lark.Transformer[object, Angle]):
 
 AngleType: TypeAlias = Annotated[
     Angle,
-    utils.get_validator(grammar="angle.lark", transformer=_Transformer()),
+    parse.get_validator(grammar="angle.lark", transformer=_Transformer()),
 ]

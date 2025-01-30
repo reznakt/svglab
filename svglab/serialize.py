@@ -6,17 +6,9 @@ import math
 from collections.abc import Generator, Iterable, MutableSequence
 
 import pydantic
-from typing_extensions import (
-    Final,
-    Literal,
-    Protocol,
-    TypeAlias,
-    TypeIs,
-    overload,
-    runtime_checkable,
-)
+from typing_extensions import Final, Literal, TypeAlias, TypeIs, overload
 
-from svglab import models, utils
+from svglab import models, protocols, utils
 
 
 _ColorMode: TypeAlias = Literal[
@@ -31,25 +23,12 @@ _PathDataCommandMode: TypeAlias = Literal["explicit", "implicit"]
 _Xmlns: TypeAlias = Literal["always", "never", "original"]
 
 
-@runtime_checkable
-class CustomSerializable(Protocol):
-    """Protocol for objects with special serialization behavior.
-
-    When a `Serializable` object is serialized, its `serialize()` method is
-    used to obtain the string representation, instead of using `str()`.
-    """
-
-    def serialize(self) -> str:
-        """Return an SVG-friendly string representation of this object."""
-        ...
-
-
 Serializable: TypeAlias = (
     bool
     | int
     | float
     | str
-    | CustomSerializable
+    | protocols.CustomSerializable
     | Iterable["Serializable"]
 )
 """ Type for objects that can be serialized to a SVG-friendly string. """
@@ -64,7 +43,7 @@ def _is_serializable(value: object, /) -> TypeIs[Serializable]:
         | str
         | MutableSequence
         | tuple
-        | CustomSerializable,
+        | protocols.CustomSerializable,
     )
 
 
@@ -368,7 +347,7 @@ def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:
     result: str
 
     match value:
-        case CustomSerializable():
+        case protocols.CustomSerializable():
             result = value.serialize()
 
             if (

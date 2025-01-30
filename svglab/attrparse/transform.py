@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import abc
 import functools
 import math
 import operator
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 
 import lark
 import pydantic
@@ -19,8 +20,8 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import serialize
-from svglab.attrparse import point, utils
+from svglab import mixins, protocols, serialize, utils
+from svglab.attrparse import parse, point
 
 
 _TransformFunctionName: TypeAlias = Literal[
@@ -41,18 +42,20 @@ class SupportsToMatrix(Protocol):
     def to_matrix(self) -> Matrix: ...
 
     @overload
-    def __matmul__(self, other: SupportsToMatrix) -> Matrix: ...
+    def __matmul__(self, other: SupportsToMatrix, /) -> Matrix: ...
 
     @overload
-    def __matmul__(self, other: point.Point) -> point.Point: ...
+    def __matmul__(self, other: point.Point, /) -> point.Point: ...
 
     @overload
     def __matmul__(
-        self, other: Iterable[point.Point]
+        self, other: Sequence[point.Point], /
     ) -> Iterator[point.Point]: ...
 
     def __matmul__(
-        self, other: SupportsToMatrix | point.Point | Iterable[point.Point]
+        self,
+        other: SupportsToMatrix | point.Point | Sequence[point.Point],
+        /,
     ) -> Matrix | point.Point | Iterator[point.Point]:
         matrix = self.to_matrix()
 
@@ -73,17 +76,24 @@ class SupportsToMatrix(Protocol):
                 )
             case SupportsToMatrix():
                 return matrix @ other.to_matrix()
-            case Iterable():
+            # D is a sequence, so a shallow type check won't do the trick here
+            case Sequence() if utils.is_type(other, Sequence[point.Point]):
                 return (matrix @ p for p in other)
+            case _:
+                # allow other types to define their own __rmatmul__
+                # implementations
+                return NotImplemented
 
 
-class _TransformActionBase(serialize.CustomSerializable, SupportsToMatrix):
+class _TransformFunctionBase(
+    protocols.CustomSerializable, SupportsToMatrix
+):
     pass
 
 
 @final
 @pydantic.dataclasses.dataclass
-class Matrix(_TransformActionBase):
+class Matrix(_TransformFunctionBase):
     a: float
     b: float
     c: float
@@ -102,31 +112,8 @@ class Matrix(_TransformActionBase):
         return self
 
 
-def compose(transforms: Iterable[SupportsToMatrix], /) -> Matrix:
-    """Compose a series of transformations into a single matrix.
-
-    Args:
-        transforms: The transformations to compose.
-
-    Returns:
-        The result of composing the transformations.
-
-    Examples:
-        >>> m1 = Matrix(1, 0, 0, 1, 2, 3)
-        >>> m2 = Matrix(1, 0, 0, 1, 4, 5)
-        >>> m3 = Matrix(1, 0, 0, 1, 6, 7)
-        >>> compose([m1, m2, m3])
-        Matrix(a=1.0, b=0.0, c=0.0, d=1.0, e=12.0, f=15.0)
-
-    """
-    return functools.reduce(
-        operator.matmul,
-        (transform.to_matrix() for transform in transforms),
-    )
-
-
 @pydantic.dataclasses.dataclass
-class _Translate(_TransformActionBase):
+class _Translate(_TransformFunctionBase):
     x: float
     y: float | None = None
 
@@ -154,8 +141,41 @@ class Translate(_Translate):
         super().__init__(x=x, y=y)
 
 
+class PointAddSubWithTranslateRMatmul(
+    protocols.SupportsRMatmul["Translate"],
+    mixins.AddSub[protocols.PointLike],
+    metaclass=abc.ABCMeta,
+):
+    @override
+    def __add__(self, other: protocols.PointLike, /) -> Self:
+        return Translate(other.x, other.y) @ self
+
+
+def compose(transforms: Iterable[SupportsToMatrix], /) -> Matrix:
+    """Compose a series of transformations into a single matrix.
+
+    Args:
+        transforms: The transformations to compose.
+
+    Returns:
+        The result of composing the transformations.
+
+    Examples:
+        >>> m1 = Matrix(1, 0, 0, 1, 2, 3)
+        >>> m2 = Matrix(1, 0, 0, 1, 4, 5)
+        >>> m3 = Matrix(1, 0, 0, 1, 6, 7)
+        >>> compose([m1, m2, m3])
+        Matrix(a=1.0, b=0.0, c=0.0, d=1.0, e=12.0, f=15.0)
+
+    """
+    return functools.reduce(
+        operator.matmul,
+        (transform.to_matrix() for transform in transforms),
+    )
+
+
 @pydantic.dataclasses.dataclass
-class _Scale(_TransformActionBase):
+class _Scale(_TransformFunctionBase):
     x: float
     y: float | None = None
 
@@ -184,7 +204,7 @@ class Scale(_Scale):
 
 
 @pydantic.dataclasses.dataclass
-class _Rotate(_TransformActionBase):
+class _Rotate(_TransformFunctionBase):
     angle: float
     cx: float | None
     cy: float | None
@@ -248,7 +268,7 @@ class Rotate(_Rotate):
 
 @final
 @pydantic.dataclasses.dataclass
-class SkewX(_TransformActionBase):
+class SkewX(_TransformFunctionBase):
     angle: float
 
     @override
@@ -264,7 +284,7 @@ class SkewX(_TransformActionBase):
 
 @final
 @pydantic.dataclasses.dataclass
-class SkewY(_TransformActionBase):
+class SkewY(_TransformFunctionBase):
     angle: float
 
     @override
@@ -295,12 +315,12 @@ class _Transformer(lark.Transformer[object, Transform]):
     skew_y = SkewY
     matrix = Matrix
 
-    transform_ = utils.v_args_to_list
+    transform_ = parse.v_args_to_list
 
 
 TransformType: TypeAlias = Annotated[
     Transform,
-    utils.get_validator(
+    parse.get_validator(
         grammar="transform.lark", transformer=_Transformer()
     ),
 ]

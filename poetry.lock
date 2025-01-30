@@ -1162,6 +1162,25 @@ files = [
 markers = {dev = "python_version < \"3.11\"", test = "python_full_version <= \"3.11.0a6\""}
 
 [[package]]
+name = "typeguard"
+version = "4.4.1"
+description = "Run-time type checker for Python"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "typeguard-4.4.1-py3-none-any.whl", hash = "sha256:9324ec07a27ec67fc54a9c063020ca4c0ae6abad5e9f0f9804ca59aee68c6e21"},
+    {file = "typeguard-4.4.1.tar.gz", hash = "sha256:0d22a89d00b453b47c49875f42b6601b961757541a2e1e0ef517b6e24213c21b"},
+]
+
+[package.dependencies]
+typing-extensions = ">=4.10.0"
+
+[package.extras]
+doc = ["Sphinx (>=7)", "packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme (>=1.3.0)"]
+test = ["coverage[toml] (>=7)", "mypy (>=1.2.0)", "pytest (>=7)"]
+
+[[package]]
 name = "types-beautifulsoup4"
 version = "4.12.0.20241020"
 description = "Typing stubs for beautifulsoup4"
@@ -1263,4 +1282,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "3cf5163285b1c3fe406d04e30b83aa07ca4f6cc99e8008acf2cf1a3e78955dbf"
+content-hash = "730e56ad37b6369984174daa6c2e48ec9083db2c0b66d1eb6a6c2875b9945053"

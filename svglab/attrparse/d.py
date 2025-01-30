@@ -22,9 +22,8 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import errors, models, serialize, utils
-from svglab.attrparse import point
-from svglab.attrparse import utils as parse_utils
+from svglab import errors, mixins, protocols, serialize, utils
+from svglab.attrparse import parse, point, transform
 
 
 _AbsolutePathCommandChar: TypeAlias = Literal[
@@ -46,7 +45,7 @@ class _HasEnd(Protocol):
 
 class _PhysicalPathCommand(
     _PathCommandBase,
-    point.TwoDimensionalMovement["_PhysicalPathCommand"],
+    transform.PointAddSubWithTranslateRMatmul,
     metaclass=abc.ABCMeta,
 ):
     pass
@@ -58,14 +57,40 @@ class ClosePath(_PathCommandBase):
     pass
 
 
+@pydantic.dataclasses.dataclass
+class LineTo(_HasEnd, _PhysicalPathCommand):
+    end: point.Point
+
+    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+        return type(self)(end=other @ self.end)
+
+
 @final
 @pydantic.dataclasses.dataclass
 class HorizontalLineTo(_PhysicalPathCommand):
     x: float
 
+    def to_line(self) -> LineTo:
+        return LineTo(end=point.Point(self.x, 0))
+
+    @overload
+    def __rmatmul__(
+        self, other: transform.Translate | transform.Scale
+    ) -> Self: ...
+
+    @overload
+    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self: ...
+
     @override
-    def __add__(self, other: point.Point, /) -> Self:
-        return type(self)(x=self.x + other.x)
+    def __rmatmul__(
+        self, other: transform.SupportsToMatrix
+    ) -> Self | LineTo:
+        if isinstance(other, transform.Translate | transform.Scale):
+            x, _ = other @ point.Point(self.x, 0)
+
+            return type(self)(x=x)
+
+        return other @ self.to_line()
 
 
 @final
@@ -73,9 +98,27 @@ class HorizontalLineTo(_PhysicalPathCommand):
 class VerticalLineTo(_PhysicalPathCommand):
     y: float
 
+    def to_line(self) -> LineTo:
+        return LineTo(end=point.Point(0, self.y))
+
+    @overload
+    def __rmatmul__(
+        self, other: transform.Translate | transform.Scale
+    ) -> Self: ...
+
+    @overload
+    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self: ...
+
     @override
-    def __add__(self, other: point.Point, /) -> Self:
-        return type(self)(y=self.y + other.y)
+    def __rmatmul__(
+        self, other: transform.SupportsToMatrix
+    ) -> Self | LineTo:
+        if isinstance(other, transform.Translate | transform.Scale):
+            _, y = other @ point.Point(0, self.y)
+
+            return type(self)(y=y)
+
+        return other @ self.to_line()
 
 
 @final
@@ -83,9 +126,8 @@ class VerticalLineTo(_PhysicalPathCommand):
 class SmoothQuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     end: point.Point
 
-    @override
-    def __add__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end + other)
+    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+        return type(self)(end=other @ self.end)
 
 
 @final
@@ -94,10 +136,9 @@ class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
     control2: point.Point
     end: point.Point
 
-    @override
-    def __add__(self, other: point.Point, /) -> Self:
+    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
         return type(self)(
-            control2=self.control2 + other, end=self.end + other
+            control2=other @ self.control2, end=other @ self.end
         )
 
 
@@ -106,18 +147,8 @@ class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
 class MoveTo(_HasEnd, _PhysicalPathCommand):
     end: point.Point
 
-    @override
-    def __add__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end + other)
-
-
-@pydantic.dataclasses.dataclass
-class LineTo(_HasEnd, _PhysicalPathCommand):
-    end: point.Point
-
-    @override
-    def __add__(self, other: point.Point, /) -> Self:
-        return type(self)(end=self.end + other)
+    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+        return type(self)(end=other @ self.end)
 
 
 @final
@@ -126,10 +157,9 @@ class QuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     control: point.Point
     end: point.Point
 
-    @override
-    def __add__(self, other: point.Point, /) -> Self:
+    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
         return type(self)(
-            control=self.control + other, end=self.end + other
+            control=other @ self.control, end=other @ self.end
         )
 
 
@@ -140,12 +170,11 @@ class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
     control2: point.Point
     end: point.Point
 
-    @override
-    def __add__(self, other: point.Point, /) -> Self:
+    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
         return type(self)(
-            control1=self.control1 + other,
-            control2=self.control2 + other,
-            end=self.end + other,
+            control1=other @ self.control1,
+            control2=other @ self.control2,
+            end=other @ self.end,
         )
 
 
@@ -158,14 +187,13 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
     sweep: bool
     end: point.Point
 
-    @override
-    def __add__(self, other: point.Point, /) -> Self:
+    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
         return type(self)(
-            radius=self.radius + other,
+            radius=other @ self.radius,
             angle=self.angle,
             large=self.large,
             sweep=self.sweep,
-            end=self.end + other,
+            end=other @ self.end,
         )
 
 
@@ -415,9 +443,9 @@ def _add_command(
 @final
 class D(
     MutableSequence[PathCommand],
-    point.TwoDimensionalMovement["D"],
-    models.CustomModel,
-    serialize.CustomSerializable,
+    mixins.CustomModel,
+    transform.PointAddSubWithTranslateRMatmul,
+    protocols.CustomSerializable,
 ):
     """A class representing the `d` attribute of a path element.
 
@@ -575,9 +603,7 @@ class D(
 
     @classmethod
     def from_str(cls, text: str) -> Self:
-        d = parse_utils.parse(
-            text, grammar="d.lark", transformer=_Transformer()
-        )
+        d = parse.parse(text, grammar="d.lark", transformer=_Transformer())
 
         assert isinstance(d, cls), f"Expected {cls}, got {type(d)}"
         return d
@@ -865,12 +891,11 @@ class D(
         return len(self.__commands)
 
     @override
-    def __add__(self, other: point.Point) -> Self:
+    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
         return type(self)(
-            command + other
-            if isinstance(command, _PhysicalPathCommand)
-            else command
+            other @ command
             for command in self
+            if isinstance(command, _PhysicalPathCommand)
         )
 
     @override
@@ -891,7 +916,7 @@ class D(
 
 
 @lark.v_args(inline=True)
-@parse_utils.visit_tokens  # there are a few terminals we want to parse
+@parse.visit_tokens  # there are a few terminals we want to parse
 class _Transformer(lark.Transformer[object, D]):
     point = point.Point
     NUMBER = float
@@ -947,8 +972,5 @@ class _Transformer(lark.Transformer[object, D]):
 
 
 DType: TypeAlias = Annotated[
-    D,
-    parse_utils.get_validator(
-        grammar="d.lark", transformer=_Transformer()
-    ),
+    D, parse.get_validator(grammar="d.lark", transformer=_Transformer())
 ]

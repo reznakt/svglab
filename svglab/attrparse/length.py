@@ -12,8 +12,8 @@ from typing_extensions import (
     override,
 )
 
-from svglab import serialize, units
-from svglab.attrparse import utils
+from svglab import mixins, protocols, serialize, units
+from svglab.attrparse import parse
 
 
 LengthUnit: TypeAlias = (
@@ -35,7 +35,11 @@ _convert: Final[units.Converter[Length, LengthUnit]] = (
 
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
-class Length(serialize.CustomSerializable):
+class Length(
+    mixins.AddSub["Length"],
+    mixins.FloatMulDiv,
+    protocols.CustomSerializable,
+):
     """Represents the SVG `<length>` type.
 
     A length is a number optionally followed by a unit. Available units are:
@@ -79,26 +83,15 @@ class Length(serialize.CustomSerializable):
         value = serialize.serialize(self.value)
         return f"{value}{self.unit or ''}"
 
+    @override
     def __add__(self, other: Length) -> Self:
         other_value = other.to(self.unit).value
 
         return type(self)(value=self.value + other_value, unit=self.unit)
 
-    def __sub__(self, other: Length) -> Self:
-        return self + -other
-
-    def __mul__(self, other: Length) -> Self:
-        other_value = other.to(self.unit).value
-
-        return type(self)(value=self.value * other_value, unit=self.unit)
-
-    def __truediv__(self, other: Length) -> Self:
-        other_value = other.to(self.unit).value
-
-        return type(self)(value=self.value / other_value, unit=self.unit)
-
-    def __neg__(self) -> Self:
-        return type(self)(value=-self.value, unit=self.unit)
+    @override
+    def __mul__(self, other: float) -> Self:
+        return type(self)(value=self.value * other, unit=self.unit)
 
 
 @lark.v_args(inline=True)
@@ -109,5 +102,5 @@ class _Transformer(lark.Transformer[object, Length]):
 
 LengthType: TypeAlias = Annotated[
     Length,
-    utils.get_validator(grammar="length.lark", transformer=_Transformer()),
+    parse.get_validator(grammar="length.lark", transformer=_Transformer()),
 ]

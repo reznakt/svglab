@@ -1,56 +1,30 @@
 from __future__ import annotations
 
-import abc
 from collections.abc import Iterator
 
 import lark
 import pydantic
 from typing_extensions import (
     Annotated,
-    Protocol,
     Self,
     SupportsComplex,
     TypeAlias,
-    TypeVar,
     final,
     override,
-    runtime_checkable,
 )
 
 from svglab import mixins, protocols, serialize, utils
-from svglab.attrparse import utils as parse_utils
-
-
-_Supports2DMovementT_co = TypeVar(
-    "_Supports2DMovementT_co", covariant=True, bound="Point"
-)
-
-
-@runtime_checkable
-class SupportsTwoDimensionalMovement(
-    protocols.SupportsFullAddSub["Point", _Supports2DMovementT_co],
-    Protocol[_Supports2DMovementT_co],
-):
-    pass
-
-
-class TwoDimensionalMovement(
-    SupportsTwoDimensionalMovement[_Supports2DMovementT_co],
-    mixins.AddSub["Point", _Supports2DMovementT_co],
-    metaclass=abc.ABCMeta,
-):
-    @override
-    def __sub__(self, other: Point, /) -> _Supports2DMovementT_co:
-        return self + -other
+from svglab.attrparse import parse
 
 
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
 class Point(
     SupportsComplex,
-    TwoDimensionalMovement["Point"],
-    mixins.Mul[float, "Point"],
-    serialize.CustomSerializable,
+    mixins.FloatMulDiv,
+    mixins.AddSub["Point"],
+    protocols.PointLike,
+    protocols.CustomSerializable,
 ):
     """A point in a 2D plane.
 
@@ -137,12 +111,6 @@ class Point(
     def __mul__(self, scalar: float) -> Self:
         return type(self)(self.x * scalar, self.y * scalar)
 
-    def __truediv__(self, scalar: float) -> Self:
-        return type(self)(self.x / scalar, self.y / scalar)
-
-    def __neg__(self) -> Self:
-        return self * -1
-
     @override
     def __eq__(self, other: object) -> bool:
         if not utils.basic_compare(other, self=self):
@@ -167,7 +135,5 @@ class _Transformer(lark.Transformer[object, Point]):
 
 PointType: TypeAlias = Annotated[
     Point,
-    parse_utils.get_validator(
-        grammar="point.lark", transformer=_Transformer()
-    ),
+    parse.get_validator(grammar="point.lark", transformer=_Transformer()),
 ]

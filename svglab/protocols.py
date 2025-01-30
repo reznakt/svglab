@@ -1,16 +1,10 @@
 from __future__ import annotations
 
-import typing_extensions
-from typing_extensions import Protocol, TypeVar, runtime_checkable
-from useful_types import (
-    SupportsAdd,
-    SupportsRAdd,
-    SupportsRSub,
-    SupportsSub,
-)
+import pydantic
+import pydantic_core
+from typing_extensions import Protocol, Self, TypeVar, runtime_checkable
 
 
-_T_co = TypeVar("_T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 
 _AnyStr_contra = TypeVar("_AnyStr_contra", str, bytes, contravariant=True)
@@ -18,95 +12,88 @@ _AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
 
 
 @runtime_checkable
-class SupportsRead(Protocol[_AnyStr_co]):
-    """Protocol for objects that support reading.
+class CustomSerializable(Protocol):
+    """Protocol for objects with special serialization behavior.
 
-    This exists because using `SupportsRead` from `typeshed` causes problems.
-
-    Example:
-    >>> from io import StringIO
-    >>> buf = StringIO()
-    >>> isinstance(buf, SupportsRead)
-    True
-
+    When a `Serializable` object is serialized, its `serialize()` method is
+    used to obtain the string representation, instead of using `str()`.
     """
 
+    def serialize(self) -> str:
+        """Return an SVG-friendly string representation of this object."""
+        ...
+
+
+@runtime_checkable
+class PydanticCompatible(Protocol):
+    """A protocol for classes that can be used as pydantic models."""
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: type, handler: pydantic.GetCoreSchemaHandler
+    ) -> pydantic_core.core_schema.CoreSchema: ...
+
+
+@runtime_checkable
+class SupportsRead(Protocol[_AnyStr_co]):
     def read(self, size: int | None = None, /) -> _AnyStr_co: ...
 
 
 @runtime_checkable
 class SupportsWrite(Protocol[_AnyStr_contra]):
-    """Protocol for objects that support writing.
-
-    This exists because using `SupportsWrite` from `typeshed` causes problems.
-
-    Example:
-    >>> from io import StringIO
-    >>> buf = StringIO()
-    >>> isinstance(buf, SupportsWrite)
-    True
-
-    """
-
     def write(self, data: _AnyStr_contra, /) -> int: ...
 
 
 @runtime_checkable
-class SupportsFullAddSub(
-    SupportsAdd[_T_contra, _T_co],
-    SupportsSub[_T_contra, _T_co],
-    SupportsRAdd[_T_contra, _T_co],
-    SupportsRSub[_T_contra, _T_co],
-    typing_extensions.Protocol,
-):
-    """Protocol for objects that support addition and subtraction.
-
-    This is a combination of `SupportsAdd`, `SupportsSub`, `SupportsRAdd`,
-    and `SupportsRSub`.
-
-    Example:
-    >>> isinstance(1, SupportsFullAddSub)
-    True
-
-    """
+class SupportsAdd(Protocol[_T_contra]):
+    def __add__(self, other: _T_contra, /) -> Self: ...
 
 
 @runtime_checkable
-class SupportsMul(Protocol[_T_contra, _T_co]):
-    """Protocol for objects that support multiplication.
-
-    Example:
-    >>> isinstance(1, SupportsMul)
-    True
-
-    """
-
-    def __mul__(self, other: _T_contra, /) -> _T_co: ...
+class SupportsRAdd(Protocol[_T_contra]):
+    def __radd__(self, other: _T_contra, /) -> Self: ...
 
 
 @runtime_checkable
-class SupportsRMul(Protocol[_T_contra, _T_co]):
-    """Protocol for objects that support right multiplication.
-
-    Example:
-    >>> isinstance(1, SupportsRMul)
-    True
-
-    """
-
-    def __rmul__(self, other: _T_contra, /) -> _T_co: ...
+class SupportsSub(Protocol[_T_contra]):
+    def __sub__(self, other: _T_contra, /) -> Self: ...
 
 
 @runtime_checkable
-class SupportsFullMul(
-    SupportsMul[_T_contra, _T_co],
-    SupportsRMul[_T_contra, _T_co],
-    Protocol[_T_contra, _T_co],
-):
-    """Protocol for objects that support multiplication in both directions.
+class SupportsRSub(Protocol[_T_contra]):
+    def __rsub__(self, other: _T_contra, /) -> Self: ...
 
-    Example:
-    >>> isinstance(1, SupportsFullMul)
-    True
 
-    """
+@runtime_checkable
+class SupportsMul(Protocol[_T_contra]):
+    def __mul__(self, other: _T_contra, /) -> Self: ...
+
+
+@runtime_checkable
+class SupportsRMul(Protocol[_T_contra]):
+    def __rmul__(self, other: _T_contra, /) -> Self: ...
+
+
+@runtime_checkable
+class SupportsTrueDiv(Protocol[_T_contra]):
+    def __truediv__(self, other: _T_contra, /) -> Self: ...
+
+
+class SupportsRTrueDiv(Protocol[_T_contra]):
+    def __rtruediv__(self, other: _T_contra, /) -> Self: ...
+
+
+@runtime_checkable
+class SupportsRMatmul(Protocol[_T_contra]):
+    def __rmatmul__(self, other: _T_contra, /) -> Self: ...
+
+
+@runtime_checkable
+class SupportsNeg(Protocol):
+    def __neg__(self) -> Self: ...
+
+
+@runtime_checkable
+class PointLike(SupportsNeg, Protocol):
+    x: float
+    y: float
