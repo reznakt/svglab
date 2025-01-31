@@ -622,14 +622,14 @@ class D(
     ) -> Self:
         del info
 
-        match value:
-            case str():
-                return cls.from_str(value)
-            case D():
-                return cast(cls, value)
-            case _:
-                msg = f"Expected str or D, got {type(value)}"
-                raise TypeError(msg)
+        if isinstance(value, cls):
+            return value
+
+        if isinstance(value, str):
+            return cls.from_str(value)
+
+        msg = f"Expected str or {cls}, got {type(value)}"
+        raise TypeError(msg)
 
     def __apply_shorthand_formatting(self) -> D:
         """Apply shorthand formatting based on the formatter settings."""
