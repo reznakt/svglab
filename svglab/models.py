@@ -6,7 +6,6 @@ from collections.abc import Callable
 
 import pydantic
 import pydantic_core.core_schema
-from pydantic import Field
 from typing_extensions import (
     Annotated,
     Protocol,
@@ -27,10 +26,8 @@ _T2 = TypeVar("_T2")
 _T3 = TypeVar("_T3")
 _T4 = TypeVar("_T4")
 
-KwOnly: TypeAlias = Annotated[_T_co, Field(kw_only=True)]
-""" Pydantic field for a keyword-only attribute. """
 
-Attr: TypeAlias = KwOnly[_T_co | None]
+Attr: TypeAlias = _T_co | None
 """ Pydantic field for an attribute. """
 
 
