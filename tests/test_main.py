@@ -342,14 +342,14 @@ def test_eq_tag_prefix(prefix: str) -> None:
             d.D()
             .move_to(point.Point(12, 22))
             .arc_to(
-                point.Point(10, y=10),
+                point.Point(10, 10),
                 0,
                 point.Point(12, 2),
                 large=True,
                 sweep=True,
             )
             .arc_to(
-                point.Point(10, y=10),
+                point.Point(10, 10),
                 0,
                 point.Point(12, 22),
                 large=False,

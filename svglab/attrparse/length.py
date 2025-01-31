@@ -7,6 +7,7 @@ from typing_extensions import (
     Final,
     Literal,
     Self,
+    SupportsFloat,
     TypeAlias,
     final,
     override,
@@ -38,6 +39,7 @@ _convert: Final[units.Converter[Length, LengthUnit]] = (
 class Length(
     mixins.AddSub["Length"],
     mixins.FloatMulDiv,
+    SupportsFloat,
     protocols.CustomSerializable,
 ):
     """Represents the SVG `<length>` type.
@@ -92,6 +94,10 @@ class Length(
     @override
     def __mul__(self, other: float) -> Self:
         return type(self)(value=self.value * other, unit=self.unit)
+
+    @override
+    def __float__(self) -> float:
+        return self.to(None).value
 
 
 @lark.v_args(inline=True)

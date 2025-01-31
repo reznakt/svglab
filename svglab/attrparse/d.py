@@ -242,10 +242,10 @@ def _get_end(d: D, command: PathCommand) -> point.Point:
             return _get_end(d, utils.prev(d, command))
         case HorizontalLineTo(x=x):
             end = _get_end(d, utils.prev(d, command))
-            return point.Point(x=x, y=end.y)
+            return point.Point(x, end.y)
         case VerticalLineTo(y=y):
             end = _get_end(d, utils.prev(d, command))
-            return point.Point(x=end.x, y=y)
+            return point.Point(end.x, y)
         case _:
             return command.end
 
@@ -527,14 +527,22 @@ class D(
         return self.__add(LineTo(end=end), relative=relative)
 
     def horizontal_line_to(
-        self, x: float, /, *, relative: bool = False
+        self,
+        x: protocols.SupportsFloatOrIndex,
+        /,
+        *,
+        relative: bool = False,
     ) -> Self:
-        return self.__add(HorizontalLineTo(x=x), relative=relative)
+        return self.__add(HorizontalLineTo(x=float(x)), relative=relative)
 
     def vertical_line_to(
-        self, y: float, /, *, relative: bool = False
+        self,
+        y: protocols.SupportsFloatOrIndex,
+        /,
+        *,
+        relative: bool = False,
     ) -> Self:
-        return self.__add(VerticalLineTo(y=y), relative=relative)
+        return self.__add(VerticalLineTo(y=float(y)), relative=relative)
 
     def quadratic_bezier_to(
         self,
@@ -746,10 +754,10 @@ class D(
                     d.cubic_bezier_to(control1, control2, end)
                 case HorizontalLineTo(x=x) if lines:
                     end = _get_end(d, d[-1])
-                    d.line_to(point.Point(x=x, y=end.y))
+                    d.line_to(point.Point(x, end.y))
                 case VerticalLineTo(y=y) if lines:
                     end = _get_end(d, d[-1])
-                    d.line_to(point.Point(x=end.x, y=y))
+                    d.line_to(point.Point(end.x, y))
                 case _:
                     d.append(command)
         return d

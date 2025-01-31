@@ -9,6 +9,7 @@ from typing_extensions import (
     Final,
     Literal,
     Self,
+    SupportsFloat,
     TypeAlias,
     final,
     override,
@@ -35,6 +36,7 @@ _convert: Final[units.Converter[Angle, AngleUnit]] = units.make_converter(
 class Angle(
     mixins.AddSub["Angle"],
     mixins.FloatMulDiv,
+    SupportsFloat,
     protocols.CustomSerializable,
 ):
     """Represents the SVG `<angle>` type.
@@ -84,6 +86,10 @@ class Angle(
     @override
     def __mul__(self, other: float) -> Self:
         return type(self)(value=self.value * other, unit=self.unit)
+
+    @override
+    def __float__(self) -> float:
+        return self.to(None).value
 
 
 @lark.v_args(inline=True)

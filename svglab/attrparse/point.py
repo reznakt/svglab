@@ -17,12 +17,11 @@ from svglab import mixins, protocols, serialize, utils
 from svglab.attrparse import parse
 
 
-@final
 @pydantic.dataclasses.dataclass(frozen=True)
-class Point(
+class _Point(
     SupportsComplex,
     mixins.FloatMulDiv,
-    mixins.AddSub["Point"],
+    mixins.AddSub["_Point"],
     protocols.PointLike,
     protocols.CustomSerializable,
 ):
@@ -62,6 +61,7 @@ class Point(
     x: float
     y: float
 
+    @override
     @override
     def serialize(self) -> str:
         formatter = serialize.get_current_formatter()
@@ -125,6 +125,18 @@ class Point(
 
     def __complex__(self) -> complex:
         return complex(self.x, self.y)
+
+
+@final
+class Point(_Point):
+    @override
+    def __init__(
+        self,
+        x: protocols.SupportsFloatOrIndex,
+        y: protocols.SupportsFloatOrIndex,
+        /,
+    ) -> None:
+        super().__init__(float(x), float(y))
 
 
 @lark.v_args(inline=True)

@@ -1,10 +1,105 @@
-from typing_extensions import final
+from __future__ import annotations
 
+import itertools
+
+from typing_extensions import final, override
+
+from svglab import models
+from svglab.attrparse import d, length, point
 from svglab.attrs import groups, regular
 from svglab.elements import traits
 
 
 # ! WARNING: `Element` and `ContainerElement` must always go last
+
+
+def _length_or_zero(value: length.Length | None, /) -> length.Length:
+    return value if value is not None else length.Length(0)
+
+
+@final
+class Path(
+    groups.ConditionalProcessing,
+    regular.Class,
+    regular.D,
+    regular.ExternalResourcesRequired,
+    regular.Style,
+    regular.Transform,
+    traits.Shape,
+    traits.Element,
+):
+    pass
+
+
+def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
+    """Convert a basic shape to a `Path` element."""
+    # try to convert to D first, so we don't call convert() if the shape
+    # is not convertible
+    d = basic_shape.to_d()
+
+    path = models.convert(basic_shape, Path)
+    path.d = d
+
+    return path
+
+
+def _points_to_d(element: regular.Points) -> d.D:
+    """Convert an element with a `points` attribute to a `D` instance."""
+    points = element.points if element.points is not None else []
+    path_data = d.D()
+
+    if points:
+        path_data.move_to(points[0])
+
+        for point in itertools.islice(points, 1, None):
+            path_data.line_to(point)
+
+    return path_data
+
+
+def _ellipse_to_d(
+    *,
+    cx: length.Length,
+    cy: length.Length,
+    rx: length.Length,
+    ry: length.Length,
+) -> d.D:
+    """Convert an ellipse to a `D` instance.
+
+    Args:
+        cx: The x-coordinate of the center of the ellipse.
+        cy: The y-coordinate of the center of the ellipse.
+        rx: The x-radius of the ellipse.
+        ry: The y-radius of the ellipse.
+
+    Returns:
+        A `D` instance representing the ellipse.
+
+    References:
+        https://stackoverflow.com/a/10477334
+        https://aleen42.gitbooks.io/wiki/content/Programming/JavaScript/webgl/SVG/convert_shapes_to_path/convert_shapes_to_path.html
+
+    """
+    return (
+        d.D()
+        .move_to(point.Point(cx - rx, cy))
+        .arc_to(
+            point.Point(rx, ry),
+            0,
+            point.Point(2 * rx, 0),
+            large=True,
+            sweep=False,
+            relative=True,
+        )
+        .arc_to(
+            point.Point(rx, ry),
+            0,
+            point.Point(-2 * rx, 0),
+            large=True,
+            sweep=False,
+            relative=True,
+        )
+    )
 
 
 @final
@@ -124,7 +219,17 @@ class Circle(
     traits.BasicShape,
     traits.Element,
 ):
-    pass
+    @override
+    def to_d(self) -> d.D:
+        cx = _length_or_zero(self.cx)
+        cy = _length_or_zero(self.cy)
+        r = _length_or_zero(self.r)
+
+        return _ellipse_to_d(cx=cx, cy=cy, rx=r, ry=r)
+
+    @override
+    def to_path(self) -> Path:
+        return _basic_shape_to_path(self)
 
 
 @final
@@ -197,7 +302,18 @@ class Ellipse(
     traits.BasicShape,
     traits.Element,
 ):
-    pass
+    @override
+    def to_d(self) -> d.D:
+        cx = _length_or_zero(self.cx)
+        cy = _length_or_zero(self.cy)
+        rx = _length_or_zero(self.rx)
+        ry = _length_or_zero(self.ry)
+
+        return _ellipse_to_d(cx=cx, cy=cy, rx=rx, ry=ry)
+
+    @override
+    def to_path(self) -> Path:
+        return _basic_shape_to_path(self)
 
 
 @final
@@ -675,7 +791,20 @@ class Line(
     traits.BasicShape,
     traits.Element,
 ):
-    pass
+    @override
+    def to_d(self) -> d.D:
+        x1 = _length_or_zero(self.x1)
+        y1 = _length_or_zero(self.y1)
+        x2 = _length_or_zero(self.x2)
+        y2 = _length_or_zero(self.y2)
+
+        return (
+            d.D().move_to(point.Point(x1, y1)).line_to(point.Point(x2, y2))
+        )
+
+    @override
+    def to_path(self) -> Path:
+        return _basic_shape_to_path(self)
 
 
 @final
@@ -759,20 +888,6 @@ class Mpath(
 
 
 @final
-class Path(
-    groups.ConditionalProcessing,
-    regular.Class,
-    regular.D,
-    regular.ExternalResourcesRequired,
-    regular.Style,
-    regular.Transform,
-    traits.Shape,
-    traits.Element,
-):
-    pass
-
-
-@final
 class Pattern(
     groups.Xlink,
     regular.Class,
@@ -803,7 +918,13 @@ class Polygon(
     traits.BasicShape,
     traits.Element,
 ):
-    pass
+    @override
+    def to_d(self) -> d.D:
+        return _points_to_d(self).close()
+
+    @override
+    def to_path(self) -> Path:
+        return _basic_shape_to_path(self)
 
 
 @final
@@ -817,7 +938,13 @@ class Polyline(
     traits.BasicShape,
     traits.Element,
 ):
-    pass
+    @override
+    def to_d(self) -> d.D:
+        return _points_to_d(self)
+
+    @override
+    def to_path(self) -> Path:
+        return _basic_shape_to_path(self)
 
 
 @final
@@ -857,7 +984,64 @@ class Rect(
     traits.BasicShape,
     traits.Element,
 ):
-    pass
+    @override
+    def to_d(self) -> d.D:
+        x = _length_or_zero(self.x)
+        y = _length_or_zero(self.y)
+        width = _length_or_zero(self.width)
+        height = _length_or_zero(self.height)
+
+        match self.rx, self.ry:
+            case None, None:
+                rx = ry = length.Length(0)
+            case length.Length(), None:
+                rx = ry = self.rx
+            case None, length.Length():
+                rx = ry = self.ry
+            case length.Length(), length.Length():
+                rx = self.rx
+                ry = self.ry
+
+        return (
+            d.D()
+            .move_to(point.Point(x + rx, y))
+            .horizontal_line_to(x + width - rx)
+            .arc_to(
+                point.Point(rx, ry),
+                0,
+                point.Point(x + width, y + ry),
+                large=False,
+                sweep=True,
+            )
+            .vertical_line_to(y + height - ry)
+            .arc_to(
+                point.Point(rx, ry),
+                0,
+                point.Point(x + width - rx, y + height),
+                large=False,
+                sweep=True,
+            )
+            .horizontal_line_to(x + rx)
+            .arc_to(
+                point.Point(rx, ry),
+                0,
+                point.Point(x, y + height - ry),
+                large=False,
+                sweep=True,
+            )
+            .vertical_line_to(y + ry)
+            .arc_to(
+                point.Point(rx, ry),
+                0,
+                point.Point(x + rx, y),
+                large=False,
+                sweep=True,
+            )
+        )
+
+    @override
+    def to_path(self) -> Path:
+        return _basic_shape_to_path(self)
 
 
 @final

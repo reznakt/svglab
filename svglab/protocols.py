@@ -2,13 +2,24 @@ from __future__ import annotations
 
 import pydantic
 import pydantic_core
-from typing_extensions import Protocol, Self, TypeVar, runtime_checkable
+from typing_extensions import (
+    Protocol,
+    Self,
+    SupportsFloat,
+    SupportsIndex,
+    TypeAlias,
+    TypeVar,
+    runtime_checkable,
+)
 
 
 _T_contra = TypeVar("_T_contra", contravariant=True)
 
 _AnyStr_contra = TypeVar("_AnyStr_contra", str, bytes, contravariant=True)
 _AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
+
+
+SupportsFloatOrIndex: TypeAlias = SupportsFloat | SupportsIndex
 
 
 @runtime_checkable

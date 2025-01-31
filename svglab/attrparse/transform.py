@@ -62,8 +62,8 @@ class SupportsToMatrix(Protocol):
         match other:
             case point.Point(x, y):
                 return point.Point(
-                    x=matrix.a * x + matrix.c * y + matrix.e,
-                    y=matrix.b * x + matrix.d * y + matrix.f,
+                    matrix.a * x + matrix.c * y + matrix.e,
+                    matrix.b * x + matrix.d * y + matrix.f,
                 )
             case Matrix():
                 return Matrix(
