@@ -1,7 +1,7 @@
 from typing_extensions import TypeVar, cast
 
 from svglab.attrparse import length, point, transform
-from svglab.attrs import presentation, regular
+from svglab.attrs import common, presentation, regular
 
 
 _T = TypeVar("_T")
@@ -12,7 +12,8 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
 
     This is a helper function for scaling attributes. If the attribute is a
     number or a non-percentage length, it is scaled by the given factor.
-    Otherwise, the attribute is left unchanged.
+    Otherwise, the attribute is left unchanged. If the attribute is a list or
+    tuple, the function is applied recursively to each element.
 
     Args:
     attr: The attribute to scale.
@@ -36,6 +37,8 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
             return attr
         case int() | float() | length.Length():
             return cast(_T, attr * by)
+        case list() | tuple():
+            return type(attr)(_scale_attr(item, by) for item in attr)
         case _:
             return attr
 
@@ -45,7 +48,8 @@ def _translate_attr(attr: _T, /, by: float) -> _T:
 
     This is a helper function for translating attributes. If the attribute is
     a number or a non-percentage length, it is translated by the given amount.
-    Otherwise, the attribute is left unchanged.
+    Otherwise, the attribute is left unchanged. If the attribute is a list or
+    tuple, the function is applied recursively to each element.
 
     Args:
     attr: The attribute to translate.
@@ -71,6 +75,8 @@ def _translate_attr(attr: _T, /, by: float) -> _T:
             return cast(_T, attr + by)
         case length.Length():
             return attr + length.Length(by)
+        case list() | tuple():
+            return type(attr)(_translate_attr(item, by) for item in attr)
         case _:
             return attr
 
@@ -98,6 +104,8 @@ def scale(tag: object, by: float) -> None:  # noqa: C901, PLR0912
         tag.cx = _scale_attr(tag.cx, by)
     if isinstance(tag, regular.Cy):
         tag.cy = _scale_attr(tag.cy, by)
+    if isinstance(tag, common.FontSize):
+        tag.font_size = _scale_attr(tag.font_size, by)
     if isinstance(tag, regular.Points) and tag.points is not None:
         tag.points = list(transform.Scale(by) @ tag.points)
     if isinstance(tag, regular.D) and tag.d is not None:
