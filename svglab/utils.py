@@ -456,7 +456,15 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     return match.group(1), match.group(2)
 
 
-def is_type(value: object, type_: type[_T], /) -> TypeIs[_T]:
+@overload
+def is_type(value: object, type_: type[_T], /) -> TypeIs[_T]: ...
+
+
+@overload
+def is_type(value: object, type_: object, /) -> bool: ...
+
+
+def is_type(value: object, type_: object, /) -> bool:
     """Check if a value is of a certain type.
 
     Compared to `isinstance`, this function accepts (almost) arbitrary type

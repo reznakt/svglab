@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import functools
 import math
-from collections.abc import Generator, Iterable, MutableSequence
+from collections.abc import Generator, Iterable
 
 import pydantic
 from typing_extensions import Final, Literal, TypeAlias, TypeIs, overload
@@ -35,16 +35,7 @@ Serializable: TypeAlias = (
 
 
 def _is_serializable(value: object, /) -> TypeIs[Serializable]:
-    return isinstance(
-        value,
-        bool
-        | int
-        | float
-        | str
-        | MutableSequence
-        | tuple
-        | protocols.CustomSerializable,
-    )
+    return utils.is_type(value, Serializable)
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
