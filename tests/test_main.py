@@ -342,14 +342,14 @@ def test_eq_tag_prefix(prefix: str) -> None:
             d.D()
             .move_to(point.Point(12, 22))
             .arc_to(
-                point.Point(22, 32),
+                point.Point(10, y=10),
                 0,
                 point.Point(12, 2),
                 large=True,
                 sweep=True,
             )
             .arc_to(
-                point.Point(22, 12),
+                point.Point(10, y=10),
                 0,
                 point.Point(12, 22),
                 large=False,
@@ -486,7 +486,7 @@ def test_path_data_shorthands_idempotent(before: d.D, after: d.D) -> None:
         ("m 1e+02 1e-02", "M100,.01"),
         (
             "M12 22a10 10 0 110-20 10 10 0 010 20z",
-            "M12,22 A22,32 0 1 1 12,2 22,12 0 0 1 12,22 Z",
+            "M12,22 A10,10 0 1 1 12,2 10,10 0 0 1 12,22 Z",
         ),
         (
             "m10,10 h100 v100 l10,10 10,10 z",

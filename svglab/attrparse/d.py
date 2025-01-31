@@ -188,8 +188,12 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
     end: point.Point
 
     def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+        # right now, the radii are not transformed; this is incorrect
+        # TODO: figure out how to transform the radii
+        # (probably by converting to center parameterization, applying the
+        # transform, then converting back to endpoint parameterization)
         return type(self)(
-            radius=other @ self.radius,
+            radius=self.radius,
             angle=self.angle,
             large=self.large,
             sweep=self.sweep,
