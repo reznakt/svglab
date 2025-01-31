@@ -93,7 +93,7 @@ class _TransformFunctionBase(
 
 @final
 @pydantic.dataclasses.dataclass
-class Matrix(_TransformFunctionBase):
+class Matrix(_TransformFunctionBase, mixins.FloatMulDiv):
     a: float
     b: float
     c: float
@@ -108,8 +108,19 @@ class Matrix(_TransformFunctionBase):
         )
 
     @override
-    def to_matrix(self) -> Matrix:
+    def to_matrix(self) -> Self:
         return self
+
+    @override
+    def __mul__(self, other: float) -> Self:
+        return type(self)(
+            a=self.a * other,
+            b=self.b * other,
+            c=self.c * other,
+            d=self.d * other,
+            e=self.e * other,
+            f=self.f * other,
+        )
 
 
 @pydantic.dataclasses.dataclass
