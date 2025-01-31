@@ -152,7 +152,7 @@ class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
 @final
 @pydantic.dataclasses.dataclass
 class ArcTo(_HasEnd, _PhysicalPathCommand):
-    radius: point.Point
+    radii: point.Point
     angle: float
     large: bool
     sweep: bool
@@ -161,7 +161,7 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
     @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(
-            radius=self.radius,
+            radii=self.radii,
             angle=self.angle,
             large=self.large,
             sweep=self.sweep,
@@ -531,7 +531,7 @@ class D(
 
     def arc_to(  # noqa: PLR0913
         self,
-        radius: point.Point,
+        radii: point.Point,
         angle: float,
         end: point.Point,
         *,
@@ -541,11 +541,7 @@ class D(
     ) -> Self:
         return self.__add(
             ArcTo(
-                radius=radius,
-                angle=angle,
-                large=large,
-                sweep=sweep,
-                end=end,
+                radii=radii, angle=angle, large=large, sweep=sweep, end=end
             ),
             relative=relative,
         )
@@ -668,9 +664,9 @@ class D(
                     yield _serialize_command(
                         control2, end, char="S", implicit=implicit
                     )
-                case ArcTo(radius, angle, large, sweep, end):
+                case ArcTo(radii, angle, large, sweep, end):
                     yield _serialize_command(
-                        radius,
+                        radii,
                         angle,
                         large,
                         sweep,
@@ -911,14 +907,14 @@ class _Transformer(lark.Transformer[object, D]):
 
     def arc(
         self,
-        radius: point.Point,
+        radii: point.Point,
         angle: float,
         large: bool,  # noqa: FBT001
         sweep: bool,  # noqa: FBT001
         end: point.Point,
     ) -> ArcTo:
         return ArcTo(
-            radius=radius, angle=angle, large=large, sweep=sweep, end=end
+            radii=radii, angle=angle, large=large, sweep=sweep, end=end
         )
 
     @lark.v_args(inline=False)
