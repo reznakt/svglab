@@ -161,7 +161,7 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
     @override
     def __add__(self, other: point.Point, /) -> Self:
         return type(self)(
-            radius=self.radius + other,
+            radius=self.radius,
             angle=self.angle,
             large=self.large,
             sweep=self.sweep,
