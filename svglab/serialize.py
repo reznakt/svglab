@@ -8,7 +8,7 @@ from collections.abc import Generator, Iterable
 import pydantic
 from typing_extensions import Final, Literal, TypeAlias, TypeIs, overload
 
-from svglab import models, protocols, utils
+from svglab import protocols, utils
 
 
 _ColorMode: TypeAlias = Literal[
@@ -38,7 +38,7 @@ def _is_serializable(value: object, /) -> TypeIs[Serializable]:
     return utils.is_type(value, Serializable)
 
 
-@pydantic.dataclasses.dataclass(frozen=True)
+@pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
 class Formatter:
     """Formatter for serializing SVG elements.
 
@@ -137,46 +137,38 @@ class Formatter:
     """
 
     # colors
-    color_mode: models.KwOnly[_ColorMode] = "auto"
-    alpha_channel: models.KwOnly[AlphaChannelMode] = "float"
+    color_mode: _ColorMode = "auto"
+    alpha_channel: AlphaChannelMode = "float"
 
     # numbers
-    show_decimal_part_if_int: models.KwOnly[bool] = False
-    max_precision: models.KwOnly[int] = pydantic.Field(
-        default=15, ge=0, le=15
+    show_decimal_part_if_int: bool = False
+    max_precision: int = pydantic.Field(default=15, ge=0, le=15)
+    small_number_scientific_threshold: float | None = pydantic.Field(
+        default=1e-6, gt=0, le=0.1
     )
-    small_number_scientific_threshold: models.KwOnly[float | None] = (
-        pydantic.Field(default=1e-6, gt=0, le=0.1)
+    large_number_scientific_threshold: int | None = pydantic.Field(
+        default=int(1e6), gt=0
     )
-    large_number_scientific_threshold: models.KwOnly[int | None] = (
-        pydantic.Field(default=int(1e6), gt=0)
-    )
-    strip_leading_zero: models.KwOnly[bool] = True
+    strip_leading_zero: bool = True
 
     # path data
-    path_data_coordinates: models.KwOnly[_PathDataCoordinateMode] = (
-        "absolute"
-    )
-    path_data_shorthand_line_commands: models.KwOnly[
-        _PathDataShorthandMode
-    ] = "always"
-    path_data_shorthand_curve_commands: models.KwOnly[
-        _PathDataShorthandMode
-    ] = "always"
-    path_data_commands: models.KwOnly[_PathDataCommandMode] = "implicit"
-    path_data_space_before_args: models.KwOnly[bool] = False
+    path_data_coordinates: _PathDataCoordinateMode = "absolute"
+    path_data_shorthand_line_commands: _PathDataShorthandMode = "always"
+    path_data_shorthand_curve_commands: _PathDataShorthandMode = "always"
+    path_data_commands: _PathDataCommandMode = "implicit"
+    path_data_space_before_args: bool = False
 
     # separators
-    list_separator: models.KwOnly[_Separator] = " "
-    point_separator: models.KwOnly[_Separator] = ","
+    list_separator: _Separator = " "
+    point_separator: _Separator = ","
 
     # whitespace
-    indent: models.KwOnly[int] = pydantic.Field(default=2, ge=0)
-    spaces_around_attrs: models.KwOnly[bool] = False
-    spaces_around_function_args: models.KwOnly[bool] = False
+    indent: int = pydantic.Field(default=2, ge=0)
+    spaces_around_attrs: bool = False
+    spaces_around_function_args: bool = False
 
     # misc
-    xmlns: models.KwOnly[_Xmlns] = "original"
+    xmlns: _Xmlns = "original"
 
 
 DEFAULT_FORMATTER: Final = Formatter()
