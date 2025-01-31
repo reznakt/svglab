@@ -456,8 +456,8 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     return match.group(1), match.group(2)
 
 
-def is_type(obj: object, type_: type[_T], /) -> TypeIs[_T]:
-    """Check if an object is of a certain type.
+def is_type(value: object, type_: type[_T], /) -> TypeIs[_T]:
+    """Check if a value is of a certain type.
 
     Compared to `isinstance`, this function accepts (almost) arbitrary type
     annotations and also checks the contents of collections.
@@ -467,11 +467,11 @@ def is_type(obj: object, type_: type[_T], /) -> TypeIs[_T]:
     for limitations and more information.
 
     Args:
-        obj: The object to check.
+        value: The value to check.
         type_: The type to check against.
 
     Returns:
-        `True` if the object is of the given type, `False` otherwise.
+        `True` if the value is of the given type, `False` otherwise.
 
     Examples:
         >>> is_type(1, int)
@@ -485,7 +485,7 @@ def is_type(obj: object, type_: type[_T], /) -> TypeIs[_T]:
 
     """
     try:
-        typeguard.check_type(obj, type_)
+        typeguard.check_type(value, type_)
     except typeguard.TypeCheckError:
         return False
     else:
