@@ -13,11 +13,11 @@ class GraphicsElement(
     pass
 
 
-class Shape(GraphicsElement):
+class Shape(regular.PathLength, GraphicsElement):
     pass
 
 
-class BasicShape(regular.PathLength, Shape):
+class BasicShape(Shape):
     pass
 
 
