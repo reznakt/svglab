@@ -81,6 +81,17 @@ def _translate_attr(attr: _T, /, by: float) -> _T:
             return attr
 
 
+def scale_distance_along_a_path_attrs(tag: object, by: float) -> None:
+    if isinstance(tag, presentation.StrokeDasharray) and isinstance(
+        tag.stroke_dasharray, list
+    ):
+        tag.stroke_dasharray = [
+            _scale_attr(dash, by) for dash in tag.stroke_dasharray
+        ]
+    if isinstance(tag, presentation.StrokeDashoffset):
+        tag.stroke_dashoffset = _scale_attr(tag.stroke_dashoffset, by)
+
+
 def scale(tag: object, by: float) -> None:  # noqa: C901, PLR0912
     if isinstance(tag, regular.Width):
         tag.width = _scale_attr(tag.width, by)
@@ -133,14 +144,7 @@ def scale(tag: object, by: float) -> None:  # noqa: C901, PLR0912
     # no need to scale distance-along-a-path attributes if a custom path length
     # is provided because those attributes and pathLength are proportional
     if not isinstance(tag, regular.PathLength):
-        if isinstance(tag, presentation.StrokeDasharray) and isinstance(
-            tag.stroke_dasharray, list
-        ):
-            tag.stroke_dasharray = [
-                _scale_attr(dash, by) for dash in tag.stroke_dasharray
-            ]
-        if isinstance(tag, presentation.StrokeDashoffset):
-            tag.stroke_dashoffset = _scale_attr(tag.stroke_dashoffset, by)
+        scale_distance_along_a_path_attrs(tag, by)
 
 
 def translate(tag: object, by: point.Point) -> None:  # noqa: C901

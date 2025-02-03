@@ -5,7 +5,7 @@ from typing_extensions import Protocol
 from svglab import models
 from svglab.attrparse import d
 from svglab.attrs import groups, regular
-from svglab.elements import common
+from svglab.elements import common, transforms
 
 
 class Element(groups.Core, groups.Presentation, common.Tag):
@@ -20,7 +20,38 @@ class GraphicsElement(
 
 
 class Shape(regular.PathLength, GraphicsElement):
-    pass
+    def set_path_length(self, value: float) -> None:
+        """Set a new value for the `pathLength` attribute.
+
+        This method sets a new value for the `pathLength` attribute and scales
+        the shape's `stroke-dasharray` and `stroke-dashoffset` attributes
+        so that the visual appearance of the shape remains unchanged.
+
+        The shape must have the `pathLength` defined. The `Length` values
+        of the scaled attributes must be either in percentages (`%`) or
+        convertible to user units. Percentage values are not scaled.
+
+        Args:
+            value: The new value for the `pathLength` attribute. Must be
+                positive.
+
+        Raises:
+            ValueError: If the `value` is not positive.
+            RuntimeError: If the current path length is `None`.
+            SvgUnitConversionError: If the attribute values cannot be converted
+                to user units.
+
+        """
+        if value <= 0:
+            raise ValueError("Path length must be positive")
+
+        if self.pathLength is None:
+            raise RuntimeError("Current pathLength must not be None")
+
+        ratio = value / self.pathLength
+        transforms.scale_distance_along_a_path_attrs(self, ratio)
+
+        self.pathLength = value
 
 
 class _PathLike(Protocol):
