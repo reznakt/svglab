@@ -27,8 +27,8 @@ class Shape(regular.PathLength, GraphicsElement):
         the shape's `stroke-dasharray` and `stroke-dashoffset` attributes
         so that the visual appearance of the shape remains unchanged.
 
-        The shape must have the `pathLength` defined. The `Length` values
-        of the scaled attributes must be either in percentages (`%`) or
+        The shape must have the `pathLength` attribute defined. The `Length`
+        values of the scaled attributes must be either in percentages (`%`) or
         convertible to user units. Percentage values are not scaled.
 
         Args:
