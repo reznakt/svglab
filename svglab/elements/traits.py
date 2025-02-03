@@ -19,7 +19,7 @@ class GraphicsElement(
     pass
 
 
-class Shape(GraphicsElement):
+class Shape(regular.PathLength, GraphicsElement):
     pass
 
 
@@ -27,7 +27,7 @@ class _PathLike(Protocol):
     d: models.Attr[d.D]
 
 
-class BasicShape(regular.PathLength, Shape, metaclass=abc.ABCMeta):
+class BasicShape(Shape, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def to_d(self) -> d.D:
         """Convert this basic shape into path data.
