@@ -85,6 +85,10 @@ class Length(
         value = serialize.serialize(self.value)
         return f"{value}{self.unit or ''}"
 
+    @classmethod
+    def zero(cls) -> Length:
+        return cls(0)
+
     @override
     def __add__(self, other: Length) -> Self:
         other_value = other.to(self.unit).value
@@ -94,6 +98,9 @@ class Length(
     @override
     def __mul__(self, other: float) -> Self:
         return type(self)(value=self.value * other, unit=self.unit)
+
+    def __bool__(self) -> bool:
+        return bool(self.value)
 
     @override
     def __float__(self) -> float:

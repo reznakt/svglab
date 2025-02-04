@@ -121,7 +121,7 @@ class _Point(
         )
 
     def __bool__(self) -> bool:
-        return self == self.zero()
+        return self != self.zero()
 
     def __complex__(self) -> complex:
         return complex(self.x, self.y)

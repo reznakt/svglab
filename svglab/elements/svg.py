@@ -5,6 +5,7 @@ import pathlib
 from typing_extensions import final, overload
 
 from svglab import protocols, serialize
+from svglab.attrparse import point
 from svglab.attrs import groups, regular
 from svglab.elements import traits
 
@@ -106,3 +107,62 @@ class Svg(
 
             if trailing_newline:
                 file.write("\n")
+
+    def set_viewbox(
+        self, viewbox: tuple[float, float, float, float]
+    ) -> None:
+        """Set a new value for the `viewBox` attribute.
+
+        This method sets a new value for the `viewBox` attribute and scales and
+        translates the SVG content so that the visual representation of the SVG
+        remains unchanged.
+
+        If the `viewBox` is not set, the method uses the `width` and `height`
+        attributes to calculate the initial viewBox. If the `width`
+        and `height` attributes are not set, the method raises an exception.
+
+        The new `viewBox` must have the same aspect ratio as the old `viewBox`.
+        If the aspect ratios differ, the method raises an exception.
+
+        Any attributes of type `Length` in the SVG must be convertible to
+        user units. If an attribute is not convertible, the method raises an
+        exception.
+
+        Args:
+        viewbox: A tuple of four numbers representing the new viewBox.
+
+        Raises:
+        ValueError: If `viewBox` is not set and `width` and `height` are not
+            set or if the aspect ratios of the old and new viewBox differ.
+        SvgUnitConversionError: If an attribute is not convertible to user
+            units.
+
+        """
+        if self.viewBox is None:
+            if self.width is None or self.height is None:
+                raise ValueError(
+                    "Either viewBox or width and height must be set"
+                )
+            old_viewbox = (0, 0, self.width, self.height)
+        else:
+            old_viewbox = self.viewBox
+
+        old_min_x = float(old_viewbox[0])
+        old_min_y = float(old_viewbox[1])
+        old_width = float(old_viewbox[2])
+        old_height = float(old_viewbox[3])
+
+        min_x, min_y, width, height = viewbox
+
+        translate = point.Point(min_x - old_min_x, min_y - old_min_y)
+
+        x_scale = width / old_width
+        y_scale = height / old_height
+
+        if x_scale != y_scale:
+            raise ValueError("Aspect ratios of old and new viewBox differ")
+
+        self.scale(x_scale)
+        self.translate(translate)
+
+        self.viewBox = (min_x, min_y, width, height)

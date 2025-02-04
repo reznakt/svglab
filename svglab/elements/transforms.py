@@ -1,5 +1,6 @@
 from typing_extensions import TypeVar, cast
 
+from svglab import utils
 from svglab.attrparse import length, point, transform
 from svglab.attrs import common, presentation, regular
 
@@ -93,6 +94,9 @@ def scale_distance_along_a_path_attrs(tag: object, by: float) -> None:
 
 
 def scale(tag: object, by: float) -> None:  # noqa: C901, PLR0912
+    if utils.is_close(by, 1):
+        return
+
     if isinstance(tag, regular.Width):
         tag.width = _scale_attr(tag.width, by)
     if isinstance(tag, regular.Height):
@@ -121,6 +125,7 @@ def scale(tag: object, by: float) -> None:  # noqa: C901, PLR0912
         tag.points = list(transform.Scale(by) @ tag.points)
     if isinstance(tag, regular.D) and tag.d is not None:
         tag.d = transform.Scale(by) @ tag.d
+    # TODO: handle transform attribute
 
     # these assignments have to be mutually exclusive, because the
     # type checker doesn't know that x being a <number> implies that x is
@@ -147,9 +152,14 @@ def scale(tag: object, by: float) -> None:  # noqa: C901, PLR0912
         scale_distance_along_a_path_attrs(tag, by)
 
 
-def translate(tag: object, by: point.Point) -> None:  # noqa: C901
-    x, y = by
+def translate(tag: object, by: point.Point) -> None:  # noqa: C901, PLR0912
+    if not by:
+        return
 
+    x, y = by
+    zero = length.Length.zero()
+
+    # these attributes are mandatory for the respective elements
     if isinstance(tag, regular.X1):
         tag.x1 = _translate_attr(tag.x1, x)
     if isinstance(tag, regular.Y1):
@@ -158,21 +168,25 @@ def translate(tag: object, by: point.Point) -> None:  # noqa: C901
         tag.x2 = _translate_attr(tag.x2, x)
     if isinstance(tag, regular.Y2):
         tag.y2 = _translate_attr(tag.y2, y)
+
+    # but these are not, so if they are not present, we initialize them to 0
     if isinstance(tag, regular.Cx):
-        tag.cx = _translate_attr(tag.cx, x)
+        tag.cx = _translate_attr(tag.cx or zero, x)
     if isinstance(tag, regular.Cy):
-        tag.cy = _translate_attr(tag.cy, y)
+        tag.cy = _translate_attr(tag.cy or zero, y)
+
+    if isinstance(tag, regular.XNumber):
+        tag.x = _translate_attr(tag.x or 0, x)
+    elif isinstance(tag, regular.XCoordinate):
+        tag.x = _translate_attr(tag.x or zero, x)
+
+    if isinstance(tag, regular.YNumber):
+        tag.y = _translate_attr(tag.y or 0, y)
+    elif isinstance(tag, regular.YCoordinate):
+        tag.y = _translate_attr(tag.y or zero, y)
+
     if isinstance(tag, regular.Points) and tag.points is not None:
         tag.points = list(transform.Translate(x, y) @ tag.points)
     if isinstance(tag, regular.D) and tag.d is not None:
-        tag.d += by
-
-    if isinstance(tag, regular.XNumber):  # noqa: SIM114
-        tag.x = _translate_attr(tag.x, x)
-    elif isinstance(tag, regular.XCoordinate):
-        tag.x = _translate_attr(tag.x, x)
-
-    if isinstance(tag, regular.YNumber):  # noqa: SIM114
-        tag.y = _translate_attr(tag.y, y)
-    elif isinstance(tag, regular.YCoordinate):
-        tag.y = _translate_attr(tag.y, y)
+        tag.d = tag.d + by
+    # TODO: handle transform attribute
