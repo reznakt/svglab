@@ -439,24 +439,6 @@ class TextRendering(common.Attr):
     ] = None
 
 
-class TransformBox(common.Attr):
-    transform_box: models.Attr[
-        Literal[
-            "content-box",
-            "border-box",
-            "fill-box",
-            "stroke-box",
-            "view-box",
-        ]
-    ] = None
-
-
-class TransformOrigin(common.Attr):
-    transform_origin: models.Attr[
-        typedefs.TransformOrigin | typedefs.Inherit
-    ] = None
-
-
 class UnicodeBidi(common.Attr):
     unicode_bidi: models.Attr[
         Literal["normal", "embed", "bidi-override"] | typedefs.Inherit
@@ -505,10 +487,4 @@ class WritingMode(common.Attr):
     writing_mode: models.Attr[
         Literal["lr-tb", "rl-tb", "tb-rl", "lr", "rl", "tb"]
         | typedefs.Inherit
-    ] = None
-
-
-class ZIndex(common.Attr):
-    z_index: models.Attr[
-        typedefs.Integer | typedefs.Auto | typedefs.Inherit
     ] = None
