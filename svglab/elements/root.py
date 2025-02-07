@@ -2,9 +2,10 @@ import contextlib
 import os
 import pathlib
 
+import PIL.Image
 from typing_extensions import overload
 
-from svglab import protocols, serialize
+from svglab import protocols, render, serialize
 from svglab.elements import traits
 
 
@@ -84,3 +85,20 @@ class RootElement(traits.Element):
 
             if trailing_newline:
                 file.write("\n")
+
+    def render(self) -> PIL.Image.Image:
+        """Render this SVG document fragment into a `Pillow` image.
+
+        Returns:
+        The rendered image.
+
+        """
+        return render.render(self.to_xml())
+
+    def show(self) -> None:
+        """Render this SVG document fragment and display it on the screen.
+
+        See `PIL.Image.Image.show` for more information.
+
+        """
+        self.render().show()
