@@ -291,12 +291,10 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
     __children: list[Element] = pydantic.PrivateAttr(default_factory=list)
 
-    @pydantic.computed_field
     @property
     def children(self) -> Generator[Element]:
         yield from self.__children
 
-    @pydantic.computed_field
     @property
     def descendants(self) -> Generator[Element]:
         queue = collections.deque(self.children)
@@ -308,7 +306,6 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
             if isinstance(child, PairedTag):
                 queue.extend(child.children)
 
-    @pydantic.computed_field
     @property
     def parents(self) -> Generator[Element]:
         curr = self.parent
@@ -317,7 +314,6 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
             yield curr
             curr = curr.parent
 
-    @pydantic.computed_field
     @property
     def next_siblings(self) -> Generator[Element]:
         if self.parent is None or not isinstance(self.parent, PairedTag):
@@ -331,7 +327,6 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
             elif sibling is self:
                 should_yield = True
 
-    @pydantic.computed_field
     @property
     def prev_siblings(self) -> Generator[Element]:
         if self.parent is None or not isinstance(self.parent, PairedTag):
@@ -343,7 +338,6 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
             yield sibling
 
-    @pydantic.computed_field
     @property
     def siblings(self) -> Generator[Element]:
         yield from self.prev_siblings
