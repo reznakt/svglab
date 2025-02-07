@@ -581,14 +581,14 @@ class D(
     @classmethod
     def _validate(
         cls, value: object, info: pydantic_core.core_schema.ValidationInfo
-    ) -> Self:
+    ) -> D:
         del info
 
         match value:
             case str():
                 return cls.from_str(value)
             case D():
-                return cast(cls, value)
+                return value
             case _:
                 msg = f"Expected str or D, got {type(value)}"
                 raise TypeError(msg)
