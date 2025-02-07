@@ -19,6 +19,7 @@ from typing_extensions import (
 )
 
 from svglab import constants, errors, models, serialize, utils
+from svglab.attrs import groups
 from svglab.attrs import names as attr_names
 from svglab.elements import names
 
@@ -94,6 +95,14 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def _eq(self, other: Self, /) -> bool: ...
 
+    @property
+    def parents(self) -> Generator[Element]:
+        curr = self.parent
+
+        while curr is not None:
+            yield curr
+            curr = curr.parent
+
     @override
     def __eq__(self, other: object) -> bool:
         if not utils.basic_compare(other, self=self):
@@ -102,7 +111,9 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         return self._eq(other)
 
 
-class Tag(Element, metaclass=abc.ABCMeta):
+class Tag(
+    Element, groups.Core, groups.Presentation, metaclass=abc.ABCMeta
+):
     """A tag.
 
     A tag is an element that has a name and a set of attributes.
@@ -307,14 +318,6 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
                 queue.extend(child.children)
 
     @property
-    def parents(self) -> Generator[Element]:
-        curr = self.parent
-
-        while curr is not None:
-            yield curr
-            curr = curr.parent
-
-    @property
     def next_siblings(self) -> Generator[Element]:
         if self.parent is None or not isinstance(self.parent, PairedTag):
             return
@@ -410,6 +413,9 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
         return tag
 
     @overload
+    def find_all(self, /, *, recursive: bool = True) -> Generator[Tag]: ...
+
+    @overload
     def find_all(
         self, *tags: type[_T_tag], recursive: bool = True
     ) -> Generator[_T_tag]: ...
@@ -426,6 +432,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
         Args:
         tags: The tags to search for. Can be tag names or tag classes.
+            If no search criteria are provided, all tags are returned.
         recursive: If `False`, only search the direct children of the tag,
         otherwise search all descendants.
 
@@ -446,8 +453,9 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
         """
         for child in self.descendants if recursive else self.children:
-            if isinstance(child, Tag) and any(
-                _match_tag(child, search=tag) for tag in tags
+            if isinstance(child, Tag) and (
+                len(tags) == 0
+                or any(_match_tag(child, search=tag) for tag in tags)
             ):
                 yield child
 

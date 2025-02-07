@@ -1,12 +1,22 @@
+from __future__ import annotations
+
+from svglab import bbox
 from svglab.attrs import groups, regular
 from svglab.elements import common
 
 
-class Element(groups.Core, groups.Presentation, common.Tag):
+# common attributes are defined directly on the Tag class
+class Element(common.Tag):
     pass
 
 
+class _GraphicalOperations(Element):
+    def bbox(self) -> bbox.BBox | None:
+        return bbox.bbox(self)
+
+
 class GraphicsElement(
+    _GraphicalOperations,
     groups.GraphicalEvents,  # TODO: check if this is correct
     Element,
 ):
@@ -28,6 +38,7 @@ class AnimationElement(
 
 
 class ContainerElement(
+    _GraphicalOperations,
     groups.GraphicalEvents,  # TODO: check if this is correct
     common.PairedTag,
 ):
