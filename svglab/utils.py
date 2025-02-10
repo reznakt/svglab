@@ -24,32 +24,6 @@ _NestedIterable: TypeAlias = Iterable[_NestedIterableItem[_T]]
 _Map: TypeAlias = Callable[[_T], _NT]
 
 
-def is_empty(iterable: Iterable[object], /) -> bool:
-    """Determine whether an iterable is empty.
-
-    Args:
-        iterable: The iterable to check.
-
-    Returns:
-        `True` if the iterable is empty, `False` otherwise.
-
-    Examples:
-        >>> is_empty([])
-        True
-        >>> is_empty([1, 2, 3])
-        False
-        >>> is_empty(range(0))
-        True
-        >>> is_empty(range(3))
-        False
-
-    """
-    for _ in iterable:
-        return False
-
-    return True
-
-
 def length(iterable: Iterable[_T], /) -> int:
     """Count the number of items in an iterable.
 

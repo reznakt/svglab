@@ -115,16 +115,11 @@ def _convert_element(backend: bs4.PageElement) -> elements.Element | None:
                 {"prefix": backend.prefix, **backend.attrs}, strict=False
             )
 
-            if isinstance(tag, elements.PairedTag):
-                for child in backend.children:
-                    grandchild = _convert_element(child)
+            for child in backend.children:
+                grandchild = _convert_element(child)
 
-                    if grandchild is not None:
-                        tag.add_child(grandchild)
-            elif not utils.is_empty(backend.children):
-                msg = f"Unpaired tag {type(tag)} cannot have children."
-                raise TypeError(msg)
-
+                if grandchild is not None:
+                    tag.add_child(grandchild)
             return tag
         case _:
             return None

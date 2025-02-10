@@ -26,7 +26,7 @@ from svglab.elements import common
 Mask: TypeAlias = npt.NDArray[np.bool_]
 BBox: TypeAlias = tuple[int, int, int, int]
 
-_SvgTagLike: TypeAlias = common.PairedTag
+_SvgTagLike: TypeAlias = common.Tag
 _ImageArray: TypeAlias = npt.NDArray[np.uint8]
 
 _TagT = TypeVar("_TagT", bound=common.Tag)

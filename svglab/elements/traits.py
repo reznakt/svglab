@@ -61,9 +61,7 @@ class _GraphicalOperations(Element):
 
 
 class GraphicsElement(
-    _GraphicalOperations,
-    groups.GraphicalEvents,  # TODO: check if this is correct
-    Element,
+    _GraphicalOperations, groups.GraphicalEvents, Element
 ):
     pass
 
@@ -83,9 +81,7 @@ class AnimationElement(
 
 
 class ContainerElement(
-    _GraphicalOperations,
-    groups.GraphicalEvents,  # TODO: check if this is correct
-    common.PairedTag,
+    _GraphicalOperations, groups.GraphicalEvents, Element
 ):
     pass
 
