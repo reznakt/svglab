@@ -5,7 +5,7 @@ import pathlib
 import PIL.Image
 from typing_extensions import overload
 
-from svglab import protocols, render, serialize
+from svglab import graphics, protocols, serialize
 from svglab.elements import traits
 
 
@@ -93,7 +93,7 @@ class RootElement(traits.Element):
         The rendered image.
 
         """
-        return render.render(self.to_xml())
+        return graphics.render(self.to_xml())
 
     def show(self) -> None:
         """Render this SVG document fragment and display it on the screen.

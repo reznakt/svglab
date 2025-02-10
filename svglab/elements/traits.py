@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from svglab import bbox
+from svglab import graphics
 from svglab.attrs import groups, regular
 from svglab.elements import common
 
@@ -11,7 +11,9 @@ class Element(common.Tag):
 
 
 class _GraphicalOperations(Element):
-    def get_bbox(self, *, visible_only: bool = False) -> bbox.BBox | None:
+    def get_bbox(
+        self, *, visible_only: bool = False
+    ) -> graphics.BBox | None:
         """Compute the bounding box of this element.
 
         The bounding box is the smallest rectangle that contains the entire
@@ -29,9 +31,13 @@ class _GraphicalOperations(Element):
             x_max, y_max)`.
 
         """
-        return bbox.visible_bbox(self) if visible_only else bbox.bbox(self)
+        return (
+            graphics.visible_bbox(self)
+            if visible_only
+            else graphics.bbox(self)
+        )
 
-    def get_mask(self, *, visible_only: bool = False) -> bbox.Mask:
+    def get_mask(self, *, visible_only: bool = False) -> graphics.Mask:
         """Create a mask of this element.
 
         A mask is a 2D boolean array with `True` values where the tag is
@@ -47,7 +53,11 @@ class _GraphicalOperations(Element):
             A 2D boolean array representing the mask of the tag.
 
         """
-        return bbox.visible_mask(self) if visible_only else bbox.mask(self)
+        return (
+            graphics.visible_mask(self)
+            if visible_only
+            else graphics.mask(self)
+        )
 
 
 class GraphicsElement(

@@ -1,15 +1,20 @@
 import copy
+import functools
+import io
 import uuid
 
 import numpy as np
 import numpy.typing as npt
 import PIL.Image
 import PIL.ImageChops
+import resvg_py
 from typing_extensions import (
     Final,
     Protocol,
     TypeAlias,
+    TypeIs,
     TypeVar,
+    cast,
     runtime_checkable,
 )
 
@@ -21,7 +26,7 @@ from svglab.elements import common
 Mask: TypeAlias = npt.NDArray[np.bool_]
 BBox: TypeAlias = tuple[int, int, int, int]
 
-_SvgTag: TypeAlias = common.PairedTag
+_SvgTagLike: TypeAlias = common.PairedTag
 _ImageArray: TypeAlias = npt.NDArray[np.uint8]
 
 _TagT = TypeVar("_TagT", bound=common.Tag)
@@ -34,7 +39,53 @@ class _SupportsRender(Protocol):
     def render(self) -> PIL.Image.Image: ...
 
 
-def _copy_tree(tag: _TagT) -> tuple[_TagT, _SvgTag]:
+def _looks_like_svg(value: object) -> TypeIs[_SvgTagLike]:
+    """Check if a value looks like an SVG tag.
+
+    Acts as a type guard for `_SvgTag`.
+
+    Args:
+        value: The value to check.
+
+    Returns:
+        `True` if the value looks like an SVG tag, otherwise `False`.
+
+    """
+    return isinstance(value, _SvgTagLike) and type(value).__name__ == "Svg"
+
+
+def _bytes_to_pillow(bytes_: bytes) -> PIL.Image.Image:
+    """Convert a byte string to a Pillow image.
+
+    Args:
+        bytes_: The byte string to convert.
+
+    Returns:
+        A Pillow image.
+
+    """
+    fp = io.BytesIO(bytes_)
+
+    return PIL.Image.open(fp)
+
+
+@functools.lru_cache(maxsize=1)
+def render(xml: str) -> PIL.Image.Image:
+    """Render an SVG document fragment into a Pillow image.
+
+    Args:
+    xml: The SVG document fragment to render, as an XML string.
+
+    Returns:
+    The rendered image.
+
+    """
+    raw = cast(bytes, resvg_py.svg_to_bytes(svg_string=xml))
+
+    return _bytes_to_pillow(raw)
+
+
+def _copy_tree(tag: _TagT) -> tuple[_TagT, _SvgTagLike]:
     """Resolve the root `Svg` tag and create a deep copy of the SVG tree.
 
     The source tag is identified in the copied tree and returned for easy
@@ -46,11 +97,14 @@ def _copy_tree(tag: _TagT) -> tuple[_TagT, _SvgTag]:
     Returns:
         A tuple of the copied tag and the root `Svg` tag of the copied tree.
 
+    Raises:
+        ValueError: If the tag is not a part of an SVG tree.
+
     """
     svg = utils.take_last(tag.parents)
 
-    # type(svg) -> tags.Svg
-    assert isinstance(svg, _SvgTag)
+    if not _looks_like_svg(svg):
+        raise ValueError("Tag must be a part of an SVG tree")
 
     original_id = tag.id
     tag.id = uuid.uuid4().hex
@@ -83,6 +137,13 @@ def _render_tree(
         make_tag_visible: Whether to attempt to make the specified tag visible,
             even if it would normally not be rendered (e.g., if due to a
             transparent fill).
+
+    Returns:
+        The rendered image.
+
+    Raises:
+        ValueError: If `make_tag_visible` is `True` and `render_this`
+        is `False`.
 
     """
     if make_tag_visible and not render_this:
