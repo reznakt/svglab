@@ -1,11 +1,12 @@
 import copy
 import uuid
-from collections.abc import Iterator
 
+import numpy as np
+import numpy.typing as npt
 import PIL.Image
-import pydantic
-import typing_extensions
+import PIL.ImageChops
 from typing_extensions import (
+    Final,
     Protocol,
     TypeAlias,
     TypeVar,
@@ -13,12 +14,19 @@ from typing_extensions import (
 )
 
 from svglab import utils
-from svglab.attrparse import point
+from svglab.attrparse import color
 from svglab.elements import common
 
 
-_TagT = TypeVar("_TagT", bound=common.Tag)
+Mask: TypeAlias = npt.NDArray[np.bool_]
+BBox: TypeAlias = tuple[int, int, int, int]
+
 _SvgTag: TypeAlias = common.PairedTag
+_ImageArray: TypeAlias = npt.NDArray[np.uint8]
+
+_TagT = TypeVar("_TagT", bound=common.Tag)
+
+_BLACK: Final = color.Color((0, 0, 0))
 
 
 @runtime_checkable
@@ -26,26 +34,19 @@ class _SupportsRender(Protocol):
     def render(self) -> PIL.Image.Image: ...
 
 
-@pydantic.dataclasses.dataclass(frozen=True)
-class BBox:
-    x_min: pydantic.NonNegativeInt
-    y_min: pydantic.NonNegativeInt
-    x_max: pydantic.NonNegativeInt
-    y_max: pydantic.NonNegativeInt
-
-    def as_tuple(self) -> tuple[int, int, int, int]:
-        return self.x_min, self.y_min, self.x_max, self.y_max
-
-    def as_rect(self) -> typing_extensions.Tuple[point.Point, point.Point]:
-        return point.Point(self.x_min, self.y_min), point.Point(
-            self.x_max, self.y_max
-        )
-
-    def __iter__(self) -> Iterator[int]:
-        return iter(self.as_tuple())
-
-
 def _copy_tree(tag: _TagT) -> tuple[_TagT, _SvgTag]:
+    """Resolve the root `Svg` tag and create a deep copy of the SVG tree.
+
+    The source tag is identified in the copied tree and returned for easy
+    access.
+
+    Args:
+        tag: The tag in the SVG tree to copy.
+
+    Returns:
+        A tuple of the copied tag and the root `Svg` tag of the copied tree.
+
+    """
     svg = utils.take_last(tag.parents)
 
     # type(svg) -> tags.Svg
@@ -66,25 +67,112 @@ def _copy_tree(tag: _TagT) -> tuple[_TagT, _SvgTag]:
     return this, svg
 
 
-def _bbox_render(tag: common.Tag) -> PIL.Image.Image:
+def _render_tree(
+    tag: common.Tag,
+    *,
+    render_this: bool,
+    render_other: bool,
+    make_tag_visible: bool,
+) -> PIL.Image.Image:
+    """Resolve the root `Svg` tag and render the SVG tree to an image.
+
+    Args:
+        tag: The tag in the SVG tree to render.
+        render_this: Whether to render the specified tag.
+        render_other: Whether to render all other tags in the tree.
+        make_tag_visible: Whether to attempt to make the specified tag visible,
+            even if it would normally not be rendered (e.g., if due to a
+            transparent fill).
+
+    """
+    if make_tag_visible and not render_this:
+        raise ValueError(
+            "make_tag_visible cannot be True if render_this is False"
+        )
+
     tag_copy, svg = _copy_tree(tag)
 
     for t in svg.find_all():
-        t.visibility = "hidden"
+        t.visibility = "visible" if render_other else "hidden"
 
-    tag_copy.visibility = "visible"
+    tag_copy.visibility = "visible" if render_this else "hidden"
+
+    if make_tag_visible:
+        del tag_copy.display
+        tag_copy.fill = _BLACK
+        tag_copy.fill_opacity = 1
+        tag_copy.opacity = 1
+        tag_copy.stroke = _BLACK
+        tag_copy.stroke_opacity = 1
+        tag_copy.visibility = "visible"
 
     assert isinstance(svg, _SupportsRender)
     return svg.render()
 
 
+def _mask_to_image(mask: Mask) -> PIL.Image.Image:
+    """Convert boolean mask into an RGBA image.
+
+    Areas where the mask is True are set to solid black. All other areas are
+    fully transparent. This allows convenient use with
+    `PIL.Image.Image.getbbox()`.
+
+    Args:
+        mask: A boolean mask given as an NDArray of shape (x, y), where x
+            and y are the dimensions of the resulting image.
+
+    Returns:
+        An RGBA image representing the mask.
+
+    """
+    x, y = mask.shape
+
+    # create fully transparent image
+    rgba: _ImageArray = np.zeros((x, y, 4), dtype=np.uint8)
+
+    # set to solid black where mask is True
+    rgba[mask, 3] = 255
+
+    return PIL.Image.fromarray(rgba)
+
+
+def mask(tag: common.Tag) -> Mask:
+    img = _render_tree(
+        tag, render_this=True, render_other=False, make_tag_visible=True
+    )
+    array: Mask = np.array(img)
+
+    return array[:, :, 3] > 0  # alpha channel > 0
+
+
+def visible_mask(tag: common.Tag) -> Mask:
+    without_tag = _render_tree(
+        tag, render_this=False, render_other=True, make_tag_visible=False
+    )
+
+    with_tag = _render_tree(
+        tag, render_this=True, render_other=True, make_tag_visible=False
+    )
+
+    without_tag_array: _ImageArray = np.array(without_tag)
+    with_tag_array: _ImageArray = np.array(with_tag)
+
+    diff = np.any(without_tag_array != with_tag_array, axis=2)
+    assert isinstance(diff, np.ndarray)
+
+    return diff
+
+
 def bbox(tag: common.Tag) -> BBox | None:
-    img = _bbox_render(tag)
-    bbox = img.getbbox()
+    img = _render_tree(
+        tag, render_this=True, render_other=False, make_tag_visible=True
+    )
 
-    if bbox is None:
-        return None
+    return img.getbbox()
 
-    x_min, y_min, x_max, y_max = bbox
 
-    return BBox(x_min, y_min, x_max, y_max)
+def visible_bbox(tag: common.Tag) -> BBox | None:
+    mask = visible_mask(tag)
+    img = _mask_to_image(mask)
+
+    return img.getbbox()
