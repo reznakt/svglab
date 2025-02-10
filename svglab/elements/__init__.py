@@ -1,10 +1,4 @@
-from svglab.elements.common import (
-    Element,
-    PairedTag,
-    Tag,
-    TextElement,
-    tag_name,
-)
+from svglab.elements.common import Element, Tag, TextElement, tag_name
 from svglab.elements.names import (
     TAG_NAME_TO_NORMALIZED,
     TAG_NAMES,
@@ -161,7 +155,6 @@ __all__ = [
     "Metadata",
     "MissingGlyph",
     "Mpath",
-    "PairedTag",
     "Path",
     "Pattern",
     "Polygon",

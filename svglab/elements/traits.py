@@ -6,10 +6,7 @@ class Element(groups.Core, groups.Presentation, common.Tag):
     pass
 
 
-class GraphicsElement(
-    groups.GraphicalEvents,  # TODO: check if this is correct
-    Element,
-):
+class GraphicsElement(groups.GraphicalEvents, Element):
     pass
 
 
@@ -27,10 +24,7 @@ class AnimationElement(
     pass
 
 
-class ContainerElement(
-    groups.GraphicalEvents,  # TODO: check if this is correct
-    common.PairedTag,
-):
+class ContainerElement(groups.GraphicalEvents, Element):
     pass
 
 

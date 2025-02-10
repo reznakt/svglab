@@ -77,22 +77,17 @@ graph TD
   Element:::abc --> TextElement
   Element --> Tag
 
-  Tag:::abc --> PairedTag
-
-  PairedTag:::abc --> G
-  PairedTag --> Svg
-  PairedTag --> etc1[...]
-
+  Tag:::abc --> G
+  Tag --> Svg
   Tag --> Rect
   Tag --> Circle
-  Tag --> etc2[...]
+  Tag --> etc1[...]
 
   TextElement:::abc --> RawText
   TextElement --> Comment
   TextElement --> CData
 
   etc1:::etc
-  etc2:::etc
 
   classDef abc stroke:white,stroke-width:2px;
   classDef etc stroke:gray,stroke-width:2px;
