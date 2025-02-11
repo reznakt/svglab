@@ -1,5 +1,4 @@
 import copy
-import functools
 import io
 import uuid
 
@@ -12,21 +11,19 @@ from typing_extensions import (
     Final,
     Protocol,
     TypeAlias,
-    TypeIs,
     TypeVar,
     cast,
     runtime_checkable,
 )
 
 from svglab import utils
-from svglab.attrparse import color
+from svglab.attrparse import color, length
 from svglab.elements import common
 
 
 Mask: TypeAlias = npt.NDArray[np.bool_]
 BBox: TypeAlias = tuple[int, int, int, int]
 
-_SvgTagLike: TypeAlias = common.Tag
 _ImageArray: TypeAlias = npt.NDArray[np.uint8]
 
 _TagT = TypeVar("_TagT", bound=common.Tag)
@@ -35,54 +32,89 @@ _BLACK: Final = color.Color((0, 0, 0))
 
 
 @runtime_checkable
-class _SupportsRender(Protocol):
-    def render(self) -> PIL.Image.Image: ...
+class _SvgTagLike(Protocol):
+    width: length.Length | None
+    height: length.Length | None
+
+    def render(
+        self, width: float | None = None, height: float | None = None
+    ) -> PIL.Image.Image: ...
 
 
-def _looks_like_svg(value: object) -> TypeIs[_SvgTagLike]:
-    """Check if a value looks like an SVG tag.
+def _length_to_user_units(length: length.Length | None) -> float | None:
+    """Convert a length to user units, if possible.
 
-    Acts as a type guard for `_SvgTag`.
-
-    Args:
-        value: The value to check.
-
-    Returns:
-        `True` if the value looks like an SVG tag, otherwise `False`.
-
-    """
-    return isinstance(value, _SvgTagLike) and type(value).__name__ == "Svg"
-
-
-def _bytes_to_pillow(bytes_: bytes) -> PIL.Image.Image:
-    """Convert a byte string to a Pillow image.
+    TODO: replace this with `Length.to()` once merged.
 
     Args:
-        bytes_: The byte string to convert.
+        length: The length to convert, or `None`.
 
     Returns:
-        A Pillow image.
+        The length in user units, or `None` if the length cannot be converted.
 
     """
-    fp = io.BytesIO(bytes_)
+    if length is None:
+        return None
 
-    return PIL.Image.open(fp)
+    match length.unit:
+        case None | "px" | "pt":
+            return length.value
+        case _:
+            return None
 
 
-@functools.lru_cache(maxsize=1)
-def render(xml: str) -> PIL.Image.Image:
-    """Render an SVG document fragment into a Pillow image.
+def render(
+    svg: common.Tag,
+    *,
+    width: float | None = None,
+    height: float | None = None,
+) -> PIL.Image.Image:
+    if not isinstance(svg, _SvgTagLike):
+        raise TypeError("Tag must be an SVG element")
 
-    Args:
-    xml: The SVG document fragment to render, as an XML string.
+    svg_width = _length_to_user_units(svg.width)
+    svg_height = _length_to_user_units(svg.height)
 
-    Returns:
-    The rendered image.
+    if (
+        width is not None
+        and height is not None
+        and svg_width is not None
+        and svg_height is not None
+        and width / height != svg_width / svg_height
+    ):
+        msg = (
+            "Aspect ratio mismatch: "
+            f"{svg.width=}, {svg.height=}, {width=}, {height=}"
+        )
+        raise ValueError(msg)
 
-    """
-    raw = cast(bytes, resvg_py.svg_to_bytes(svg_string=xml))
+    if svg_width is not None and svg_height is not None:
+        if width is not None and height is None:
+            ratio = width / svg_width
+            height = svg_height * ratio
 
-    return _bytes_to_pillow(raw)
+        if width is None and height is not None:
+            ratio = height / svg_height
+            width = svg_width * ratio
+
+    width = width if width is not None else svg_width
+    height = height if height is not None else svg_height
+
+    if width is None or height is None:
+        msg = (
+            "Unable to determine image dimensions: "
+            f"{svg.width=}, {svg.height=}, {width=}, {height=}"
+        )
+        raise ValueError(msg)
+
+    svg = copy.copy(svg)
+
+    svg.width = length.Length(width)
+    svg.height = length.Length(height)
+
+    raw = cast(bytes, resvg_py.svg_to_bytes(svg_string=svg.to_xml()))
+
+    return PIL.Image.open(io.BytesIO(raw))
 
 
 def _copy_tree(tag: _TagT) -> tuple[_TagT, _SvgTagLike]:
@@ -103,8 +135,8 @@ def _copy_tree(tag: _TagT) -> tuple[_TagT, _SvgTagLike]:
     """
     svg = utils.take_last(tag.parents)
 
-    if not _looks_like_svg(svg):
-        raise ValueError("Tag must be a part of an SVG tree")
+    if not isinstance(svg, _SvgTagLike):
+        raise ValueError("Tag must be part of an SVG tree")  # noqa: TRY004
 
     original_id = tag.id
     tag.id = uuid.uuid4().hex
@@ -127,6 +159,8 @@ def _render_tree(
     render_this: bool,
     render_other: bool,
     make_tag_visible: bool,
+    width: float | None = None,
+    height: float | None = None,
 ) -> PIL.Image.Image:
     """Resolve the root `Svg` tag and render the SVG tree to an image.
 
@@ -137,6 +171,10 @@ def _render_tree(
         make_tag_visible: Whether to attempt to make the specified tag visible,
             even if it would normally not be rendered (e.g., if due to a
             transparent fill).
+        width: The width of the rendered image, in pixels. If `None`, the width
+            attribute of the SVG element is used.
+        height: The height of the rendered image, in pixels. If `None`, the
+            height attribute of the SVG element is used.
 
     Returns:
         The rendered image.
@@ -152,6 +190,7 @@ def _render_tree(
         )
 
     tag_copy, svg = _copy_tree(tag)
+    assert isinstance(svg, common.Tag)
 
     for t in svg.find_all():
         t.visibility = "visible" if render_other else "hidden"
@@ -167,8 +206,7 @@ def _render_tree(
         tag_copy.stroke_opacity = 1
         tag_copy.visibility = "visible"
 
-    assert isinstance(svg, _SupportsRender)
-    return svg.render()
+    return svg.render(width=width, height=height)
 
 
 def _mask_to_image(mask: Mask) -> PIL.Image.Image:
@@ -197,22 +235,47 @@ def _mask_to_image(mask: Mask) -> PIL.Image.Image:
     return PIL.Image.fromarray(rgba)
 
 
-def mask(tag: common.Tag) -> Mask:
+def mask(
+    tag: common.Tag,
+    *,
+    width: float | None = None,
+    height: float | None = None,
+) -> Mask:
     img = _render_tree(
-        tag, render_this=True, render_other=False, make_tag_visible=True
+        tag,
+        render_this=True,
+        render_other=False,
+        make_tag_visible=True,
+        width=width,
+        height=height,
     )
     array: Mask = np.array(img)
 
     return array[:, :, 3] > 0  # alpha channel > 0
 
 
-def visible_mask(tag: common.Tag) -> Mask:
+def visible_mask(
+    tag: common.Tag,
+    *,
+    width: float | None = None,
+    height: float | None = None,
+) -> Mask:
     without_tag = _render_tree(
-        tag, render_this=False, render_other=True, make_tag_visible=False
+        tag,
+        render_this=False,
+        render_other=True,
+        make_tag_visible=False,
+        width=width,
+        height=height,
     )
 
     with_tag = _render_tree(
-        tag, render_this=True, render_other=True, make_tag_visible=False
+        tag,
+        render_this=True,
+        render_other=True,
+        make_tag_visible=False,
+        width=width,
+        height=height,
     )
 
     without_tag_array: _ImageArray = np.array(without_tag)

@@ -529,7 +529,7 @@ class D(
             relative=relative,
         )
 
-    def arc_to(  # noqa: PLR0913
+    def arc_to(
         self,
         radii: point.Point,
         angle: float,

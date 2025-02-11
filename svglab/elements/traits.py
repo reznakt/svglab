@@ -37,7 +37,13 @@ class _GraphicalOperations(Element):
             else graphics.bbox(self)
         )
 
-    def get_mask(self, *, visible_only: bool = False) -> graphics.Mask:
+    def get_mask(
+        self,
+        *,
+        visible_only: bool = False,
+        width: float | None = None,
+        height: float | None = None,
+    ) -> graphics.Mask:
         """Create a mask of this element.
 
         A mask is a 2D boolean array with `True` values where the tag is
@@ -48,15 +54,19 @@ class _GraphicalOperations(Element):
             visible_only: If `True`, only the visible parts of the tag are
                 included in the mask. If `False`, the mask includes all parts
                 of the tag (even if they are transparent).
+            width: The width of the mask. If `None`, the width of the root
+                SVG tag in the tree is used.
+            height: The height of the mask. If `None`, the height of the root
+                SVG tag in the tree is used.
 
         Returns:
             A 2D boolean array representing the mask of the tag.
 
         """
         return (
-            graphics.visible_mask(self)
+            graphics.visible_mask(self, width=width, height=height)
             if visible_only
-            else graphics.mask(self)
+            else graphics.mask(self, width=width, height=height)
         )
 
 

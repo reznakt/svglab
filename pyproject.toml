@@ -153,11 +153,12 @@ ignore = [
   "TD003",  # Missing issue link on the line following this TODO
 
   # misc
-  "S101",  # Use of assert detected
-  "TC001", # Move application import into a type-checking block
-  "TC002", # Move third-party import into a type-checking block
-  "TC003", # Move standard library import into a type-checking block
-  "E741",  # Ambiguous variable name
+  "S101",    # Use of assert detected
+  "TC001",   # Move application import into a type-checking block
+  "TC002",   # Move third-party import into a type-checking block
+  "TC003",   # Move standard library import into a type-checking block
+  "E741",    # Ambiguous variable name
+  "PLR0913", # Too many arguments in function definition
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
