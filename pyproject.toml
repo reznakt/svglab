@@ -40,6 +40,9 @@ pydantic = "^2.10.4"
 pydantic-extra-types = "^2.10.1"
 useful-types = "^0.2.1"
 typing-extensions = "^4.12.2"
+resvg-py = "^0.1.6"
+pillow = "^11.1.0"
+numpy = "^2.2.2"
 
 [tool.poetry.group.types.dependencies]
 types-beautifulsoup4 = "^4.12.0.20241020"
@@ -150,11 +153,12 @@ ignore = [
   "TD003",  # Missing issue link on the line following this TODO
 
   # misc
-  "S101",  # Use of assert detected
-  "TC001", # Move application import into a type-checking block
-  "TC002", # Move third-party import into a type-checking block
-  "TC003", # Move standard library import into a type-checking block
-  "E741",  # Ambiguous variable name
+  "S101",    # Use of assert detected
+  "TC001",   # Move application import into a type-checking block
+  "TC002",   # Move third-party import into a type-checking block
+  "TC003",   # Move standard library import into a type-checking block
+  "E741",    # Ambiguous variable name
+  "PLR0913", # Too many arguments in function definition
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
