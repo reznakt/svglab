@@ -629,11 +629,15 @@ class Radius(common.Attr):
 
 
 class RefX(common.Attr):
-    ref_x: models.Attr[typedefs.Coordinate] = None
+    ref_x: models.Attr[
+        Literal["left", "center", "right"] | typedefs.Coordinate
+    ] = None
 
 
 class RefY(common.Attr):
-    ref_y: models.Attr[typedefs.Coordinate] = None
+    ref_y: models.Attr[
+        Literal["top", "center", "bottom"] | typedefs.Coordinate
+    ] = None
 
 
 class RenderingIntent(common.Attr):
