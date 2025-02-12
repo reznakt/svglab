@@ -514,7 +514,9 @@ class Order(common.Attr):
 
 
 class Orient(common.Attr):
-    orient: models.Attr[typedefs.Auto | typedefs.Angle] = None
+    orient: models.Attr[
+        typedefs.Auto | Literal["auto-start-reverse"] | typedefs.Angle
+    ] = None
 
 
 class Orientation(common.Attr):
