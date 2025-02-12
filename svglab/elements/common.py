@@ -21,6 +21,7 @@ from typing_extensions import (
 
 from svglab import constants, errors, models, serialize, utils
 from svglab.attrparse import point
+from svglab.attrs import groups
 from svglab.attrs import names as attr_names
 from svglab.elements import names, transforms
 
@@ -55,7 +56,7 @@ def tag_name(tag: Tag | type[Tag], /) -> names.TagName:
 class Element(models.BaseModel, metaclass=abc.ABCMeta):
     """The base class of the SVG element hierarchy."""
 
-    parent: Element | None = pydantic.Field(default=None, init=False)
+    parent: Tag | None = pydantic.Field(default=None, init=False)
 
     def to_xml(
         self,
@@ -96,6 +97,14 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def _eq(self, other: Self, /) -> bool: ...
 
+    @property
+    def parents(self) -> Generator[Tag]:
+        curr = self.parent
+
+        while curr is not None:
+            yield curr
+            curr = curr.parent
+
     @override
     def __eq__(self, other: object) -> bool:
         if not utils.basic_compare(other, self=self):
@@ -104,15 +113,13 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         return self._eq(other)
 
 
-class Tag(Element, metaclass=abc.ABCMeta):
+class Tag(
+    Element, groups.Core, groups.Presentation, metaclass=abc.ABCMeta
+):
     """A tag.
 
-    A tag is an element that has a name and a set of attributes.
-
-    Tags can be of two types:
-    - paired tags, which have children
-      (for example, `<g></g>`; see `PairedTag`)
-    - unpaired tags, which do not have children (for example, `<rect />`)
+    A tag is an element that has a name, a set of attributes and (optionally)
+    one or more elements as children.
 
     Tags can have standard attributes (for example, `id`, `class`, `color`) and
     non-standard user-defined attributes.
@@ -137,6 +144,8 @@ class Tag(Element, metaclass=abc.ABCMeta):
     )
 
     prefix: str | None = None
+
+    __children: list[Element] = pydantic.PrivateAttr(default_factory=list)
 
     @pydantic.model_validator(mode="after")
     def __validate_extra(self) -> Tag:  # pyright: ignore[reportUnusedFunction]
@@ -173,35 +182,16 @@ class Tag(Element, metaclass=abc.ABCMeta):
 
         return {**standard, **extra}
 
-    @override
-    def to_beautifulsoup_object(self) -> bs4.Tag:
-        tag = bs4.Tag(
-            name=tag_name(self),
-            can_be_empty_element=True,
-            prefix=self.prefix,
-            is_xml=True,
-        )
-
-        for key, value in self.all_attrs().items():
-            tag[key] = serialize.serialize_attr(value)
-
-        if tag_name(self) == "svg":
-            formatter = serialize.get_current_formatter()
-
-            if formatter.xmlns == "always":
-                tag["xmlns"] = constants.SVG_XMLNS
-            elif formatter.xmlns == "never":
-                del tag["xmlns"]
-
-        return tag
-
-    def translate(self, by: point.Point) -> None:
+    def translate(
+        self, by: point.Point, *, recursive: bool = True
+    ) -> None:
         """Translate the tag by the given vector, given as a point.
 
         This method modifies the tag in place.
 
         Args:
         by: The vector by which to translate the tag.
+        recursive: If `True`, also translate all descendants of the tag.
 
         Raises:
         SvgUnitConversionError: If the translation cannot be performed due to
@@ -218,20 +208,49 @@ class Tag(Element, metaclass=abc.ABCMeta):
         """
         try:
             transforms.translate(self, by)
+
+            if recursive:
+                for child in self.find_all(recursive=False):
+                    child.translate(by)
         except errors.SvgUnitConversionError:
             # revert all changes made so far (not great, but probably better
             # than creating a deep copy of the tag)
             with contextlib.suppress(errors.SvgUnitConversionError):
-                transforms.translate(self, -by)
+                self.translate(-by)
 
             raise
 
-    def scale(self, by: float) -> None:
+    def scale(self, by: float, *, recursive: bool = True) -> None:
+        """Scale the tag by the given factor.
+
+        This method modifies the tag in place.
+
+        Args:
+        by: The factor by which to scale the tag.
+        recursive: If `True`, also scale all descendants of the tag.
+
+        Raises:
+        SvgUnitConversionError: If the scaling cannot be performed due to unit
+        conversion issues.
+
+        Example:
+        >>> from svglab import Rect
+        >>> from svglab.attrparse import Length
+        >>> rect = Rect(width=Length(10), height=Length(20))
+        >>> rect.scale(2)
+        >>> rect.width, rect.height
+        (Length(value=20.0, unit=None), Length(value=40.0, unit=None))
+
+        """
         try:
             transforms.scale(self, by)
+
+            if recursive:
+                for child in self.find_all(recursive=False):
+                    child.scale(by)
         except errors.SvgUnitConversionError:
             with contextlib.suppress(errors.SvgUnitConversionError):
-                transforms.scale(self, -by)
+                self.scale(-by)
 
             raise
 
@@ -240,105 +259,18 @@ class Tag(Element, metaclass=abc.ABCMeta):
         return (
             self.prefix == other.prefix
             and self.all_attrs() == other.all_attrs()
+            and all(
+                c1 == c2
+                for c1, c2 in zip(
+                    self.children, other.children, strict=True
+                )
+            )
         )
 
-    def __getitem__(self, key: str) -> str:
-        assert self.model_extra is not None, "model_extra is None"
-        value: str = self.model_extra[key]
-        return value
-
-    def __setitem__(self, key: str, value: str) -> None:
-        assert self.model_extra is not None, "model_extra is None"
-        self.model_extra[key] = value
-
-    def __delitem__(self, key: str) -> None:
-        assert self.model_extra is not None, "model_extra is None"
-        del self.model_extra[key]
-
-    @reprlib.recursive_repr()
-    @override
-    def __repr__(self) -> str:
-        name = type(self).__name__
-        attrs = dict(self.all_attrs())
-
-        if isinstance(self, PairedTag):
-            attrs["children"] = list(self.children)
-
-        attr_repr = ", ".join(
-            f"{key}={value!r}" for key, value in attrs.items()
-        )
-
-        return f"{name}({attr_repr})"
-
-
-def _match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
-    """Check if a tag matches the given search criteria.
-
-    Args:
-    tag: The tag to check.
-    search: The search criteria. Can be a tag name or a tag class.
-
-    Returns:
-    `True` if the tag matches the search criteria, `False` otherwise.
-
-    Examples:
-    >>> from svglab import Rect
-    >>> rect = Rect()
-    >>> _match_tag(rect, search="rect")
-    True
-    >>> _match_tag(rect, search=Rect)
-    True
-    >>> _match_tag(rect, search="circle")
-    False
-
-    """
-    if isinstance(search, type):
-        return isinstance(tag, search)
-
-    return tag_name(tag) == search
-
-
-class TextElement(Element, metaclass=abc.ABCMeta):
-    """The base class of text-based elements.
-
-    Text-based elements are elements that are represented by a single string.
-
-    Common examples of text-based elements in XML are:
-    - `CDATA` sections (`CData`)
-    - comments (`Comment`)
-    - text (`Text`)
-    - processing instructions (for example, `<?xml version="1.0"?>`)
-    - Document Type Definitions (DTDs; for example, `<!DOCTYPE html>`)
-    """
-
-    content: str = pydantic.Field(frozen=True, min_length=1)
-
-    @override
-    def _eq(self, other: Self) -> bool:
-        return self.content == other.content
-
-    @override
-    def __repr__(self) -> str:
-        name = type(self).__name__
-        return f"{name}({self.content!r})"
-
-
-class PairedTag(Tag, metaclass=abc.ABCMeta):
-    """A paired tag.
-
-    A paired tag is a tag that can have children.
-
-    Example: `<g><rect /></g>`
-    """
-
-    __children: list[Element] = pydantic.PrivateAttr(default_factory=list)
-
-    @pydantic.computed_field
     @property
     def children(self) -> Generator[Element]:
         yield from self.__children
 
-    @pydantic.computed_field
     @property
     def descendants(self) -> Generator[Element]:
         queue = collections.deque(self.children)
@@ -347,22 +279,12 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
             child = queue.popleft()
             yield child
 
-            if isinstance(child, PairedTag):
+            if isinstance(child, Tag):
                 queue.extend(child.children)
 
-    @pydantic.computed_field
-    @property
-    def parents(self) -> Generator[Element]:
-        curr = self.parent
-
-        while curr is not None:
-            yield curr
-            curr = curr.parent
-
-    @pydantic.computed_field
     @property
     def next_siblings(self) -> Generator[Element]:
-        if self.parent is None or not isinstance(self.parent, PairedTag):
+        if self.parent is None:
             return
 
         should_yield = False
@@ -373,10 +295,9 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
             elif sibling is self:
                 should_yield = True
 
-    @pydantic.computed_field
     @property
     def prev_siblings(self) -> Generator[Element]:
-        if self.parent is None or not isinstance(self.parent, PairedTag):
+        if self.parent is None:
             return
 
         for sibling in self.parent.children:
@@ -385,7 +306,6 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
             yield sibling
 
-    @pydantic.computed_field
     @property
     def siblings(self) -> Generator[Element]:
         yield from self.prev_siblings
@@ -449,13 +369,33 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
     @override
     def to_beautifulsoup_object(self) -> bs4.Tag:
-        tag = super().to_beautifulsoup_object()
-        tag.can_be_empty_element = False
+        tag = bs4.Tag(
+            name=tag_name(self),
+            can_be_empty_element=True,
+            prefix=self.prefix,
+            is_xml=True,
+        )
+
+        tag.can_be_empty_element = len(self.__children) == 0
+
+        for key, value in self.all_attrs().items():
+            tag[key] = serialize.serialize_attr(value)
 
         for child in self.children:
             tag.append(child.to_beautifulsoup_object())
 
+        if tag_name(self) == "svg":
+            formatter = serialize.get_current_formatter()
+
+            if formatter.xmlns == "always":
+                tag["xmlns"] = constants.SVG_XMLNS
+            elif formatter.xmlns == "never":
+                del tag["xmlns"]
+
         return tag
+
+    @overload
+    def find_all(self, /, *, recursive: bool = True) -> Generator[Tag]: ...
 
     @overload
     def find_all(
@@ -474,6 +414,7 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
         Args:
         tags: The tags to search for. Can be tag names or tag classes.
+            If no search criteria are provided, all tags are returned.
         recursive: If `False`, only search the direct children of the tag,
         otherwise search all descendants.
 
@@ -494,8 +435,9 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
 
         """
         for child in self.descendants if recursive else self.children:
-            if isinstance(child, Tag) and any(
-                _match_tag(child, search=tag) for tag in tags
+            if isinstance(child, Tag) and (
+                len(tags) == 0
+                or any(_match_tag(child, search=tag) for tag in tags)
             ):
                 yield child
 
@@ -569,29 +511,82 @@ class PairedTag(Tag, metaclass=abc.ABCMeta):
             msg = f"Unable to find tag by search criteria: {tags}"
             raise errors.SvgElementNotFoundError(msg) from e
 
+    def __getitem__(self, key: str) -> str:
+        assert self.model_extra is not None, "model_extra is None"
+        value: str = self.model_extra[key]
+        return value
+
+    def __setitem__(self, key: str, value: str) -> None:
+        assert self.model_extra is not None, "model_extra is None"
+        self.model_extra[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        assert self.model_extra is not None, "model_extra is None"
+        del self.model_extra[key]
+
+    @reprlib.recursive_repr()
     @override
-    def translate(
-        self, by: point.Point, *, recursive: bool = True
-    ) -> None:
-        super().translate(by)
+    def __repr__(self) -> str:
+        name = type(self).__name__
+        attrs = dict(self.all_attrs())
 
-        if recursive:
-            for child in self.children:
-                if isinstance(child, Tag):
-                    child.translate(by)
+        if self.__children:
+            attrs["children"] = list(self.children)
 
-    @override
-    def scale(self, by: float, *, recursive: bool = True) -> None:
-        super().scale(by)
+        attr_repr = ", ".join(
+            f"{key}={value!r}" for key, value in attrs.items()
+        )
 
-        if recursive:
-            for child in self.children:
-                if isinstance(child, Tag):
-                    child.scale(by)
+        return f"{name}({attr_repr})"
+
+
+def _match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
+    """Check if a tag matches the given search criteria.
+
+    Args:
+    tag: The tag to check.
+    search: The search criteria. Can be a tag name or a tag class.
+
+    Returns:
+    `True` if the tag matches the search criteria, `False` otherwise.
+
+    Examples:
+    >>> from svglab import Rect
+    >>> rect = Rect()
+    >>> _match_tag(rect, search="rect")
+    True
+    >>> _match_tag(rect, search=Rect)
+    True
+    >>> _match_tag(rect, search="circle")
+    False
+
+    """
+    if isinstance(search, type):
+        return isinstance(tag, search)
+
+    return tag_name(tag) == search
+
+
+class TextElement(Element, metaclass=abc.ABCMeta):
+    """The base class of text-based elements.
+
+    Text-based elements are elements that are represented by a single string.
+
+    Common examples of text-based elements in XML are:
+    - `CDATA` sections (`CData`)
+    - comments (`Comment`)
+    - text (`Text`)
+    - processing instructions (for example, `<?xml version="1.0"?>`)
+    - Document Type Definitions (DTDs; for example, `<!DOCTYPE html>`)
+    """
+
+    content: str = pydantic.Field(frozen=True, min_length=1)
 
     @override
     def _eq(self, other: Self) -> bool:
-        return super()._eq(other) and all(
-            c1 == c2
-            for c1, c2 in zip(self.children, other.children, strict=True)
-        )
+        return self.content == other.content
+
+    @override
+    def __repr__(self) -> str:
+        name = type(self).__name__
+        return f"{name}({self.content!r})"

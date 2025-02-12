@@ -569,7 +569,7 @@ class D(
             relative=relative,
         )
 
-    def arc_to(  # noqa: PLR0913
+    def arc_to(
         self,
         radii: point.Point,
         angle: float,
@@ -619,17 +619,17 @@ class D(
     @classmethod
     def _validate(
         cls, value: object, info: pydantic_core.core_schema.ValidationInfo
-    ) -> Self:
+    ) -> D:
         del info
 
-        if isinstance(value, cls):
-            return value
-
-        if isinstance(value, str):
-            return cls.from_str(value)
-
-        msg = f"Expected str or {cls}, got {type(value)}"
-        raise TypeError(msg)
+        match value:
+            case str():
+                return cls.from_str(value)
+            case D():
+                return value
+            case _:
+                msg = f"Expected str or D, got {type(value)}"
+                raise TypeError(msg)
 
     def __apply_shorthand_formatting(self) -> D:
         """Apply shorthand formatting based on the formatter settings."""

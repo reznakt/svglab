@@ -63,15 +63,12 @@ class Presentation(
     presentation.TextDecoration,
     presentation.TextIndent,
     presentation.TextRendering,
-    presentation.TransformBox,
-    presentation.TransformOrigin,
     presentation.UnicodeBidi,
     presentation.VectorEffect,
     presentation.Visibility,
     presentation.WhiteSpace,
     presentation.WordSpacing,
     presentation.WritingMode,
-    presentation.ZIndex,
 ):
     pass
 

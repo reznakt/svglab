@@ -213,8 +213,6 @@ AttributeName: TypeAlias = Literal[
     "textLength",
     "title",
     "to",
-    "transform-box",
-    "transform-origin",
     "transform",
     "type",
     "u1",
@@ -263,7 +261,6 @@ AttributeName: TypeAlias = Literal[
     "y1",
     "y2",
     "yChannelSelector",
-    "z-index",
     "z",
     "zoomAndPan",
 ]

@@ -5,3 +5,4 @@ __pycache__
 .hypothesis
 .coverage
 dist
+*.png
