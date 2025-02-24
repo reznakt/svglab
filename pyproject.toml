@@ -40,7 +40,7 @@ pydantic = "^2.10.4"
 pydantic-extra-types = "^2.10.1"
 useful-types = "^0.2.1"
 typing-extensions = "^4.12.2"
-resvg-py = "^0.1.6"
+resvg-py = ">=0.1.6,<0.3.0"
 pillow = "^11.1.0"
 numpy = "^2.2.2"
 
