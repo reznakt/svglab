@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy.typing as npt
 import pydantic
 import pydantic_core
 from typing_extensions import (
@@ -11,6 +12,8 @@ from typing_extensions import (
     TypeVar,
     runtime_checkable,
 )
+
+from svglab import utiltypes
 
 
 _T_contra = TypeVar("_T_contra", contravariant=True)
@@ -108,3 +111,16 @@ class SupportsNeg(Protocol):
 class PointLike(SupportsNeg, Protocol):
     x: float
     y: float
+
+
+@runtime_checkable
+class SupportsNpArray(Protocol):
+    def __array__(
+        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
+    ) -> utiltypes.NpFloatArray:
+        """Return a NumPy array representation of this object.
+
+        The `dtype` and `copy` arguments are kept for compatibility with the
+        NumPy API, but they are ignored.
+        """
+        ...

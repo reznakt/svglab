@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import lark
+import numpy as np
+import numpy.typing as npt
 import pydantic
 from typing_extensions import (
     Annotated,
@@ -13,16 +15,17 @@ from typing_extensions import (
     override,
 )
 
-from svglab import mixins, protocols, serialize, utils
-from svglab.attrparse import parse
+from svglab import mixins, protocols, serialize, utils, utiltypes
+from svglab.attrparse import parse, transform
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
 class _Point(
     SupportsComplex,
     mixins.FloatMulDiv,
-    mixins.AddSub["_Point"],
+    transform.PointAddSubWithTranslateRMatmul,
     protocols.PointLike,
+    protocols.SupportsNpArray,
     protocols.CustomSerializable,
 ):
     """A point in a 2D plane.
@@ -100,16 +103,58 @@ class _Point(
         """
         return center + (center - self)
 
+    @override
+    @override
+    def __array__(
+        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
+    ) -> utiltypes.NpFloatArray:
+        del dtype, copy
+
+        return np.array([self.x, self.y, 1])
+
+    @classmethod
+    def from_array(cls, array: utiltypes.NpFloatArray, /) -> Self:
+        """Create a `Point` instance from a NumPy array.
+
+        The array must be a 3-element vector, representing a cartesian point
+        in the real projective plane using homogeneous coordinates.
+
+        The last element of the array must be non-zero (i.e., the point must
+        not be at infinity).
+
+        Args:
+            array: The array to convert to a point.
+
+        Returns:
+            The point represented by the array.
+
+        Raises:
+            ValueError: If the array is not a 3-element vector or if the last
+                element of the array is zero.
+
+        """
+        if array.shape != (3,):
+            raise ValueError("The array must be a 3-element vector")
+
+        x, y, z = array
+
+        try:
+            return cls(x / z, y / z)
+        except ZeroDivisionError as e:
+            # if z is zero, the point is at infinity
+            raise ValueError(
+                "The last element of the array cannot be zero"
+            ) from e
+
     def __iter__(self) -> Iterator[float]:
         return iter((self.x, self.y))
 
     @override
-    def __add__(self, other: Self) -> Self:
-        return type(self)(self.x + other.x, self.y + other.y)
-
-    @override
     def __mul__(self, scalar: float) -> Self:
         return type(self)(self.x * scalar, self.y * scalar)
+
+    def __rmatmul__(self, other: protocols.SupportsNpArray) -> Self:
+        return self.from_array(np.array(other) @ np.array(self))
 
     @override
     def __eq__(self, other: object) -> bool:

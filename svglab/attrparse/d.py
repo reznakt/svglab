@@ -61,7 +61,7 @@ class ClosePath(_PathCommandBase):
 class LineTo(_HasEnd, _PhysicalPathCommand):
     end: point.Point
 
-    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(end=other @ self.end)
 
 
@@ -79,11 +79,11 @@ class HorizontalLineTo(_PhysicalPathCommand):
     ) -> Self: ...
 
     @overload
-    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self: ...
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self: ...
 
     @override
     def __rmatmul__(
-        self, other: transform.SupportsToMatrix
+        self, other: transform.TransformFunction
     ) -> Self | LineTo:
         if isinstance(other, transform.Translate | transform.Scale):
             x, _ = other @ point.Point(self.x, 0)
@@ -107,11 +107,11 @@ class VerticalLineTo(_PhysicalPathCommand):
     ) -> Self: ...
 
     @overload
-    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self: ...
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self: ...
 
     @override
     def __rmatmul__(
-        self, other: transform.SupportsToMatrix
+        self, other: transform.TransformFunction
     ) -> Self | LineTo:
         if isinstance(other, transform.Translate | transform.Scale):
             _, y = other @ point.Point(0, self.y)
@@ -126,7 +126,7 @@ class VerticalLineTo(_PhysicalPathCommand):
 class SmoothQuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     end: point.Point
 
-    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(end=other @ self.end)
 
 
@@ -136,7 +136,7 @@ class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
     control2: point.Point
     end: point.Point
 
-    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(
             control2=other @ self.control2, end=other @ self.end
         )
@@ -147,7 +147,7 @@ class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
 class MoveTo(_HasEnd, _PhysicalPathCommand):
     end: point.Point
 
-    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(end=other @ self.end)
 
 
@@ -157,7 +157,7 @@ class QuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     control: point.Point
     end: point.Point
 
-    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(
             control=other @ self.control, end=other @ self.end
         )
@@ -170,7 +170,7 @@ class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
     control2: point.Point
     end: point.Point
 
-    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(
             control1=other @ self.control1,
             control2=other @ self.control2,
@@ -187,17 +187,29 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
     sweep: bool
     end: point.Point
 
-    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
-        # right now, the radii are not transformed; this is incorrect
-        # TODO: figure out how to transform the radii
-        # (probably by converting to center parameterization, applying the
-        # transform, then converting back to endpoint parameterization)
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+        radii = self.radii
+        angle = self.angle
+        end = self.end
+
+        match other:
+            case transform.Translate():
+                end = other @ end
+            case transform.Scale():
+                radii = other @ radii
+                end = other @ end
+            case transform.Rotate(a):
+                angle += a
+            case _:
+                msg = f"Unsupported transform: {type(other)}"
+                raise TypeError(msg)
+
         return type(self)(
-            radii=self.radii,
-            angle=self.angle,
+            radii=radii,
+            angle=angle,
             large=self.large,
             sweep=self.sweep,
-            end=other @ self.end,
+            end=end,
         )
 
 
@@ -899,7 +911,7 @@ class D(
         return len(self.__commands)
 
     @override
-    def __rmatmul__(self, other: transform.SupportsToMatrix) -> Self:
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(
             other @ command
             for command in self

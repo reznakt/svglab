@@ -122,7 +122,7 @@ def scale(tag: object, by: float) -> None:  # noqa: C901, PLR0912
     if isinstance(tag, common.FontSize):
         tag.font_size = _scale_attr(tag.font_size, by)
     if isinstance(tag, regular.Points) and tag.points is not None:
-        tag.points = list(transform.Scale(by) @ tag.points)
+        tag.points = [transform.Scale(by) @ point for point in tag.points]
     if isinstance(tag, regular.D) and tag.d is not None:
         tag.d = transform.Scale(by) @ tag.d
     # TODO: handle transform attribute
@@ -186,7 +186,9 @@ def translate(tag: object, by: point.Point) -> None:  # noqa: C901, PLR0912
         tag.y = _translate_attr(tag.y or zero, y)
 
     if isinstance(tag, regular.Points) and tag.points is not None:
-        tag.points = list(transform.Translate(x, y) @ tag.points)
+        tag.points = [
+            transform.Translate(x, y) @ point for point in tag.points
+        ]
     if isinstance(tag, regular.D) and tag.d is not None:
         tag.d = tag.d + by
     # TODO: handle transform attribute
