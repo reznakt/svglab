@@ -12,7 +12,6 @@ import numpy.typing as npt
 import pydantic
 from typing_extensions import (
     Annotated,
-    Literal,
     Self,
     TypeAlias,
     final,
@@ -22,19 +21,6 @@ from typing_extensions import (
 
 from svglab import mixins, protocols, serialize, utiltypes
 from svglab.attrparse import parse
-
-
-_TransformFunctionName: TypeAlias = Literal[
-    "translate", "scale", "rotate", "skewX", "skewY", "matrix"
-]
-
-
-def _serialize_transform_function(
-    name: _TransformFunctionName, *args: serialize.Serializable | None
-) -> str:
-    args_str = serialize.serialize(arg for arg in args if arg is not None)
-
-    return f"{name}({args_str})"
 
 
 class _TransformFunctionBase(
@@ -58,7 +44,7 @@ class Matrix(_TransformFunctionBase, mixins.FloatMulDiv):
 
     @override
     def serialize(self) -> str:
-        return _serialize_transform_function(
+        return serialize.serialize_function_call(
             "matrix", self.a, self.b, self.c, self.d, self.e, self.f
         )
 
@@ -148,7 +134,9 @@ class _Translate(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return _serialize_transform_function("translate", self.tx, self.ty)
+        return serialize.serialize_function_call(
+            "translate", self.tx, self.ty
+        )
 
     @override
     def __array__(
@@ -191,7 +179,7 @@ class _Scale(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return _serialize_transform_function("scale", self.sx, self.sy)
+        return serialize.serialize_function_call("scale", self.sx, self.sy)
 
     @override
     def __array__(
@@ -237,7 +225,7 @@ class _Rotate(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return _serialize_transform_function(
+        return serialize.serialize_function_call(
             "rotate", self.angle, self.cx, self.cy
         )
 
@@ -291,7 +279,7 @@ class SkewX(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return _serialize_transform_function("skewX", self.angle)
+        return serialize.serialize_function_call("skewX", self.angle)
 
     @override
     def __array__(
@@ -311,7 +299,7 @@ class SkewY(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return _serialize_transform_function("skewY", self.angle)
+        return serialize.serialize_function_call("skewY", self.angle)
 
     @override
     def __array__(

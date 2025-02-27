@@ -400,3 +400,28 @@ def serialize_attr(value: object, /) -> str:
         result = f" {result} "
 
     return result
+
+
+def serialize_function_call(name: str, *args: Serializable | None) -> str:
+    """Serialize a function call into its SVG representation.
+
+    Args:
+    name: The name of the function.
+    args: The arguments to pass to the function. If an argument is `None`,
+    it is omitted.
+
+    Returns:
+    The SVG representation of the function call.
+
+    Examples:
+    >>> serialize_function_call("rotate", 45)
+    'rotate(45)'
+    >>> serialize_function_call("translate", 10, 20)
+    'translate(10 20)'
+    >>> serialize_function_call("rgb", 255, None, 0, 128)
+    'rgb(255 0 128)'
+
+    """
+    args_str = serialize(arg for arg in args if arg is not None)
+
+    return f"{name}({args_str})"

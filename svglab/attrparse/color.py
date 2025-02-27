@@ -93,7 +93,7 @@ class Color(
             func, args_str = name_and_args
             args = args_str.split(", ")
 
-            result = f"{func}({formatter.list_separator.join(args)})"
+            result = serialize.serialize_function_call(func, *args)
 
         return result
 
