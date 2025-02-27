@@ -5,7 +5,6 @@ import uuid
 import numpy as np
 import numpy.typing as npt
 import PIL.Image
-import PIL.ImageChops
 import resvg_py
 from typing_extensions import (
     Final,
