@@ -201,8 +201,8 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
             case transform.Rotate(a):
                 angle += a
             case _:
-                msg = f"Unsupported transform: {type(other)}"
-                raise TypeError(msg)
+                msg = f"Unsupported transform: {other}"
+                raise NotImplementedError(msg)
 
         return type(self)(
             radii=radii,
