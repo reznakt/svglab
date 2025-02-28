@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import abc
 import functools
-import math
 import operator
 from collections.abc import Iterable
+from types import NotImplementedType
 
+import affine  # TODO: set appropriate epsilon
 import lark
 import numpy as np
 import numpy.typing as npt
@@ -24,17 +25,39 @@ from svglab.attrparse import parse
 
 
 class _TransformFunctionBase(
-    protocols.CustomSerializable, protocols.SupportsNpArray
+    protocols.CustomSerializable, metaclass=abc.ABCMeta
 ):
-    def __rmatmul__(self, other: protocols.SupportsNpArray) -> Matrix:
-        product = np.array(self) @ np.array(other)
+    @abc.abstractmethod
+    def to_affine(self) -> affine.Affine:
+        """Convert the transformation to an `affine.Affine` instance."""
+        ...
 
-        return Matrix.from_array(product)
+    def __array__(
+        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
+    ) -> utiltypes.NpFloatArray:
+        return self.to_affine().__array__(dtype=dtype, copy=copy)
+
+    @overload
+    def __matmul__(  # type: ignore[reportOverlappingOverload]
+        self, other: _TransformFunctionBase
+    ) -> Matrix: ...
+
+    @overload
+    def __matmul__(self, other: object) -> NotImplementedType: ...
+
+    def __matmul__(self, other: object) -> Matrix | NotImplementedType:
+        if not isinstance(other, _TransformFunctionBase):
+            return NotImplemented
+
+        product = self.to_affine() @ other.to_affine()
+        assert isinstance(product, affine.Affine)
+
+        return Matrix.from_affine(product)
 
 
 @final
 @pydantic.dataclasses.dataclass
-class Matrix(_TransformFunctionBase, mixins.FloatMulDiv):
+class Matrix(_TransformFunctionBase):
     a: float
     b: float
     c: float
@@ -49,18 +72,21 @@ class Matrix(_TransformFunctionBase, mixins.FloatMulDiv):
         )
 
     @override
-    def __array__(
-        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
-    ) -> utiltypes.NpFloatArray:
-        del dtype, copy
+    def to_affine(self) -> affine.Affine:
+        # ! affine uses different labels for the matrix elements
 
-        full_matrix = [
-            [self.a, self.c, self.e],
-            [self.b, self.d, self.f],
-            [0, 0, 1],
-        ]
+        return affine.Affine(
+            self.a, self.c, self.e, self.b, self.d, self.f
+        )
 
-        return np.array(full_matrix)
+    @classmethod
+    def from_affine(cls, matrix: affine.Affine, /) -> Self:
+        """Create a `Matrix` instance from an `affine.Affine` instance."""
+        # ! affine uses different labels for the matrix elements
+
+        return cls(
+            matrix.a, matrix.d, matrix.b, matrix.e, matrix.c, matrix.f
+        )
 
     @classmethod
     def from_array(cls, array: utiltypes.NpFloatArray, /) -> Matrix:
@@ -93,39 +119,6 @@ class Matrix(_TransformFunctionBase, mixins.FloatMulDiv):
 
         return cls(a, b, c, d, e, f)
 
-    @override
-    def __mul__(self, other: float) -> Self:
-        return type(self)(
-            a=self.a * other,
-            b=self.b * other,
-            c=self.c * other,
-            d=self.d * other,
-            e=self.e * other,
-            f=self.f * other,
-        )
-
-
-def compose(transforms: Iterable[protocols.SupportsNpArray], /) -> Matrix:
-    """Compose a series of transformations into a single matrix.
-
-    The transformations are applied in the order they are given.
-
-    Args:
-        transforms: The transformations to compose.
-
-    Returns:
-        The result of composing the transformations.
-
-    Examples:
-        >>> m1 = Matrix(1, 0, 0, 1, 2, 3)
-        >>> m2 = Matrix(1, 0, 0, 1, 4, 5)
-        >>> m3 = Matrix(1, 0, 0, 1, 6, 7)
-        >>> compose([m1, m2, m3])
-        Matrix(a=1.0, b=0.0, c=0.0, d=1.0, e=12.0, f=15.0)
-
-    """
-    return functools.reduce(operator.matmul, transforms)
-
 
 @pydantic.dataclasses.dataclass
 class _Translate(_TransformFunctionBase):
@@ -139,15 +132,8 @@ class _Translate(_TransformFunctionBase):
         )
 
     @override
-    def __array__(
-        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
-    ) -> utiltypes.NpFloatArray:
-        del dtype, copy
-
-        tx = self.tx
-        ty = self.ty if self.ty is not None else 0
-
-        return np.array(Matrix(1, 0, 0, 1, tx, ty or 0))
+    def to_affine(self) -> affine.Affine:
+        return affine.Affine.translation(self.tx, self.ty or 0)
 
 
 @final
@@ -162,16 +148,6 @@ class Translate(_Translate):
         super().__init__(tx, ty)
 
 
-class PointAddSubWithTranslateRMatmul(
-    protocols.SupportsRMatmul["Translate"],
-    mixins.AddSub[protocols.PointLike],
-    metaclass=abc.ABCMeta,
-):
-    @override
-    def __add__(self, other: protocols.PointLike, /) -> Self:
-        return Translate(other.x, other.y) @ self
-
-
 @pydantic.dataclasses.dataclass
 class _Scale(_TransformFunctionBase):
     sx: float
@@ -182,15 +158,8 @@ class _Scale(_TransformFunctionBase):
         return serialize.serialize_function_call("scale", self.sx, self.sy)
 
     @override
-    def __array__(
-        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
-    ) -> utiltypes.NpFloatArray:
-        del dtype, copy
-
-        sx = self.sx
-        sy = self.sy if self.sy is not None else self.sx
-
-        return np.array(Matrix(sx, 0, 0, sy, 0, 0))
+    def to_affine(self) -> affine.Affine:
+        return affine.Affine.scale(self.sx, self.sy or self.sx)
 
 
 @final
@@ -230,27 +199,9 @@ class _Rotate(_TransformFunctionBase):
         )
 
     @override
-    def __array__(
-        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
-    ) -> utiltypes.NpFloatArray:
-        del dtype, copy
-
-        a = math.radians(self.angle)
-
-        cos_a = math.cos(a)
-        sin_a = math.sin(a)
-
-        rotation = Matrix(cos_a, sin_a, -sin_a, cos_a, 0, 0)
-
-        if self.cx is None:
-            return np.array(rotation)
-
-        assert self.cy is not None
-
-        return np.array(
-            Translate(self.cx, self.cy)
-            @ rotation
-            @ Translate(-self.cx, -self.cy)
+    def to_affine(self) -> affine.Affine:
+        return affine.Affine.rotation(
+            self.angle, (self.cx or 0, self.cy or 0)
         )
 
 
@@ -282,14 +233,8 @@ class SkewX(_TransformFunctionBase):
         return serialize.serialize_function_call("skewX", self.angle)
 
     @override
-    def __array__(
-        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
-    ) -> utiltypes.NpFloatArray:
-        del dtype, copy
-
-        a = math.radians(self.angle)
-
-        return np.array(Matrix(1, 0, math.tan(a), 1, 0, 0))
+    def to_affine(self) -> affine.Affine:
+        return affine.Affine.shear(x_angle=self.angle)
 
 
 @final
@@ -302,19 +247,47 @@ class SkewY(_TransformFunctionBase):
         return serialize.serialize_function_call("skewY", self.angle)
 
     @override
-    def __array__(
-        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
-    ) -> utiltypes.NpFloatArray:
-        del dtype, copy
-
-        a = math.radians(self.angle)
-
-        return np.array(Matrix(1, math.tan(a), 0, 1, 0, 0))
+    def to_affine(self) -> affine.Affine:
+        return affine.Affine.shear(y_angle=self.angle)
 
 
 TransformFunction: TypeAlias = (
     Translate | Scale | Rotate | SkewX | SkewY | Matrix
 )
+
+
+def compose(transforms: Iterable[TransformFunction], /) -> Matrix:
+    """Compose a series of transformations into a single matrix.
+
+    The transformations are applied in the order they are given.
+
+    Args:
+        transforms: The transformations to compose.
+
+    Returns:
+        The result of composing the transformations.
+
+    Examples:
+        >>> m1 = Matrix(1, 0, 0, 1, 2, 3)
+        >>> m2 = Matrix(1, 0, 0, 1, 4, 5)
+        >>> m3 = Matrix(1, 0, 0, 1, 6, 7)
+        >>> compose([m1, m2, m3])
+        Matrix(a=1.0, b=0.0, c=0.0, d=1.0, e=12.0, f=15.0)
+
+    """
+    return functools.reduce(operator.matmul, transforms)
+
+
+class PointAddSubWithTranslateRMatmul(
+    protocols.SupportsRMatmul["Translate"],
+    mixins.AddSub[protocols.PointLike],
+    metaclass=abc.ABCMeta,
+):
+    @override
+    def __add__(self, other: protocols.PointLike, /) -> Self:
+        return Translate(other.x, other.y) @ self
+
+
 Transform: TypeAlias = list[TransformFunction]
 
 

@@ -3,8 +3,6 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import lark
-import numpy as np
-import numpy.typing as npt
 import pydantic
 from typing_extensions import (
     Annotated,
@@ -25,7 +23,6 @@ class _Point(
     mixins.FloatMulDiv,
     transform.PointAddSubWithTranslateRMatmul,
     protocols.PointLike,
-    protocols.SupportsNpArray,
     protocols.CustomSerializable,
 ):
     """A point in a 2D plane.
@@ -103,15 +100,6 @@ class _Point(
         """
         return center + (center - self)
 
-    @override
-    @override
-    def __array__(
-        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
-    ) -> utiltypes.NpFloatArray:
-        del dtype, copy
-
-        return np.array([self.x, self.y, 1])
-
     @classmethod
     def from_array(cls, array: utiltypes.NpFloatArray, /) -> Self:
         """Create a `Point` instance from a NumPy array.
@@ -147,14 +135,20 @@ class _Point(
             ) from e
 
     def __iter__(self) -> Iterator[float]:
-        return iter((self.x, self.y))
+        yield self.x
+        yield self.y
 
     @override
     def __mul__(self, scalar: float) -> Self:
         return type(self)(self.x * scalar, self.y * scalar)
 
-    def __rmatmul__(self, other: protocols.SupportsNpArray) -> Self:
-        return self.from_array(np.array(other) @ np.array(self))
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+        as_tuple = tuple(self)
+
+        transformed = other.to_affine() @ as_tuple
+        assert utils.is_type(transformed, tuple[float, float])
+
+        return type(self)(*transformed)
 
     @override
     def __eq__(self, other: object) -> bool:
