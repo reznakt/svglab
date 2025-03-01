@@ -93,7 +93,7 @@ def scale_distance_along_a_path_attrs(tag: object, by: float) -> None:
         tag.stroke_dashoffset = _scale_attr(tag.stroke_dashoffset, by)
 
 
-def scale(tag: object, by: float) -> None:  # noqa: C901, PLR0912
+def scale(tag: object, by: float) -> None:
     if utils.is_close(by, 1):
         return
 
@@ -152,7 +152,7 @@ def scale(tag: object, by: float) -> None:  # noqa: C901, PLR0912
         scale_distance_along_a_path_attrs(tag, by)
 
 
-def translate(tag: object, by: point.Point) -> None:  # noqa: C901, PLR0912
+def translate(tag: object, by: point.Point) -> None:
     if not by:
         return
 

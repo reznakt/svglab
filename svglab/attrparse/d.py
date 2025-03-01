@@ -663,7 +663,7 @@ class D(
 
         return d
 
-    def __serialize_commands(self) -> Generator[str]:  # noqa: C901
+    def __serialize_commands(self) -> Generator[str]:
         formatter = serialize.get_current_formatter()
 
         d = self.__apply_shorthand_formatting()

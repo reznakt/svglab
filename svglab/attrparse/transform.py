@@ -291,7 +291,7 @@ def _arctan(tan: float, /) -> float:
     return math.degrees(math.atan(tan))
 
 
-def _swap_transforms(  # noqa: C901, PLR0911
+def _swap_transforms(
     a: _TransformT1, b: _TransformT2, /
 ) -> tuple[_TransformT2, _TransformT1]:
     """Swap transforms, adjusting parameters so that the result is equal.
