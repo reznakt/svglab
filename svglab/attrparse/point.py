@@ -13,7 +13,7 @@ from typing_extensions import (
     override,
 )
 
-from svglab import mixins, protocols, serialize, utils, utiltypes
+from svglab import mixins, protocols, serialize, utils
 from svglab.attrparse import parse, transform
 
 
@@ -99,40 +99,6 @@ class _Point(
 
         """
         return center + (center - self)
-
-    @classmethod
-    def from_array(cls, array: utiltypes.NpFloatArray, /) -> Self:
-        """Create a `Point` instance from a NumPy array.
-
-        The array must be a 3-element vector, representing a cartesian point
-        in the real projective plane using homogeneous coordinates.
-
-        The last element of the array must be non-zero (i.e., the point must
-        not be at infinity).
-
-        Args:
-            array: The array to convert to a point.
-
-        Returns:
-            The point represented by the array.
-
-        Raises:
-            ValueError: If the array is not a 3-element vector or if the last
-                element of the array is zero.
-
-        """
-        if array.shape != (3,):
-            raise ValueError("The array must be a 3-element vector")
-
-        x, y, z = array
-
-        try:
-            return cls(x / z, y / z)
-        except ZeroDivisionError as e:
-            # if z is zero, the point is at infinity
-            raise ValueError(
-                "The last element of the array cannot be zero"
-            ) from e
 
     def __iter__(self) -> Iterator[float]:
         yield self.x

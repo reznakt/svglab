@@ -2,25 +2,26 @@ from __future__ import annotations
 
 import abc
 import functools
+import math
 import operator
 from collections.abc import Iterable
 from types import NotImplementedType
 
 import affine  # TODO: set appropriate epsilon
 import lark
-import numpy as np
 import numpy.typing as npt
 import pydantic
 from typing_extensions import (
     Annotated,
     Self,
     TypeAlias,
+    TypeVar,
     final,
     overload,
     override,
 )
 
-from svglab import mixins, protocols, serialize, utiltypes
+from svglab import mixins, protocols, serialize, utils, utiltypes
 from svglab.attrparse import parse
 
 
@@ -88,48 +89,20 @@ class Matrix(_TransformFunctionBase):
             matrix.a, matrix.d, matrix.b, matrix.e, matrix.c, matrix.f
         )
 
-    @classmethod
-    def from_array(cls, array: utiltypes.NpFloatArray, /) -> Matrix:
-        """Create a `Matrix` instance from a NumPy array.
-
-        The array must be a 3x3 matrix with the last row equal to [0, 0, 1],
-        thus representing a 2D transformation matrix in homogeneous
-        coordinates.
-
-        Args:
-            array: The array to convert to a matrix.
-
-        Returns:
-            The matrix represented by the array.
-
-        Raises:
-            ValueError: If the array is not a 3x3 matrix or if the last row of
-                the array is not equal to [0, 0, 1].
-
-        """
-        if array.shape != (3, 3):
-            raise ValueError("The array must be a 3x3 matrix")
-
-        (a, c, e), (b, d, f), last_row = array
-
-        if not np.array_equal(last_row, [0, 0, 1]):
-            raise ValueError(
-                "The last row of the matrix must be [0, 0, 1]"
-            )
-
-        return cls(a, b, c, d, e, f)
-
 
 @pydantic.dataclasses.dataclass
 class _Translate(_TransformFunctionBase):
     tx: float
-    ty: float | None = None
+    ty: float
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize_function_call(
-            "translate", self.tx, self.ty
-        )
+        args = [self.tx]
+
+        if not utils.is_close(self.ty, 0):
+            args.append(self.ty)
+
+        return serialize.serialize_function_call("translate", *args)
 
     @override
     def to_affine(self) -> affine.Affine:
@@ -144,18 +117,23 @@ class Translate(_Translate):
     @overload
     def __init__(self, tx: float, ty: float, /) -> None: ...
 
-    def __init__(self, tx: float, ty: float | None = None, /) -> None:
+    def __init__(self, tx: float, ty: float = 0, /) -> None:
         super().__init__(tx, ty)
 
 
 @pydantic.dataclasses.dataclass
 class _Scale(_TransformFunctionBase):
     sx: float
-    sy: float | None = None
+    sy: float
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize_function_call("scale", self.sx, self.sy)
+        args = [self.sx]
+
+        if not utils.is_close(self.sx, self.sy):
+            args.append(self.sy)
+
+        return serialize.serialize_function_call("scale", *args)
 
     @override
     def to_affine(self) -> affine.Affine:
@@ -171,32 +149,25 @@ class Scale(_Scale):
     def __init__(self, sx: float, sy: float, /) -> None: ...
 
     def __init__(self, sx: float, sy: float | None = None, /) -> None:
-        super().__init__(sx, sy)
+        super().__init__(sx, sy if sy is not None else sx)
 
 
 @pydantic.dataclasses.dataclass
 class _Rotate(_TransformFunctionBase):
     angle: float
-    cx: float | None
-    cy: float | None
-
-    @pydantic.model_validator(mode="after")
-    def __check_cx_cy(self) -> Self:  # pyright: ignore[reportUnusedFunction]
-        cx_is_none = self.cx is None
-        cy_is_none = self.cy is None
-
-        if cx_is_none != cy_is_none:
-            raise ValueError(
-                "Both cx and cy must either be provided or omitted"
-            )
-
-        return self
+    cx: float
+    cy: float
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize_function_call(
-            "rotate", self.angle, self.cx, self.cy
-        )
+        args = [self.angle]
+
+        if not utils.is_close(self.cx, 0) or not utils.is_close(
+            self.cy, 0
+        ):
+            args.extend([self.cx, self.cy])
+
+        return serialize.serialize_function_call("rotate", *args)
 
     @override
     def to_affine(self) -> affine.Affine:
@@ -214,11 +185,7 @@ class Rotate(_Rotate):
     def __init__(self, angle: float, /, cx: float, cy: float) -> None: ...
 
     def __init__(
-        self,
-        angle: float,
-        /,
-        cx: float | None = None,
-        cy: float | None = None,
+        self, angle: float, /, cx: float = 0, cy: float = 0
     ) -> None:
         super().__init__(angle, cx, cy)
 
@@ -311,3 +278,111 @@ TransformType: TypeAlias = Annotated[
         grammar="transform.lark", transformer=_Transformer()
     ),
 ]
+
+_TransformT1 = TypeVar("_TransformT1", bound=TransformFunction)
+_TransformT2 = TypeVar("_TransformT2", bound=TransformFunction)
+
+
+def _tan(angle: float, /) -> float:
+    return math.tan(math.radians(angle))
+
+
+def _arctan(tan: float, /) -> float:
+    return math.degrees(math.atan(tan))
+
+
+def _swap_transforms(  # noqa: C901, PLR0911
+    a: _TransformT1, b: _TransformT2, /
+) -> tuple[_TransformT2, _TransformT1]:
+    """Swap transforms, adjusting parameters so that the result is equal.
+
+    Args:
+        a: The first transform.
+        b: The second transform.
+
+    Returns:
+        A 2-tuple (b', a') where b' and a' are the adjusted transforms.
+
+    Raises:
+        ValueError: If the transforms cannot be swapped.
+
+    Examples:
+        >>> _swap_transforms(Translate(10, 20), Scale(2, 3))
+        (Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667))
+        >>> _swap_transforms(Scale(2, 3), SkewX(45))
+        (SkewX(angle=33.690067525979785), Scale(sx=2.0, sy=3.0))
+        >>> _swap_transforms(SkewX(45), Translate(10, 20))
+        (Translate(tx=-9.999999999999996, ty=20.0), SkewX(angle=45.0))
+
+    """
+    if type(a) is type(b):
+        return b, a
+
+    match a, b:
+        case Translate(tx, ty), Scale(sx, sy) as scale:
+            return scale, type(a)(tx / sx, ty / sy)
+
+        case Scale(sx, sy) as scale, Translate(tx, ty):
+            return type(b)(sx * tx, sy * ty), scale
+
+        case SkewX(angle) as skew_x, Translate(tx, ty):
+            return type(b)(tx - ty * _tan(angle), ty), skew_x
+
+        case Translate(tx, ty), SkewX(angle) as skew_x:
+            return skew_x, type(a)(tx + ty * _tan(angle), ty)
+
+        case Scale(sx, sy) as scale, SkewX(angle):
+            angle = _arctan(sx / sy * _tan(angle))
+            return type(b)(angle), scale
+
+        case SkewX(angle), Scale(sx, sy) as scale:
+            angle = _arctan(sy / sx * _tan(angle))
+            return scale, type(a)(angle)
+
+        case SkewY(angle) as skew_y, Translate(tx, ty):
+            return type(b)(tx, ty - tx * _tan(angle)), skew_y
+
+        case Translate(tx, ty), SkewY(angle) as skew_y:
+            return skew_y, type(a)(tx, ty + tx * _tan(angle))
+
+        case Scale(sx, sy) as scale, SkewY(angle):
+            angle = _arctan(sy / sx * _tan(angle))
+            return type(b)(angle), scale
+
+        case SkewY(angle), Scale(sx, sy) as scale:
+            angle = _arctan(sx / sy * _tan(angle))
+
+            return scale, type(a)(angle)
+        case _:
+            msg = f"Swapping {type(a)} and {type(b)} is not supported"
+            raise ValueError(msg)
+
+
+def prepend_transform_list(
+    transform: Iterable[TransformFunction], func: TransformFunction
+) -> list[TransformFunction]:
+    """Prepend a transformation to a list of transformations.
+
+    The parameters of the transformations are adjusted so that the result is
+    visually equivalent to appending the original transformation to the list.
+
+    Args:
+        transform: A sequence of transformations.
+        func: The transformation to prepend.
+
+    Returns:
+        A new list of transformations with the transformation prepended.
+
+    Examples:
+        >>> prepend_transform_list([Translate(10, 20)], Scale(2, 3))
+        [Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667)]
+
+    """
+    result = [*transform, func]
+
+    for i in range(len(result) - 1, 0, -1):
+        result[i - 1], result[i] = _swap_transforms(
+            result[i - 1], result[i]
+        )
+
+    return result
