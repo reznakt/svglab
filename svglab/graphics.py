@@ -16,7 +16,7 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import utils
+from svglab import errors, utils
 from svglab.attrparse import color, length
 from svglab.elements import common
 
@@ -44,8 +44,6 @@ class _SvgTagLike(Protocol):
 def _length_to_user_units(length: length.Length | None) -> float | None:
     """Convert a length to user units, if possible.
 
-    TODO: replace this with `Length.to()` once merged.
-
     Args:
         length: The length to convert, or `None`.
 
@@ -56,11 +54,10 @@ def _length_to_user_units(length: length.Length | None) -> float | None:
     if length is None:
         return None
 
-    match length.unit:
-        case None | "px" | "pt":
-            return length.value
-        case _:
-            return None
+    try:
+        return float(length)
+    except errors.SvgUnitConversionError:
+        return None
 
 
 def render(
