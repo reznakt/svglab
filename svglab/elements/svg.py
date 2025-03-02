@@ -6,7 +6,7 @@ import PIL.Image
 from typing_extensions import final, overload
 
 from svglab import graphics, protocols, serialize
-from svglab.attrparse import point
+from svglab.attrparse import transform
 from svglab.attrs import groups, regular
 from svglab.elements import traits
 
@@ -155,16 +155,17 @@ class Svg(
 
         min_x, min_y, width, height = viewbox
 
-        translate = point.Point(min_x - old_min_x, min_y - old_min_y)
+        tx = min_x - old_min_x
+        ty = min_y - old_min_y
 
-        x_scale = width / old_width
-        y_scale = height / old_height
+        sx = width / old_width
+        sy = height / old_height
 
-        if x_scale != y_scale:
+        if sx != sy:
             raise ValueError("Aspect ratios of old and new viewBox differ")
 
-        self.scale(x_scale)
-        self.translate(translate)
+        self.apply_transformation(transform.Scale(sx, sy))
+        self.apply_transformation(transform.Translate(tx, ty))
 
         self.viewBox = (min_x, min_y, width, height)
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import abc
 import collections
-import contextlib
+import itertools
 import reprlib
 import sys
 from collections.abc import Generator, Mapping
@@ -20,7 +20,7 @@ from typing_extensions import (
 )
 
 from svglab import constants, errors, models, serialize, utils
-from svglab.attrparse import point
+from svglab.attrparse import length, transform
 from svglab.attrs import groups
 from svglab.attrs import names as attr_names
 from svglab.elements import names, transforms
@@ -182,77 +182,62 @@ class Tag(
 
         return {**standard, **extra}
 
-    def translate(
-        self, by: point.Point, *, recursive: bool = True
+    def __check_lengths_convertible_to_user_units(
+        self, *, recursive: bool = True
     ) -> None:
-        """Translate the tag by the given vector, given as a point.
-
-        This method modifies the tag in place.
+        """Check if all length attributes are convertible to user units.
 
         Args:
-        by: The vector by which to translate the tag.
-        recursive: If `True`, also translate all descendants of the tag.
+        recursive: If `True`, check all descendant tags as well.
 
         Raises:
-        SvgUnitConversionError: If the translation cannot be performed due to
-        unit conversion issues.
-
-        Example:
-        >>> from svglab import Rect
-        >>> from svglab.attrparse import Point, Length
-        >>> rect = Rect(x=Length(10), y=Length(20))
-        >>> rect.translate(Point(1, 2))
-        >>> rect.x, rect.y
-        (Length(value=11.0, unit=None), Length(value=22.0, unit=None))
+        SvgLengthConversionError: If a length attribute is not convertible
+        to user units.
 
         """
-        try:
-            transforms.translate(self, by)
+        for tag in itertools.chain(
+            [self], self.find_all(recursive=recursive)
+        ):
+            for attr in tag.standard_attrs().values():
+                if not isinstance(attr, length.Length):
+                    continue
 
-            if recursive:
-                for child in self.find_all(recursive=False):
-                    child.translate(by)
-        except errors.SvgUnitConversionError:
-            # revert all changes made so far (not great, but probably better
-            # than creating a deep copy of the tag)
-            with contextlib.suppress(errors.SvgUnitConversionError):
-                self.translate(-by)
+                attr.to(None)
 
-            raise
-
-    def scale(self, by: float, *, recursive: bool = True) -> None:
-        """Scale the tag by the given factor.
-
-        This method modifies the tag in place.
+    def apply_transformation(
+        self,
+        transformation: transform.TransformFunction,
+        /,
+        *,
+        recursive: bool = True,
+    ) -> None:
+        """Apply a transformation to the attributes of the tag.
 
         Args:
-        by: The factor by which to scale the tag.
-        recursive: If `True`, also scale all descendants of the tag.
+        transformation: The transformation to apply.
+        recursive: If `True`, apply the transformation to all descendant tags
+        as well.
 
         Raises:
-        SvgUnitConversionError: If the scaling cannot be performed due to unit
-        conversion issues.
-
-        Example:
-        >>> from svglab import Rect
-        >>> from svglab.attrparse import Length
-        >>> rect = Rect(width=Length(10), height=Length(20))
-        >>> rect.scale(2)
-        >>> rect.width, rect.height
-        (Length(value=20.0, unit=None), Length(value=40.0, unit=None))
+        ValueError: If the transformation is not supported.
+        SvgLengthConversionError: If a length attribute is not convertible
+        to user units.
 
         """
-        try:
-            transforms.scale(self, by)
+        self.__check_lengths_convertible_to_user_units(recursive=recursive)
 
-            if recursive:
-                for child in self.find_all(recursive=False):
-                    child.scale(by)
-        except errors.SvgUnitConversionError:
-            with contextlib.suppress(errors.SvgUnitConversionError):
-                self.scale(-by)
+        match transformation:
+            case transform.Translate():
+                transforms.translate(self, transformation)
+            case transform.Scale():
+                transforms.scale(self, transformation)
+            case _:
+                msg = f"Unsupported transformation: {transformation}"
+                raise ValueError(msg)
 
-            raise
+        if recursive:
+            for child in self.find_all(recursive=False):
+                child.apply_transformation(transformation)
 
     @override
     def _eq(self, other: Self) -> bool:

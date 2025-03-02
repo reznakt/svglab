@@ -1,7 +1,7 @@
 from typing_extensions import TypeVar, cast
 
 from svglab import utils
-from svglab.attrparse import length, point, transform
+from svglab.attrparse import length, transform
 from svglab.attrs import common, presentation, regular
 
 
@@ -93,102 +93,106 @@ def scale_distance_along_a_path_attrs(tag: object, by: float) -> None:
         tag.stroke_dashoffset = _scale_attr(tag.stroke_dashoffset, by)
 
 
-def scale(tag: object, by: float) -> None:
-    if utils.is_close(by, 1):
+def scale(tag: object, scale: transform.Scale) -> None:
+    if not utils.is_close(scale.sx, scale.sy):
+        raise ValueError("Non-uniform scaling is not supported.")
+
+    factor = scale.sx
+
+    if utils.is_close(factor, 1):
         return
 
     if isinstance(tag, regular.Width):
-        tag.width = _scale_attr(tag.width, by)
+        tag.width = _scale_attr(tag.width, factor)
     if isinstance(tag, regular.Height):
-        tag.height = _scale_attr(tag.height, by)
+        tag.height = _scale_attr(tag.height, factor)
     if isinstance(tag, regular.R):
-        tag.r = _scale_attr(tag.r, by)
+        tag.r = _scale_attr(tag.r, factor)
     if isinstance(tag, regular.X1):
-        tag.x1 = _scale_attr(tag.x1, by)
+        tag.x1 = _scale_attr(tag.x1, factor)
     if isinstance(tag, regular.Y1):
-        tag.y1 = _scale_attr(tag.y1, by)
+        tag.y1 = _scale_attr(tag.y1, factor)
     if isinstance(tag, regular.X2):
-        tag.x2 = _scale_attr(tag.x2, by)
+        tag.x2 = _scale_attr(tag.x2, factor)
     if isinstance(tag, regular.Y2):
-        tag.y2 = _scale_attr(tag.y2, by)
+        tag.y2 = _scale_attr(tag.y2, factor)
     if isinstance(tag, regular.Rx):
-        tag.rx = _scale_attr(tag.rx, by)
+        tag.rx = _scale_attr(tag.rx, factor)
     if isinstance(tag, regular.Ry):
-        tag.ry = _scale_attr(tag.ry, by)
+        tag.ry = _scale_attr(tag.ry, factor)
     if isinstance(tag, regular.Cx):
-        tag.cx = _scale_attr(tag.cx, by)
+        tag.cx = _scale_attr(tag.cx, factor)
     if isinstance(tag, regular.Cy):
-        tag.cy = _scale_attr(tag.cy, by)
+        tag.cy = _scale_attr(tag.cy, factor)
     if isinstance(tag, common.FontSize):
-        tag.font_size = _scale_attr(tag.font_size, by)
+        tag.font_size = _scale_attr(tag.font_size, factor)
     if isinstance(tag, regular.Points) and tag.points is not None:
-        tag.points = [transform.Scale(by) @ point for point in tag.points]
+        tag.points = [scale @ point for point in tag.points]
     if isinstance(tag, regular.D) and tag.d is not None:
-        tag.d = transform.Scale(by) @ tag.d
+        tag.d = scale @ tag.d
     # TODO: handle transform attribute
 
     # these assignments have to be mutually exclusive, because the
     # type checker doesn't know that x being a <number> implies that x is
     # not a <coordinate> and vice versa
     if isinstance(tag, regular.XNumber):  # noqa: SIM114
-        tag.x = _scale_attr(tag.x, by)
+        tag.x = _scale_attr(tag.x, factor)
     elif isinstance(tag, regular.XCoordinate):
-        tag.x = _scale_attr(tag.x, by)
+        tag.x = _scale_attr(tag.x, factor)
 
     if isinstance(tag, regular.YNumber):  # noqa: SIM114
-        tag.y = _scale_attr(tag.y, by)
+        tag.y = _scale_attr(tag.y, factor)
     elif isinstance(tag, regular.YCoordinate):
-        tag.y = _scale_attr(tag.y, by)
+        tag.y = _scale_attr(tag.y, factor)
 
     if (
         not isinstance(tag, presentation.VectorEffect)
         or tag.vector_effect != "non-scaling-stroke"
     ) and isinstance(tag, presentation.StrokeWidth):
-        tag.stroke_width = _scale_attr(tag.stroke_width, by)
+        tag.stroke_width = _scale_attr(tag.stroke_width, factor)
 
     # no need to scale distance-along-a-path attributes if a custom path length
     # is provided because those attributes and pathLength are proportional
     if not isinstance(tag, regular.PathLength):
-        scale_distance_along_a_path_attrs(tag, by)
+        scale_distance_along_a_path_attrs(tag, factor)
 
 
-def translate(tag: object, by: point.Point) -> None:
-    if not by:
+def translate(tag: object, translate: transform.Translate) -> None:
+    tx, ty = translate.tx, translate.ty
+
+    if utils.is_close(tx, 0) and utils.is_close(ty, 0):
         return
 
-    x, y = by
     zero = length.Length.zero()
 
     # these attributes are mandatory for the respective elements
     if isinstance(tag, regular.X1):
-        tag.x1 = _translate_attr(tag.x1, x)
+        tag.x1 = _translate_attr(tag.x1, tx)
     if isinstance(tag, regular.Y1):
-        tag.y1 = _translate_attr(tag.y1, y)
+        tag.y1 = _translate_attr(tag.y1, ty)
     if isinstance(tag, regular.X2):
-        tag.x2 = _translate_attr(tag.x2, x)
+        tag.x2 = _translate_attr(tag.x2, tx)
     if isinstance(tag, regular.Y2):
-        tag.y2 = _translate_attr(tag.y2, y)
+        tag.y2 = _translate_attr(tag.y2, ty)
 
     # but these are not, so if they are not present, we initialize them to 0
     if isinstance(tag, regular.Cx):
-        tag.cx = _translate_attr(tag.cx or zero, x)
+        tag.cx = _translate_attr(tag.cx or zero, tx)
     if isinstance(tag, regular.Cy):
-        tag.cy = _translate_attr(tag.cy or zero, y)
+        tag.cy = _translate_attr(tag.cy or zero, ty)
 
     if isinstance(tag, regular.XNumber):
-        tag.x = _translate_attr(tag.x or 0, x)
+        tag.x = _translate_attr(tag.x or 0, tx)
     elif isinstance(tag, regular.XCoordinate):
-        tag.x = _translate_attr(tag.x or zero, x)
+        tag.x = _translate_attr(tag.x or zero, tx)
 
     if isinstance(tag, regular.YNumber):
-        tag.y = _translate_attr(tag.y or 0, y)
+        tag.y = _translate_attr(tag.y or 0, ty)
     elif isinstance(tag, regular.YCoordinate):
-        tag.y = _translate_attr(tag.y or zero, y)
+        tag.y = _translate_attr(tag.y or zero, ty)
 
     if isinstance(tag, regular.Points) and tag.points is not None:
-        tag.points = [
-            transform.Translate(x, y) @ point for point in tag.points
-        ]
+        tag.points = [translate @ point for point in tag.points]
     if isinstance(tag, regular.D) and tag.d is not None:
-        tag.d = tag.d + by
+        tag.d = translate @ tag.d
     # TODO: handle transform attribute
