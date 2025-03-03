@@ -1,8 +1,9 @@
 import abc
+import sys
 
 from typing_extensions import Protocol
 
-from svglab import graphics, models
+from svglab import errors, graphics, models
 from svglab.attrparse import d
 from svglab.attrs import groups, regular
 from svglab.elements import common, transforms
@@ -193,3 +194,36 @@ class TextContentChildElement(Element):
 
 class TextContentBlockElement(Element):
     pass
+
+
+class SupportsTransform(Element, regular.Transform):
+    def __reify_this(self, *, limit: int = sys.maxsize) -> None:
+        if limit <= 0:
+            raise ValueError("Limit must be a positive integer")
+
+        if not self.transform:
+            return
+
+        self._check_lengths_convertible_to_user_units()
+
+        for _ in range(min(len(self.transform), limit)):
+            transformation = self.transform.pop(0)
+
+            try:
+                self.apply_transformation(
+                    transformation, skip_convertibility_check=True
+                )
+            except ValueError as e:
+                self.transform.insert(0, transformation)
+
+                raise errors.SvgReifyError(transformation) from e
+
+        if not self.transform:
+            del self.transform
+
+    def reify(self, *, limit: int = sys.maxsize) -> None:
+        self.__reify_this(limit=limit)
+
+        for child in self.find_all():
+            if isinstance(child, SupportsTransform):
+                child.reify(limit=limit)

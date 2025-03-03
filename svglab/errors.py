@@ -31,3 +31,11 @@ class SvgUnitConversionError(SvgError):
         super().__init__(
             f"Unable to convert {original_unit!r} to {target_unit!r}"
         )
+
+
+class SvgReifyError(SvgError):
+    """Exception raised when an element cannot be reified."""
+
+    @override
+    def __init__(self, transformation: object) -> None:
+        super().__init__(f"Cannot reify {transformation!r}")

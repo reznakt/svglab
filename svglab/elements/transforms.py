@@ -130,7 +130,11 @@ def scale(tag: object, scale: transform.Scale) -> None:
         tag.points = [scale @ point for point in tag.points]
     if isinstance(tag, regular.D) and tag.d is not None:
         tag.d = scale @ tag.d
-    # TODO: handle transform attribute
+    if isinstance(tag, regular.Transform) and tag.transform is not None:
+        tag.transform = transform.prepend_transform_list(
+            tag.transform, scale
+        )
+        tag.transform.pop(0)  # TODO: is this correct?
 
     # these assignments have to be mutually exclusive, because the
     # type checker doesn't know that x being a <number> implies that x is
@@ -195,4 +199,8 @@ def translate(tag: object, translate: transform.Translate) -> None:
         tag.points = [translate @ point for point in tag.points]
     if isinstance(tag, regular.D) and tag.d is not None:
         tag.d = translate @ tag.d
-    # TODO: handle transform attribute
+    if isinstance(tag, regular.Transform) and tag.transform is not None:
+        tag.transform = transform.prepend_transform_list(
+            tag.transform, translate
+        )
+        tag.transform.pop(0)  # TODO: is this correct?

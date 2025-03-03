@@ -5,7 +5,7 @@ import pathlib
 import PIL.Image
 from typing_extensions import final, overload
 
-from svglab import graphics, protocols, serialize
+from svglab import graphics, protocols, serialize, utils
 from svglab.attrparse import transform
 from svglab.attrs import groups, regular
 from svglab.elements import traits
@@ -31,6 +31,7 @@ class Svg(
     regular.YCoordinate,
     regular.ZoomAndPan,
     traits.StructuralElement,
+    traits.SupportsTransform,
     traits.ContainerElement,
 ):
     @overload
@@ -144,15 +145,11 @@ class Svg(
                 raise ValueError(
                     "Either viewBox or width and height must be set"
                 )
-            old_viewbox = (0, 0, self.width, self.height)
+            old_viewbox = (0, 0, float(self.width), float(self.height))
         else:
             old_viewbox = self.viewBox
 
-        old_min_x = float(old_viewbox[0])
-        old_min_y = float(old_viewbox[1])
-        old_width = float(old_viewbox[2])
-        old_height = float(old_viewbox[3])
-
+        old_min_x, old_min_y, old_width, old_height = old_viewbox
         min_x, min_y, width, height = viewbox
 
         tx = min_x - old_min_x
@@ -161,7 +158,7 @@ class Svg(
         sx = width / old_width
         sy = height / old_height
 
-        if sx != sy:
+        if not utils.is_close(sx, sy):
             raise ValueError("Aspect ratios of old and new viewBox differ")
 
         self.apply_transformation(transform.Scale(sx, sy))

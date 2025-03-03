@@ -182,7 +182,7 @@ class Tag(
 
         return {**standard, **extra}
 
-    def __check_lengths_convertible_to_user_units(
+    def _check_lengths_convertible_to_user_units(
         self, *, recursive: bool = True
     ) -> None:
         """Check if all length attributes are convertible to user units.
@@ -210,6 +210,7 @@ class Tag(
         /,
         *,
         recursive: bool = True,
+        skip_convertibility_check: bool = False,
     ) -> None:
         """Apply a transformation to the attributes of the tag.
 
@@ -217,6 +218,9 @@ class Tag(
         transformation: The transformation to apply.
         recursive: If `True`, apply the transformation to all descendant tags
         as well.
+        skip_convertibility_check: If `False`, check if all length attributes
+        are convertible to user units before applying the transformation.
+        If `True`, this check is done on a per-attribute on-the-fly basis.
 
         Raises:
         ValueError: If the transformation is not supported.
@@ -224,7 +228,10 @@ class Tag(
         to user units.
 
         """
-        self.__check_lengths_convertible_to_user_units(recursive=recursive)
+        if not skip_convertibility_check:
+            self._check_lengths_convertible_to_user_units(
+                recursive=recursive
+            )
 
         match transformation:
             case transform.Translate():
