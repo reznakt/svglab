@@ -15,7 +15,7 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import errors, utils
+from svglab import errors, serialize, utils
 from svglab.attrparse import color, length
 from svglab.elements import common
 
@@ -28,6 +28,21 @@ _ImageArray: TypeAlias = npt.NDArray[np.uint8]
 _TagT = TypeVar("_TagT", bound=common.Tag)
 
 _BLACK: Final = color.Color((0, 0, 0))
+
+_RENDERING_FORMATTER: Final = serialize.Formatter(
+    color_mode="original",
+    indent=4,
+    large_number_scientific_threshold=None,
+    path_data_coordinates="absolute",
+    path_data_shorthand_curve_commands="original",
+    path_data_shorthand_line_commands="original",
+    small_number_scientific_threshold=None,
+    spaces_around_attrs=False,
+    spaces_around_function_args=False,
+    strip_leading_zero=False,
+    xmlns="always",
+)
+"""Formatter aimed at compatibility with resvg and performance."""
 
 
 @runtime_checkable
@@ -108,7 +123,8 @@ def render(
     svg.width = length.Length(width)
     svg.height = length.Length(height)
 
-    raw = cast(bytes, resvg_py.svg_to_bytes(svg_string=svg.to_xml()))
+    xml = svg.to_xml(formatter=_RENDERING_FORMATTER)
+    raw = cast(bytes, resvg_py.svg_to_bytes(svg_string=xml))
 
     return PIL.Image.open(io.BytesIO(raw))
 
