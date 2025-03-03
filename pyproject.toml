@@ -57,7 +57,7 @@ pytest-randomly = "^3.16.0"
 pytest-sugar = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
-poethepoet = "^0.32.0"
+poethepoet = ">=0.32,<0.34"
 pre-commit = "^4.0.1"
 pyright = "^1.1.391"
 ruff = ">=0.8.4,<0.10.0"
