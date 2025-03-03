@@ -1,3 +1,5 @@
+import copy
+
 import hypothesis
 import hypothesis.strategies as st
 import pydantic
@@ -6,6 +8,7 @@ from typing_extensions import Final
 
 from svglab import elements, errors, parse
 from svglab.attrparse import d, length, point, transform
+from tests import conftest
 
 
 numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
@@ -542,3 +545,84 @@ def test_matrix_multiplication(
     transformed = transform.compose(transforms) @ before
 
     assert transformed == after
+
+
+_REIFY_TRANSFORMS: Final[list[transform.Transform]] = [
+    [transform.Translate(10, 20)],
+    [transform.Translate(1, 5), transform.Scale(0.5)],
+    [transform.Translate(2, 1)] * 10,
+]
+
+
+@pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
+def test_reify_leaves_transform_empty(
+    transform: transform.Transform,
+) -> None:
+    svg = elements.Svg(transform=transform)
+    svg.reify()
+
+    assert "transform" not in svg.standard_attrs()
+
+
+@pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
+def test_reify_produces_visually_equal_svg(
+    transform: transform.Transform,
+) -> None:
+    original = elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            x=length.Length(200),
+            y=length.Length(200),
+            width=length.Length(100),
+            height=length.Length(100),
+            fill="red",
+            transform=transform,
+        )
+    )
+
+    reified = copy.deepcopy(original)
+    reified.reify()
+
+    original_img = original.render()
+    reified_img = reified.render()
+
+    assert conftest.images_equal(original_img, reified_img), (
+        f"original: {original.to_xml()}, reified: {reified.to_xml()}"
+    )
+
+
+def test_set_viewbox_sets_viewbox_attr() -> None:
+    viewbox = (0, 0, 100, 100)
+
+    svg = elements.Svg(
+        width=length.Length(25), height=length.Length(value=25)
+    )
+    svg.set_viewbox(viewbox)
+
+    assert svg.viewBox == viewbox
+
+
+def test_set_viewbox_produces_visually_equal_svg() -> None:
+    original = elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            x=length.Length(200),
+            y=length.Length(200),
+            width=length.Length(100),
+            height=length.Length(100),
+            fill="red",
+            transform=[transform.Translate(10, 20), transform.Scale(2)],
+        )
+    )
+
+    transformed = copy.deepcopy(original)
+    transformed.set_viewbox((0, 0, 100, 100))
+
+    original_img = original.render()
+    transformed_img = transformed.render()
+
+    assert conftest.images_equal(original_img, transformed_img), (
+        f"original: {original.to_xml()}, transformed: {transformed.to_xml()}"
+    )

@@ -170,6 +170,7 @@ ignore = [
 "tests/**/*" = [
   "PLR200",  # Magic value used in comparison
   "PLR0913", # Too many arguments in function definition
+  "S311",    # Standard pseudo-random generators are not suitable for security/cryptographic purposes
 ]
 
 [tool.ruff.lint.pycodestyle]
