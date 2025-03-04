@@ -222,6 +222,46 @@ class SupportsTransform(Element, regular.Transform):
             del self.transform
 
     def reify(self, *, limit: int = sys.maxsize) -> None:
+        """Apply transformations defined by the `transform` attribute.
+
+        This method takes the transformations defined by the `transform`
+        attribute and applies them directly to the coordinate, length, and
+        other attributes of the element. The transformations are applied in
+        the order in which they are defined. The result of this operation
+        should be a visually identical element with the `transform` attribute
+        reduced or removed (depending on the `limit` parameter).
+
+        If all transformations are successfully applied, the `transform`
+        attribute is removed from the element.
+
+        All length values in the element must be convertible to user units.
+
+        Args:
+            limit: The maximum number of transformations to apply. If the
+                `transform` attribute contains more transformations than the
+                limit, the remaining transformations are kept in the attribute
+                and not applied.
+
+        Raises:
+            ValueError: If the limit is not a positive integer.
+            SvgReifyError: If a transformation cannot be applied.
+            SvgUnitConversionError: If a length value cannot be converted to
+                user units.
+
+        Examples:
+            >>> from svglab import Rect, Translate
+            >>> rect = Rect(
+            ...     x=10,
+            ...     y=20,
+            ...     width=30,
+            ...     height=40,
+            ...     transform=[Translate(5, 5)],
+            ... )
+            >>> rect.reify()
+            >>> rect
+            Rect(x=15, y=25, width=30, height=40)
+
+        """
         self.__reify_this(limit=limit)
 
         for child in self.find_all():
