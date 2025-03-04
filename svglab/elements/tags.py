@@ -24,7 +24,7 @@ class Path(
     regular.D,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     traits.Shape,
     traits.Element,
 ):
@@ -110,7 +110,7 @@ class A(
     regular.ExternalResourcesRequired,
     regular.Style,
     regular.Target,
-    traits.SupportsTransform,
+    regular.Transform,
     traits.ContainerElement,
 ):
     pass
@@ -215,7 +215,7 @@ class Circle(
     regular.ExternalResourcesRequired,
     regular.R,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     traits.BasicShape,
     traits.Element,
 ):
@@ -239,7 +239,7 @@ class ClipPath(
     regular.ClipPathUnits,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     traits.Element,
 ):
     pass
@@ -274,7 +274,7 @@ class Defs(
     regular.Class,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     traits.StructuralElement,
     traits.ContainerElement,
 ):
@@ -298,7 +298,7 @@ class Ellipse(
     regular.Rx,
     regular.Ry,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     traits.BasicShape,
     traits.Element,
 ):
@@ -688,7 +688,7 @@ class ForeignObject(
     regular.ExternalResourcesRequired,
     regular.Height,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     regular.Width,
     regular.XCoordinate,
     regular.YCoordinate,
@@ -703,7 +703,7 @@ class G(
     regular.Class,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     traits.StructuralElement,
     traits.ContainerElement,
 ):
@@ -766,7 +766,7 @@ class Image(
     regular.Height,
     regular.PreserveAspectRatio,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     regular.Width,
     regular.XCoordinate,
     regular.YCoordinate,
@@ -783,7 +783,7 @@ class Line(
     regular.Class,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     regular.X1,
     regular.X2,
     regular.Y1,
@@ -871,7 +871,7 @@ class MissingGlyph(
     regular.D,
     regular.HorizAdvX,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     regular.VertAdvY,
     regular.VertOriginX,
     regular.VertOriginY,
@@ -914,7 +914,7 @@ class Polygon(
     regular.ExternalResourcesRequired,
     regular.Points,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     traits.BasicShape,
     traits.Element,
 ):
@@ -934,7 +934,7 @@ class Polyline(
     regular.ExternalResourcesRequired,
     regular.Points,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     traits.BasicShape,
     traits.Element,
 ):
@@ -977,7 +977,7 @@ class Rect(
     regular.Rx,
     regular.Ry,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     regular.Width,
     regular.XCoordinate,
     regular.YCoordinate,
@@ -1089,7 +1089,7 @@ class Switch(
     regular.Class,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     traits.ContainerElement,
 ):
     pass
@@ -1119,7 +1119,7 @@ class Text(
     regular.RotateListOfNumbers,
     regular.Style,
     regular.TextLength,
-    traits.SupportsTransform,
+    regular.Transform,
     regular.XListOfCoordinates,
     regular.YListOfCoordinates,
     traits.TextContentElement,
@@ -1195,7 +1195,7 @@ class Use(
     regular.ExternalResourcesRequired,
     regular.Height,
     regular.Style,
-    traits.SupportsTransform,
+    regular.Transform,
     regular.Width,
     regular.XCoordinate,
     regular.YCoordinate,

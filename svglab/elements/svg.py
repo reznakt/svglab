@@ -23,6 +23,7 @@ class Svg(
     regular.Height,
     regular.PreserveAspectRatio,
     regular.Style,
+    regular.Transform,
     regular.Version,
     regular.ViewBox,
     regular.Width,
@@ -31,7 +32,6 @@ class Svg(
     regular.YCoordinate,
     regular.ZoomAndPan,
     traits.StructuralElement,
-    traits.SupportsTransform,
     traits.ContainerElement,
 ):
     @overload

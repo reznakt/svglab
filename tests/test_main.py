@@ -554,44 +554,6 @@ _REIFY_TRANSFORMS: Final[list[transform.Transform]] = [
 ]
 
 
-@pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
-def test_reify_leaves_transform_empty(
-    transform: transform.Transform,
-) -> None:
-    svg = elements.Svg(transform=transform)
-    svg.reify()
-
-    assert "transform" not in svg.standard_attrs()
-
-
-@pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
-def test_reify_produces_visually_equal_svg(
-    transform: transform.Transform,
-) -> None:
-    original = elements.Svg(
-        width=length.Length(1000), height=length.Length(1000)
-    ).add_child(
-        elements.Rect(
-            x=length.Length(200),
-            y=length.Length(200),
-            width=length.Length(100),
-            height=length.Length(100),
-            fill="red",
-            transform=transform,
-        )
-    )
-
-    reified = copy.deepcopy(original)
-    reified.reify()
-
-    original_img = original.render()
-    reified_img = reified.render()
-
-    assert conftest.images_equal(original_img, reified_img), (
-        f"original: {original.to_xml()}, reified: {reified.to_xml()}"
-    )
-
-
 def test_set_viewbox_sets_viewbox_attr() -> None:
     viewbox = (0, 0, 100, 100)
 
