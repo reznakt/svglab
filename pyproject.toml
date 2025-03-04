@@ -43,8 +43,8 @@ typing-extensions = "^4.12.2"
 typeguard = "^4.4.1"
 resvg-py = ">=0.1.6,<0.3.0"
 pillow = "^11.1.0"
-numpy = "^2.2.2"
 affine = { version = "^3.0b1", allow-prereleases = true }
+numpy = ">=1.26.4,<3.0.0"
 
 [tool.poetry.group.types.dependencies]
 types-beautifulsoup4 = "^4.12.0.20241020"
