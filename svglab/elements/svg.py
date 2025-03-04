@@ -1,3 +1,4 @@
+import base64
 import contextlib
 import os
 import pathlib
@@ -198,3 +199,10 @@ class Svg(
 
         """
         self.render().show()
+
+    def to_data_uri(self) -> str:
+        """Convert the SVG document fragment to a base64-encoded data URI."""
+        xml = self.to_xml(formatter=serialize.MINIMAL_FORMATTER)
+        b64 = base64.b64encode(xml.encode()).decode()
+
+        return f"data:image/svg+xml;base64,{b64}"

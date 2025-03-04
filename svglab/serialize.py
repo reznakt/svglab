@@ -175,6 +175,22 @@ DEFAULT_FORMATTER: Final = Formatter()
 """The default formatter used by the library.
 Use `set_formatter()` to set a custom one."""
 
+MINIMAL_FORMATTER: Final = Formatter(
+    color_mode="original",
+    indent=4,
+    large_number_scientific_threshold=None,
+    path_data_coordinates="absolute",
+    path_data_shorthand_curve_commands="original",
+    path_data_shorthand_line_commands="original",
+    small_number_scientific_threshold=None,
+    spaces_around_attrs=False,
+    spaces_around_function_args=False,
+    strip_leading_zero=False,
+    xmlns="always",
+)
+"""Formatter aimed at compatibility and performance."""
+
+
 _formatter = DEFAULT_FORMATTER
 
 

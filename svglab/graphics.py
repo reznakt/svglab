@@ -29,21 +29,6 @@ _TagT = TypeVar("_TagT", bound=common.Tag)
 
 _BLACK: Final = color.Color((0, 0, 0))
 
-_RENDERING_FORMATTER: Final = serialize.Formatter(
-    color_mode="original",
-    indent=4,
-    large_number_scientific_threshold=None,
-    path_data_coordinates="absolute",
-    path_data_shorthand_curve_commands="original",
-    path_data_shorthand_line_commands="original",
-    small_number_scientific_threshold=None,
-    spaces_around_attrs=False,
-    spaces_around_function_args=False,
-    strip_leading_zero=False,
-    xmlns="always",
-)
-"""Formatter aimed at compatibility with resvg and performance."""
-
 
 @runtime_checkable
 class _SvgTagLike(Protocol):
@@ -123,7 +108,7 @@ def render(
     svg.width = length.Length(width)
     svg.height = length.Length(height)
 
-    xml = svg.to_xml(formatter=_RENDERING_FORMATTER)
+    xml = svg.to_xml(formatter=serialize.MINIMAL_FORMATTER)
     raw = cast(bytes, resvg_py.svg_to_bytes(svg_string=xml))
 
     return PIL.Image.open(io.BytesIO(raw))
