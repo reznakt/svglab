@@ -162,8 +162,11 @@ class Svg(
         if not utils.is_close(sx, sy):
             raise ValueError("Aspect ratios of old and new viewBox differ")
 
-        self.apply_transformation(transform.Scale(sx, sy))
-        self.apply_transformation(transform.Translate(tx, ty))
+        # skip self; this can be done in a single for loop because the
+        # SVG is a tree (probably)
+        for child in self.find_all():
+            child.apply_transformation(transform.Scale(sx, sy))
+            child.apply_transformation(transform.Translate(tx, ty))
 
         self.viewBox = (min_x, min_y, width, height)
 

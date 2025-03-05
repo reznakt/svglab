@@ -93,6 +93,44 @@ def scale_distance_along_a_path_attrs(tag: object, by: float) -> None:
         tag.stroke_dashoffset = _scale_attr(tag.stroke_dashoffset, by)
 
 
+def _scale_transform(
+    transform_list: transform.Transform, by: float
+) -> transform.Transform:
+    result: transform.Transform = []
+
+    for t in transform_list:
+        match t:
+            case transform.Translate(tx, ty):
+                result.append(transform.Translate(tx * by, ty * by))
+            case transform.Rotate(angle, cx, cy):
+                result.append(transform.Rotate(angle, cx * by, cy * by))
+            case transform.Matrix():
+                raise ValueError("Matrix transforms are not supported.")
+            case _:
+                result.append(t)
+
+    return result
+
+
+def _translate_transform(
+    transform_list: transform.Transform, tx: float, ty: float
+) -> transform.Transform:
+    result: transform.Transform = []
+
+    for t in transform_list:
+        match t:
+            case transform.Translate(tx_, ty_):
+                result.append(transform.Translate(tx_ + tx, ty_ + ty))
+            case transform.Rotate(angle, cx, cy):
+                result.append(transform.Rotate(angle, cx + tx, cy + ty))
+            case transform.Matrix():
+                raise ValueError("Matrix transforms are not supported.")
+            case _:
+                result.append(t)
+
+    return result
+
+
 def scale(tag: object, scale: transform.Scale) -> None:
     if not utils.is_close(scale.sx, scale.sy):
         raise ValueError("Non-uniform scaling is not supported.")
@@ -131,10 +169,7 @@ def scale(tag: object, scale: transform.Scale) -> None:
     if isinstance(tag, regular.D) and tag.d is not None:
         tag.d = scale @ tag.d
     if isinstance(tag, regular.Transform) and tag.transform is not None:
-        tag.transform = transform.prepend_transform_list(
-            tag.transform, scale
-        )
-        tag.transform.pop(0)  # TODO: is this correct?
+        tag.transform = _scale_transform(tag.transform, factor)
 
     # these assignments have to be mutually exclusive, because the
     # type checker doesn't know that x being a <number> implies that x is
@@ -153,7 +188,22 @@ def scale(tag: object, scale: transform.Scale) -> None:
         not isinstance(tag, presentation.VectorEffect)
         or tag.vector_effect != "non-scaling-stroke"
     ) and isinstance(tag, presentation.StrokeWidth):
-        tag.stroke_width = _scale_attr(tag.stroke_width, factor)
+        # stroke-width is a special case because it has a meaningful non-zero
+        # default value
+        sw_set = tag.stroke_width is not None
+
+        tag.stroke_width = _scale_attr(
+            tag.stroke_width if sw_set else length.Length(1), by=factor
+        )
+
+        # if stroke-width was not set and the scaled value is 1 (default),
+        # remove the attribute
+        if (
+            not sw_set
+            and isinstance(tag.stroke_width, length.Length)
+            and utils.is_close(float(tag.stroke_width), 1)
+        ):
+            del tag.stroke_width
 
     # no need to scale distance-along-a-path attributes if a custom path length
     # is provided because those attributes and pathLength are proportional
@@ -200,7 +250,4 @@ def translate(tag: object, translate: transform.Translate) -> None:
     if isinstance(tag, regular.D) and tag.d is not None:
         tag.d = translate @ tag.d
     if isinstance(tag, regular.Transform) and tag.transform is not None:
-        tag.transform = transform.prepend_transform_list(
-            tag.transform, translate
-        )
-        tag.transform.pop(0)  # TODO: is this correct?
+        tag.transform = _translate_transform(tag.transform, tx, ty)

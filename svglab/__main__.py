@@ -12,9 +12,20 @@ from svglab import (
     Polyline,
     RawText,
     Rect,
+    Svg,
     parse_svg,
 )
-from svglab.attrparse import Color, D, Length, Point, SkewX, Translate
+from svglab.attrparse import (
+    Color,
+    D,
+    Length,
+    Point,
+    Rotate,
+    Scale,
+    SkewX,
+    SkewY,
+    Translate,
+)
 from svglab.serialize import Formatter, set_formatter
 
 
@@ -102,6 +113,29 @@ def main() -> None:
 
     print(svg.find(G).find(Rect).width)
     print(*svg.find_all(Rect), sep="\n")
+
+    print(
+        Svg(width=Length(1000), height=Length(1000))
+        .add_child(
+            Rect(
+                x=Length(200),
+                y=Length(200),
+                width=Length(100),
+                height=Length(100),
+                fill="red",
+                stroke="blue",
+                transform=[
+                    Translate(10, 20),
+                    Scale(2),
+                    Rotate(45),
+                    Translate(250, -300),
+                    SkewX(-45),
+                    SkewY(-20),
+                ],
+            )
+        )
+        .to_xml()
+    )
 
 
 if __name__ == "__main__":
