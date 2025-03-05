@@ -551,6 +551,17 @@ _REIFY_TRANSFORMS: Final[list[transform.Transform]] = [
     [transform.Translate(10, 20)],
     [transform.Translate(1, 5), transform.Scale(0.5)],
     [transform.Translate(2, 1)] * 10,
+    [transform.Scale(1.01)] * 10,
+    [
+        transform.Scale(0.5),
+        transform.Translate(5, 0),
+        transform.Scale(1.5),
+        transform.Translate(-10, -10),
+        transform.Scale(0.75),
+        transform.Translate(0, 10),
+    ],
+    [transform.Scale(1), transform.Translate(0)],
+    [transform.Scale(0)],
 ]
 
 
@@ -561,7 +572,7 @@ def test_reify_leaves_transform_empty(
     svg = elements.Svg(transform=transform)
     svg.reify()
 
-    assert "transform" not in svg.standard_attrs()
+    assert not hasattr(svg, "transform")
 
 
 @pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)

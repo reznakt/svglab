@@ -207,14 +207,16 @@ class SupportsTransform(Element, regular.Transform):
         self._check_lengths_convertible_to_user_units()
 
         for _ in range(min(len(self.transform), limit)):
-            transformation = self.transform.pop(0)
+            transformation = self.transform.pop()
 
             try:
                 self.apply_transformation(
-                    transformation, skip_convertibility_check=True
+                    transformation,
+                    skip_convertibility_check=True,
+                    adjust_transform=False,
                 )
             except ValueError as e:
-                self.transform.insert(0, transformation)
+                self.transform.append(transformation)
 
                 raise errors.SvgReifyError(transformation) from e
 
@@ -249,17 +251,26 @@ class SupportsTransform(Element, regular.Transform):
                 user units.
 
         Examples:
-            >>> from svglab import Rect, Translate
+            >>> from svglab import Rect
+            >>> from svglab.attrparse import Length, Translate
             >>> rect = Rect(
-            ...     x=10,
-            ...     y=20,
-            ...     width=30,
-            ...     height=40,
+            ...     x=Length(10),
+            ...     y=Length(20),
+            ...     width=Length(20),
+            ...     height=Length(40),
             ...     transform=[Translate(5, 5)],
             ... )
             >>> rect.reify()
-            >>> rect
-            Rect(x=15, y=25, width=30, height=40)
+            >>> rect.x
+            Length(value=15.0, unit=None)
+            >>> rect.y
+            Length(value=25.0, unit=None)
+            >>> rect.width
+            Length(value=20.0, unit=None)
+            >>> rect.height
+            Length(value=40.0, unit=None)
+            >>> hasattr(rect, "transform")
+            False
 
         """
         self.__reify_this(limit=limit)

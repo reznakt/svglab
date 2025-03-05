@@ -131,7 +131,9 @@ def _translate_transform(
     return result
 
 
-def scale(tag: object, scale: transform.Scale) -> None:
+def scale(
+    tag: object, scale: transform.Scale, *, adjust_transform: bool = True
+) -> None:
     if not utils.is_close(scale.sx, scale.sy):
         raise ValueError("Non-uniform scaling is not supported.")
 
@@ -168,7 +170,12 @@ def scale(tag: object, scale: transform.Scale) -> None:
         tag.points = [scale @ point for point in tag.points]
     if isinstance(tag, regular.D) and tag.d is not None:
         tag.d = scale @ tag.d
-    if isinstance(tag, regular.Transform) and tag.transform is not None:
+
+    if (
+        adjust_transform
+        and isinstance(tag, regular.Transform)
+        and tag.transform is not None
+    ):
         tag.transform = _scale_transform(tag.transform, factor)
 
     # these assignments have to be mutually exclusive, because the
@@ -211,7 +218,12 @@ def scale(tag: object, scale: transform.Scale) -> None:
         scale_distance_along_a_path_attrs(tag, factor)
 
 
-def translate(tag: object, translate: transform.Translate) -> None:
+def translate(
+    tag: object,
+    translate: transform.Translate,
+    *,
+    adjust_transform: bool = True,
+) -> None:
     tx, ty = translate.tx, translate.ty
 
     if utils.is_close(tx, 0) and utils.is_close(ty, 0):
@@ -249,5 +261,10 @@ def translate(tag: object, translate: transform.Translate) -> None:
         tag.points = [translate @ point for point in tag.points]
     if isinstance(tag, regular.D) and tag.d is not None:
         tag.d = translate @ tag.d
-    if isinstance(tag, regular.Transform) and tag.transform is not None:
+
+    if (
+        adjust_transform
+        and isinstance(tag, regular.Transform)
+        and tag.transform is not None
+    ):
         tag.transform = _translate_transform(tag.transform, tx, ty)

@@ -211,6 +211,7 @@ class Tag(
         *,
         recursive: bool = True,
         skip_convertibility_check: bool = False,
+        adjust_transform: bool = True,
     ) -> None:
         """Apply a transformation to the attributes of the tag.
 
@@ -221,6 +222,8 @@ class Tag(
         skip_convertibility_check: If `False`, check if all length attributes
         are convertible to user units before applying the transformation.
         If `True`, this check is done on a per-attribute on-the-fly basis.
+        adjust_transform: If `True`, adjust the transformations in the
+        `transform` attribute of the tag accordingly.
 
         Raises:
         ValueError: If the transformation is not supported.
@@ -235,9 +238,13 @@ class Tag(
 
         match transformation:
             case transform.Translate():
-                transforms.translate(self, transformation)
+                transforms.translate(
+                    self, transformation, adjust_transform=adjust_transform
+                )
             case transform.Scale():
-                transforms.scale(self, transformation)
+                transforms.scale(
+                    self, transformation, adjust_transform=adjust_transform
+                )
             case _:
                 msg = f"Unsupported transformation: {transformation}"
                 raise ValueError(msg)
