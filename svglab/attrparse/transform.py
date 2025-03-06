@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import abc
 import functools
-import math
 import operator
 from collections.abc import Iterable
 from types import NotImplementedType
@@ -16,6 +15,7 @@ from typing_extensions import (
     Self,
     TypeAlias,
     TypeVar,
+    cast,
     final,
     overload,
     override,
@@ -331,16 +331,9 @@ TransformType: TypeAlias = Annotated[
     ),
 ]
 
+_TransformT = TypeVar("_TransformT", bound=TransformFunction)
 _TransformT1 = TypeVar("_TransformT1", bound=TransformFunction)
 _TransformT2 = TypeVar("_TransformT2", bound=TransformFunction)
-
-
-def _tan(angle: float, /) -> float:
-    return math.tan(math.radians(angle))
-
-
-def _arctan(tan: float, /) -> float:
-    return math.degrees(math.atan(tan))
 
 
 def swap_transforms(
@@ -378,31 +371,31 @@ def swap_transforms(
             return type(b)(sx * tx, sy * ty), scale
 
         case SkewX(angle) as skew_x, Translate(tx, ty):
-            return type(b)(tx - ty * _tan(angle), ty), skew_x
+            return type(b)(tx - ty * utils.tan(angle), ty), skew_x
 
         case Translate(tx, ty), SkewX(angle) as skew_x:
-            return skew_x, type(a)(tx + ty * _tan(angle), ty)
+            return skew_x, type(a)(tx + ty * utils.tan(angle), ty)
 
         case Scale(sx, sy) as scale, SkewX(angle):
-            angle = _arctan(sx / sy * _tan(angle))
+            angle = utils.arctan(sx / sy * utils.tan(angle))
             return type(b)(angle), scale
 
         case SkewX(angle), Scale(sx, sy) as scale:
-            angle = _arctan(sy / sx * _tan(angle))
+            angle = utils.arctan(sy / sx * utils.tan(angle))
             return scale, type(a)(angle)
 
         case SkewY(angle) as skew_y, Translate(tx, ty):
-            return type(b)(tx, ty - tx * _tan(angle)), skew_y
+            return type(b)(tx, ty - tx * utils.tan(angle)), skew_y
 
         case Translate(tx, ty), SkewY(angle) as skew_y:
-            return skew_y, type(a)(tx, ty + tx * _tan(angle))
+            return skew_y, type(a)(tx, ty + tx * utils.tan(angle))
 
         case Scale(sx, sy) as scale, SkewY(angle):
-            angle = _arctan(sy / sx * _tan(angle))
+            angle = utils.arctan(sy / sx * utils.tan(angle))
             return type(b)(angle), scale
 
         case SkewY(angle), Scale(sx, sy) as scale:
-            angle = _arctan(sx / sy * _tan(angle))
+            angle = utils.arctan(sx / sy * utils.tan(angle))
 
             return scale, type(a)(angle)
         case _:
@@ -410,31 +403,38 @@ def swap_transforms(
             raise ValueError(msg)
 
 
-def append_transform_list(
-    transform: Iterable[TransformFunction], func: TransformFunction
-) -> list[TransformFunction]:
-    """Append a transformation to a list of transformations.
+def pull_through_transform_list(
+    transform: Transform, func: _TransformT
+) -> _TransformT:
+    """Pull a transformation through a list of transformations.
 
-    The parameters of the transformations are adjusted so that the result is
-    visually equivalent to prepending the transformation to the list.
+    This function prepends the transformation to the list and then
+    "pulls" it through the list, swapping it with each transformation in the
+    list and adjusting the parameters so that the result is equal. Once the
+    transformation resides at the end of the list, it is popped and returned.
+
+    The transformation itself may have its parameters adjusted as well.
 
     Args:
-        transform: A sequence of transformations.
-        func: The transformation to append.
+        transform: A list of transformations.
+        func: The transformation to pull through the list.
 
     Returns:
-        A new list of transformations with the transformation appended.
+        The transformation after it has been pulled through.
 
     Examples:
-        >>> append_transform_list([Translate(10, 20)], Scale(2, 3))
-        [Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667)]
+        >>> transform = [Scale(2, 3)]
+        >>> pull_through_transform_list(transform, Translate(10, 20))
+        Translate(tx=5.0, ty=6.666666666666667)
+        >>> transform
+        [Scale(sx=2.0, sy=3.0)]
 
     """
-    result = [func, *transform]
+    transform.insert(0, func)
 
-    for i in range(len(result) - 1):
-        result[i], result[i + 1] = swap_transforms(
-            result[i + 1], result[i]
+    for i in range(len(transform) - 1):
+        transform[i], transform[i + 1] = swap_transforms(
+            transform[i], transform[i + 1]
         )
 
-    return result
+    return cast(_TransformT, transform.pop())

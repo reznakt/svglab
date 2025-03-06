@@ -472,3 +472,65 @@ def is_type(value: object, type_: object, /) -> bool:
         return False
     else:
         return True
+
+
+def tan(degrees: float) -> float:
+    """Compute the tangent of an angle in degrees.
+
+    This function is a wrapper around `math.tan` that takes an angle in degrees
+    and returns "nice" values for common angles.
+
+    Args:
+        degrees: The angle in degrees.
+
+    Returns:
+        The tangent of the angle.
+
+    Examples:
+        >>> tan(0)
+        0
+        >>> tan(45)
+        1
+
+    """
+    degrees %= 180
+
+    match degrees:
+        case 0:
+            return 0
+        case 45:
+            return 1
+        case 135:
+            return -1
+        case _:
+            return math.tan(math.radians(degrees))
+
+
+def arctan(value: float) -> float:
+    """Compute the arctangent of a value in degrees.
+
+    This function is a wrapper around `math.atan` that returns "nice" values
+    for common inputs. The output is in degrees.
+
+    Args:
+        value: The value to compute the arctangent of.
+
+    Returns:
+        The arctangent of the value in degrees.
+
+    Examples:
+        >>> arctan(0)
+        0
+        >>> arctan(1)
+        45
+
+    """
+    match value:
+        case 0:
+            return 0
+        case 1:
+            return 45
+        case -1:
+            return -45
+        case _:
+            return math.degrees(math.atan(value))

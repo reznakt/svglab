@@ -21,7 +21,7 @@ from typing_extensions import (
 
 from svglab import constants, errors, models, serialize, utils
 from svglab.attrparse import length, transform
-from svglab.attrs import groups
+from svglab.attrs import groups, regular
 from svglab.attrs import names as attr_names
 from svglab.elements import names, transforms
 
@@ -231,6 +231,14 @@ class Tag(
         if not skip_convertibility_check:
             self._check_lengths_convertible_to_user_units(
                 recursive=recursive
+            )
+
+        if (
+            isinstance(self, regular.Transform)
+            and self.transform is not None
+        ):
+            transformation = transform.pull_through_transform_list(
+                self.transform, transformation
             )
 
         match transformation:
