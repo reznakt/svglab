@@ -57,7 +57,7 @@ class _TransformFunctionBase(
 
 
 @final
-@pydantic.dataclasses.dataclass
+@pydantic.dataclasses.dataclass(frozen=True)
 class Matrix(_TransformFunctionBase):
     a: float
     b: float
@@ -89,8 +89,22 @@ class Matrix(_TransformFunctionBase):
             matrix.a, matrix.d, matrix.b, matrix.e, matrix.c, matrix.f
         )
 
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
 
-@pydantic.dataclasses.dataclass
+        for x1, x2 in zip(
+            (self.a, self.b, self.c, self.d, self.e, self.f),
+            (other.a, other.b, other.c, other.d, other.e, other.f),
+            strict=True,
+        ):
+            if not utils.is_close(x1, x2):
+                return False
+
+        return True
+
+
+@pydantic.dataclasses.dataclass(frozen=True)
 class _Translate(_TransformFunctionBase):
     tx: float
     ty: float
@@ -108,6 +122,14 @@ class _Translate(_TransformFunctionBase):
     def to_affine(self) -> affine.Affine:
         return affine.Affine.translation(self.tx, self.ty or 0)
 
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return utils.is_close(self.tx, other.tx) and utils.is_close(
+            self.ty, other.ty
+        )
+
 
 @final
 class Translate(_Translate):
@@ -121,7 +143,7 @@ class Translate(_Translate):
         super().__init__(tx, ty)
 
 
-@pydantic.dataclasses.dataclass
+@pydantic.dataclasses.dataclass(frozen=True)
 class _Scale(_TransformFunctionBase):
     sx: float
     sy: float
@@ -139,6 +161,14 @@ class _Scale(_TransformFunctionBase):
     def to_affine(self) -> affine.Affine:
         return affine.Affine.scale(self.sx, self.sy or self.sx)
 
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return utils.is_close(self.sx, other.sx) and utils.is_close(
+            self.sy, other.sy
+        )
+
 
 @final
 class Scale(_Scale):
@@ -152,7 +182,7 @@ class Scale(_Scale):
         super().__init__(sx, sy if sy is not None else sx)
 
 
-@pydantic.dataclasses.dataclass
+@pydantic.dataclasses.dataclass(frozen=True)
 class _Rotate(_TransformFunctionBase):
     angle: float
     cx: float
@@ -175,6 +205,16 @@ class _Rotate(_TransformFunctionBase):
             self.angle, (self.cx or 0, self.cy or 0)
         )
 
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return (
+            utils.is_close(self.angle, other.angle)
+            and utils.is_close(self.cx, other.cx)
+            and utils.is_close(self.cy, other.cy)
+        )
+
 
 @final
 class Rotate(_Rotate):
@@ -191,7 +231,7 @@ class Rotate(_Rotate):
 
 
 @final
-@pydantic.dataclasses.dataclass
+@pydantic.dataclasses.dataclass(frozen=True)
 class SkewX(_TransformFunctionBase):
     angle: float
 
@@ -203,9 +243,15 @@ class SkewX(_TransformFunctionBase):
     def to_affine(self) -> affine.Affine:
         return affine.Affine.shear(x_angle=self.angle)
 
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return utils.is_close(self.angle, other.angle)
+
 
 @final
-@pydantic.dataclasses.dataclass
+@pydantic.dataclasses.dataclass(frozen=True)
 class SkewY(_TransformFunctionBase):
     angle: float
 
@@ -216,6 +262,12 @@ class SkewY(_TransformFunctionBase):
     @override
     def to_affine(self) -> affine.Affine:
         return affine.Affine.shear(y_angle=self.angle)
+
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return utils.is_close(self.angle, other.angle)
 
 
 TransformFunction: TypeAlias = (
@@ -291,7 +343,7 @@ def _arctan(tan: float, /) -> float:
     return math.degrees(math.atan(tan))
 
 
-def _swap_transforms(
+def swap_transforms(
     a: _TransformT1, b: _TransformT2, /
 ) -> tuple[_TransformT2, _TransformT1]:
     """Swap transforms, adjusting parameters so that the result is equal.
@@ -307,11 +359,11 @@ def _swap_transforms(
         ValueError: If the transforms cannot be swapped.
 
     Examples:
-        >>> _swap_transforms(Translate(10, 20), Scale(2, 3))
+        >>> swap_transforms(Translate(10, 20), Scale(2, 3))
         (Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667))
-        >>> _swap_transforms(Scale(2, 3), SkewX(45))
+        >>> swap_transforms(Scale(2, 3), SkewX(45))
         (SkewX(angle=33.690067525979785), Scale(sx=2.0, sy=3.0))
-        >>> _swap_transforms(SkewX(45), Translate(10, 20))
+        >>> swap_transforms(SkewX(45), Translate(10, 20))
         (Translate(tx=-9.999999999999996, ty=20.0), SkewX(angle=45.0))
 
     """
@@ -358,31 +410,31 @@ def _swap_transforms(
             raise ValueError(msg)
 
 
-def prepend_transform_list(
+def append_transform_list(
     transform: Iterable[TransformFunction], func: TransformFunction
 ) -> list[TransformFunction]:
-    """Prepend a transformation to a list of transformations.
+    """Append a transformation to a list of transformations.
 
     The parameters of the transformations are adjusted so that the result is
-    visually equivalent to appending the original transformation to the list.
+    visually equivalent to prepending the transformation to the list.
 
     Args:
         transform: A sequence of transformations.
-        func: The transformation to prepend.
+        func: The transformation to append.
 
     Returns:
-        A new list of transformations with the transformation prepended.
+        A new list of transformations with the transformation appended.
 
     Examples:
-        >>> prepend_transform_list([Translate(10, 20)], Scale(2, 3))
+        >>> append_transform_list([Translate(10, 20)], Scale(2, 3))
         [Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667)]
 
     """
-    result = [*transform, func]
+    result = [func, *transform]
 
-    for i in range(len(result) - 1, 0, -1):
-        result[i - 1], result[i] = _swap_transforms(
-            result[i - 1], result[i]
+    for i in range(len(result) - 1):
+        result[i], result[i + 1] = swap_transforms(
+            result[i + 1], result[i]
         )
 
     return result

@@ -12,5 +12,5 @@ SVG_XMLNS: Final[utiltypes.Xmlns] = typing_extensions.get_args(
 FLOAT_RELATIVE_TOLERANCE: Final = 1e-9
 """The relative tolerance used for floating-point comparisons."""
 
-FLOAT_ABSOLUTE_TOLERANCE: Final = 1e-12
+FLOAT_ABSOLUTE_TOLERANCE: Final = 1e-9
 """The absolute tolerance used for floating-point comparisons."""

@@ -648,3 +648,59 @@ def test_set_viewbox_produces_visually_equal_svg(
     transformed.set_viewbox((5, 5, 100, 100))
 
     assert conftest.svg_visually_equal(svg, transformed)
+
+
+@pytest.mark.parametrize(
+    ("original", "swapped"),
+    [
+        # transforms of same type
+        (
+            (transform.Translate(1, 2), transform.Translate(2, 1)),
+            (transform.Translate(2, 1), transform.Translate(1, 2)),
+        ),
+        (
+            (transform.Scale(2), transform.Scale(0.5)),
+            (transform.Scale(0.5), transform.Scale(2)),
+        ),
+        (
+            (transform.Rotate(10), transform.Rotate(5)),
+            (transform.Rotate(5), transform.Rotate(10)),
+        ),
+        # isotropic scaling and translation
+        (
+            (transform.Scale(2), transform.Translate(1, 2)),
+            (transform.Translate(2, 4), transform.Scale(2)),
+        ),
+        # skew and translation
+        (
+            (transform.SkewX(45), transform.Translate(10, 20)),
+            (transform.Translate(10 - 20, 20), transform.SkewX(45)),
+        ),
+        # skew and isotropic scaling
+        (
+            (transform.SkewX(45), transform.Scale(2)),
+            (transform.Scale(2), transform.SkewX(45)),
+        ),
+        # skew and anisotropic scaling
+        (
+            (transform.SkewX(45), transform.Scale(2, 3)),
+            (
+                transform.Scale(2, 3),
+                transform.SkewX(56.30993247402021308647),
+            ),
+        ),
+    ],
+)
+def test_transform_swap(
+    original: tuple[
+        transform.TransformFunction, transform.TransformFunction
+    ],
+    swapped: tuple[
+        transform.TransformFunction, transform.TransformFunction
+    ],
+) -> None:
+    a, b = original
+    c, d = swapped
+
+    assert transform.swap_transforms(a, b) == swapped
+    assert transform.swap_transforms(c, d) == original
