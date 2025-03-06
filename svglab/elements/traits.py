@@ -76,7 +76,7 @@ class GraphicsElement(
     pass
 
 
-class Shape(regular.PathLength, GraphicsElement):
+class Shape(regular.PathLength, regular.Transform, GraphicsElement):
     pass
 
 
