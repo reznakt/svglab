@@ -1,7 +1,7 @@
 import pydantic_extra_types.color
 from typing_extensions import TypeAlias, override
 
-from svglab import serialize, utils
+from svglab import protocols, serialize, utils
 
 
 def _alpha_channel_as_percentage(original: str) -> str:
@@ -36,7 +36,7 @@ def _alpha_channel_as_percentage(original: str) -> str:
 
 
 class Color(
-    pydantic_extra_types.color.Color, serialize.CustomSerializable
+    pydantic_extra_types.color.Color, protocols.CustomSerializable
 ):
     @override
     def as_rgb(
@@ -93,7 +93,7 @@ class Color(
             func, args_str = name_and_args
             args = args_str.split(", ")
 
-            result = f"{func}({formatter.list_separator.join(args)})"
+            result = serialize.serialize_function_call(func, *args)
 
         return result
 

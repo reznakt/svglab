@@ -1,25 +1,17 @@
-import abc
+import copy
 import functools
 import re
 import reprlib
 from collections.abc import Callable
 
 import pydantic
-import pydantic_core.core_schema
-from typing_extensions import (
-    Annotated,
-    Protocol,
-    Self,
-    TypeAlias,
-    TypeVar,
-    override,
-    runtime_checkable,
-)
+from typing_extensions import Annotated, TypeAlias, TypeVar, override
 
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
-_T_seq = TypeVar("_T_seq", list[str], tuple[str])
+_ListOrTupleT = TypeVar("_ListOrTupleT", list[str], tuple[str])
+_BaseModelT = TypeVar("_BaseModelT", bound=pydantic.BaseModel)
 
 _T1 = TypeVar("_T1")
 _T2 = TypeVar("_T2")
@@ -31,7 +23,51 @@ Attr: TypeAlias = _T_co | None
 """ Pydantic field for an attribute. """
 
 
-def _parse_list(text: str, /, collection: type[_T_seq] = list) -> _T_seq:
+def convert(
+    source: pydantic.BaseModel,
+    target_type: type[_BaseModelT],
+    *,
+    strict: bool | None = None,
+    deepcopy: bool = True,
+) -> _BaseModelT:
+    """Convert a pydantic model to another pydantic model.
+
+    Fields that are defined on both models are copied over. If the source model
+    has extra fields, they are included in the new model as well. Other fields
+    are discarded.
+
+    If `deepcopy` is set to `False`, the source model instance should not be
+    used after the conversion, as the new model will hold references to the
+    source model's fields.
+
+    Args:
+        source: The source model to convert.
+        target_type: The target model type.
+        strict: Whether to use pydantic's strict mode when instantiating the
+                new model.
+        deepcopy: Whether to create deep copies of the fields.
+
+    Returns:
+        The converted model.
+
+    """
+    common_fields = (
+        source.model_fields.keys() & target_type.model_fields.keys()
+    )
+
+    data = {field: getattr(source, field) for field in common_fields}
+
+    if source.model_extra is not None:
+        data |= source.model_extra
+
+    target = target_type.model_validate(data, strict=strict)
+
+    return copy.deepcopy(target) if deepcopy else target
+
+
+def _parse_list(
+    text: str, /, collection: type[_ListOrTupleT] = list
+) -> _ListOrTupleT:
     """Parse a string into a list of strings.
 
     Items are separated by whitespace or commas.
@@ -60,7 +96,7 @@ def _parse_list(text: str, /, collection: type[_T_seq] = list) -> _T_seq:
     return collection(result)
 
 
-def get_validator(
+def _get_validator(
     func: Callable[[str], object], /
 ) -> pydantic.BeforeValidator:
     def validator(value: object) -> object:
@@ -74,12 +110,12 @@ def get_validator(
 
 List: TypeAlias = Annotated[
     list[_T],
-    get_validator(functools.partial(_parse_list, collection=list)),
+    _get_validator(functools.partial(_parse_list, collection=list)),
 ]
 """Pydantic field for a list of strings. Uses `_parse_list` as a validator."""
 
 Tuple: TypeAlias = Annotated[
-    _T, get_validator(functools.partial(_parse_list, collection=tuple))
+    _T, _get_validator(functools.partial(_parse_list, collection=tuple))
 ]
 """Pydantic field for a tuple of strings. Uses `_parse_list` as a validator."""
 
@@ -113,46 +149,3 @@ class BaseModel(pydantic.BaseModel):
     @override
     def __str__(self) -> str:
         return repr(self)
-
-
-@runtime_checkable
-class PydanticCompatible(Protocol):
-    """A protocol for classes that can be used as pydantic models."""
-
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: type, handler: pydantic.GetCoreSchemaHandler
-    ) -> pydantic_core.core_schema.CoreSchema: ...
-
-
-class CustomModel(PydanticCompatible, metaclass=abc.ABCMeta):
-    """A mixin for easy creation of custom pydantic-compatible classes.
-
-    This class is a mixin for classes that need to be pydantic-compatible,
-    but are not, for technical reasons, pydantic dataclasses or subclasses
-    of `BaseModel` (for example collections).
-
-    By implementing the `_validate` class method, the class can be used
-    in pydantic models. `__get_pydantic_core_schema__` is created
-    automatically and should not be overridden.
-    """
-
-    @classmethod
-    @abc.abstractmethod
-    def _validate(
-        cls, value: object, info: pydantic_core.core_schema.ValidationInfo
-    ) -> Self:
-        """Validate the value and return a new instance of the class."""
-
-    @override
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: type, handler: pydantic.GetCoreSchemaHandler
-    ) -> pydantic_core.core_schema.CoreSchema:
-        del source_type, handler
-
-        return (
-            pydantic_core.core_schema.with_info_plain_validator_function(
-                function=cls._validate
-            )
-        )

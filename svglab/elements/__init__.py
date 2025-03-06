@@ -4,6 +4,7 @@ from svglab.elements.names import (
     TAG_NAMES,
     TagName,
 )
+from svglab.elements.svg import Svg
 from svglab.elements.tags import (
     A,
     AltGlyph,
@@ -74,7 +75,6 @@ from svglab.elements.tags import (
     Set,
     Stop,
     Style,
-    Svg,
     Switch,
     Symbol,
     Text,

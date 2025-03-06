@@ -2,7 +2,7 @@
 
 from typing_extensions import Literal
 
-from svglab import constants, models
+from svglab import models, utiltypes
 from svglab.attrs import common, typedefs
 
 
@@ -1002,7 +1002,7 @@ class XmlLang(common.Attr):
 
 
 class Xmlns(common.Attr):
-    xmlns: models.Attr[constants.Xmlns] = None
+    xmlns: models.Attr[utiltypes.Xmlns] = None
 
 
 class XmlSpace(common.Attr):

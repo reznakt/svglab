@@ -1,55 +1,29 @@
 from __future__ import annotations
 
-import abc
+from collections.abc import Iterator
 
 import lark
 import pydantic
 from typing_extensions import (
     Annotated,
-    Protocol,
     Self,
     SupportsComplex,
     TypeAlias,
-    TypeVar,
     final,
     override,
-    runtime_checkable,
 )
 
-from svglab import mixins, protocols, serialize
-from svglab.attrparse import utils
+from svglab import mixins, protocols, serialize, utils
+from svglab.attrparse import parse, transform
 
 
-_Supports2DMovementT_co = TypeVar(
-    "_Supports2DMovementT_co", covariant=True, bound="Point"
-)
-
-
-@runtime_checkable
-class SupportsTwoDimensionalMovement(
-    protocols.SupportsFullAddSub["Point", _Supports2DMovementT_co],
-    Protocol[_Supports2DMovementT_co],
-):
-    pass
-
-
-class TwoDimensionalMovement(
-    SupportsTwoDimensionalMovement[_Supports2DMovementT_co],
-    mixins.AddSub["Point", _Supports2DMovementT_co],
-    metaclass=abc.ABCMeta,
-):
-    @override
-    def __sub__(self, other: Point, /) -> _Supports2DMovementT_co:
-        return self + -other
-
-
-@final
 @pydantic.dataclasses.dataclass(frozen=True)
-class Point(
+class _Point(
     SupportsComplex,
-    TwoDimensionalMovement["Point"],
-    mixins.Mul[float, "Point"],
-    serialize.CustomSerializable,
+    mixins.FloatMulDiv,
+    transform.PointAddSubWithTranslateRMatmul,
+    protocols.PointLike,
+    protocols.CustomSerializable,
 ):
     """A point in a 2D plane.
 
@@ -88,6 +62,7 @@ class Point(
     y: float
 
     @override
+    @override
     def serialize(self) -> str:
         formatter = serialize.get_current_formatter()
         x, y = serialize.serialize(self.x, self.y)
@@ -125,22 +100,48 @@ class Point(
         """
         return center + (center - self)
 
-    @override
-    def __add__(self, other: Self) -> Self:
-        return type(self)(self.x + other.x, self.y + other.y)
+    def __iter__(self) -> Iterator[float]:
+        yield self.x
+        yield self.y
 
     @override
     def __mul__(self, scalar: float) -> Self:
         return type(self)(self.x * scalar, self.y * scalar)
 
-    def __truediv__(self, scalar: float) -> Self:
-        return type(self)(self.x / scalar, self.y / scalar)
+    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+        as_tuple = tuple(self)
 
-    def __neg__(self) -> Self:
-        return self * -1
+        transformed = other.to_affine() @ as_tuple
+        assert utils.is_type(transformed, tuple[float, float])
+
+        return type(self)(*transformed)
+
+    @override
+    def __eq__(self, other: object) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return utils.is_close(self.x, other.x) and utils.is_close(
+            self.y, other.y
+        )
+
+    def __bool__(self) -> bool:
+        return self != self.zero()
 
     def __complex__(self) -> complex:
         return complex(self.x, self.y)
+
+
+@final
+class Point(_Point):
+    @override
+    def __init__(
+        self,
+        x: protocols.SupportsFloatOrIndex,
+        y: protocols.SupportsFloatOrIndex,
+        /,
+    ) -> None:
+        super().__init__(float(x), float(y))
 
 
 @lark.v_args(inline=True)
@@ -151,5 +152,5 @@ class _Transformer(lark.Transformer[object, Point]):
 
 PointType: TypeAlias = Annotated[
     Point,
-    utils.get_validator(grammar="point.lark", transformer=_Transformer()),
+    parse.get_validator(grammar="point.lark", transformer=_Transformer()),
 ]

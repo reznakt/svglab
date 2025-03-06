@@ -1,18 +1,44 @@
 from __future__ import annotations
 
+import math
+
 import lark
 import pydantic
-from typing_extensions import Annotated, Literal, TypeAlias, override
+from typing_extensions import (
+    Annotated,
+    Final,
+    Literal,
+    Self,
+    SupportsFloat,
+    TypeAlias,
+    final,
+    override,
+)
 
-from svglab import serialize
-from svglab.attrparse import utils
+from svglab import mixins, protocols, serialize, units
+from svglab.attrparse import parse
 
 
-AngleUnit: TypeAlias = Literal["deg", "grad", "rad", "turn"]
+AngleUnit: TypeAlias = Literal["deg", "grad", "rad", "turn"] | None
+
+_convert: Final[units.Converter[Angle, AngleUnit]] = units.make_converter(
+    conversion_table={
+        ("deg", "grad"): 10 / 9,
+        ("rad", "deg"): 180 / math.pi,
+        ("turn", "deg"): 360,
+        (None, "deg"): 1,
+    }
+)
 
 
-@pydantic.dataclasses.dataclass
-class Angle(serialize.CustomSerializable):
+@final
+@pydantic.dataclasses.dataclass(frozen=True)
+class Angle(
+    mixins.AddSub["Angle"],
+    mixins.FloatMulDiv,
+    SupportsFloat,
+    protocols.CustomSerializable,
+):
     """Represents the SVG `<angle>` type.
 
     An angle is a number optionally followed by a unit. Available units are:
@@ -24,12 +50,46 @@ class Angle(serialize.CustomSerializable):
     """
 
     value: float
-    unit: AngleUnit | None = "deg"
+    unit: AngleUnit = None
+
+    def to(self, unit: AngleUnit) -> Angle:
+        """Convert the angle to a different unit.
+
+        Args:
+            unit: The unit to convert to.
+
+        Returns:
+            A new `Angle` object with the converted value and new unit.
+
+        Raises:
+            SvgUnitConversionError: If the conversion is not possible.
+
+        Examples:
+            >>> angle = Angle(360, "deg")
+            >>> angle.to("grad")
+            Angle(value=400.0, unit='grad')
+
+        """
+        return _convert(self, unit)
 
     @override
     def serialize(self) -> str:
         value = serialize.serialize(self.value)
         return f"{value}{self.unit or ''}"
+
+    @override
+    def __add__(self, other: Angle) -> Self:
+        other_value = other.to(self.unit).value
+
+        return type(self)(value=self.value + other_value, unit=self.unit)
+
+    @override
+    def __mul__(self, other: float) -> Self:
+        return type(self)(value=self.value * other, unit=self.unit)
+
+    @override
+    def __float__(self) -> float:
+        return self.to(None).value
 
 
 @lark.v_args(inline=True)
@@ -40,5 +100,5 @@ class _Transformer(lark.Transformer[object, Angle]):
 
 AngleType: TypeAlias = Annotated[
     Angle,
-    utils.get_validator(grammar="angle.lark", transformer=_Transformer()),
+    parse.get_validator(grammar="angle.lark", transformer=_Transformer()),
 ]

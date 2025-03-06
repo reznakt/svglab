@@ -40,8 +40,10 @@ pydantic = "^2.10.4"
 pydantic-extra-types = "^2.10.1"
 useful-types = "^0.2.1"
 typing-extensions = "^4.12.2"
+typeguard = "^4.4.1"
 resvg-py = ">=0.1.6,<0.3.0"
 pillow = "^11.1.0"
+affine = { version = "^3.0b1", allow-prereleases = true }
 numpy = ">=1.26.4,<3.0.0"
 
 [tool.poetry.group.types.dependencies]
@@ -159,12 +161,16 @@ ignore = [
   "TC003",   # Move standard library import into a type-checking block
   "E741",    # Ambiguous variable name
   "PLR0913", # Too many arguments in function definition
+  "C901",    # Function is too complex
+  "PLR0911", # Too many return statements
+  "PLR0912", # Too many branches
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*" = [
   "PLR200",  # Magic value used in comparison
   "PLR0913", # Too many arguments in function definition
+  "S311",    # Standard pseudo-random generators are not suitable for security/cryptographic purposes
 ]
 
 [tool.ruff.lint.pycodestyle]

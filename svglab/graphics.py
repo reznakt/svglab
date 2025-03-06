@@ -15,7 +15,7 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import serialize, utils
+from svglab import errors, serialize, utils
 from svglab.attrparse import color, length
 from svglab.elements import common
 
@@ -28,21 +28,6 @@ _ImageArray: TypeAlias = npt.NDArray[np.uint8]
 _TagT = TypeVar("_TagT", bound=common.Tag)
 
 _BLACK: Final = color.Color((0, 0, 0))
-
-_RENDERING_FORMATTER: Final = serialize.Formatter(
-    color_mode="original",
-    indent=4,
-    large_number_scientific_threshold=None,
-    path_data_coordinates="absolute",
-    path_data_shorthand_curve_commands="original",
-    path_data_shorthand_line_commands="original",
-    small_number_scientific_threshold=None,
-    spaces_around_attrs=False,
-    spaces_around_function_args=False,
-    strip_leading_zero=False,
-    xmlns="always",
-)
-"""Formatter aimed at compatibility with resvg and performance."""
 
 
 @runtime_checkable
@@ -58,8 +43,6 @@ class _SvgTagLike(Protocol):
 def _length_to_user_units(length: length.Length | None) -> float | None:
     """Convert a length to user units, if possible.
 
-    TODO: replace this with `Length.to()` once merged.
-
     Args:
         length: The length to convert, or `None`.
 
@@ -70,11 +53,10 @@ def _length_to_user_units(length: length.Length | None) -> float | None:
     if length is None:
         return None
 
-    match length.unit:
-        case None | "px" | "pt":
-            return length.value
-        case _:
-            return None
+    try:
+        return float(length)
+    except errors.SvgUnitConversionError:
+        return None
 
 
 def render(
@@ -126,7 +108,7 @@ def render(
     svg.width = length.Length(width)
     svg.height = length.Length(height)
 
-    xml = svg.to_xml(formatter=_RENDERING_FORMATTER)
+    xml = svg.to_xml(formatter=serialize.MINIMAL_FORMATTER)
     raw = cast(bytes, resvg_py.svg_to_bytes(svg_string=xml))
 
     return PIL.Image.open(io.BytesIO(raw))

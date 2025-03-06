@@ -3,20 +3,12 @@ from __future__ import annotations
 import contextlib
 import functools
 import math
-from collections.abc import Generator, Iterable, MutableSequence
+from collections.abc import Generator, Iterable
 
 import pydantic
-from typing_extensions import (
-    Final,
-    Literal,
-    Protocol,
-    TypeAlias,
-    TypeIs,
-    overload,
-    runtime_checkable,
-)
+from typing_extensions import Final, Literal, TypeAlias, TypeIs, overload
 
-from svglab import utils
+from svglab import protocols, utils
 
 
 _ColorMode: TypeAlias = Literal[
@@ -31,41 +23,19 @@ _PathDataCommandMode: TypeAlias = Literal["explicit", "implicit"]
 _Xmlns: TypeAlias = Literal["always", "never", "original"]
 
 
-@runtime_checkable
-class CustomSerializable(Protocol):
-    """Protocol for objects with special serialization behavior.
-
-    When a `Serializable` object is serialized, its `serialize()` method is
-    used to obtain the string representation, instead of using `str()`.
-    """
-
-    def serialize(self) -> str:
-        """Return an SVG-friendly string representation of this object."""
-        ...
-
-
 Serializable: TypeAlias = (
     bool
     | int
     | float
     | str
-    | CustomSerializable
+    | protocols.CustomSerializable
     | Iterable["Serializable"]
 )
 """ Type for objects that can be serialized to a SVG-friendly string. """
 
 
 def _is_serializable(value: object, /) -> TypeIs[Serializable]:
-    return isinstance(
-        value,
-        bool
-        | int
-        | float
-        | str
-        | MutableSequence
-        | tuple
-        | CustomSerializable,
-    )
+    return utils.is_type(value, Serializable)
 
 
 @pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
@@ -204,6 +174,22 @@ class Formatter:
 DEFAULT_FORMATTER: Final = Formatter()
 """The default formatter used by the library.
 Use `set_formatter()` to set a custom one."""
+
+MINIMAL_FORMATTER: Final = Formatter(
+    color_mode="original",
+    indent=4,
+    large_number_scientific_threshold=None,
+    path_data_coordinates="absolute",
+    path_data_shorthand_curve_commands="original",
+    path_data_shorthand_line_commands="original",
+    small_number_scientific_threshold=None,
+    spaces_around_attrs=False,
+    spaces_around_function_args=False,
+    strip_leading_zero=False,
+    xmlns="always",
+)
+"""Formatter aimed at compatibility and performance."""
+
 
 _formatter = DEFAULT_FORMATTER
 
@@ -360,7 +346,7 @@ def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:
     result: str
 
     match value:
-        case CustomSerializable():
+        case protocols.CustomSerializable():
             result = value.serialize()
 
             if (
@@ -430,3 +416,28 @@ def serialize_attr(value: object, /) -> str:
         result = f" {result} "
 
     return result
+
+
+def serialize_function_call(name: str, *args: Serializable | None) -> str:
+    """Serialize a function call into its SVG representation.
+
+    Args:
+    name: The name of the function.
+    args: The arguments to pass to the function. If an argument is `None`,
+    it is omitted.
+
+    Returns:
+    The SVG representation of the function call.
+
+    Examples:
+    >>> serialize_function_call("rotate", 45)
+    'rotate(45)'
+    >>> serialize_function_call("translate", 10, 20)
+    'translate(10 20)'
+    >>> serialize_function_call("rgb", 255, None, 0, 128)
+    'rgb(255 0 128)'
+
+    """
+    args_str = serialize(arg for arg in args if arg is not None)
+
+    return f"{name}({args_str})"

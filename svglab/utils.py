@@ -1,10 +1,13 @@
 import collections
 import functools
+import math
 import re
 from collections.abc import Callable, Generator, Iterable, Sequence, Sized
 
 import bs4
+import typeguard
 from typing_extensions import (
+    SupportsFloat,
     SupportsIndex,
     TypeAlias,
     TypeIs,
@@ -12,6 +15,8 @@ from typing_extensions import (
     overload,
 )
 from useful_types import SupportsRichComparisonT
+
+from svglab import constants
 
 
 _T = TypeVar("_T")
@@ -323,6 +328,38 @@ def is_first_index(sized: Sized, index: SupportsIndex) -> bool:
     return start == 0
 
 
+def is_close(
+    a: SupportsFloat | SupportsIndex, b: SupportsFloat | SupportsIndex, /
+) -> bool:
+    """Check if two floating-point numbers are almost equal.
+
+    Args:
+        a: The first number to compare.
+        b: The second number to compare.
+
+    Returns:
+        `True` if the two numbers are almost equal, `False` otherwise.
+
+    Examples:
+        import math
+        >>> is_close(1.0, 1.0)
+        True
+        >>> is_close(1.0, 1.0 + 1e-20)
+        True
+        >>> is_close(1.0, 1.0 + 0.001)
+        False
+        >>> is_close(0, math.sin(math.pi))
+        True
+
+    """
+    return math.isclose(
+        a,
+        b,
+        rel_tol=constants.FLOAT_RELATIVE_TOLERANCE,
+        abs_tol=constants.FLOAT_ABSOLUTE_TOLERANCE,
+    )
+
+
 @overload
 def apply_single_or_many(func: _Map[_T, _NT], value: _T, /) -> _NT: ...
 
@@ -391,3 +428,109 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
         return None
 
     return match.group(1), match.group(2)
+
+
+@overload
+def is_type(value: object, type_: type[_T], /) -> TypeIs[_T]: ...
+
+
+@overload
+def is_type(value: object, type_: object, /) -> bool: ...
+
+
+def is_type(value: object, type_: object, /) -> bool:
+    """Check if a value is of a certain type.
+
+    Compared to `isinstance`, this function accepts (almost) arbitrary type
+    annotations and also checks the contents of collections.
+
+    See the `typeguard`
+    [documentation](https://typeguard.readthedocs.io/en/latest/features.html)
+    for limitations and more information.
+
+    Args:
+        value: The value to check.
+        type_: The type to check against.
+
+    Returns:
+        `True` if the value is of the given type, `False` otherwise.
+
+    Examples:
+        >>> is_type(1, int)
+        True
+        >>> is_type(1, str)
+        False
+        >>> is_type([1, 2, 3], list[int])
+        True
+        >>> is_type([1, 2, 3], list[str])
+        False
+
+    """
+    try:
+        typeguard.check_type(value, type_)
+    except typeguard.TypeCheckError:
+        return False
+    else:
+        return True
+
+
+def tan(degrees: float) -> float:
+    """Compute the tangent of an angle in degrees.
+
+    This function is a wrapper around `math.tan` that takes an angle in degrees
+    and returns "nice" values for common angles.
+
+    Args:
+        degrees: The angle in degrees.
+
+    Returns:
+        The tangent of the angle.
+
+    Examples:
+        >>> tan(0)
+        0
+        >>> tan(45)
+        1
+
+    """
+    degrees %= 180
+
+    match degrees:
+        case 0:
+            return 0
+        case 45:
+            return 1
+        case 135:
+            return -1
+        case _:
+            return math.tan(math.radians(degrees))
+
+
+def arctan(value: float) -> float:
+    """Compute the arctangent of a value in degrees.
+
+    This function is a wrapper around `math.atan` that returns "nice" values
+    for common inputs. The output is in degrees.
+
+    Args:
+        value: The value to compute the arctangent of.
+
+    Returns:
+        The arctangent of the value in degrees.
+
+    Examples:
+        >>> arctan(0)
+        0
+        >>> arctan(1)
+        45
+
+    """
+    match value:
+        case 0:
+            return 0
+        case 1:
+            return 45
+        case -1:
+            return -45
+        case _:
+            return math.degrees(math.atan(value))
