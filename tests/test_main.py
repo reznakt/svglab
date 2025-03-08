@@ -547,6 +547,57 @@ def test_matrix_multiplication(
     assert transformed == after
 
 
+_REIFY_TRANSFORMS: Final[list[transform.Transform]] = [
+    [transform.Translate(10, 20)],
+    [transform.Translate(1, 5), transform.Scale(0.5)],
+    [transform.Translate(2, 1)] * 10,
+    [transform.Scale(1.01)] * 10,
+    [
+        transform.Scale(0.5),
+        transform.Translate(5, 0),
+        transform.Scale(1.5),
+        transform.Translate(-10, -10),
+        transform.Scale(0.75),
+        transform.Translate(0, 10),
+    ],
+    [transform.Scale(1), transform.Translate(0)],
+    [transform.Scale(0)],
+]
+
+
+@pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
+def test_reify_leaves_transform_empty(
+    transform: transform.Transform,
+) -> None:
+    svg = elements.Svg(transform=transform)
+    svg.reify()
+
+    assert not hasattr(svg, "transform")
+
+
+@pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
+def test_reify_produces_visually_equal_svg(
+    transform: transform.Transform,
+) -> None:
+    original = elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            x=length.Length(200),
+            y=length.Length(200),
+            width=length.Length(100),
+            height=length.Length(100),
+            fill="red",
+            transform=transform,
+        )
+    )
+
+    reified = copy.deepcopy(original)
+    reified.reify()
+
+    assert conftest.svg_visually_equal(original, reified)
+
+
 def test_set_viewbox_sets_viewbox_attr() -> None:
     viewbox = (0, 0, 100, 100)
 

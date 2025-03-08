@@ -1,8 +1,9 @@
 import abc
+import sys
 
 from typing_extensions import Protocol
 
-from svglab import graphics, models
+from svglab import errors, graphics, models
 from svglab.attrparse import d
 from svglab.attrs import groups, regular
 from svglab.elements import common, transforms
@@ -193,3 +194,87 @@ class TextContentChildElement(Element):
 
 class TextContentBlockElement(Element):
     pass
+
+
+class SupportsTransform(Element, regular.Transform):
+    def __reify_this(self, *, limit: int = sys.maxsize) -> None:
+        if limit <= 0:
+            raise ValueError("Limit must be a positive integer")
+
+        if not self.transform:
+            return
+
+        self._check_lengths_convertible_to_user_units()
+
+        for _ in range(min(len(self.transform), limit)):
+            transformation = self.transform.pop()
+
+            try:
+                self.apply_transformation(
+                    transformation,
+                    skip_convertibility_check=True,
+                    adjust_transform=False,
+                )
+            except ValueError as e:
+                self.transform.append(transformation)
+
+                raise errors.SvgReifyError(transformation) from e
+
+        if not self.transform:
+            del self.transform
+
+    def reify(self, *, limit: int = sys.maxsize) -> None:
+        """Apply transformations defined by the `transform` attribute.
+
+        This method takes the transformations defined by the `transform`
+        attribute and applies them directly to the coordinate, length, and
+        other attributes of the element. The transformations are applied in
+        the order in which they are defined. The result of this operation
+        should be a visually identical element with the `transform` attribute
+        reduced or removed (depending on the `limit` parameter).
+
+        If all transformations are successfully applied, the `transform`
+        attribute is removed from the element.
+
+        All length values in the element must be convertible to user units.
+
+        Args:
+            limit: The maximum number of transformations to apply. If the
+                `transform` attribute contains more transformations than the
+                limit, the remaining transformations are kept in the attribute
+                and not applied.
+
+        Raises:
+            ValueError: If the limit is not a positive integer.
+            SvgReifyError: If a transformation cannot be applied.
+            SvgUnitConversionError: If a length value cannot be converted to
+                user units.
+
+        Examples:
+            >>> from svglab import Rect
+            >>> from svglab.attrparse import Length, Translate
+            >>> rect = Rect(
+            ...     x=Length(10),
+            ...     y=Length(20),
+            ...     width=Length(20),
+            ...     height=Length(40),
+            ...     transform=[Translate(5, 5)],
+            ... )
+            >>> rect.reify()
+            >>> rect.x
+            Length(value=15.0, unit=None)
+            >>> rect.y
+            Length(value=25.0, unit=None)
+            >>> rect.width
+            Length(value=20.0, unit=None)
+            >>> rect.height
+            Length(value=40.0, unit=None)
+            >>> hasattr(rect, "transform")
+            False
+
+        """
+        self.__reify_this(limit=limit)
+
+        for child in self.find_all():
+            if isinstance(child, SupportsTransform):
+                child.reify(limit=limit)
