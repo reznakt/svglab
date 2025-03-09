@@ -1,17 +1,30 @@
 import warnings
 
 import numpy as np
+import PIL.Image
+import PIL.ImageChops
 
 from svglab import elements
 from svglab.attrparse import d, length, point, transform
 
 
-def svg_visually_equal(original: elements.Svg, new: elements.Svg) -> bool:
+def mean_squared_error(a: PIL.Image.Image, b: PIL.Image.Image) -> float:
+    diff = PIL.ImageChops.difference(a, b)
+    errors = np.asarray(diff) / 255
+
+    return float(np.mean(np.square(errors)))
+
+
+def svg_visually_equal(
+    original: elements.Svg, new: elements.Svg, *, tolerance: float = 1e-7
+) -> bool:
     """Check if two SVGs are visually equal.
 
     This function renders the two SVGs and compares the resulting images
-    pixel-by-pixel. If the images are not equal, a warning containing the
-    XML and data URI representations of the SVGs is raised.
+    using the mean squared error (MSE) metric. If the MSE is below the
+    specified tolerance, the SVGs are considered visually equal. A warning
+    is raised otherwise, containing the MSE and the XML and data URI
+    representations of both SVGs.
 
     A warning is also raised if the original SVG is empty, as this may
     indicate an error in the test.
@@ -19,6 +32,8 @@ def svg_visually_equal(original: elements.Svg, new: elements.Svg) -> bool:
     Args:
     original: The original SVG.
     new: The new SVG.
+    tolerance: The maximum MSE for the SVGs to be considered
+        visually equal.
 
     Returns:
     `True` if the SVGs are visually equal, `False` otherwise.
@@ -27,15 +42,15 @@ def svg_visually_equal(original: elements.Svg, new: elements.Svg) -> bool:
     original_img = original.render()
     new_img = new.render()
 
-    if original_img.getbbox() is not None:
+    if original_img.getbbox() is None:
         warnings.warn("Original SVG is empty", stacklevel=2)
 
-    equal = np.array_equal(np.asarray(original_img), np.asarray(new_img))
+    mse = mean_squared_error(original_img, new_img)
+    equal = mse < tolerance
 
     if not equal:
         lines = [
-            "Rendered SVGs are not visually equal:",
-            "",
+            f"Rendered SVGs are not visually equal ({mse=}):",
             "Original:",
             original.to_xml(),
             original.to_data_uri(),
