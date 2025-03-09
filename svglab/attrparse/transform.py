@@ -401,18 +401,30 @@ def swap_transforms(
 
         # scale <-> skew
         case Scale(sx, sy) as scale, SkewX(angle):
+            if utils.is_close(sx, sy):
+                return b, a
+
             angle = utils.arctan(sx / sy * utils.tan(angle))
             return type(b)(angle), scale
 
         case SkewX(angle), Scale(sx, sy) as scale:
+            if utils.is_close(sx, sy):
+                return b, a
+
             angle = utils.arctan(sy / sx * utils.tan(angle))
             return scale, type(a)(angle)
 
         case Scale(sx, sy) as scale, SkewY(angle):
+            if utils.is_close(sx, sy):
+                return b, a
+
             angle = utils.arctan(sy / sx * utils.tan(angle))
             return type(b)(angle), scale
 
         case SkewY(angle), Scale(sx, sy) as scale:
+            if utils.is_close(sx, sy):
+                return b, a
+
             angle = utils.arctan(sx / sy * utils.tan(angle))
 
             return scale, type(a)(angle)
