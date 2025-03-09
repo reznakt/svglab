@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import abc
 import collections
-import itertools
 import reprlib
 import sys
 from collections.abc import Generator, Mapping
@@ -20,8 +19,8 @@ from typing_extensions import (
 )
 
 from svglab import constants, errors, models, serialize, utils
-from svglab.attrparse import length, transform
-from svglab.attrs import groups, regular
+from svglab.attrparse import transform
+from svglab.attrs import groups
 from svglab.attrs import names as attr_names
 from svglab.elements import names, transforms
 
@@ -182,48 +181,13 @@ class Tag(
 
         return {**standard, **extra}
 
-    def _check_lengths_convertible_to_user_units(
-        self, *, recursive: bool = True
-    ) -> None:
-        """Check if all length attributes are convertible to user units.
-
-        Args:
-        recursive: If `True`, check all descendant tags as well.
-
-        Raises:
-        SvgLengthConversionError: If a length attribute is not convertible
-        to user units.
-
-        """
-        for tag in itertools.chain(
-            [self], self.find_all(recursive=recursive)
-        ):
-            for attr in tag.standard_attrs().values():
-                if not isinstance(attr, length.Length):
-                    continue
-
-                attr.to(None)
-
-    def apply_transformation(
-        self,
-        transformation: transform.TransformFunction,
-        /,
-        *,
-        recursive: bool = True,
-        skip_convertibility_check: bool = False,
-        adjust_transform: bool = True,
+    def _apply_transformation(
+        self, transformation: transform.TransformFunction, /
     ) -> None:
         """Apply a transformation to the attributes of the tag.
 
         Args:
         transformation: The transformation to apply.
-        recursive: If `True`, apply the transformation to all descendant tags
-        as well.
-        skip_convertibility_check: If `False`, check if all length attributes
-        are convertible to user units before applying the transformation.
-        If `True`, this check is done on a per-attribute on-the-fly basis.
-        adjust_transform: If `True`, adjust the transformations in the
-        `transform` attribute of the tag accordingly.
 
         Raises:
         ValueError: If the transformation is not supported.
@@ -231,35 +195,14 @@ class Tag(
         to user units.
 
         """
-        if not skip_convertibility_check:
-            self._check_lengths_convertible_to_user_units(
-                recursive=recursive
-            )
-
-        if (
-            isinstance(self, regular.Transform)
-            and self.transform is not None
-        ):
-            transformation = transform.pull_through_transform_list(
-                self.transform, transformation
-            )
-
         match transformation:
             case transform.Translate():
-                transforms.translate(
-                    self, transformation, adjust_transform=adjust_transform
-                )
+                transforms.translate(self, transformation)
             case transform.Scale():
-                transforms.scale(
-                    self, transformation, adjust_transform=adjust_transform
-                )
+                transforms.scale(self, transformation)
             case _:
                 msg = f"Unsupported transformation: {transformation}"
                 raise ValueError(msg)
-
-        if recursive:
-            for child in self.find_all(recursive=False):
-                child.apply_transformation(transformation)
 
     @override
     def _eq(self, other: Self) -> bool:

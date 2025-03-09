@@ -15,13 +15,12 @@ from typing_extensions import (
     Self,
     TypeAlias,
     TypeVar,
-    cast,
     final,
     overload,
     override,
 )
 
-from svglab import mixins, protocols, serialize, utils, utiltypes
+from svglab import errors, mixins, protocols, serialize, utils, utiltypes
 from svglab.attrparse import parse
 
 
@@ -273,6 +272,13 @@ class SkewY(_TransformFunctionBase):
 TransformFunction: TypeAlias = (
     Translate | Scale | Rotate | SkewX | SkewY | Matrix
 )
+"""A function that represents a transformation."""
+
+Reifiable: TypeAlias = Translate | Scale
+"""A transformation that can be reified."""
+
+Transform: TypeAlias = list[TransformFunction]
+"""A list of transformations."""
 
 
 def compose(transforms: Iterable[TransformFunction], /) -> Matrix:
@@ -307,9 +313,6 @@ class PointAddSubWithTranslateRMatmul(
         return Translate(other.x, other.y) @ self
 
 
-Transform: TypeAlias = list[TransformFunction]
-
-
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, Transform]):
     number = float
@@ -331,7 +334,6 @@ TransformType: TypeAlias = Annotated[
     ),
 ]
 
-_TransformT = TypeVar("_TransformT", bound=TransformFunction)
 _TransformT1 = TypeVar("_TransformT1", bound=TransformFunction)
 _TransformT2 = TypeVar("_TransformT2", bound=TransformFunction)
 
@@ -349,7 +351,7 @@ def swap_transforms(
         A 2-tuple (b', a') where b' and a' are the adjusted transforms.
 
     Raises:
-        ValueError: If the transforms cannot be swapped.
+        SvgTransformSwapError: If the transforms cannot be swapped.
 
     Examples:
         >>> swap_transforms(Translate(10, 20), Scale(2, 3))
@@ -357,25 +359,47 @@ def swap_transforms(
         >>> swap_transforms(Scale(2, 3), SkewX(45))
         (SkewX(angle=33.690067525979785), Scale(sx=2.0, sy=3.0))
         >>> swap_transforms(SkewX(45), Translate(10, 20))
-        (Translate(tx=-9.999999999999996, ty=20.0), SkewX(angle=45.0))
+        (Translate(tx=-10.0, ty=20.0), SkewX(angle=45.0))
 
     """
-    if type(a) is type(b):
-        return b, a
-
     match a, b:
+        # transformations of the same type
+        case (Translate(), Translate()) | (Scale(), Scale()):
+            return b, a
+
+        # translate <-> scale
         case Translate(tx, ty), Scale(sx, sy) as scale:
             return scale, type(a)(tx / sx, ty / sy)
 
         case Scale(sx, sy) as scale, Translate(tx, ty):
             return type(b)(sx * tx, sy * ty), scale
 
+        # translate <-> rotate
+        case Rotate(angle, cx, cy), Translate(tx, ty):
+            return type(b)(tx, ty), type(a)(angle, cx - tx, cy - ty)
+        case Translate(tx, ty), Rotate(angle, cx, cy):
+            return type(b)(angle, cx + tx, cy + ty), type(a)(tx, ty)
+
+        # scale <-> rotate
+        case Rotate(angle, cx, cy), Scale(sx, sy) as scale:
+            return scale, type(a)(angle, cx / sx, cy / sy)
+        case Scale(sx, sy) as scale, Rotate(angle, cx, cy):
+            return type(b)(angle, cx * sx, cy * sy), scale
+
+        # translate <-> skew
         case SkewX(angle) as skew_x, Translate(tx, ty):
             return type(b)(tx - ty * utils.tan(angle), ty), skew_x
 
         case Translate(tx, ty), SkewX(angle) as skew_x:
             return skew_x, type(a)(tx + ty * utils.tan(angle), ty)
 
+        case SkewY(angle) as skew_y, Translate(tx, ty):
+            return type(b)(tx, ty - tx * utils.tan(angle)), skew_y
+
+        case Translate(tx, ty), SkewY(angle) as skew_y:
+            return skew_y, type(a)(tx, ty + tx * utils.tan(angle))
+
+        # scale <-> skew
         case Scale(sx, sy) as scale, SkewX(angle):
             angle = utils.arctan(sx / sy * utils.tan(angle))
             return type(b)(angle), scale
@@ -383,12 +407,6 @@ def swap_transforms(
         case SkewX(angle), Scale(sx, sy) as scale:
             angle = utils.arctan(sy / sx * utils.tan(angle))
             return scale, type(a)(angle)
-
-        case SkewY(angle) as skew_y, Translate(tx, ty):
-            return type(b)(tx, ty - tx * utils.tan(angle)), skew_y
-
-        case Translate(tx, ty), SkewY(angle) as skew_y:
-            return skew_y, type(a)(tx, ty + tx * utils.tan(angle))
 
         case Scale(sx, sy) as scale, SkewY(angle):
             angle = utils.arctan(sy / sx * utils.tan(angle))
@@ -399,42 +417,37 @@ def swap_transforms(
 
             return scale, type(a)(angle)
         case _:
-            msg = f"Swapping {type(a)} and {type(b)} is not supported"
-            raise ValueError(msg)
+            raise errors.SvgTransformSwapError(a, b)
 
 
-def pull_through_transform_list(
-    transform: Transform, func: _TransformT
-) -> _TransformT:
-    """Pull a transformation through a list of transformations.
+def move_transformation_to_end(transform: Transform, index: int) -> None:
+    """Move a transformation to the end of the transform list.
 
-    This function prepends the transformation to the list and then
-    "pulls" it through the list, swapping it with each transformation in the
-    list and adjusting the parameters so that the result is equal. Once the
-    transformation resides at the end of the list, it is popped and returned.
-
-    The transformation itself may have its parameters adjusted as well.
+    This function moves a transformation from the given index to the end of
+    the list, swapping it with each transformation that follows it.
+    The transformations in the list are adjusted so that the result is the
+    same. The transformation itself may have its parameters adjusted as well.
 
     Args:
         transform: A list of transformations.
-        func: The transformation to pull through the list.
+        index: The index of the transformation to move.
 
-    Returns:
-        The transformation after it has been pulled through.
+    Raises:
+        ValueError: If the index is out of range.
+        SvgTransformSwapError: If two transformations cannot be swapped.
 
     Examples:
-        >>> transform = [Scale(2, 3)]
-        >>> pull_through_transform_list(transform, Translate(10, 20))
-        Translate(tx=5.0, ty=6.666666666666667)
+        >>> transform = [Translate(10, 20), Scale(2, 3)]
+        >>> move_transformation_to_end(transform, 0)
         >>> transform
-        [Scale(sx=2.0, sy=3.0)]
+        [Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667)]
 
     """
-    transform.insert(0, func)
+    if not (0 <= index < len(transform)):
+        msg = f"Index {index=} out of range"
+        raise ValueError(msg)
 
-    for i in range(len(transform) - 1):
+    for i in range(index, len(transform) - 1):
         transform[i], transform[i + 1] = swap_transforms(
             transform[i], transform[i + 1]
         )
-
-    return cast(_TransformT, transform.pop())

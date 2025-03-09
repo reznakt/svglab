@@ -1,4 +1,4 @@
-from typing_extensions import override
+from typing_extensions import Any, override
 
 
 class SvgError(Exception):
@@ -37,5 +37,15 @@ class SvgReifyError(SvgError):
     """Exception raised when an element cannot be reified."""
 
     @override
-    def __init__(self, transformation: object) -> None:
-        super().__init__(f"Cannot reify {transformation!r}")
+    def __init__(self, transform: list[Any]) -> None:
+        super().__init__(f"Cannot reify transform list: {transform!r}")
+
+
+class SvgTransformSwapError(SvgError):
+    """Exception raised when two transformations cannot be swapped."""
+
+    @override
+    def __init__(self, transform_a: object, transform_b: object) -> None:
+        super().__init__(
+            f"Cannot swap {transform_a!r} and {transform_b!r}"
+        )

@@ -165,8 +165,19 @@ class Svg(
         # skip self; this can be done in a single for loop because the
         # SVG is a tree (probably)
         for child in self.find_all():
-            child.apply_transformation(transform.Scale(sx, sy))
-            child.apply_transformation(transform.Translate(tx, ty))
+            if not isinstance(child, traits.SupportsTransform):
+                continue  # TODO: maybe all elements should support transform?
+
+            if child.transform is None:
+                child.transform = []
+
+            child.transform = [
+                transform.Translate(tx, ty),
+                transform.Scale(sx, sy),
+                *child.transform,
+            ]
+
+            child.reify(limit=2, recursive=False)
 
         self.viewBox = (min_x, min_y, width, height)
 

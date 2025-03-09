@@ -572,7 +572,7 @@ def test_reify_leaves_transform_empty(
     svg = elements.Svg(transform=transform)
     svg.reify()
 
-    assert not hasattr(svg, "transform")
+    assert svg.transform is None
 
 
 @pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
@@ -712,10 +712,6 @@ def test_set_viewbox_produces_visually_equal_svg(
         (
             (transform.Scale(2), transform.Scale(0.5)),
             (transform.Scale(0.5), transform.Scale(2)),
-        ),
-        (
-            (transform.Rotate(10), transform.Rotate(5)),
-            (transform.Rotate(5), transform.Rotate(10)),
         ),
         # isotropic scaling and translation
         (
