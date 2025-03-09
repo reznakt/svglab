@@ -721,7 +721,7 @@ def test_set_viewbox_produces_visually_equal_svg(
         # skew and translation
         (
             (transform.SkewX(45), transform.Translate(10, 20)),
-            (transform.Translate(10 - 20, 20), transform.SkewX(45)),
+            (transform.Translate(10 + 20, 20), transform.SkewX(45)),
         ),
         # skew and isotropic scaling
         (

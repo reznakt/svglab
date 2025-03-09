@@ -359,7 +359,7 @@ def swap_transforms(
         >>> swap_transforms(Scale(2, 3), SkewX(45))
         (SkewX(angle=33.690067525979785), Scale(sx=2.0, sy=3.0))
         >>> swap_transforms(SkewX(45), Translate(10, 20))
-        (Translate(tx=-10.0, ty=20.0), SkewX(angle=45.0))
+        (Translate(tx=30.0, ty=20.0), SkewX(angle=45.0))
 
     """
     match a, b:
@@ -388,16 +388,16 @@ def swap_transforms(
 
         # translate <-> skew
         case SkewX(angle) as skew_x, Translate(tx, ty):
-            return type(b)(tx - ty * utils.tan(angle), ty), skew_x
+            return type(b)(tx + ty * utils.tan(angle), ty), skew_x
 
         case Translate(tx, ty), SkewX(angle) as skew_x:
-            return skew_x, type(a)(tx + ty * utils.tan(angle), ty)
+            return skew_x, type(a)(tx - ty * utils.tan(angle), ty)
 
         case SkewY(angle) as skew_y, Translate(tx, ty):
-            return type(b)(tx, ty - tx * utils.tan(angle)), skew_y
+            return type(b)(tx, ty + tx * utils.tan(angle)), skew_y
 
         case Translate(tx, ty), SkewY(angle) as skew_y:
-            return skew_y, type(a)(tx, ty + tx * utils.tan(angle))
+            return skew_y, type(a)(tx, ty - tx * utils.tan(angle))
 
         # scale <-> skew
         case Scale(sx, sy) as scale, SkewX(angle):
