@@ -80,7 +80,120 @@ class GraphicsElement(
     pass
 
 
-class Shape(regular.PathLength, GraphicsElement):
+class SupportsTransform(Element, regular.Transform):
+    def __reify_this(self, *, limit: int) -> None:
+        if limit < 0:
+            raise ValueError("Limit must be a positive integer")
+
+        if not self.transform:
+            return
+
+        reified = 0
+        i = 0
+
+        while reified < limit and i < len(self.transform):
+            if not isinstance(self.transform[i], transform.Reifiable):
+                i += 1
+                continue
+
+            try:
+                # move the transformation to the end of the list where it can
+                # be directly applied to the element
+                transform.move_transformation_to_end(self.transform, i)
+                transformation = self.transform.pop()
+
+                # apply the transformation to the element's attributes
+                self._apply_transformation(transformation)
+
+                # add the transformation at the beginning of each child's
+                # transformation list
+                for child in self.find_all(SupportsTransform):
+                    if child.transform is None:
+                        child.transform = []
+
+                    child.transform.insert(0, transformation)
+
+                # reify the transformation on all children
+                for child in self.find_all(SupportsTransform):
+                    child.reify(limit=1, recursive=False)
+            except (ValueError, errors.SvgTransformSwapError) as e:
+                raise errors.SvgReifyError(self.transform) from e
+
+            reified += 1
+
+    def reify(
+        self,
+        *,
+        limit: int = sys.maxsize,
+        recursive: bool = True,
+        remove_transform_list_if_empty: bool = True,
+    ) -> None:
+        """Apply transformations defined by the `transform` attribute.
+
+        This method takes the transformations defined by the `transform`
+        attribute and applies them directly to the coordinate, length, and
+        other attributes of the element. The transformations are applied in
+        the order in which they are defined. The result of this operation
+        should be a visually identical element with the `transform` attribute
+        reduced or removed (depending on the `limit` parameter).
+
+        If all transformations are successfully applied, the `transform`
+        attribute is removed from the element.
+
+        All length values in the element must be convertible to user units.
+
+        Args:
+            limit: The maximum number of transformations to apply. If the
+                `transform` attribute contains more transformations than the
+                limit, the remaining transformations are kept in the attribute
+                and not applied. The limit must be a positive integer and is
+                applied on a per-element basis.
+            recursive: If `True`, the method is called recursively on all
+                child elements that support reification.
+            remove_transform_list_if_empty: If `True`, the `transform`
+                attribute is set to `None` if the list is empty after
+                reification.
+
+        Raises:
+            ValueError: If the limit is not a positive integer.
+            SvgReifyError: If a transformation cannot be applied.
+            SvgUnitConversionError: If a length value cannot be converted to
+                user units.
+
+        Examples:
+            >>> from svglab import Rect
+            >>> from svglab.attrparse import Length, Translate
+            >>> rect = Rect(
+            ...     x=Length(10),
+            ...     y=Length(20),
+            ...     width=Length(20),
+            ...     height=Length(40),
+            ...     transform=[Translate(5, 5)],
+            ... )
+            >>> rect.reify()
+            >>> rect.x
+            Length(value=15.0, unit=None)
+            >>> rect.y
+            Length(value=25.0, unit=None)
+            >>> rect.width
+            Length(value=20.0, unit=None)
+            >>> rect.height
+            Length(value=40.0, unit=None)
+            >>> rect.transform is None
+            True
+
+        """
+        self.__reify_this(limit=limit)
+
+        if remove_transform_list_if_empty and not self.transform:
+            self.transform = None
+
+        if recursive:
+            for child in self.find_all(SupportsTransform):
+                child.reify(limit=limit, recursive=True)
+
+
+class Shape(regular.PathLength, SupportsTransform, GraphicsElement):
     def set_path_length(self, value: float) -> None:
         """Set a new value for the `pathLength` attribute.
 
@@ -194,116 +307,3 @@ class TextContentChildElement(Element):
 
 class TextContentBlockElement(Element):
     pass
-
-
-class SupportsTransform(Element, regular.Transform):
-    def __reify_this(self, *, limit: int) -> None:
-        if limit < 0:
-            raise ValueError("Limit must be a positive integer")
-
-        if not self.transform:
-            return
-
-        reified = 0
-        i = 0
-
-        while reified < limit and i < len(self.transform):
-            if not isinstance(self.transform[i], transform.Reifiable):
-                i += 1
-                continue
-
-            try:
-                # move the transformation to the end of the list where it can
-                # be directly applied to the element
-                transform.move_transformation_to_end(self.transform, i)
-                transformation = self.transform.pop()
-
-                # apply the transformation to the element's attributes
-                self._apply_transformation(transformation)
-
-                # add the transformation at the beginning of each child's
-                # transformation list
-                for child in self.find_all(SupportsTransform):
-                    if child.transform is None:
-                        child.transform = []
-
-                    child.transform.insert(0, transformation)
-
-                # reify the transformation on all children
-                for child in self.find_all(SupportsTransform):
-                    child.reify(limit=1, recursive=False)
-            except (ValueError, errors.SvgTransformSwapError) as e:
-                raise errors.SvgReifyError(self.transform) from e
-
-            reified += 1
-
-    def reify(
-        self,
-        *,
-        limit: int = sys.maxsize,
-        recursive: bool = True,
-        remove_transform_list_if_empty: bool = True,
-    ) -> None:
-        """Apply transformations defined by the `transform` attribute.
-
-        This method takes the transformations defined by the `transform`
-        attribute and applies them directly to the coordinate, length, and
-        other attributes of the element. The transformations are applied in
-        the order in which they are defined. The result of this operation
-        should be a visually identical element with the `transform` attribute
-        reduced or removed (depending on the `limit` parameter).
-
-        If all transformations are successfully applied, the `transform`
-        attribute is removed from the element.
-
-        All length values in the element must be convertible to user units.
-
-        Args:
-            limit: The maximum number of transformations to apply. If the
-                `transform` attribute contains more transformations than the
-                limit, the remaining transformations are kept in the attribute
-                and not applied. The limit must be a positive integer and is
-                applied on a per-element basis.
-            recursive: If `True`, the method is called recursively on all
-                child elements that support reification.
-            remove_transform_list_if_empty: If `True`, the `transform`
-                attribute is set to `None` if the list is empty after
-                reification.
-
-        Raises:
-            ValueError: If the limit is not a positive integer.
-            SvgReifyError: If a transformation cannot be applied.
-            SvgUnitConversionError: If a length value cannot be converted to
-                user units.
-
-        Examples:
-            >>> from svglab import Rect
-            >>> from svglab.attrparse import Length, Translate
-            >>> rect = Rect(
-            ...     x=Length(10),
-            ...     y=Length(20),
-            ...     width=Length(20),
-            ...     height=Length(40),
-            ...     transform=[Translate(5, 5)],
-            ... )
-            >>> rect.reify()
-            >>> rect.x
-            Length(value=15.0, unit=None)
-            >>> rect.y
-            Length(value=25.0, unit=None)
-            >>> rect.width
-            Length(value=20.0, unit=None)
-            >>> rect.height
-            Length(value=40.0, unit=None)
-            >>> rect.transform is None
-            True
-
-        """
-        self.__reify_this(limit=limit)
-
-        if remove_transform_list_if_empty and not self.transform:
-            self.transform = None
-
-        if recursive:
-            for child in self.find_all(SupportsTransform):
-                child.reify(limit=limit, recursive=True)

@@ -209,6 +209,7 @@ class Tag(
         return (
             self.prefix == other.prefix
             and self.all_attrs() == other.all_attrs()
+            and self.num_children == other.num_children
             and all(
                 c1 == c2
                 for c1, c2 in zip(
@@ -288,10 +289,11 @@ class Tag(
         return self
 
     def remove_child(self, child: Element, /) -> Element:
-        self.__children.remove(child)
-        child.parent = None
+        for i, elem in enumerate(self.children):
+            if elem is child:
+                return self.pop_child(i)
 
-        return child
+        raise ValueError("Child not found")
 
     def pop_child(self, index: SupportsIndex = -1, /) -> Element:
         child = self.__children.pop(index)
@@ -460,6 +462,13 @@ class Tag(
 
             msg = f"Unable to find tag by search criteria: {tags}"
             raise errors.SvgElementNotFoundError(msg) from e
+
+    @property
+    def num_children(self) -> int:
+        return len(self.__children)
+
+    def has_children(self) -> bool:
+        return self.num_children > 0
 
     def __getitem__(self, key: str) -> str:
         assert self.model_extra is not None, "model_extra is None"

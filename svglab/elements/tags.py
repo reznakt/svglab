@@ -24,7 +24,6 @@ class Path(
     regular.D,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
     traits.Shape,
     traits.Element,
 ):
@@ -215,7 +214,6 @@ class Circle(
     regular.ExternalResourcesRequired,
     regular.R,
     regular.Style,
-    traits.SupportsTransform,
     traits.BasicShape,
     traits.Element,
 ):
@@ -298,7 +296,6 @@ class Ellipse(
     regular.Rx,
     regular.Ry,
     regular.Style,
-    traits.SupportsTransform,
     traits.BasicShape,
     traits.Element,
 ):
@@ -783,7 +780,6 @@ class Line(
     regular.Class,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
     regular.X1,
     regular.X2,
     regular.Y1,
@@ -914,7 +910,6 @@ class Polygon(
     regular.ExternalResourcesRequired,
     regular.Points,
     regular.Style,
-    traits.SupportsTransform,
     traits.BasicShape,
     traits.Element,
 ):
@@ -934,7 +929,6 @@ class Polyline(
     regular.ExternalResourcesRequired,
     regular.Points,
     regular.Style,
-    traits.SupportsTransform,
     traits.BasicShape,
     traits.Element,
 ):
@@ -977,7 +971,6 @@ class Rect(
     regular.Rx,
     regular.Ry,
     regular.Style,
-    traits.SupportsTransform,
     regular.Width,
     regular.XCoordinate,
     regular.YCoordinate,
