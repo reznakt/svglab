@@ -185,7 +185,7 @@ class Tag(
         return (
             self.prefix == other.prefix
             and self.all_attrs() == other.all_attrs()
-            and utils.length(self.children) == utils.length(other.children)
+            and self.num_children == other.num_children
             and all(
                 c1 == c2
                 for c1, c2 in zip(
