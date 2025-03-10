@@ -438,6 +438,13 @@ class Tag(
             msg = f"Unable to find tag by search criteria: {tags}"
             raise errors.SvgElementNotFoundError(msg) from e
 
+    @property
+    def num_children(self) -> int:
+        return len(self.__children)
+
+    def has_children(self) -> bool:
+        return self.num_children > 0
+
     def __getitem__(self, key: str) -> str:
         assert self.model_extra is not None, "model_extra is None"
         value: str = self.model_extra[key]
