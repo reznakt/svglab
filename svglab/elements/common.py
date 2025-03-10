@@ -265,10 +265,11 @@ class Tag(
         return self
 
     def remove_child(self, child: Element, /) -> Element:
-        self.__children.remove(child)
-        child.parent = None
+        for i, elem in enumerate(self.children):
+            if elem is child:
+                return self.pop_child(i)
 
-        return child
+        raise ValueError("Child not found")
 
     def pop_child(self, index: SupportsIndex = -1, /) -> Element:
         child = self.__children.pop(index)
