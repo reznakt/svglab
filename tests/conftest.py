@@ -1,5 +1,3 @@
-import warnings
-
 import numpy as np
 import PIL.Image
 import PIL.ImageChops
@@ -15,18 +13,18 @@ def mean_squared_error(a: PIL.Image.Image, b: PIL.Image.Image) -> float:
     return float(np.mean(np.square(errors)))
 
 
-def svg_visually_equal(
+def assert_svg_visually_equal(
     original: elements.Svg, new: elements.Svg, *, tolerance: float = 1e-7
-) -> bool:
+) -> None:
     """Check if two SVGs are visually equal.
 
     This function renders the two SVGs and compares the resulting images
     using the mean squared error (MSE) metric. If the MSE is below the
-    specified tolerance, the SVGs are considered visually equal. A warning
+    specified tolerance, the SVGs are considered visually equal. An exception
     is raised otherwise, containing the MSE and the XML and data URI
     representations of both SVGs.
 
-    A warning is also raised if the original SVG is empty, as this may
+    An exception is also raised if the original SVG is empty, as this may
     indicate an error in the test.
 
     Args:
@@ -35,20 +33,21 @@ def svg_visually_equal(
     tolerance: The maximum MSE for the SVGs to be considered
         visually equal.
 
-    Returns:
-    `True` if the SVGs are visually equal, `False` otherwise.
+    Raises:
+    AssertionError: If the SVGs are not visually equal or the original SVG
+    is empty.
 
     """
     original_img = original.render()
     new_img = new.render()
 
     if original_img.getbbox() is None:
-        warnings.warn("Original SVG is empty", stacklevel=2)
+        msg = f"Original SVG is empty:\n{original.to_xml()}"
+        raise AssertionError(msg)
 
     mse = mean_squared_error(original_img, new_img)
-    equal = mse < tolerance
 
-    if not equal:
+    if mse >= tolerance:
         lines = [
             f"Rendered SVGs are not visually equal ({mse=}):",
             "Original:",
@@ -61,9 +60,7 @@ def svg_visually_equal(
             "",
         ]
 
-        warnings.warn("\n".join(lines), stacklevel=2)
-
-    return equal
+        raise AssertionError("\n".join(lines))
 
 
 def complex_svg() -> elements.Svg:

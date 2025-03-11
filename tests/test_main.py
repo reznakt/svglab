@@ -561,7 +561,6 @@ _REIFY_TRANSFORMS: Final[list[transform.Transform]] = [
         transform.Translate(0, 10),
     ],
     [transform.Scale(1), transform.Translate(0)],
-    [transform.Scale(0)],
 ]
 
 _REIFY_SVGS: Final[list[elements.Svg]] = [
@@ -698,7 +697,7 @@ def test_reify_produces_visually_equal_svg_simple(
     reified = copy.deepcopy(original)
     reified.reify()
 
-    assert conftest.svg_visually_equal(original, reified)
+    conftest.assert_svg_visually_equal(original, reified)
 
 
 @pytest.mark.parametrize("svg", _REIFY_SVGS)
@@ -708,7 +707,7 @@ def test_reify_produces_visually_equal_svg_complex(
     reified = copy.deepcopy(svg)
     reified.reify()
 
-    assert conftest.svg_visually_equal(svg, reified)
+    conftest.assert_svg_visually_equal(svg, reified)
 
 
 def test_set_viewbox_sets_viewbox_attr() -> None:
@@ -766,7 +765,7 @@ def test_set_viewbox_produces_visually_equal_svg(
     transformed = copy.deepcopy(svg)
     transformed.set_viewbox((5, 5, 100, 100))
 
-    assert conftest.svg_visually_equal(svg, transformed)
+    conftest.assert_svg_visually_equal(svg, transformed)
 
 
 @pytest.mark.parametrize(
