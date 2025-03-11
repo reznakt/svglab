@@ -102,19 +102,13 @@ class SupportsTransform(Element, regular.Transform):
                 transform.move_transformation_to_end(self.transform, i)
                 transformation = self.transform.pop()
 
-                # apply the transformation to the element's attributes
                 self._apply_transformation(transformation)
 
-                # add the transformation at the beginning of each child's
-                # transformation list
-                for child in self.find_all(SupportsTransform):
+                for child in self._find_children(SupportsTransform):
                     if child.transform is None:
                         child.transform = []
 
                     child.transform.insert(0, transformation)
-
-                # reify the transformation on all children
-                for child in self.find_all(SupportsTransform):
                     child.reify(limit=1, recursive=False)
             except (ValueError, errors.SvgTransformSwapError) as e:
                 raise errors.SvgReifyError(self.transform) from e
@@ -189,7 +183,7 @@ class SupportsTransform(Element, regular.Transform):
             self.transform = None
 
         if recursive:
-            for child in self.find_all(SupportsTransform):
+            for child in self._find_children(SupportsTransform):
                 child.reify(limit=limit, recursive=True)
 
 

@@ -202,9 +202,12 @@ def complex_svg() -> elements.Svg:
         r=length.Length(30),
         fill="#336699",
     )
-    connecting_line = elements.Path(
-        d=d.D().move_to(point.Point(50, 50)).line_to(point.Point(150, 50)),
-        stroke="#000000",
+    connecting_line = elements.Line(
+        x1=length.Length(50),
+        y1=length.Length(50),
+        x2=length.Length(150),
+        y2=length.Length(50),
+        stroke="black",
         stroke_width=length.Length(2),
     )
 

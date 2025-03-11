@@ -564,6 +564,136 @@ _REIFY_TRANSFORMS: Final[list[transform.Transform]] = [
     [transform.Scale(0)],
 ]
 
+_REIFY_SVGS: Final[list[elements.Svg]] = [
+    conftest.complex_svg(),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            x=length.Length(200),
+            y=length.Length(200),
+            width=length.Length(100),
+            height=length.Length(100),
+            stroke_width=length.Length(1),
+            fill="red",
+            stroke="blue",
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            x=length.Length(200),
+            y=length.Length(200),
+            width=length.Length(100),
+            height=length.Length(100),
+            stroke_width=length.Length(1),
+            fill="red",
+            stroke="blue",
+            transform=[transform.Translate(10, 20), transform.Scale(2)],
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            x=length.Length(200),
+            y=length.Length(200),
+            width=length.Length(100),
+            height=length.Length(100),
+            fill="red",
+            stroke="blue",
+            transform=[
+                transform.Translate(10, 20),
+                transform.Scale(2),
+                transform.Rotate(45),
+                transform.Translate(250, -300),
+                transform.SkewX(-45),
+                transform.SkewY(-20),
+            ],
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            width=length.Length(100),
+            height=length.Length(100),
+            fill="red",
+            stroke="blue",
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Path(
+            d=d.D()
+            .move_to(point.Point(100, 100))
+            .line_to(point.Point(200, 200))
+            .cubic_bezier_to(
+                point.Point(300, 200),
+                point.Point(400, 300),
+                point.Point(500, 300),
+            ),
+            stroke="blue",
+            fill="red",
+            transform=[transform.SkewX(30)],
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.G(transform=[transform.Translate(100, 700)]).add_children(
+            elements.Circle(
+                cx=length.Length(50),
+                cy=length.Length(50),
+                r=length.Length(30),
+                stroke="black",
+            ),
+            elements.Circle(
+                cx=length.Length(150),
+                cy=length.Length(50),
+                r=length.Length(30),
+                stroke="black",
+            ),
+            elements.Line(
+                x1=length.Length(50),
+                y1=length.Length(50),
+                x2=length.Length(150),
+                y2=length.Length(50),
+                stroke="black",
+            ),
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000),
+        height=length.Length(1000),
+        transform=[transform.Scale(0.5)],
+    ).add_child(
+        elements.G().add_children(
+            elements.Circle(
+                cx=length.Length(50),
+                cy=length.Length(50),
+                r=length.Length(30),
+                stroke="black",
+            ),
+            elements.Circle(
+                cx=length.Length(150),
+                cy=length.Length(50),
+                r=length.Length(30),
+                stroke="black",
+            ),
+            elements.Line(
+                x1=length.Length(50),
+                y1=length.Length(50),
+                x2=length.Length(150),
+                y2=length.Length(50),
+                stroke="black",
+            ),
+        )
+    ),
+]
+
 
 @pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
 def test_reify_leaves_transform_empty(
@@ -576,7 +706,7 @@ def test_reify_leaves_transform_empty(
 
 
 @pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
-def test_reify_produces_visually_equal_svg(
+def test_reify_produces_visually_equal_svg_simple(
     transform: transform.Transform,
 ) -> None:
     original = elements.Svg(
@@ -598,6 +728,16 @@ def test_reify_produces_visually_equal_svg(
     assert conftest.svg_visually_equal(original, reified)
 
 
+@pytest.mark.parametrize("svg", _REIFY_SVGS)
+def test_reify_produces_visually_equal_svg_complex(
+    svg: elements.Svg,
+) -> None:
+    reified = copy.deepcopy(svg)
+    reified.reify()
+
+    assert conftest.svg_visually_equal(svg, reified)
+
+
 def test_set_viewbox_sets_viewbox_attr() -> None:
     viewbox = (0, 0, 100, 100)
 
@@ -609,89 +749,7 @@ def test_set_viewbox_sets_viewbox_attr() -> None:
     assert svg.viewBox == viewbox
 
 
-@pytest.mark.parametrize(
-    "svg",
-    [
-        conftest.complex_svg(),
-        elements.Svg(
-            width=length.Length(1000), height=length.Length(1000)
-        ).add_child(
-            elements.Rect(
-                x=length.Length(200),
-                y=length.Length(200),
-                width=length.Length(100),
-                height=length.Length(100),
-                stroke_width=length.Length(1),
-                fill="red",
-                stroke="blue",
-            )
-        ),
-        elements.Svg(
-            width=length.Length(1000), height=length.Length(1000)
-        ).add_child(
-            elements.Rect(
-                x=length.Length(200),
-                y=length.Length(200),
-                width=length.Length(100),
-                height=length.Length(100),
-                stroke_width=length.Length(1),
-                fill="red",
-                stroke="blue",
-                transform=[
-                    transform.Translate(10, 20),
-                    transform.Scale(2),
-                ],
-            )
-        ),
-        elements.Svg(
-            width=length.Length(1000), height=length.Length(1000)
-        ).add_child(
-            elements.Rect(
-                x=length.Length(200),
-                y=length.Length(200),
-                width=length.Length(100),
-                height=length.Length(100),
-                fill="red",
-                stroke="blue",
-                transform=[
-                    transform.Translate(10, 20),
-                    transform.Scale(2),
-                    transform.Rotate(45),
-                    transform.Translate(250, -300),
-                    transform.SkewX(-45),
-                    transform.SkewY(-20),
-                ],
-            )
-        ),
-        elements.Svg(
-            width=length.Length(1000), height=length.Length(1000)
-        ).add_child(
-            elements.Rect(
-                width=length.Length(100),
-                height=length.Length(100),
-                fill="red",
-                stroke="blue",
-            )
-        ),
-        elements.Svg(
-            width=length.Length(1000), height=length.Length(1000)
-        ).add_child(
-            elements.Path(
-                d=d.D()
-                .move_to(point.Point(100, 100))
-                .line_to(point.Point(200, 200))
-                .cubic_bezier_to(
-                    point.Point(300, 200),
-                    point.Point(400, 300),
-                    point.Point(500, 300),
-                ),
-                stroke="blue",
-                fill="red",
-                transform=[transform.SkewX(30)],
-            )
-        ),
-    ],
-)
+@pytest.mark.parametrize("svg", _REIFY_SVGS)
 def test_set_viewbox_produces_visually_equal_svg(
     svg: elements.Svg,
 ) -> None:

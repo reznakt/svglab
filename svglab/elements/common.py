@@ -346,6 +346,9 @@ class Tag(
 
         return tag
 
+    def _find_children(self, *tags: type[_T_tag]) -> Generator[_T_tag]:
+        return self.find_all(*tags, recursive=False)
+
     @overload
     def find_all(self, /, *, recursive: bool = True) -> Generator[Tag]: ...
 
