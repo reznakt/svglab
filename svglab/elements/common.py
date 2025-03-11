@@ -19,10 +19,9 @@ from typing_extensions import (
 )
 
 from svglab import constants, errors, models, serialize, utils
-from svglab.attrparse import transform
 from svglab.attrs import groups
 from svglab.attrs import names as attr_names
-from svglab.elements import names, transforms
+from svglab.elements import names
 
 
 _T = TypeVar("_T")
@@ -180,29 +179,6 @@ class Tag(
         extra = self.extra_attrs()
 
         return {**standard, **extra}
-
-    def _apply_transformation(
-        self, transformation: transform.TransformFunction, /
-    ) -> None:
-        """Apply a transformation to the attributes of the tag.
-
-        Args:
-        transformation: The transformation to apply.
-
-        Raises:
-        ValueError: If the transformation is not supported.
-        SvgLengthConversionError: If a length attribute is not convertible
-        to user units.
-
-        """
-        match transformation:
-            case transform.Translate():
-                transforms.translate(self, transformation)
-            case transform.Scale():
-                transforms.scale(self, transformation)
-            case _:
-                msg = f"Unsupported transformation: {transformation}"
-                raise ValueError(msg)
 
     @override
     def _eq(self, other: Self) -> bool:
