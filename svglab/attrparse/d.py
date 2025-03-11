@@ -914,8 +914,9 @@ class D(
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(
             other @ command
-            for command in self
             if isinstance(command, _PhysicalPathCommand)
+            else command
+            for command in self
         )
 
     @override
