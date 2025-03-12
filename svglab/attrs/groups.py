@@ -63,6 +63,7 @@ class Presentation(
     presentation.TextDecoration,
     presentation.TextIndent,
     presentation.TextRendering,
+    presentation.TransformOrigin,
     presentation.UnicodeBidi,
     presentation.VectorEffect,
     presentation.Visibility,
