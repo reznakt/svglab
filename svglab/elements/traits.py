@@ -515,6 +515,11 @@ class SupportsTransform(Element, regular.Transform):
         should be a visually identical element with the `transform` attribute
         reduced or removed (depending on the `limit` parameter).
 
+        Only `Translate` and `Scale` transformations are can be reified. If
+        the `transform` attribute contains other transformations, their
+        parameters are adjusted so that `Translate` and `Scale` transformations
+        can be applied. Unsupported transformations are ignored.
+
         If all transformations are successfully applied, the `transform`
         attribute is removed from the element.
 
@@ -534,7 +539,7 @@ class SupportsTransform(Element, regular.Transform):
 
         Raises:
             ValueError: If the limit is not a positive integer.
-            SvgReifyError: If a transformation cannot be applied.
+            SvgReifyError: If the `transform` attribute cannot be reified.
             SvgUnitConversionError: If a length value cannot be converted to
                 user units.
 
