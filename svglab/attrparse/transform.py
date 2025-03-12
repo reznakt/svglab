@@ -6,7 +6,7 @@ import operator
 from collections.abc import Iterable
 from types import NotImplementedType
 
-import affine  # TODO: set appropriate epsilon
+import affine
 import lark
 import numpy.typing as npt
 import pydantic
