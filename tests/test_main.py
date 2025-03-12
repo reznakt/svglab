@@ -566,6 +566,7 @@ _REIFY_TRANSFORMS: Final[list[transform.Transform]] = [
 
 _REIFY_SVGS: Final[list[elements.Svg]] = [
     conftest.complex_svg(),
+    conftest.nested_svg(),
     elements.Svg(
         width=length.Length(1000), height=length.Length(1000)
     ).add_child(

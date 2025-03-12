@@ -212,3 +212,47 @@ def complex_svg() -> elements.Svg:
     svg.add_child(group)
 
     return svg
+
+
+def nested_svg() -> elements.Svg:
+    transform_: transform.Transform = [
+        transform.Rotate(-1),
+        transform.Scale(1.01),
+        transform.SkewX(1),
+        transform.Translate(-1, -1),
+    ]
+
+    svg = elem = elements.Svg(
+        width=length.Length(1000),
+        height=length.Length(1000),
+        fill="transparent",
+    )
+
+    for _ in range(10):
+        group = elements.G(transform=transform_)
+        group.add_children(
+            elements.Rect(
+                width=length.Length(100),
+                height=length.Length(100),
+                stroke="black",
+            ),
+            elements.Circle(
+                cx=length.Length(50),
+                cy=length.Length(50),
+                r=length.Length(50),
+                stroke="black",
+            ),
+            elements.Polygon(
+                points=[
+                    point.Point(0, 0),
+                    point.Point(100, 0),
+                    point.Point(50, 100),
+                ],
+                stroke="black",
+            ),
+        )
+
+        elem.add_child(group)
+        elem = group
+
+    return svg
