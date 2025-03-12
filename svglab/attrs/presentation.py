@@ -439,6 +439,10 @@ class TextRendering(common.Attr):
     ] = None
 
 
+class TransformOrigin(common.Attr):
+    transform_origin: models.Attr[typedefs.TransformOrigin] = None
+
+
 class UnicodeBidi(common.Attr):
     unicode_bidi: models.Attr[
         Literal["normal", "embed", "bidi-override"] | typedefs.Inherit
