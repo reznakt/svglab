@@ -31,7 +31,7 @@ def main() -> None:
     # Parse an existing SVG file
     svg = parse_svg(
         """
-        <svg xmlns="http://www.w3.org/2000/svg">
+        <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
           <g>
               <rect
                 id="background"
@@ -106,8 +106,25 @@ def main() -> None:
     # Save to a file
     svg.save(sys.stdout)
 
-    print(svg.find(G).find(Rect).width)
+    # Search the element tree
     print(*svg.find_all(Rect), sep="\n")
+    rect = svg.find(G).find(Rect)
+
+    # Compute the bounding box and mask of an element
+    print(rect.get_bbox())
+    print(rect.get_mask())
+
+    # Render the SVG to an image
+    image = svg.render()
+    print(image)
+
+    # Apply transformations in the transform attribute
+    svg.reify()
+    print(svg.to_xml())
+
+    # Change the view box
+    svg.set_viewbox((0, 0, 50, 50))
+    print(svg.to_xml())
 
 
 if __name__ == "__main__":
