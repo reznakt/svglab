@@ -32,6 +32,22 @@ class _TransformFunctionBase(
         """Convert the transformation to an `affine.Affine` instance."""
         ...
 
+    def to_matrix(self) -> Matrix:
+        """Convert the transformation to a `Matrix` instance.
+
+        Returns:
+            The transformation as a matrix.
+
+        Examples:
+            >>> t = Translate(10, 20)
+            >>> t.to_matrix()
+            Matrix(a=1.0, b=0.0, c=0.0, d=1.0, e=10.0, f=20.0)
+            >>> Matrix(1, 2, 3, 4, 5, 6).to_matrix()
+            Matrix(a=1.0, b=2.0, c=3.0, d=4.0, e=5.0, f=6.0)
+
+        """
+        return Matrix.from_affine(self.to_affine())
+
     def __array__(
         self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
     ) -> utiltypes.NpFloatArray:
