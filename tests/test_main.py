@@ -8,6 +8,7 @@ from typing_extensions import Final
 
 from svglab import elements, errors, parse
 from svglab.attrparse import d, length, point, transform
+from svglab.elements import traits
 from tests import conftest
 
 
@@ -816,5 +817,5 @@ def test_transform_swap(
     a, b = original
     c, d = swapped
 
-    assert transform.swap_transforms(a, b) == swapped
-    assert transform.swap_transforms(c, d) == original
+    assert traits.swap_transforms(a, b) == swapped
+    assert traits.swap_transforms(c, d) == original

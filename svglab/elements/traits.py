@@ -11,6 +11,146 @@ from svglab.elements import common
 
 
 _T = TypeVar("_T")
+_TransformT1 = TypeVar("_TransformT1", bound=transform.TransformFunction)
+_TransformT2 = TypeVar("_TransformT2", bound=transform.TransformFunction)
+
+
+def swap_transforms(
+    a: _TransformT1, b: _TransformT2, /
+) -> tuple[_TransformT2, _TransformT1]:
+    """Swap transforms, adjusting parameters so that the result is equal.
+
+    Args:
+        a: The first transform.
+        b: The second transform.
+
+    Returns:
+        A 2-tuple (b', a') where b' and a' are the adjusted transforms.
+
+    Raises:
+        SvgTransformSwapError: If the transforms cannot be swapped.
+
+    Examples:
+        >>> from svglab.attrparse.transform import Scale, Translate, SkewX
+        >>> swap_transforms(Translate(10, 20), Scale(2, 3))
+        (Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667))
+        >>> swap_transforms(Scale(2, 3), SkewX(45))
+        (SkewX(angle=33.690067525979785), Scale(sx=2.0, sy=3.0))
+        >>> swap_transforms(SkewX(45), Translate(10, 20))
+        (Translate(tx=30.0, ty=20.0), SkewX(angle=45.0))
+
+    """
+    match a, b:
+        # transformations of the same type
+        case (transform.Translate(), transform.Translate()) | (
+            transform.Scale(),
+            transform.Scale(),
+        ):
+            return b, a
+
+        # translate <-> scale
+        case transform.Translate(tx, ty), transform.Scale(sx, sy) as scale:
+            return scale, type(a)(tx / sx, ty / sy)
+
+        case transform.Scale(sx, sy) as scale, transform.Translate(tx, ty):
+            return type(b)(sx * tx, sy * ty), scale
+
+        # translate <-> rotate
+        case transform.Rotate(angle, cx, cy), transform.Translate(tx, ty):
+            return type(b)(tx, ty), type(a)(angle, cx - tx, cy - ty)
+        case transform.Translate(tx, ty), transform.Rotate(angle, cx, cy):
+            return type(b)(angle, cx + tx, cy + ty), type(a)(tx, ty)
+
+        # scale <-> rotate
+        case transform.Rotate(angle, cx, cy), transform.Scale(
+            sx, sy
+        ) as scale:
+            return scale, type(a)(angle, cx / sx, cy / sy)
+        case transform.Scale(sx, sy) as scale, transform.Rotate(
+            angle, cx, cy
+        ):
+            return type(b)(angle, cx * sx, cy * sy), scale
+
+        # translate <-> skew
+        case transform.SkewX(angle) as skew_x, transform.Translate(tx, ty):
+            return type(b)(tx + ty * utils.tan(angle), ty), skew_x
+
+        case transform.Translate(tx, ty), transform.SkewX(angle) as skew_x:
+            return skew_x, type(a)(tx - ty * utils.tan(angle), ty)
+
+        case transform.SkewY(angle) as skew_y, transform.Translate(tx, ty):
+            return type(b)(tx, ty + tx * utils.tan(angle)), skew_y
+
+        case transform.Translate(tx, ty), transform.SkewY(angle) as skew_y:
+            return skew_y, type(a)(tx, ty - tx * utils.tan(angle))
+
+        # scale <-> skew
+        case transform.Scale(sx, sy) as scale, transform.SkewX(angle):
+            if utils.is_close(sx, sy):
+                return b, a
+
+            angle = utils.arctan(sx / sy * utils.tan(angle))
+            return type(b)(angle), scale
+
+        case transform.SkewX(angle), transform.Scale(sx, sy) as scale:
+            if utils.is_close(sx, sy):
+                return b, a
+
+            angle = utils.arctan(sy / sx * utils.tan(angle))
+            return scale, type(a)(angle)
+
+        case transform.Scale(sx, sy) as scale, transform.SkewY(angle):
+            if utils.is_close(sx, sy):
+                return b, a
+
+            angle = utils.arctan(sy / sx * utils.tan(angle))
+            return type(b)(angle), scale
+
+        case transform.SkewY(angle), transform.Scale(sx, sy) as scale:
+            if utils.is_close(sx, sy):
+                return b, a
+
+            angle = utils.arctan(sx / sy * utils.tan(angle))
+
+            return scale, type(a)(angle)
+        case _:
+            raise errors.SvgTransformSwapError(a, b)
+
+
+def _move_transformation_to_end(
+    transform: transform.Transform, index: int
+) -> None:
+    """Move a transformation to the end of the transform list.
+
+    This function moves a transformation from the given index to the end of
+    the list, swapping it with each transformation that follows it.
+    The transformations in the list are adjusted so that the result is the
+    same. The transformation itself may have its parameters adjusted as well.
+
+    Args:
+        transform: A list of transformations.
+        index: The index of the transformation to move.
+
+    Raises:
+        ValueError: If the index is out of range.
+        SvgTransformSwapError: If two transformations cannot be swapped.
+
+    Examples:
+        >>> from svglab.attrparse.transform import Translate, Scale
+        >>> transform = [Translate(10, 20), Scale(2, 3)]
+        >>> _move_transformation_to_end(transform, 0)
+        >>> transform
+        [Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667)]
+
+    """
+    if not (0 <= index < len(transform)):
+        msg = f"Index {index=} out of range"
+        raise ValueError(msg)
+
+    for i in range(index, len(transform) - 1):
+        transform[i], transform[i + 1] = swap_transforms(
+            transform[i], transform[i + 1]
+        )
 
 
 def _scale_attr(attr: _T, /, by: float) -> _T:
@@ -343,7 +483,7 @@ class SupportsTransform(Element, regular.Transform):
             try:
                 # move the transformation to the end of the list where it can
                 # be directly applied to the element
-                transform.move_transformation_to_end(self.transform, i)
+                _move_transformation_to_end(self.transform, i)
                 transformation = self.transform.pop()
 
                 self.__apply_transformation(transformation)
