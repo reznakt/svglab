@@ -65,6 +65,11 @@ class Matrix(_TransformFunctionBase):
     e: float
     f: float
 
+    @classmethod
+    def identity(cls) -> Self:
+        """Create an identity matrix."""
+        return cls(1, 0, 0, 1, 0, 0)
+
     @override
     def serialize(self) -> str:
         return serialize.serialize_function_call(
@@ -286,6 +291,8 @@ def compose(transforms: Iterable[TransformFunction], /) -> Matrix:
 
     The transformations are applied in the order they are given.
 
+    If no transformations are given, the identity matrix is returned.
+
     Args:
         transforms: The transformations to compose.
 
@@ -298,9 +305,13 @@ def compose(transforms: Iterable[TransformFunction], /) -> Matrix:
         >>> m3 = Matrix(1, 0, 0, 1, 6, 7)
         >>> compose([m1, m2, m3])
         Matrix(a=1.0, b=0.0, c=0.0, d=1.0, e=12.0, f=15.0)
+        >>> compose([m1]) == m1
+        True
+        >>> compose([]) == Matrix.identity()
+        True
 
     """
-    return functools.reduce(operator.matmul, transforms)
+    return functools.reduce(operator.matmul, transforms, Matrix.identity())
 
 
 class PointAddSubWithTranslateRMatmul(
