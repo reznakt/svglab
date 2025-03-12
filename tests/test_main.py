@@ -1,3 +1,5 @@
+import copy
+
 import hypothesis
 import hypothesis.strategies as st
 import pydantic
@@ -6,6 +8,8 @@ from typing_extensions import Final
 
 from svglab import elements, errors, parse
 from svglab.attrparse import d, length, point, transform
+from svglab.elements import traits
+from tests import conftest
 
 
 numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
@@ -62,7 +66,7 @@ def util_test_transform(text: str, parsed: transform.Transform) -> None:
 def test_valid_scale(x: float, y: float | None) -> None:
     util_test_transform(
         f"scale({x}, {y})" if y is not None else f"scale({x})",
-        [transform.Scale(x, y)],
+        [transform.Scale(x) if y is None else transform.Scale(x, y)],
     )
 
 
@@ -70,7 +74,11 @@ def test_valid_scale(x: float, y: float | None) -> None:
 def test_valid_translate(x: float, y: float | None) -> None:
     util_test_transform(
         f"translate({x}, {y})" if y is not None else f"translate({x})",
-        [transform.Translate(x, y)],
+        [
+            transform.Translate(x)
+            if y is None
+            else transform.Translate(x, y)
+        ],
     )
 
 
@@ -140,14 +148,6 @@ def test_invalid_transform(text: str) -> None:
         match="Failed to parse text with grammar 'transform.lark'",
     ):
         parse.parse_svg(f"<svg><rect transform='{text}'/></svg>")
-
-
-def test_invalid_rotate() -> None:
-    with pytest.raises(
-        ValueError,
-        match="Both cx and cy must either be provided or omitted",
-    ):
-        transform.Rotate(1, 2)  # pyright: ignore[reportCallIssue]
 
 
 def test_attribute_normalization_native() -> None:
@@ -338,14 +338,14 @@ def test_eq_tag_prefix(prefix: str) -> None:
             d.D()
             .move_to(point.Point(12, 22))
             .arc_to(
-                point.Point(10, y=10),
+                point.Point(10, 10),
                 0,
                 point.Point(12, 2),
                 large=True,
                 sweep=True,
             )
             .arc_to(
-                point.Point(10, y=10),
+                point.Point(10, 10),
                 0,
                 point.Point(12, 22),
                 large=False,
@@ -512,3 +512,311 @@ def test_path_data_first_command_is_move_to() -> None:
 
     with pytest.raises(errors.SvgPathMissingMoveToError):
         d.D().append(line_to)
+
+
+@pytest.mark.parametrize(
+    ("transforms", "before", "after"),
+    [
+        (
+            [transform.Translate(1, 2)],
+            point.Point(1, 2),
+            point.Point(2, 4),
+        ),
+        ([transform.Scale(2)], point.Point(1, 2), point.Point(2, 4)),
+        (
+            [transform.Rotate(45, 1, 1)],
+            point.Point(1, 1),
+            point.Point(1, 1),
+        ),
+        (
+            [transform.Rotate(90, 2, 2)],
+            point.Point(1, 1),
+            point.Point(3, 1),
+        ),
+        ([transform.Rotate(90)], point.Point(1, 2), point.Point(-2, 1)),
+        ([transform.SkewX(45)], point.Point(1, 2), point.Point(3, 2)),
+        ([transform.SkewY(45)], point.Point(1, 2), point.Point(1, 3)),
+    ],
+)
+def test_matrix_multiplication(
+    transforms: transform.Transform,
+    before: point.Point,
+    after: point.Point,
+) -> None:
+    transformed = transform.compose(transforms) @ before
+
+    assert transformed == after
+
+
+_REIFY_TRANSFORMS: Final[list[transform.Transform]] = [
+    [transform.Translate(10, 20)],
+    [transform.Translate(1, 5), transform.Scale(0.5)],
+    [transform.Translate(2, 1)] * 10,
+    [transform.Scale(1.01)] * 10,
+    [
+        transform.Scale(0.5),
+        transform.Translate(5, 0),
+        transform.Scale(1.5),
+        transform.Translate(-10, -10),
+        transform.Scale(0.75),
+        transform.Translate(0, 10),
+    ],
+    [transform.Scale(1), transform.Translate(0)],
+]
+
+_REIFY_SVGS: Final[list[elements.Svg]] = [
+    conftest.complex_svg(),
+    conftest.nested_svg(),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            x=length.Length(200),
+            y=length.Length(200),
+            width=length.Length(100),
+            height=length.Length(100),
+            stroke_width=length.Length(1),
+            fill="red",
+            stroke="blue",
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            x=length.Length(200),
+            y=length.Length(200),
+            width=length.Length(100),
+            height=length.Length(100),
+            stroke_width=length.Length(1),
+            fill="red",
+            stroke="blue",
+            transform=[transform.Translate(10, 20), transform.Scale(2)],
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            x=length.Length(200),
+            y=length.Length(200),
+            width=length.Length(100),
+            height=length.Length(100),
+            fill="red",
+            stroke="blue",
+            transform=[
+                transform.Translate(10, 20),
+                transform.Scale(2),
+                transform.Rotate(45),
+                transform.Translate(250, -300),
+                transform.SkewX(-45),
+                transform.SkewY(-20),
+            ],
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            width=length.Length(100),
+            height=length.Length(100),
+            fill="red",
+            stroke="blue",
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Path(
+            d=d.D()
+            .move_to(point.Point(100, 100))
+            .line_to(point.Point(200, 200))
+            .cubic_bezier_to(
+                point.Point(300, 200),
+                point.Point(400, 300),
+                point.Point(500, 300),
+            ),
+            stroke="blue",
+            fill="red",
+            transform=[transform.SkewX(30)],
+        )
+    ),
+    elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.G(transform=[transform.Translate(100, 700)]).add_children(
+            elements.Circle(
+                cx=length.Length(50),
+                cy=length.Length(50),
+                r=length.Length(30),
+                stroke="black",
+            ),
+            elements.Circle(
+                cx=length.Length(150),
+                cy=length.Length(50),
+                r=length.Length(30),
+                stroke="black",
+            ),
+            elements.Line(
+                x1=length.Length(50),
+                y1=length.Length(50),
+                x2=length.Length(150),
+                y2=length.Length(50),
+                stroke="black",
+            ),
+        )
+    ),
+]
+
+
+@pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
+def test_reify_leaves_transform_empty(
+    transform: transform.Transform,
+) -> None:
+    svg = elements.Svg(transform=transform)
+    svg.reify()
+
+    assert svg.transform is None
+
+
+@pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
+def test_reify_produces_visually_equal_svg_simple(
+    transform: transform.Transform,
+) -> None:
+    original = elements.Svg(
+        width=length.Length(1000), height=length.Length(1000)
+    ).add_child(
+        elements.Rect(
+            x=length.Length(200),
+            y=length.Length(200),
+            width=length.Length(100),
+            height=length.Length(100),
+            fill="red",
+            transform=transform,
+        )
+    )
+
+    reified = copy.deepcopy(original)
+    reified.reify()
+
+    conftest.assert_svg_visually_equal(original, reified)
+
+
+@pytest.mark.parametrize("svg", _REIFY_SVGS)
+def test_reify_produces_visually_equal_svg_complex(
+    svg: elements.Svg,
+) -> None:
+    reified = copy.deepcopy(svg)
+    reified.reify()
+
+    conftest.assert_svg_visually_equal(svg, reified)
+
+
+def test_set_viewbox_sets_viewbox_attr() -> None:
+    viewbox = (0, 0, 100, 100)
+
+    svg = elements.Svg(
+        width=length.Length(25), height=length.Length(value=25)
+    )
+    svg.set_viewbox(viewbox)
+
+    assert svg.viewBox == viewbox
+
+
+@pytest.mark.parametrize(
+    "svg",
+    [
+        *_REIFY_SVGS,
+        pytest.param(
+            elements.Svg(
+                width=length.Length(1000),
+                height=length.Length(1000),
+                transform=[transform.Scale(0.5)],
+            ).add_child(
+                elements.G().add_children(
+                    elements.Circle(
+                        cx=length.Length(50),
+                        cy=length.Length(50),
+                        r=length.Length(30),
+                        stroke="black",
+                    ),
+                    elements.Circle(
+                        cx=length.Length(150),
+                        cy=length.Length(50),
+                        r=length.Length(30),
+                        stroke="black",
+                    ),
+                    elements.Line(
+                        x1=length.Length(50),
+                        y1=length.Length(50),
+                        x2=length.Length(150),
+                        y2=length.Length(50),
+                        stroke="black",
+                    ),
+                )
+            ),
+            marks=pytest.mark.xfail(
+                reason="Transform/viewBox bug in resvg"
+            ),
+        ),
+    ],
+)
+def test_set_viewbox_produces_visually_equal_svg(
+    svg: elements.Svg,
+) -> None:
+    transformed = copy.deepcopy(svg)
+    transformed.set_viewbox((5, 5, 100, 100))
+
+    conftest.assert_svg_visually_equal(svg, transformed)
+
+
+@pytest.mark.parametrize(
+    ("original", "swapped"),
+    [
+        # transforms of same type
+        (
+            (transform.Translate(1, 2), transform.Translate(2, 1)),
+            (transform.Translate(2, 1), transform.Translate(1, 2)),
+        ),
+        (
+            (transform.Scale(2), transform.Scale(0.5)),
+            (transform.Scale(0.5), transform.Scale(2)),
+        ),
+        # isotropic scaling and translation
+        (
+            (transform.Scale(2), transform.Translate(1, 2)),
+            (transform.Translate(2, 4), transform.Scale(2)),
+        ),
+        # skew and translation
+        (
+            (transform.SkewX(45), transform.Translate(10, 20)),
+            (transform.Translate(10 + 20, 20), transform.SkewX(45)),
+        ),
+        # skew and isotropic scaling
+        (
+            (transform.SkewX(45), transform.Scale(2)),
+            (transform.Scale(2), transform.SkewX(45)),
+        ),
+        # skew and anisotropic scaling
+        (
+            (transform.SkewX(45), transform.Scale(2, 3)),
+            (
+                transform.Scale(2, 3),
+                transform.SkewX(56.30993247402021308647),
+            ),
+        ),
+    ],
+)
+def test_transform_swap(
+    original: tuple[
+        transform.TransformFunction, transform.TransformFunction
+    ],
+    swapped: tuple[
+        transform.TransformFunction, transform.TransformFunction
+    ],
+) -> None:
+    a, b = original
+    c, d = swapped
+
+    assert traits.swap_transforms(a, b) == swapped
+    assert traits.swap_transforms(c, d) == original

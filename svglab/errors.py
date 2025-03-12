@@ -1,4 +1,4 @@
-from typing_extensions import override
+from typing_extensions import Any, override
 
 
 class SvgError(Exception):
@@ -19,3 +19,33 @@ class SvgPathMissingMoveToError(SvgPathError):
     @override
     def __init__(self) -> None:
         super().__init__("Path must start with a MoveTo command")
+
+
+class SvgUnitConversionError(SvgError):
+    """Exception raised when a unit conversion fails."""
+
+    @override
+    def __init__(
+        self, *, original_unit: object, target_unit: object
+    ) -> None:
+        super().__init__(
+            f"Unable to convert {original_unit!r} to {target_unit!r}"
+        )
+
+
+class SvgReifyError(SvgError):
+    """Exception raised when an element cannot be reified."""
+
+    @override
+    def __init__(self, transform: list[Any]) -> None:
+        super().__init__(f"Cannot reify transform list: {transform!r}")
+
+
+class SvgTransformSwapError(SvgError):
+    """Exception raised when two transformations cannot be swapped."""
+
+    @override
+    def __init__(self, transform_a: object, transform_b: object) -> None:
+        super().__init__(
+            f"Cannot swap {transform_a!r} and {transform_b!r}"
+        )

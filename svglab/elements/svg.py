@@ -1,15 +1,40 @@
+import base64
 import contextlib
 import os
 import pathlib
 
 import PIL.Image
-from typing_extensions import overload
+from typing_extensions import final, overload
 
-from svglab import graphics, protocols, serialize
+from svglab import graphics, protocols, serialize, utils
+from svglab.attrparse import transform
+from svglab.attrs import groups, regular
 from svglab.elements import traits
 
 
-class RootElement(traits.Element):
+@final
+class Svg(
+    groups.ConditionalProcessing,
+    groups.DocumentEvents,
+    regular.BaseProfile,
+    regular.Class,
+    regular.ContentScriptType,
+    regular.ContentStyleType,
+    regular.ExternalResourcesRequired,
+    regular.Height,
+    regular.PreserveAspectRatio,
+    regular.Style,
+    regular.Version,
+    regular.ViewBox,
+    regular.Width,
+    regular.XCoordinate,
+    regular.Xmlns,
+    regular.YCoordinate,
+    regular.ZoomAndPan,
+    traits.StructuralElement,
+    traits.SupportsTransform,
+    traits.ContainerElement,
+):
     @overload
     def save(
         self,
@@ -86,6 +111,73 @@ class RootElement(traits.Element):
             if trailing_newline:
                 file.write("\n")
 
+    def set_viewbox(
+        self, viewbox: tuple[float, float, float, float]
+    ) -> None:
+        """Set a new value for the `viewBox` attribute.
+
+        This method sets a new value for the `viewBox` attribute and scales and
+        translates the SVG content so that the visual representation of the SVG
+        remains unchanged.
+
+        If the `viewBox` is not set, the method uses the `width` and `height`
+        attributes to calculate the initial viewBox. If the `width`
+        and `height` attributes are not set, the method raises an exception.
+
+        The new `viewBox` must have the same aspect ratio as the old `viewBox`.
+        If the aspect ratios differ, the method raises an exception.
+
+        Any attributes of type `Length` in the SVG must be convertible to
+        user units. If an attribute is not convertible, the method raises an
+        exception.
+
+        Args:
+        viewbox: A tuple of four numbers representing the new viewBox.
+
+        Raises:
+        ValueError: If `viewBox` is not set and `width` and `height` are not
+            set or if the aspect ratios of the old and new viewBox differ.
+        SvgUnitConversionError: If an attribute is not convertible to user
+            units.
+
+        """
+        if self.viewBox is None:
+            if self.width is None or self.height is None:
+                raise ValueError(
+                    "Either viewBox or width and height must be set"
+                )
+            old_viewbox = (0, 0, float(self.width), float(self.height))
+        else:
+            old_viewbox = self.viewBox
+
+        old_min_x, old_min_y, old_width, old_height = old_viewbox
+        min_x, min_y, width, height = viewbox
+
+        tx = min_x - old_min_x
+        ty = min_y - old_min_y
+
+        sx = width / old_width
+        sy = height / old_height
+
+        if not utils.is_close(sx, sy):
+            raise ValueError("Aspect ratios of old and new viewBox differ")
+
+        # skip self; this can be done in a single for loop because the
+        # SVG is a tree (probably)
+        for child in self._find_children():
+            if not isinstance(child, traits.SupportsTransform):
+                continue  # TODO: maybe all elements should support transform?
+
+            child.transform = [
+                transform.Translate(tx, ty),
+                transform.Scale(sx, sy),
+                *(child.transform or []),
+            ]
+
+            child.reify(limit=2, recursive=False)
+
+        self.viewBox = (min_x, min_y, width, height)
+
     def render(
         self, *, width: float | None = None, height: float | None = None
     ) -> PIL.Image.Image:
@@ -118,3 +210,10 @@ class RootElement(traits.Element):
 
         """
         self.render().show()
+
+    def to_data_uri(self) -> str:
+        """Convert the SVG document fragment to a base64-encoded data URI."""
+        xml = self.to_xml(formatter=serialize.MINIMAL_FORMATTER)
+        b64 = base64.b64encode(xml.encode()).decode()
+
+        return f"data:image/svg+xml;base64,{b64}"

@@ -1,11 +1,21 @@
 from importlib import metadata as __metadata
 
+import affine as __affine
 from typing_extensions import Final as __Final
 
-
-__version__: __Final = __metadata.version(__name__)
-
-
+from svglab import constants as __constants
+from svglab.attrparse.transform import (
+    Matrix,
+    Reifiable,
+    Rotate,
+    Scale,
+    SkewX,
+    SkewY,
+    Transform,
+    TransformFunction,
+    Translate,
+    compose,
+)
 from svglab.elements import (
     A,
     AltGlyph,
@@ -162,6 +172,7 @@ __all__ = [
     "LinearGradient",
     "Marker",
     "Mask",
+    "Matrix",
     "Metadata",
     "MissingGlyph",
     "Mpath",
@@ -176,8 +187,13 @@ __all__ = [
     "Rect",
     "Rect",
     "Rect",
+    "Reifiable",
+    "Rotate",
+    "Scale",
     "Script",
     "Set",
+    "SkewX",
+    "SkewY",
     "Stop",
     "Style",
     "Svg",
@@ -191,10 +207,19 @@ __all__ = [
     "TextElement",
     "TextPath",
     "Title",
+    "Transform",
+    "TransformFunction",
+    "Translate",
     "Tref",
     "Tspan",
     "Use",
     "View",
     "Vkern",
+    "compose",
     "parse_svg",
 ]
+
+
+__affine.set_epsilon(__constants.FLOAT_ABSOLUTE_TOLERANCE)
+
+__version__: __Final = __metadata.version(__name__)
