@@ -47,6 +47,7 @@ _convert: Final[units.Converter[Length, LengthUnit]] = (
             ("pc", "px"): 15,
             ("pt", "px"): 1.25,
             (None, "px"): 1,
+            ("mm", "Q"): 4,
         }
     )
 )
