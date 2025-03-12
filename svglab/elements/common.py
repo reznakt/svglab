@@ -73,8 +73,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         The XML representation of the element.
 
         Examples:
-        >>> from svglab import Rect
-        >>> from svglab.attrparse import Length
+        >>> from svglab import Rect, Length
         >>> rect = Rect(id="foo", stroke_linecap="round")
         >>> rect.to_xml()
         '<rect id="foo" stroke-linecap="round"/>'

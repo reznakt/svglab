@@ -4,7 +4,8 @@ import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
 
 import svglab.protocols
-from svglab import elements, utils
+from svglab import utils
+from svglab.elements import common, names, svg, text_elements
 
 
 Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
@@ -15,20 +16,24 @@ DEFAULT_PARSER: Final[Parser] = "lxml-xml"
 
 
 _TAG_NAME_TO_CLASS: Final = {
-    elements.tag_name(cls): cls
-    for cls in utils.get_all_subclasses(elements.Tag)
-    if cls.__name__ in elements.TAG_NAME_TO_NORMALIZED.inverse
+    common.tag_name(cls): cls
+    for cls in utils.get_all_subclasses(common.Tag)
+    if cls.__name__ in names.TAG_NAME_TO_NORMALIZED.inverse
 }
 
 _BS_TO_TEXT_ELEMENT: Final[
     dict[
         type[bs4.NavigableString],
-        type[elements.CData | elements.Comment | elements.RawText],
+        type[
+            text_elements.CData
+            | text_elements.Comment
+            | text_elements.RawText
+        ],
     ]
 ] = {
-    bs4.CData: elements.CData,
-    bs4.Comment: elements.Comment,
-    bs4.NavigableString: elements.RawText,
+    bs4.CData: text_elements.CData,
+    bs4.Comment: text_elements.Comment,
+    bs4.NavigableString: text_elements.RawText,
 }
 
 
@@ -77,7 +82,7 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def _convert_element(backend: bs4.PageElement) -> elements.Element | None:
+def _convert_element(backend: bs4.PageElement) -> common.Element | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
@@ -105,7 +110,7 @@ def _convert_element(backend: bs4.PageElement) -> elements.Element | None:
             return cls(text)
         case bs4.Tag():
             tag_class = _TAG_NAME_TO_CLASS[
-                cast(elements.TagName, backend.name)
+                cast(names.TagName, backend.name)
             ]
 
             for key, value in backend.attrs.items():
@@ -133,7 +138,7 @@ def parse_svg(
     /,
     *,
     parser: Parser = DEFAULT_PARSER,
-) -> elements.Svg:
+) -> svg.Svg:
     """Parse an SVG document.
 
     The document must be a valid XML document containing a single SVG
@@ -169,10 +174,10 @@ def parse_svg(
 
         raise ValueError(msg)
 
-    svg = _convert_element(svg_fragments[0])
+    svg_ = _convert_element(svg_fragments[0])
 
-    if not isinstance(svg, elements.Svg):
-        msg = f"Expected an <svg> element, found {type(svg).__name__}."
+    if not isinstance(svg_, svg.Svg):
+        msg = f"Expected an <svg> element, found {type(svg_).__name__}."
         raise TypeError(msg)
 
-    return svg
+    return svg_

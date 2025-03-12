@@ -2,17 +2,16 @@ import lark
 import lark.visitors
 from typing_extensions import Annotated, TypeAlias
 
-from svglab import attrparse
-from svglab.attrparse import parse
+from svglab.attrparse import parse, point
 
 
-Points: TypeAlias = list[attrparse.Point]
+Points: TypeAlias = list[point.Point]
 
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, Points]):
     number = float
-    point = attrparse.Point
+    point = point.Point
 
     points = parse.v_args_to_list
 

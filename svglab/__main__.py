@@ -6,16 +6,22 @@ import sys
 
 from svglab import (
     CData,
+    Color,
     Comment,
+    D,
+    Formatter,
     G,
+    Length,
     Path,
+    Point,
     Polyline,
     RawText,
     Rect,
+    SkewX,
+    Translate,
     parse_svg,
+    set_formatter,
 )
-from svglab.attrparse import Color, D, Length, Point, SkewX, Translate
-from svglab.serialize import Formatter, set_formatter
 
 
 set_formatter(Formatter(indent=4, max_precision=2, color_mode="rgb"))

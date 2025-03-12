@@ -1,7 +1,8 @@
 import pydantic
 from typing_extensions import Annotated, Literal, TypeAlias
 
-from svglab import attrparse, models, utils
+from svglab import models, utils
+from svglab.attrparse import angle, color, d, length, points, transform
 
 
 Unparsed: TypeAlias = str
@@ -45,20 +46,20 @@ AbsoluteSize: TypeAlias = Literal[
     "x-large",
     "xx-large",
 ]
-Angle: TypeAlias = attrparse.AngleType
+Angle: TypeAlias = angle.AngleType
 Anything: TypeAlias = str
 Boolean: TypeAlias = bool
 Character: TypeAlias = Annotated[
     str, pydantic.Field(min_length=1, max_length=1)
 ]
-Color: TypeAlias = attrparse.ColorType
+Color: TypeAlias = color.ColorType
 Integer: TypeAlias = int
-Length: TypeAlias = attrparse.LengthType
-ListOfPoints: TypeAlias = attrparse.PointsType
+Length: TypeAlias = length.LengthType
+ListOfPoints: TypeAlias = points.PointsType
 Number: TypeAlias = float
-PathData: TypeAlias = attrparse.DType
+PathData: TypeAlias = d.DType
 RelativeSize: TypeAlias = Literal["smaller", "larger"]
-TransformList: TypeAlias = attrparse.TransformType
+TransformList: TypeAlias = transform.TransformType
 Url: TypeAlias = pydantic.AnyUrl
 
 

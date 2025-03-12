@@ -2,8 +2,7 @@ import numpy as np
 import PIL.Image
 import PIL.ImageChops
 
-from svglab import elements
-from svglab.attrparse import d, length, point, transform
+import svglab
 
 
 def mean_squared_error(a: PIL.Image.Image, b: PIL.Image.Image) -> float:
@@ -14,7 +13,7 @@ def mean_squared_error(a: PIL.Image.Image, b: PIL.Image.Image) -> float:
 
 
 def assert_svg_visually_equal(
-    original: elements.Svg, new: elements.Svg, *, tolerance: float = 1e-7
+    original: svglab.Svg, new: svglab.Svg, *, tolerance: float = 1e-7
 ) -> None:
     """Check if two SVGs are visually equal.
 
@@ -63,149 +62,149 @@ def assert_svg_visually_equal(
         raise AssertionError("\n".join(lines))
 
 
-def complex_svg() -> elements.Svg:
-    svg = elements.Svg(
-        width=length.Length(1000), height=length.Length(1000)
-    )
+def complex_svg() -> svglab.Svg:
+    svg = svglab.Svg(width=svglab.Length(1000), height=svglab.Length(1000))
 
-    background = elements.Rect(
-        width=length.Length(1000),
-        height=length.Length(1000),
+    background = svglab.Rect(
+        width=svglab.Length(1000),
+        height=svglab.Length(1000),
         fill="#f0f0f0",
     )
     svg.add_child(background)
 
-    grid = elements.G()
+    grid = svglab.G()
 
     for i in range(0, 1001, 100):
         grid.add_child(
-            elements.Path(
-                d=d.D()
-                .move_to(point.Point(0, i))
-                .line_to(point.Point(1000, i)),
+            svglab.Path(
+                d=svglab.D()
+                .move_to(svglab.Point(0, i))
+                .line_to(svglab.Point(1000, i)),
                 stroke="#cccccc",
             )
         )
         grid.add_child(
-            elements.Path(
-                d=d.D()
-                .move_to(point.Point(i, 0))
-                .line_to(point.Point(i, 1000)),
+            svglab.Path(
+                d=svglab.D()
+                .move_to(svglab.Point(i, 0))
+                .line_to(svglab.Point(i, 1000)),
                 stroke="#cccccc",
             )
         )
     svg.add_child(grid)
 
-    rect = elements.Rect(
-        x=length.Length(200),
-        y=length.Length(200),
-        width=length.Length(100),
-        height=length.Length(100),
+    rect = svglab.Rect(
+        x=svglab.Length(200),
+        y=svglab.Length(200),
+        width=svglab.Length(100),
+        height=svglab.Length(100),
         fill="red",
         stroke="blue",
-        stroke_width=length.Length(2),
+        stroke_width=svglab.Length(2),
         transform=[
-            transform.Translate(10, 20),
-            transform.Scale(2),
-            transform.Rotate(45),
+            svglab.Translate(10, 20),
+            svglab.Scale(2),
+            svglab.Rotate(45),
         ],
     )
     svg.add_child(rect)
 
-    circle = elements.Circle(
-        cx=length.Length(500),
-        cy=length.Length(500),
-        r=length.Length(100),
+    circle = svglab.Circle(
+        cx=svglab.Length(500),
+        cy=svglab.Length(500),
+        r=svglab.Length(100),
         fill="#00ff00",
         opacity=0.7,
     )
     svg.add_child(circle)
 
-    path = elements.Path(
-        d=d.D()
-        .move_to(point.Point(700, 200))
-        .line_to(point.Point(800, 300))
+    path = svglab.Path(
+        d=svglab.D()
+        .move_to(svglab.Point(700, 200))
+        .line_to(svglab.Point(800, 300))
         .cubic_bezier_to(
-            point.Point(850, 350),
-            point.Point(900, 300),
-            point.Point(850, 200),
+            svglab.Point(850, 350),
+            svglab.Point(900, 300),
+            svglab.Point(850, 200),
         )
-        .quadratic_bezier_to(point.Point(800, 150), point.Point(700, 200))
+        .quadratic_bezier_to(
+            svglab.Point(800, 150), svglab.Point(700, 200)
+        )
         .close(),
         fill="#0000ff",
         stroke="#000000",
-        stroke_width=length.Length(3),
-        transform=[transform.SkewX(15)],
+        stroke_width=svglab.Length(3),
+        transform=[svglab.SkewX(15)],
     )
     svg.add_child(path)
 
     star_points = [
-        point.Point(300, 100),
-        point.Point(350, 200),
-        point.Point(450, 200),
-        point.Point(375, 250),
-        point.Point(400, 350),
-        point.Point(300, 275),
-        point.Point(200, 350),
-        point.Point(225, 250),
-        point.Point(150, 200),
-        point.Point(250, 200),
+        svglab.Point(300, 100),
+        svglab.Point(350, 200),
+        svglab.Point(450, 200),
+        svglab.Point(375, 250),
+        svglab.Point(400, 350),
+        svglab.Point(300, 275),
+        svglab.Point(200, 350),
+        svglab.Point(225, 250),
+        svglab.Point(150, 200),
+        svglab.Point(250, 200),
     ]
-    polygon = elements.Polygon(
+    polygon = svglab.Polygon(
         points=star_points,
         fill="yellow",
         stroke="black",
-        stroke_width=length.Length(2),
+        stroke_width=svglab.Length(2),
     )
     svg.add_child(polygon)
 
-    polyline = elements.Polyline(
+    polyline = svglab.Polyline(
         points=[
-            point.Point(100, 600),
-            point.Point(200, 650),
-            point.Point(300, 600),
-            point.Point(400, 650),
-            point.Point(500, 600),
+            svglab.Point(100, 600),
+            svglab.Point(200, 650),
+            svglab.Point(300, 600),
+            svglab.Point(400, 650),
+            svglab.Point(500, 600),
         ],
         stroke="#ff00ff",
-        stroke_width=length.Length(4),
+        stroke_width=svglab.Length(4),
         fill="none",
         stroke_linecap="round",
         stroke_linejoin="round",
     )
     svg.add_child(polyline)
 
-    rect2 = elements.Rect(
-        x=length.Length(600),
-        y=length.Length(600),
-        width=length.Length(200),
-        height=length.Length(150),
+    rect2 = svglab.Rect(
+        x=svglab.Length(600),
+        y=svglab.Length(600),
+        width=svglab.Length(200),
+        height=svglab.Length(150),
         fill="#ff9900",
-        transform=[transform.Translate(100, 50), transform.SkewY(-20)],
+        transform=[svglab.Translate(100, 50), svglab.SkewY(-20)],
     )
     svg.add_child(rect2)
 
-    group = elements.G(transform=[transform.Translate(100, 700)])
+    group = svglab.G(transform=[svglab.Translate(100, 700)])
 
-    small_circle1 = elements.Circle(
-        cx=length.Length(50),
-        cy=length.Length(50),
-        r=length.Length(30),
+    small_circle1 = svglab.Circle(
+        cx=svglab.Length(50),
+        cy=svglab.Length(50),
+        r=svglab.Length(30),
         fill="#993366",
     )
-    small_circle2 = elements.Circle(
-        cx=length.Length(150),
-        cy=length.Length(50),
-        r=length.Length(30),
+    small_circle2 = svglab.Circle(
+        cx=svglab.Length(150),
+        cy=svglab.Length(50),
+        r=svglab.Length(30),
         fill="#336699",
     )
-    connecting_line = elements.Line(
-        x1=length.Length(50),
-        y1=length.Length(50),
-        x2=length.Length(150),
-        y2=length.Length(50),
+    connecting_line = svglab.Line(
+        x1=svglab.Length(50),
+        y1=svglab.Length(50),
+        x2=svglab.Length(150),
+        y2=svglab.Length(50),
         stroke="black",
-        stroke_width=length.Length(2),
+        stroke_width=svglab.Length(2),
     )
 
     group.add_children(small_circle1, small_circle2, connecting_line)
@@ -214,39 +213,39 @@ def complex_svg() -> elements.Svg:
     return svg
 
 
-def nested_svg() -> elements.Svg:
-    transform_: transform.Transform = [
-        transform.Rotate(-1),
-        transform.Scale(1.01),
-        transform.SkewX(1),
-        transform.Translate(-1, -1),
+def nested_svg() -> svglab.Svg:
+    transform_: svglab.Transform = [
+        svglab.Rotate(-1),
+        svglab.Scale(1.01),
+        svglab.SkewX(1),
+        svglab.Translate(-1, -1),
     ]
 
-    svg = elem = elements.Svg(
-        width=length.Length(1000),
-        height=length.Length(1000),
+    svg = elem = svglab.Svg(
+        width=svglab.Length(1000),
+        height=svglab.Length(1000),
         fill="transparent",
     )
 
     for _ in range(10):
-        group = elements.G(transform=transform_)
+        group = svglab.G(transform=transform_)
         group.add_children(
-            elements.Rect(
-                width=length.Length(100),
-                height=length.Length(100),
+            svglab.Rect(
+                width=svglab.Length(100),
+                height=svglab.Length(100),
                 stroke="black",
             ),
-            elements.Circle(
-                cx=length.Length(50),
-                cy=length.Length(50),
-                r=length.Length(50),
+            svglab.Circle(
+                cx=svglab.Length(50),
+                cy=svglab.Length(50),
+                r=svglab.Length(50),
                 stroke="black",
             ),
-            elements.Polygon(
+            svglab.Polygon(
                 points=[
-                    point.Point(0, 0),
-                    point.Point(100, 0),
-                    point.Point(50, 100),
+                    svglab.Point(0, 0),
+                    svglab.Point(100, 0),
+                    svglab.Point(50, 100),
                 ],
                 stroke="black",
             ),

@@ -169,7 +169,7 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
     The scaled attribute.
 
     Examples:
-    >>> from svglab.attrparse import Length
+    >>> from svglab import Length
     >>> _scale_attr(Length(10), 2)
     Length(value=20.0, unit=None)
     >>> _scale_attr(None, 2) is None
@@ -205,7 +205,7 @@ def _translate_attr(attr: _T, /, by: float) -> _T:
     The translated attribute.
 
     Examples:
-    >>> from svglab.attrparse import Length
+    >>> from svglab import Length
     >>> _translate_attr(Length(10), 5)
     Length(value=15.0, unit=None)
     >>> _translate_attr(None, 5) is None
@@ -544,8 +544,7 @@ class SupportsTransform(Element, regular.Transform):
                 user units.
 
         Examples:
-            >>> from svglab import Rect
-            >>> from svglab.attrparse import Length, Translate
+            >>> from svglab import Rect, Length, Translate
             >>> rect = Rect(
             ...     x=Length(10),
             ...     y=Length(20),
