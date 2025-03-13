@@ -807,10 +807,6 @@ class To(common.Attr):
     to: models.Attr[typedefs.Unparsed] = None
 
 
-class Transform(common.Attr):
-    transform: models.Attr[typedefs.TransformList] = None
-
-
 class TypeAnimateTransform(common.Attr):
     type: models.Attr[
         Literal["translate", "scale", "rotate", "skewX", "skewY"]
