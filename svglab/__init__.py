@@ -35,7 +35,12 @@ from svglab.attrparse.transform import (
     Translate,
     compose,
 )
-from svglab.elements.common import Element, Tag, TextElement
+from svglab.elements.common import (
+    Element,
+    Tag,
+    TextElement,
+    swap_transforms,
+)
 from svglab.elements.svg import Svg
 from svglab.elements.tags import (
     A,
@@ -130,11 +135,9 @@ from svglab.elements.traits import (
     LightSourceElement,
     Shape,
     StructuralElement,
-    SupportsTransform,
     TextContentBlockElement,
     TextContentChildElement,
     TextContentElement,
-    swap_transforms,
 )
 from svglab.errors import (
     SvgElementNotFoundError,
@@ -264,7 +267,6 @@ __all__ = [
     "Stop",
     "StructuralElement",
     "Style",
-    "SupportsTransform",
     "Svg",
     "SvgElementNotFoundError",
     "SvgError",

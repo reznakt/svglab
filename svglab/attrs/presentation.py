@@ -443,6 +443,10 @@ class TransformOrigin(common.Attr):
     transform_origin: models.Attr[typedefs.TransformOrigin] = None
 
 
+class Transform(common.Attr):
+    transform: models.Attr[typedefs.TransformList] = None
+
+
 class UnicodeBidi(common.Attr):
     unicode_bidi: models.Attr[
         Literal["normal", "embed", "bidi-override"] | typedefs.Inherit
