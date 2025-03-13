@@ -32,7 +32,6 @@ class Svg(
     regular.YCoordinate,
     regular.ZoomAndPan,
     traits.StructuralElement,
-    traits.SupportsTransform,
     traits.ContainerElement,
 ):
     @overload
@@ -164,10 +163,7 @@ class Svg(
 
         # skip self; this can be done in a single for loop because the
         # SVG is a tree (probably)
-        for child in self._find_children():
-            if not isinstance(child, traits.SupportsTransform):
-                continue  # TODO: maybe all elements should support transform?
-
+        for child in self.find_all(recursive=False):
             child.transform = [
                 transform.Translate(tx, ty),
                 transform.Scale(sx, sy),
@@ -176,7 +172,7 @@ class Svg(
 
             child.reify(limit=2, recursive=False)
 
-        self.viewBox = (min_x, min_y, width, height)
+        self.viewBox = viewbox
 
     def render(
         self, *, width: float | None = None, height: float | None = None

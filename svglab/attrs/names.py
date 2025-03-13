@@ -213,6 +213,7 @@ AttributeName: TypeAlias = Literal[
     "textLength",
     "title",
     "to",
+    "transform-origin",
     "transform",
     "type",
     "u1",

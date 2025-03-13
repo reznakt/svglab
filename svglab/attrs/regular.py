@@ -514,7 +514,9 @@ class Order(common.Attr):
 
 
 class Orient(common.Attr):
-    orient: models.Attr[typedefs.Auto | typedefs.Angle] = None
+    orient: models.Attr[
+        typedefs.Auto | Literal["auto-start-reverse"] | typedefs.Angle
+    ] = None
 
 
 class Orientation(common.Attr):
@@ -629,11 +631,15 @@ class Radius(common.Attr):
 
 
 class RefX(common.Attr):
-    ref_x: models.Attr[typedefs.Coordinate] = None
+    ref_x: models.Attr[
+        Literal["left", "center", "right"] | typedefs.Coordinate
+    ] = None
 
 
 class RefY(common.Attr):
-    ref_y: models.Attr[typedefs.Coordinate] = None
+    ref_y: models.Attr[
+        Literal["top", "center", "bottom"] | typedefs.Coordinate
+    ] = None
 
 
 class RenderingIntent(common.Attr):
@@ -799,10 +805,6 @@ class Title(common.Attr):
 
 class To(common.Attr):
     to: models.Attr[typedefs.Unparsed] = None
-
-
-class Transform(common.Attr):
-    transform: models.Attr[typedefs.TransformList] = None
 
 
 class TypeAnimateTransform(common.Attr):

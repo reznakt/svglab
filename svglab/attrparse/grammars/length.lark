@@ -7,6 +7,21 @@
 
 length: number unit?
 
-?!unit: "em" | "ex" | "px" | "in" | "cm" | "mm" | "pt" | "pc" | "%"
+?!unit: "%"
+    | "ch"
+    | "cm"
+    | "em"
+    | "ex"
+    | "in"
+    | "mm"
+    | "pc"
+    | "pt"
+    | "px"
+    | "Q"
+    | "rem"
+    | "vh"
+    | "vmax"
+    | "vmin"
+    | "vw"
 
 number: SIGNED_NUMBER
