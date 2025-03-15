@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import abc
 import functools
+import math
 import operator
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from types import NotImplementedType
 
 import affine
@@ -21,6 +22,56 @@ from typing_extensions import (
 
 from svglab import mixins, protocols, serialize, utils, utiltypes
 from svglab.attrparse import parse
+
+
+_Vector: TypeAlias = tuple[float, float]
+"""A 2D vector."""
+
+
+def _dot_product(u: _Vector, v: _Vector, /) -> float:
+    """Calculate the dot product of two vectors.
+
+    Args:
+        u: The first vector.
+        v: The second vector.
+
+    Returns:
+        The dot product of the two vectors.
+
+    Examples:
+        >>> _dot_product((1.0, 2.0), (3.0, 4.0))
+        11.0
+        >>> _dot_product((1.0, 2.0), (1.0, 2.0))
+        5.0
+        >>> _dot_product((1.0, 2.0), (0.0, 0.0))
+        0.0
+
+    """
+    u1, u2 = u
+    v1, v2 = v
+
+    return u1 * v1 + u2 * v2
+
+
+def _magnitude(u: _Vector, /) -> float:
+    """Calculate the magnitude of a vector.
+
+    Args:
+        u: The vector.
+
+    Returns:
+        The magnitude of the vector.
+
+    Examples:
+        >>> _magnitude((3, 4))
+        5.0
+        >>> _magnitude((0, 0))
+        0.0
+        >>> _magnitude((1, 2))
+        2.23606797749979
+
+    """
+    return math.sqrt(_dot_product(u, u))
 
 
 class _TransformFunctionBase(
@@ -68,59 +119,6 @@ class _TransformFunctionBase(
         assert isinstance(product, affine.Affine)
 
         return Matrix.from_affine(product)
-
-
-@final
-@pydantic.dataclasses.dataclass(frozen=True)
-class Matrix(_TransformFunctionBase):
-    a: float
-    b: float
-    c: float
-    d: float
-    e: float
-    f: float
-
-    @classmethod
-    def identity(cls) -> Self:
-        """Create an identity matrix."""
-        return cls(1, 0, 0, 1, 0, 0)
-
-    @override
-    def serialize(self) -> str:
-        return serialize.serialize_function_call(
-            "matrix", self.a, self.b, self.c, self.d, self.e, self.f
-        )
-
-    @override
-    def to_affine(self) -> affine.Affine:
-        # ! affine uses different labels for the matrix elements
-
-        return affine.Affine(
-            self.a, self.c, self.e, self.b, self.d, self.f
-        )
-
-    @classmethod
-    def from_affine(cls, matrix: affine.Affine, /) -> Self:
-        """Create a `Matrix` instance from an `affine.Affine` instance."""
-        # ! affine uses different labels for the matrix elements
-
-        return cls(
-            matrix.a, matrix.d, matrix.b, matrix.e, matrix.c, matrix.f
-        )
-
-    def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
-            return False
-
-        for x1, x2 in zip(
-            (self.a, self.b, self.c, self.d, self.e, self.f),
-            (other.a, other.b, other.c, other.d, other.e, other.f),
-            strict=True,
-        ):
-            if not utils.is_close(x1, x2):
-                return False
-
-        return True
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
@@ -251,6 +249,26 @@ class Rotate(_Rotate):
 
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
+class SkewY(_TransformFunctionBase):
+    angle: float
+
+    @override
+    def serialize(self) -> str:
+        return serialize.serialize_function_call("skewY", self.angle)
+
+    @override
+    def to_affine(self) -> affine.Affine:
+        return affine.Affine.shear(y_angle=self.angle)
+
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return utils.is_close(self.angle, other.angle)
+
+
+@final
+@pydantic.dataclasses.dataclass(frozen=True)
 class SkewX(_TransformFunctionBase):
     angle: float
 
@@ -269,24 +287,177 @@ class SkewX(_TransformFunctionBase):
         return utils.is_close(self.angle, other.angle)
 
 
+def _remove_redundant_transformations(
+    transform: Iterable[TransformFunction],
+) -> Iterator[TransformFunction]:
+    for t in transform:
+        match t:
+            case Translate(tx, ty) if utils.is_close(
+                tx, 0
+            ) and utils.is_close(ty, 0):
+                continue
+            case Scale(sx, sy) if utils.is_close(sx, 1) and utils.is_close(
+                sy, 1
+            ):
+                continue
+            case Rotate(angle) | SkewX(angle) | SkewY(angle) if (
+                utils.is_close(angle, 0)
+            ):
+                continue
+            case _:
+                yield t
+
+
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
-class SkewY(_TransformFunctionBase):
-    angle: float
+class Matrix(_TransformFunctionBase):
+    a: float
+    b: float
+    c: float
+    d: float
+    e: float
+    f: float
+
+    @classmethod
+    def identity(cls) -> Self:
+        """Create an identity matrix."""
+        return cls(1, 0, 0, 1, 0, 0)
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize_function_call("skewY", self.angle)
+        return serialize.serialize_function_call(
+            "matrix", self.a, self.b, self.c, self.d, self.e, self.f
+        )
 
     @override
     def to_affine(self) -> affine.Affine:
-        return affine.Affine.shear(y_angle=self.angle)
+        # ! affine uses different labels for the matrix elements
+
+        return affine.Affine(
+            self.a, self.c, self.e, self.b, self.d, self.f
+        )
+
+    @classmethod
+    def from_affine(cls, matrix: affine.Affine, /) -> Self:
+        """Create a `Matrix` instance from an `affine.Affine` instance."""
+        # ! affine uses different labels for the matrix elements
+
+        return cls(
+            matrix.a, matrix.d, matrix.b, matrix.e, matrix.c, matrix.f
+        )
+
+    def to_tuple(self) -> tuple[float, float, float, float, float, float]:
+        """Convert the matrix to a tuple.
+
+        Returns:
+            The matrix as a tuple.
+
+        Examples:
+            >>> m = Matrix(1, 2, 3, 4, 5, 6)
+            >>> m.to_tuple()
+            (1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+
+        """
+        return self.a, self.b, self.c, self.d, self.e, self.f
+
+    def determinant(self) -> float:
+        """Calculate the determinant of the matrix.
+
+        The determinant shows how the matrix scales the area of a shape.
+        For example, a determinant of 1 means the area is unchanged.
+        The determinant of 0 means the transformation is degenrate.
+
+        Returns:
+            The determinant of the matrix.
+
+        Examples:
+            >>> m = Matrix(1, 2, 3, 4, 5, 6)
+            >>> m.determinant()
+            -2.0
+
+        """
+        return self.to_affine().determinant
+
+    def __qr_decompose(self) -> Iterator[TransformFunction]:
+        a, b, c, d, e, f = self.to_tuple()
+
+        # we prefer to use r over s if possible
+        if not utils.is_close(a, 0) or not utils.is_close(b, 0):
+            yield Translate(e, f)
+
+            r = _magnitude((a, b))
+            angle = utils.signum(b) * utils.arccos(a / r)
+            yield Rotate(angle)
+
+            det = self.determinant()
+            yield Scale(r, det / r)
+
+            col_dot = _dot_product((a, b), (c, d))
+            angle = utils.arctan(col_dot / r**2)
+            yield SkewX(angle)
+
+        # if r is unsuitable, we use s
+        elif not utils.is_close(c, 0) or not utils.is_close(d, 0):
+            yield Translate(e, f)
+
+            s = _magnitude((c, d))
+            angle = 90 - utils.signum(d) * utils.arccos(-c / s)
+
+            yield Rotate(angle)
+
+            det = self.determinant()
+            yield Scale(det / s, s)
+
+            col_dot = _dot_product((a, b), (c, d))
+            angle = utils.arctan(col_dot / s**2)
+            yield SkewY(angle)
+
+        # degenrate transformation
+        else:
+            yield Scale(0)
+
+    def __ldu_decompose(self) -> Iterator[TransformFunction]:
+        a, b, c, d, e, f = self.to_tuple()
+
+        yield Translate(e, f)
+
+        if not utils.is_close(a, 0):
+            yield SkewY(utils.arctan(b / a))
+            yield Scale(a, self.determinant() / a)
+            yield SkewX(utils.arctan(c / a))
+        elif not utils.is_close(b, 0):
+            yield Rotate(90)
+            yield Scale(b, self.determinant() / b)
+            yield SkewY(utils.arctan(d / b))
+        else:
+            yield Scale(c, d)
+            yield SkewX(45)
+            yield Scale(0, 1)
+
+    def decompose(self) -> Iterator[TransformFunction]:
+        if self == Matrix.identity():
+            return
+
+        ldu = _remove_redundant_transformations(self.__ldu_decompose())
+        qr = _remove_redundant_transformations(self.__qr_decompose())
+
+        ldu_length, ldu = utils.length(ldu)
+        qr_length, qr = utils.length(qr)
+
+        if ldu_length < qr_length:
+            yield from ldu
+        else:
+            yield from qr
 
     def __eq__(self, other: object, /) -> bool:
         if not utils.basic_compare(other, self=self):
             return False
 
-        return utils.is_close(self.angle, other.angle)
+        for x1, x2 in zip(self.to_tuple(), other.to_tuple(), strict=True):
+            if not utils.is_close(x1, x2):
+                return False
+
+        return True
 
 
 TransformFunction: TypeAlias = (
