@@ -1,12 +1,21 @@
 import collections
 import functools
+import itertools
 import math
 import re
-from collections.abc import Callable, Generator, Iterable, Sequence, Sized
+from collections.abc import (
+    Callable,
+    Generator,
+    Iterable,
+    Iterator,
+    Sequence,
+    Sized,
+)
 
 import bs4
 import typeguard
 from typing_extensions import (
+    Literal,
     SupportsFloat,
     SupportsIndex,
     TypeAlias,
@@ -29,14 +38,27 @@ _NestedIterable: TypeAlias = Iterable[_NestedIterableItem[_T]]
 _Map: TypeAlias = Callable[[_T], _NT]
 
 
-def length(iterable: Iterable[_T], /) -> int:
+@overload
+def length(iterable: Iterator[_T], /) -> tuple[int, Iterator[_T]]: ...  # type: ignore[reportOverlappingOverload]
+
+
+@overload
+def length(iterable: Iterable[_T], /) -> int: ...
+
+
+def length(iterable: Iterable[_T], /) -> int | tuple[int, Iterator[_T]]:
     """Count the number of items in an iterable.
+
+    If the iterable is an iterator, the function returns a tuple containing
+    the number of items and a new iterator that can be used to iterate over
+    the items again, since the original iterator is exhausted after counting.
 
     Args:
         iterable: The iterable to count.
 
     Returns:
-        The number of items in the iterable.
+        If the iterable is an iterator, a tuple containing the number of items
+        and a new iterator. Otherwise, the number of items in the iterable.
 
     Examples:
         >>> length([])
@@ -49,6 +71,10 @@ def length(iterable: Iterable[_T], /) -> int:
         3
 
     """
+    if isinstance(iterable, Iterator):
+        iterable, iterable_copy = itertools.tee(iterable)
+        return sum(1 for _ in iterable_copy), iterable
+
     return sum(1 for _ in iterable)
 
 
@@ -534,3 +560,91 @@ def arctan(value: float) -> float:
             return -45
         case _:
             return math.degrees(math.atan(value))
+
+
+def degrees(radians: float) -> float:
+    """Convert radians to degrees, returning a value in the range (-180, 180].
+
+    Args:
+        radians: The angle in radians.
+
+    Returns:
+        The angle in degrees in the range (-180, 180].
+
+    Examples:
+        >>> from math import pi
+        >>> degrees(0)
+        0.0
+        >>> degrees(pi)
+        180.0
+        >>> degrees(2 * pi)
+        0.0
+        >>> degrees(-pi / 2)
+        -90.0
+        >>> degrees(-pi)
+        180.0
+
+    """
+    deg = math.degrees(radians)
+    normalized = ((deg + 180) % 360) - 180
+
+    if is_close(normalized, -180):
+        return 180.0
+
+    return normalized
+
+
+def signum(x: float) -> Literal[-1, 0, 1]:
+    """Compute the signum function `sgn(x)`.
+
+    Args:
+        x: The value to compute the signum of.
+
+    Returns:
+        -1 if the value is negative, 0 if the value is zero, and 1 if the value
+        is positive.
+
+    Examples:
+        >>> signum(-5)
+        -1
+        >>> signum(0)
+        0
+        >>> signum(0.5)
+        1
+
+    """
+    if x < 0:
+        return -1
+
+    if x > 0:
+        return 1
+
+    return 0
+
+
+def arccos(value: float) -> float:
+    """Compute the arccosine of a value in degrees.
+
+    This function is a wrapper around `math.acos` that returns "nice" values
+    for common inputs. The output is in degrees.
+
+    Args:
+        value: The value to compute the arccosine of.
+
+    Returns:
+        The arccosine of the value in degrees.
+
+    Examples:
+        >>> arccos(1)
+        0
+        >>> arccos(0)
+        90
+
+    """
+    match value:
+        case 1:
+            return 0
+        case 0:
+            return 90
+        case _:
+            return math.degrees(math.acos(value))
