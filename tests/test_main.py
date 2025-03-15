@@ -847,10 +847,26 @@ def test_transform_swap(
         [svglab.SkewY(30)],
     ],
 )
-def test_decompose(transform: svglab.Transform) -> None:
+def test_composed_decompose_equals_compose(
+    transform: svglab.Transform,
+) -> None:
     matrix = svglab.compose(transform)
     decomposed = matrix.decompose()
 
     assert svglab.compose(decomposed) == matrix, (
         f"{list(decomposed)=}, {matrix=}"
     )
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [
+        [svglab.Translate(1, 2)],
+        [svglab.Scale(2)],
+        [svglab.Rotate(50)],
+        [svglab.SkewX(-10)],
+        [svglab.SkewY(15)],
+    ],
+)
+def test_decompose_simple(transform: svglab.Transform) -> None:
+    assert list(svglab.compose(transform).decompose()) == transform

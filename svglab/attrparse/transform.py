@@ -249,7 +249,7 @@ class SkewX(_TransformFunctionBase):
         return utils.is_close(self.angle, other.angle)
 
 
-def _transform_weight(transform: Iterable[TransformFunction], /) -> float:
+def _transform_weight(transform: Iterable[TransformFunction], /) -> int:
     """Calculate the weight of a transformation.
 
     The weight is used to determine the best decomposition of a matrix.
@@ -266,14 +266,14 @@ def _transform_weight(transform: Iterable[TransformFunction], /) -> float:
 
     for t in transform:
         match t:
-            case Scale(sx, sy) if not utils.is_close(sx, sy):
-                weight += 1e3
-            case Rotate():
-                weight += 1e2
             case SkewX() | SkewY():
-                weight += 1e3
+                weight += 1_000_000
+            case Scale(sx, sy) if not utils.is_close(sx, sy):
+                weight += 1_000_000
+            case Rotate():
+                weight += 1_000
             case _:
-                weight += 1e1
+                weight += 1
 
     return weight
 
