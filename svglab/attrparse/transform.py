@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import functools
+import itertools
 import math
 import operator
 from collections.abc import Iterable, Iterator
@@ -119,45 +120,6 @@ class _TransformFunctionBase(
         assert isinstance(product, affine.Affine)
 
         return Matrix.from_affine(product)
-
-
-@pydantic.dataclasses.dataclass(frozen=True)
-class _Translate(_TransformFunctionBase):
-    tx: float
-    ty: float
-
-    @override
-    def serialize(self) -> str:
-        args = [self.tx]
-
-        if not utils.is_close(self.ty, 0):
-            args.append(self.ty)
-
-        return serialize.serialize_function_call("translate", *args)
-
-    @override
-    def to_affine(self) -> affine.Affine:
-        return affine.Affine.translation(self.tx, self.ty or 0)
-
-    def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
-            return False
-
-        return utils.is_close(self.tx, other.tx) and utils.is_close(
-            self.ty, other.ty
-        )
-
-
-@final
-class Translate(_Translate):
-    @overload
-    def __init__(self, tx: float, /) -> None: ...
-
-    @overload
-    def __init__(self, tx: float, ty: float, /) -> None: ...
-
-    def __init__(self, tx: float, ty: float = 0, /) -> None:
-        super().__init__(tx, ty)
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
@@ -285,6 +247,74 @@ class SkewX(_TransformFunctionBase):
             return False
 
         return utils.is_close(self.angle, other.angle)
+
+
+def _transform_weight(transform: Iterable[TransformFunction], /) -> float:
+    """Calculate the weight of a transformation.
+
+    The weight is used to determine the best decomposition of a matrix.
+
+    Args:
+        transform: The transformation to calculate the weight of.
+
+    Returns:
+        The weight of the transformation - the higher the weight, the more
+        complex the transformation.
+
+    """
+    weight = 0
+
+    for t in transform:
+        match t:
+            case Scale(sx, sy) if not utils.is_close(sx, sy):
+                weight += 1e3
+            case Rotate():
+                weight += 1e2
+            case SkewX() | SkewY():
+                weight += 1e3
+            case _:
+                weight += 1e1
+
+    return weight
+
+
+@pydantic.dataclasses.dataclass(frozen=True)
+class _Translate(_TransformFunctionBase):
+    tx: float
+    ty: float
+
+    @override
+    def serialize(self) -> str:
+        args = [self.tx]
+
+        if not utils.is_close(self.ty, 0):
+            args.append(self.ty)
+
+        return serialize.serialize_function_call("translate", *args)
+
+    @override
+    def to_affine(self) -> affine.Affine:
+        return affine.Affine.translation(self.tx, self.ty or 0)
+
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return utils.is_close(self.tx, other.tx) and utils.is_close(
+            self.ty, other.ty
+        )
+
+
+@final
+class Translate(_Translate):
+    @overload
+    def __init__(self, tx: float, /) -> None: ...
+
+    @overload
+    def __init__(self, tx: float, ty: float, /) -> None: ...
+
+    def __init__(self, tx: float, ty: float = 0, /) -> None:
+        super().__init__(tx, ty)
 
 
 def _remove_redundant_transformations(
@@ -441,10 +471,10 @@ class Matrix(_TransformFunctionBase):
         ldu = _remove_redundant_transformations(self.__ldu_decompose())
         qr = _remove_redundant_transformations(self.__qr_decompose())
 
-        ldu_length, ldu = utils.length(ldu)
-        qr_length, qr = utils.length(qr)
+        ldu, ldu_copy = itertools.tee(ldu)
+        qr, qr_copy = itertools.tee(qr)
 
-        if ldu_length < qr_length:
+        if _transform_weight(ldu_copy) < _transform_weight(qr_copy):
             yield from ldu
         else:
             yield from qr
