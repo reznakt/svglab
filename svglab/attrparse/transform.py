@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import functools
+import math
 import operator
 from collections.abc import Iterable
 from types import NotImplementedType
@@ -21,6 +22,56 @@ from typing_extensions import (
 
 from svglab import mixins, protocols, serialize, utils, utiltypes
 from svglab.attrparse import parse
+
+
+_Vector: TypeAlias = tuple[float, float]
+"""A 2D vector."""
+
+
+def _dot_product(u: _Vector, v: _Vector, /) -> float:
+    """Calculate the dot product of two vectors.
+
+    Args:
+        u: The first vector.
+        v: The second vector.
+
+    Returns:
+        The dot product of the two vectors.
+
+    Examples:
+        >>> _dot_product((1.0, 2.0), (3.0, 4.0))
+        11.0
+        >>> _dot_product((1.0, 2.0), (1.0, 2.0))
+        5.0
+        >>> _dot_product((1.0, 2.0), (0.0, 0.0))
+        0.0
+
+    """
+    u1, u2 = u
+    v1, v2 = v
+
+    return u1 * v1 + u2 * v2
+
+
+def _magnitude(u: _Vector, /) -> float:
+    """Calculate the magnitude of a vector.
+
+    Args:
+        u: The vector.
+
+    Returns:
+        The magnitude of the vector.
+
+    Examples:
+        >>> _magnitude((3, 4))
+        5.0
+        >>> _magnitude((0, 0))
+        0.0
+        >>> _magnitude((1, 2))
+        2.23606797749979
+
+    """
+    return math.sqrt(_dot_product(u, u))
 
 
 class _TransformFunctionBase(
@@ -68,98 +119,6 @@ class _TransformFunctionBase(
         assert isinstance(product, affine.Affine)
 
         return Matrix.from_affine(product)
-
-
-@final
-@pydantic.dataclasses.dataclass(frozen=True)
-class Matrix(_TransformFunctionBase):
-    a: float
-    b: float
-    c: float
-    d: float
-    e: float
-    f: float
-
-    @classmethod
-    def identity(cls) -> Self:
-        """Create an identity matrix."""
-        return cls(1, 0, 0, 1, 0, 0)
-
-    @override
-    def serialize(self) -> str:
-        return serialize.serialize_function_call(
-            "matrix", self.a, self.b, self.c, self.d, self.e, self.f
-        )
-
-    @override
-    def to_affine(self) -> affine.Affine:
-        # ! affine uses different labels for the matrix elements
-
-        return affine.Affine(
-            self.a, self.c, self.e, self.b, self.d, self.f
-        )
-
-    @classmethod
-    def from_affine(cls, matrix: affine.Affine, /) -> Self:
-        """Create a `Matrix` instance from an `affine.Affine` instance."""
-        # ! affine uses different labels for the matrix elements
-
-        return cls(
-            matrix.a, matrix.d, matrix.b, matrix.e, matrix.c, matrix.f
-        )
-
-    def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
-            return False
-
-        for x1, x2 in zip(
-            (self.a, self.b, self.c, self.d, self.e, self.f),
-            (other.a, other.b, other.c, other.d, other.e, other.f),
-            strict=True,
-        ):
-            if not utils.is_close(x1, x2):
-                return False
-
-        return True
-
-
-@pydantic.dataclasses.dataclass(frozen=True)
-class _Translate(_TransformFunctionBase):
-    tx: float
-    ty: float
-
-    @override
-    def serialize(self) -> str:
-        args = [self.tx]
-
-        if not utils.is_close(self.ty, 0):
-            args.append(self.ty)
-
-        return serialize.serialize_function_call("translate", *args)
-
-    @override
-    def to_affine(self) -> affine.Affine:
-        return affine.Affine.translation(self.tx, self.ty or 0)
-
-    def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
-            return False
-
-        return utils.is_close(self.tx, other.tx) and utils.is_close(
-            self.ty, other.ty
-        )
-
-
-@final
-class Translate(_Translate):
-    @overload
-    def __init__(self, tx: float, /) -> None: ...
-
-    @overload
-    def __init__(self, tx: float, ty: float, /) -> None: ...
-
-    def __init__(self, tx: float, ty: float = 0, /) -> None:
-        super().__init__(tx, ty)
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
@@ -251,26 +210,6 @@ class Rotate(_Rotate):
 
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
-class SkewX(_TransformFunctionBase):
-    angle: float
-
-    @override
-    def serialize(self) -> str:
-        return serialize.serialize_function_call("skewX", self.angle)
-
-    @override
-    def to_affine(self) -> affine.Affine:
-        return affine.Affine.shear(x_angle=self.angle)
-
-    def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
-            return False
-
-        return utils.is_close(self.angle, other.angle)
-
-
-@final
-@pydantic.dataclasses.dataclass(frozen=True)
 class SkewY(_TransformFunctionBase):
     angle: float
 
@@ -289,16 +228,340 @@ class SkewY(_TransformFunctionBase):
         return utils.is_close(self.angle, other.angle)
 
 
+@final
+@pydantic.dataclasses.dataclass(frozen=True)
+class SkewX(_TransformFunctionBase):
+    angle: float
+
+    @override
+    def serialize(self) -> str:
+        return serialize.serialize_function_call("skewX", self.angle)
+
+    @override
+    def to_affine(self) -> affine.Affine:
+        return affine.Affine.shear(x_angle=self.angle)
+
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return utils.is_close(self.angle, other.angle)
+
+
+def _transform_weight(transform: Iterable[TransformFunction], /) -> int:
+    """Calculate the weight of a transformation.
+
+    The weight is used to determine the best decomposition of a matrix.
+
+    Args:
+        transform: The transformation to calculate the weight of.
+
+    Returns:
+        The weight of the transformation - the higher the weight, the more
+        complex the transformation.
+
+    """
+    weight = 0
+
+    for t in transform:
+        match t:
+            case SkewX() | SkewY():
+                weight += 1_000_000
+            case Scale(sx, sy) if not utils.is_close(sx, sy):
+                weight += 1_000_000
+            case Rotate():
+                weight += 1_000
+            case _:
+                weight += 1
+
+    return weight
+
+
+@pydantic.dataclasses.dataclass(frozen=True)
+class _Translate(_TransformFunctionBase):
+    tx: float
+    ty: float
+
+    @override
+    def serialize(self) -> str:
+        args = [self.tx]
+
+        if not utils.is_close(self.ty, 0):
+            args.append(self.ty)
+
+        return serialize.serialize_function_call("translate", *args)
+
+    @override
+    def to_affine(self) -> affine.Affine:
+        return affine.Affine.translation(self.tx, self.ty or 0)
+
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        return utils.is_close(self.tx, other.tx) and utils.is_close(
+            self.ty, other.ty
+        )
+
+
+@final
+class Translate(_Translate):
+    @overload
+    def __init__(self, tx: float, /) -> None: ...
+
+    @overload
+    def __init__(self, tx: float, ty: float, /) -> None: ...
+
+    def __init__(self, tx: float, ty: float = 0, /) -> None:
+        super().__init__(tx, ty)
+
+
+def _remove_redundant_transformations(
+    transform: Iterable[TransformFunction],
+) -> Transform:
+    result: Transform = []
+
+    for t in transform:
+        match t:
+            case Translate(tx, ty) if utils.is_close(
+                tx, 0
+            ) and utils.is_close(ty, 0):
+                continue
+            case Scale(sx, sy) if utils.is_close(sx, 1) and utils.is_close(
+                sy, 1
+            ):
+                continue
+            case Rotate(angle) | SkewX(angle) | SkewY(angle) if (
+                utils.is_close(angle, 0)
+            ):
+                continue
+            case _:
+                result.append(t)
+
+    return result
+
+
+@final
+@pydantic.dataclasses.dataclass(frozen=True)
+class Matrix(_TransformFunctionBase):
+    a: float
+    b: float
+    c: float
+    d: float
+    e: float
+    f: float
+
+    @classmethod
+    def identity(cls) -> Self:
+        """Create an identity matrix."""
+        return cls(1, 0, 0, 1, 0, 0)
+
+    @override
+    def serialize(self) -> str:
+        return serialize.serialize_function_call(
+            "matrix", self.a, self.b, self.c, self.d, self.e, self.f
+        )
+
+    @override
+    def to_affine(self) -> affine.Affine:
+        # ! affine uses different labels for the matrix elements
+
+        return affine.Affine(
+            self.a, self.c, self.e, self.b, self.d, self.f
+        )
+
+    @classmethod
+    def from_affine(cls, matrix: affine.Affine, /) -> Self:
+        """Create a `Matrix` instance from an `affine.Affine` instance."""
+        # ! affine uses different labels for the matrix elements
+
+        return cls(
+            matrix.a, matrix.d, matrix.b, matrix.e, matrix.c, matrix.f
+        )
+
+    def to_tuple(self) -> tuple[float, float, float, float, float, float]:
+        """Convert the matrix to a tuple.
+
+        Returns:
+            The matrix as a tuple.
+
+        Examples:
+            >>> m = Matrix(1, 2, 3, 4, 5, 6)
+            >>> m.to_tuple()
+            (1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+
+        """
+        return self.a, self.b, self.c, self.d, self.e, self.f
+
+    def determinant(self) -> float:
+        """Calculate the determinant of the matrix.
+
+        The determinant shows how the matrix scales the area of a shape.
+        For example, a determinant of 1 means the area is unchanged.
+        The determinant of 0 means the transformation is degenrate.
+
+        Returns:
+            The determinant of the matrix.
+
+        Examples:
+            >>> m = Matrix(1, 2, 3, 4, 5, 6)
+            >>> m.determinant()
+            -2.0
+
+        """
+        return self.to_affine().determinant
+
+    def __qr_decompose(self) -> Transform:
+        result: Transform = []
+        a, b, c, d, e, f = self.to_tuple()
+
+        # we prefer to use r over s if possible
+        if not utils.is_close(a, 0) or not utils.is_close(b, 0):
+            result.append(Translate(e, f))
+
+            r = _magnitude((a, b))
+            angle = utils.signum(b) * utils.arccos(a / r)
+            result.append(Rotate(angle))
+
+            det = self.determinant()
+            result.append(Scale(r, det / r))
+
+            col_dot = _dot_product((a, b), (c, d))
+            angle = utils.arctan(col_dot / r**2)
+            result.append(SkewX(angle))
+
+        # if r is unsuitable, we use s
+        elif not utils.is_close(c, 0) or not utils.is_close(d, 0):
+            result.append(Translate(e, f))
+
+            s = _magnitude((c, d))
+            angle = 90 - utils.signum(d) * utils.arccos(-c / s)
+            result.append(Rotate(angle))
+
+            det = self.determinant()
+            result.append(Scale(det / s, s))
+
+            col_dot = _dot_product((a, b), (c, d))
+            angle = utils.arctan(col_dot / s**2)
+            result.append(SkewY(angle))
+
+        # degenrate transformation
+        else:
+            result.append(Scale(0))
+
+        return result
+
+    def __ldu_decompose(self) -> Transform:
+        result: Transform = []
+        a, b, c, d, e, f = self.to_tuple()
+
+        result.append(Translate(e, f))
+
+        if not utils.is_close(a, 0):
+            result.append(SkewY(utils.arctan(b / a)))
+            result.append(Scale(a, self.determinant() / a))
+            result.append(SkewX(utils.arctan(c / a)))
+        elif not utils.is_close(b, 0):
+            result.append(Rotate(90))
+            result.append(Scale(b, self.determinant() / b))
+            result.append(SkewY(utils.arctan(d / b)))
+        else:
+            result.append(Scale(c, d))
+            result.append(SkewX(45))
+            result.append(Scale(0, 1))
+
+        return result
+
+    def decompose(self) -> Transform:
+        """Decompose the matrix into elementary transformations.
+
+        The result is a list of transformations that, when composed, are
+        equivalent to the original matrix.
+
+        The algorithm is based on Frédéric Wang's [Decomposition of
+        2D-transform matrices](https://frederic-wang.fr/2013/12/01/decomposition-of-2d-transform-matrices/).
+
+        Two decomposition methods are used: QR and LDU. The
+        final decomposition is chosen based on which method produces the
+        transformation with the lowest complexity.
+
+        Returns:
+            A transformation list composed of elementary transformations.
+
+        Examples:
+        >>> m = Translate(10, 20).to_matrix()
+        >>> m.decompose()
+        [Translate(tx=10.0, ty=20.0)]
+        >>> m = SkewY(45).to_matrix()
+        >>> m.decompose()
+        [SkewY(angle=45.0)]
+        >>> m = Translate(10, 20) @ Scale(2, 2)
+        >>> m.decompose()
+        [Translate(tx=10.0, ty=20.0), Scale(sx=2.0, sy=2.0)]
+
+        """
+        if self == Matrix.identity():
+            return []
+
+        ldu = _remove_redundant_transformations(self.__ldu_decompose())
+        qr = _remove_redundant_transformations(self.__qr_decompose())
+
+        if _transform_weight(ldu) < _transform_weight(qr):
+            return ldu
+
+        return qr
+
+    def __eq__(self, other: object, /) -> bool:
+        if not utils.basic_compare(other, self=self):
+            return False
+
+        for x1, x2 in zip(self.to_tuple(), other.to_tuple(), strict=True):
+            if not utils.is_close(x1, x2):
+                return False
+
+        return True
+
+
 TransformFunction: TypeAlias = (
     Translate | Scale | Rotate | SkewX | SkewY | Matrix
 )
 """A function that represents a transformation."""
 
+Transform: TypeAlias = list[TransformFunction]
+"""A list of transformations."""
+
 Reifiable: TypeAlias = Translate | Scale
 """A transformation that can be reified."""
 
-Transform: TypeAlias = list[TransformFunction]
-"""A list of transformations."""
+
+def decompose_matrices(transform: Transform) -> None:
+    """Decompose matrices in a transformation list into elementary transforms.
+
+    See `Matrix.decompose` for more information.
+
+    Args:
+        transform: The transformation list to decompose.
+
+    Examples:
+        >>> transform = [Matrix(1, 0, 0, 1, 10, 20)]
+        >>> decompose_matrices(transform)
+        >>> transform
+        [Translate(tx=10.0, ty=20.0)]
+
+    """
+    i = 0
+
+    while i < len(transform):
+        transformation = transform[i]
+
+        if not isinstance(transformation, Matrix):
+            i += 1
+            continue
+
+        decomposition = transformation.decompose()
+        transform[i : i + 1] = decomposition
+
+        i += len(decomposition)
 
 
 def compose(transforms: Iterable[TransformFunction], /) -> Matrix:

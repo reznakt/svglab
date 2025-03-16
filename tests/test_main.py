@@ -558,7 +558,7 @@ def test_matrix_multiplication(
     assert transformed == after
 
 
-_REIFY_TRANSFORMS: Final[list[svglab.Transform]] = [
+_TRANSFORMS: Final[list[svglab.Transform]] = [
     [svglab.Translate(10, 20)],
     [svglab.Translate(1, 5), svglab.Scale(0.5)],
     [svglab.Translate(2, 1)] * 10,
@@ -679,7 +679,7 @@ _REIFY_SVGS: Final[list[svglab.Svg]] = [
 ]
 
 
-@pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
+@pytest.mark.parametrize("transform", _TRANSFORMS)
 def test_reify_leaves_transform_empty(transform: svglab.Transform) -> None:
     svg = svglab.Svg(transform=transform)
     svg.reify()
@@ -687,7 +687,7 @@ def test_reify_leaves_transform_empty(transform: svglab.Transform) -> None:
     assert svg.transform is None
 
 
-@pytest.mark.parametrize("transform", _REIFY_TRANSFORMS)
+@pytest.mark.parametrize("transform", _TRANSFORMS)
 def test_reify_produces_visually_equal_svg_simple(
     transform: svglab.Transform,
 ) -> None:
@@ -767,6 +767,30 @@ def test_set_viewbox_sets_viewbox_attr() -> None:
                 reason="Transform/viewBox bug in resvg"
             ),
         ),
+        svglab.Svg(
+            width=svglab.Length(1000), height=svglab.Length(1000)
+        ).add_child(
+            svglab.Rect(
+                x=svglab.Length(200),
+                y=svglab.Length(200),
+                width=svglab.Length(100),
+                height=svglab.Length(100),
+                fill="red",
+                stroke="blue",
+                transform=[
+                    svglab.compose(
+                        [
+                            svglab.Translate(10, 20),
+                            svglab.Scale(2),
+                            svglab.Rotate(45),
+                            svglab.Translate(250, -300),
+                            svglab.SkewX(-45),
+                            svglab.SkewY(-20),
+                        ]
+                    )
+                ],
+            )
+        ),
     ],
 )
 def test_set_viewbox_produces_visually_equal_svg(svg: svglab.Svg) -> None:
@@ -819,3 +843,56 @@ def test_transform_swap(
 
     assert svglab.swap_transforms(a, b) == swapped
     assert svglab.swap_transforms(c, d) == original
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [
+        *_TRANSFORMS,
+        [
+            svglab.Scale(2),
+            svglab.Translate(1, 2),
+            svglab.Rotate(15),
+            svglab.Rotate(30),
+            svglab.Translate(2, 4),
+            svglab.Rotate(10, 15, 30),
+        ],
+        [svglab.SkewX(45), svglab.SkewY(45)],
+        [svglab.Scale(0)],
+        [svglab.Rotate(45, 10, 10)],
+        [
+            svglab.Scale(1, 2),
+            svglab.Translate(1, 2),
+            svglab.Scale(2, 1),
+            svglab.Rotate(10),
+            svglab.Scale(0.5),
+        ],
+        [svglab.SkewX(30)],
+        [svglab.SkewY(30)],
+    ],
+)
+def test_composed_decompose_equals_compose(
+    transform: svglab.Transform,
+) -> None:
+    matrix = svglab.compose(transform)
+    decomposed = matrix.decompose()
+
+    assert svglab.compose(decomposed) == matrix, (
+        f"{list(decomposed)=}, {matrix=}"
+    )
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [
+        [svglab.Translate(1, 2)],
+        [svglab.Scale(2)],
+        [svglab.Rotate(50)],
+        [svglab.SkewX(-10)],
+        [svglab.SkewY(15)],
+        [svglab.Scale(0, 1)],
+        [svglab.Scale(0)],
+    ],
+)
+def test_decompose_simple(transform: svglab.Transform) -> None:
+    assert svglab.compose(transform).decompose() == transform

@@ -111,7 +111,6 @@ def swap_transforms(
                 return b, a
 
             angle = utils.arctan(sx / sy * utils.tan(angle))
-
             return scale, type(a)(angle)
         case _:
             raise errors.SvgTransformSwapError(a, b)
@@ -471,6 +470,8 @@ class SupportsTransform(Element, regular.Transform):
 
         if not self.transform:
             return
+
+        transform.decompose_matrices(self.transform)
 
         reified = 0
         i = 0
