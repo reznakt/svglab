@@ -767,6 +767,30 @@ def test_set_viewbox_sets_viewbox_attr() -> None:
                 reason="Transform/viewBox bug in resvg"
             ),
         ),
+        svglab.Svg(
+            width=svglab.Length(1000), height=svglab.Length(1000)
+        ).add_child(
+            svglab.Rect(
+                x=svglab.Length(200),
+                y=svglab.Length(200),
+                width=svglab.Length(100),
+                height=svglab.Length(100),
+                fill="red",
+                stroke="blue",
+                transform=[
+                    svglab.compose(
+                        [
+                            svglab.Translate(10, 20),
+                            svglab.Scale(2),
+                            svglab.Rotate(45),
+                            svglab.Translate(250, -300),
+                            svglab.SkewX(-45),
+                            svglab.SkewY(-20),
+                        ]
+                    )
+                ],
+            )
+        ),
     ],
 )
 def test_set_viewbox_produces_visually_equal_svg(svg: svglab.Svg) -> None:
@@ -866,7 +890,9 @@ def test_composed_decompose_equals_compose(
         [svglab.Rotate(50)],
         [svglab.SkewX(-10)],
         [svglab.SkewY(15)],
+        [svglab.Scale(0, 1)],
+        [svglab.Scale(0)],
     ],
 )
 def test_decompose_simple(transform: svglab.Transform) -> None:
-    assert list(svglab.compose(transform).decompose()) == transform
+    assert svglab.compose(transform).decompose() == transform

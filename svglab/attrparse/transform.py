@@ -436,7 +436,6 @@ class Matrix(_TransformFunctionBase):
 
             s = _magnitude((c, d))
             angle = 90 - utils.signum(d) * utils.arccos(-c / s)
-
             result.append(Rotate(angle))
 
             det = self.determinant()
