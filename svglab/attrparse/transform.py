@@ -474,6 +474,33 @@ class Matrix(_TransformFunctionBase):
         return result
 
     def decompose(self) -> Transform:
+        """Decompose the matrix into elementary transformations.
+
+        The result is a list of transformations that, when composed, are
+        equivalent to the original matrix.
+
+        The algorithm is based on Frédéric Wang's [Decomposition of
+        2D-transform matrices](https://frederic-wang.fr/2013/12/01/decomposition-of-2d-transform-matrices/).
+
+        Two decomposition methods are used: QR and LDU. The
+        final decomposition is chosen based on which method produces the
+        transformation with the lowest complexity.
+
+        Returns:
+            A transformation list composed of elementary transformations.
+
+        Examples:
+        >>> m = Translate(10, 20).to_matrix()
+        >>> m.decompose()
+        [Translate(tx=10.0, ty=20.0)]
+        >>> m = SkewY(45).to_matrix()
+        >>> m.decompose()
+        [SkewY(angle=45.0)]
+        >>> m = Translate(10, 20) @ Scale(2, 2)
+        >>> m.decompose()
+        [Translate(tx=10.0, ty=20.0), Scale(sx=2.0, sy=2.0)]
+
+        """
         if self == Matrix.identity():
             return []
 
