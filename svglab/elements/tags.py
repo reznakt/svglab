@@ -109,7 +109,6 @@ class A(
     regular.ExternalResourcesRequired,
     regular.Style,
     regular.Target,
-    traits.SupportsTransform,
     traits.ContainerElement,
 ):
     pass
@@ -237,7 +236,6 @@ class ClipPath(
     regular.ClipPathUnits,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
     traits.Element,
 ):
     pass
@@ -272,7 +270,6 @@ class Defs(
     regular.Class,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
     traits.StructuralElement,
     traits.ContainerElement,
 ):
@@ -685,7 +682,6 @@ class ForeignObject(
     regular.ExternalResourcesRequired,
     regular.Height,
     regular.Style,
-    traits.SupportsTransform,
     regular.Width,
     regular.XCoordinate,
     regular.YCoordinate,
@@ -700,7 +696,6 @@ class G(
     regular.Class,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
     traits.StructuralElement,
     traits.ContainerElement,
 ):
@@ -763,7 +758,6 @@ class Image(
     regular.Height,
     regular.PreserveAspectRatio,
     regular.Style,
-    traits.SupportsTransform,
     regular.Width,
     regular.XCoordinate,
     regular.YCoordinate,
@@ -867,7 +861,6 @@ class MissingGlyph(
     regular.D,
     regular.HorizAdvX,
     regular.Style,
-    traits.SupportsTransform,
     regular.VertAdvY,
     regular.VertOriginX,
     regular.VertOriginY,
@@ -1082,7 +1075,6 @@ class Switch(
     regular.Class,
     regular.ExternalResourcesRequired,
     regular.Style,
-    traits.SupportsTransform,
     traits.ContainerElement,
 ):
     pass
@@ -1093,6 +1085,8 @@ class Symbol(
     regular.Class,
     regular.ExternalResourcesRequired,
     regular.PreserveAspectRatio,
+    regular.RefX,
+    regular.RefY,
     regular.Style,
     regular.ViewBox,
     traits.StructuralElement,
@@ -1112,7 +1106,6 @@ class Text(
     regular.RotateListOfNumbers,
     regular.Style,
     regular.TextLength,
-    traits.SupportsTransform,
     regular.XListOfCoordinates,
     regular.YListOfCoordinates,
     traits.TextContentElement,
@@ -1188,7 +1181,6 @@ class Use(
     regular.ExternalResourcesRequired,
     regular.Height,
     regular.Style,
-    traits.SupportsTransform,
     regular.Width,
     regular.XCoordinate,
     regular.YCoordinate,

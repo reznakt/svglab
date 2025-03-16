@@ -18,7 +18,25 @@ from svglab.attrparse import parse
 
 
 LengthUnit: TypeAlias = (
-    Literal["em", "ex", "px", "in", "cm", "mm", "pt", "pc", "%"] | None
+    Literal[
+        "%",
+        "ch",
+        "cm",
+        "em",
+        "ex",
+        "in",
+        "mm",
+        "pc",
+        "pt",
+        "px",
+        "Q",
+        "rem",
+        "vh",
+        "vmax",
+        "vmin",
+        "vw",
+    ]
+    | None
 )
 
 _convert: Final[units.Converter[Length, LengthUnit]] = (
@@ -29,6 +47,7 @@ _convert: Final[units.Converter[Length, LengthUnit]] = (
             ("pc", "px"): 15,
             ("pt", "px"): 1.25,
             (None, "px"): 1,
+            ("mm", "Q"): 4,
         }
     )
 )
@@ -45,16 +64,23 @@ class Length(
     """Represents the SVG `<length>` type.
 
     A length is a number optionally followed by a unit. Available units are:
-
-    - `em`: the font size of the element
-    - `ex`: the x-height of the element's font
-    - `px`: pixels
-    - `in`: inches
+    - `%`: percentage
+    - `ch`: character unit
     - `cm`: centimeters
+    - `em`: relative to the font size of the element
+    - `ex`: relative to the x-height of the element's font
+    - `in`: inches
     - `mm`: millimeters
-    - `pt`: points
     - `pc`: picas
-    - `%`: percentage of another value
+    - `pt`: points
+    - `px`: pixels
+    - `Q`: quarter-millimeters
+    - `rem`: relative to the font size of the root element
+    - `vh`: viewport height
+    - `vmax`: maximum of the viewport's height and width
+    - `vmin`: minimum of the viewport's height and width
+    - `vw`: viewport width
+
     """
 
     value: float
