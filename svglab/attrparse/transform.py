@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import abc
 import functools
-import itertools
 import math
 import operator
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable
 from types import NotImplementedType
 
 import affine
@@ -319,7 +318,9 @@ class Translate(_Translate):
 
 def _remove_redundant_transformations(
     transform: Iterable[TransformFunction],
-) -> Iterator[TransformFunction]:
+) -> Transform:
+    result: Transform = []
+
     for t in transform:
         match t:
             case Translate(tx, ty) if utils.is_close(
@@ -335,7 +336,9 @@ def _remove_redundant_transformations(
             ):
                 continue
             case _:
-                yield t
+                result.append(t)
+
+    return result
 
 
 @final
@@ -408,76 +411,79 @@ class Matrix(_TransformFunctionBase):
         """
         return self.to_affine().determinant
 
-    def __qr_decompose(self) -> Iterator[TransformFunction]:
+    def __qr_decompose(self) -> Transform:
+        result: Transform = []
         a, b, c, d, e, f = self.to_tuple()
 
         # we prefer to use r over s if possible
         if not utils.is_close(a, 0) or not utils.is_close(b, 0):
-            yield Translate(e, f)
+            result.append(Translate(e, f))
 
             r = _magnitude((a, b))
             angle = utils.signum(b) * utils.arccos(a / r)
-            yield Rotate(angle)
+            result.append(Rotate(angle))
 
             det = self.determinant()
-            yield Scale(r, det / r)
+            result.append(Scale(r, det / r))
 
             col_dot = _dot_product((a, b), (c, d))
             angle = utils.arctan(col_dot / r**2)
-            yield SkewX(angle)
+            result.append(SkewX(angle))
 
         # if r is unsuitable, we use s
         elif not utils.is_close(c, 0) or not utils.is_close(d, 0):
-            yield Translate(e, f)
+            result.append(Translate(e, f))
 
             s = _magnitude((c, d))
             angle = 90 - utils.signum(d) * utils.arccos(-c / s)
 
-            yield Rotate(angle)
+            result.append(Rotate(angle))
 
             det = self.determinant()
-            yield Scale(det / s, s)
+            result.append(Scale(det / s, s))
 
             col_dot = _dot_product((a, b), (c, d))
             angle = utils.arctan(col_dot / s**2)
-            yield SkewY(angle)
+            result.append(SkewY(angle))
 
         # degenrate transformation
         else:
-            yield Scale(0)
+            result.append(Scale(0))
 
-    def __ldu_decompose(self) -> Iterator[TransformFunction]:
+        return result
+
+    def __ldu_decompose(self) -> Transform:
+        result: Transform = []
         a, b, c, d, e, f = self.to_tuple()
 
-        yield Translate(e, f)
+        result.append(Translate(e, f))
 
         if not utils.is_close(a, 0):
-            yield SkewY(utils.arctan(b / a))
-            yield Scale(a, self.determinant() / a)
-            yield SkewX(utils.arctan(c / a))
+            result.append(SkewY(utils.arctan(b / a)))
+            result.append(Scale(a, self.determinant() / a))
+            result.append(SkewX(utils.arctan(c / a)))
         elif not utils.is_close(b, 0):
-            yield Rotate(90)
-            yield Scale(b, self.determinant() / b)
-            yield SkewY(utils.arctan(d / b))
+            result.append(Rotate(90))
+            result.append(Scale(b, self.determinant() / b))
+            result.append(SkewY(utils.arctan(d / b)))
         else:
-            yield Scale(c, d)
-            yield SkewX(45)
-            yield Scale(0, 1)
+            result.append(Scale(c, d))
+            result.append(SkewX(45))
+            result.append(Scale(0, 1))
 
-    def decompose(self) -> Iterator[TransformFunction]:
+        return result
+
+    def decompose(self) -> Transform:
         if self == Matrix.identity():
-            return
+            return []
 
         ldu = _remove_redundant_transformations(self.__ldu_decompose())
         qr = _remove_redundant_transformations(self.__qr_decompose())
 
-        ldu, ldu_copy = itertools.tee(ldu)
-        qr, qr_copy = itertools.tee(qr)
+        if _transform_weight(ldu) < _transform_weight(qr):
+            return ldu
 
-        if _transform_weight(ldu_copy) < _transform_weight(qr_copy):
-            yield from ldu
-        else:
-            yield from qr
+        return qr
 
     def __eq__(self, other: object, /) -> bool:
         if not utils.basic_compare(other, self=self):
@@ -495,11 +501,41 @@ TransformFunction: TypeAlias = (
 )
 """A function that represents a transformation."""
 
+Transform: TypeAlias = list[TransformFunction]
+"""A list of transformations."""
+
 Reifiable: TypeAlias = Translate | Scale
 """A transformation that can be reified."""
 
-Transform: TypeAlias = list[TransformFunction]
-"""A list of transformations."""
+
+def decompose_matrices(transform: Transform) -> None:
+    """Decompose matrices in a transformation list into elementary transforms.
+
+    See `Matrix.decompose` for more information.
+
+    Args:
+        transform: The transformation list to decompose.
+
+    Examples:
+        >>> transform = [Matrix(1, 0, 0, 1, 10, 20)]
+        >>> decompose_matrices(transform)
+        >>> transform
+        [Translate(tx=10.0, ty=20.0)]
+
+    """
+    i = 0
+
+    while i < len(transform):
+        transformation = transform[i]
+
+        if not isinstance(transformation, Matrix):
+            i += 1
+            continue
+
+        decomposition = transformation.decompose()
+        transform[i : i + 1] = decomposition
+
+        i += len(decomposition)
 
 
 def compose(transforms: Iterable[TransformFunction], /) -> Matrix:
