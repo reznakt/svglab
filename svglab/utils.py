@@ -23,33 +23,7 @@ _T = TypeVar("_T")
 _DT = TypeVar("_DT")
 _NT = TypeVar("_NT")
 
-_NestedIterableItem: TypeAlias = _T | Iterable["_NestedIterableItem[_T]"]
-_NestedIterable: TypeAlias = Iterable[_NestedIterableItem[_T]]
-
 _Map: TypeAlias = Callable[[_T], _NT]
-
-
-def length(iterable: Iterable[_T], /) -> int:
-    """Count the number of items in an iterable.
-
-    Args:
-        iterable: The iterable to count.
-
-    Returns:
-        The number of items in the iterable.
-
-    Examples:
-        >>> length([])
-        0
-        >>> length([1, 2, 3])
-        3
-        >>> length(range(0))
-        0
-        >>> length(range(3))
-        3
-
-    """
-    return sum(1 for _ in iterable)
 
 
 def take_last(iterable: Iterable[_T], /) -> _T | None:
@@ -200,32 +174,6 @@ def basic_compare(other: object, /, *, self: _T) -> TypeIs[_T]:
 
     """
     return other is self or isinstance(other, type(self))
-
-
-def flatten(iterable: _NestedIterable[_T], /) -> Generator[_T]:
-    """Flatten a nested iterable.
-
-    Args:
-        iterable: The nested iterable to flatten.
-
-    Yields:
-        Items from the nested iterable, in order.
-
-    Examples:
-        >>> list(flatten([]))
-        []
-        >>> list(flatten([1, 2, 3]))
-        [1, 2, 3]
-        >>> list(flatten([[1, 2], [3, 4]]))
-        [1, 2, 3, 4]
-        >>> list(flatten([1, [2, 3], 4]))
-        [1, 2, 3, 4]
-        >>> list(flatten([1, [2, [3, [4]]]]))
-        [1, 2, 3, 4]
-
-    """
-    for item in iterable:
-        yield from flatten(item) if isinstance(item, Iterable) else (item,)
 
 
 def prev(sequence: Sequence[_T], item: _T) -> _T:
