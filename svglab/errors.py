@@ -1,4 +1,4 @@
-from typing_extensions import Any, override
+from typing_extensions import override
 
 
 class SvgError(Exception):
@@ -37,8 +37,8 @@ class SvgReifyError(SvgError):
     """Exception raised when an element cannot be reified."""
 
     @override
-    def __init__(self, transform: list[Any]) -> None:
-        super().__init__(f"Cannot reify transform list: {transform!r}")
+    def __init__(self) -> None:
+        super().__init__("Cannot reify transform list")
 
 
 class SvgTransformSwapError(SvgError):

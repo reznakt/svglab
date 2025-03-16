@@ -495,7 +495,7 @@ class SupportsTransform(Element, regular.Transform):
                     child.transform.insert(0, transformation)
                     child.reify(limit=1, recursive=False)
             except (ValueError, errors.SvgTransformSwapError) as e:
-                raise errors.SvgReifyError(self.transform) from e
+                raise errors.SvgReifyError from e
 
             reified += 1
 
