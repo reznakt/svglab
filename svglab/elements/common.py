@@ -709,6 +709,47 @@ class Tag(
 
         return tag
 
+    def __reify_this(self, *, limit: int = sys.maxsize) -> None:
+        if limit < 0:
+            raise ValueError("Limit must be a positive integer")
+
+        if not self.transform:
+            return
+
+        transform.decompose_matrices(transform=self.transform)
+
+        reified = 0
+        i = 0
+
+        while reified < limit and i < len(self.transform):
+            if not isinstance(self.transform[i], transform.Reifiable):
+                i += 1
+                continue
+
+            try:
+                # move the transformation to the end of the list where it can
+                # be directly applied to the elementf
+                _move_transformation_to_end(self.transform, i)
+                transformation = self.transform.pop()
+
+                _apply_transformation(self, transformation)
+
+                for child in self.find_all(recursive=False):
+                    if child.transform is None:
+                        child.transform = []
+
+                    child.transform.insert(0, transformation)
+
+                    child.reify(
+                        limit=1,
+                        recursive=False,
+                        remove_transform_list_if_empty=False,
+                    )
+            except (ValueError, errors.SvgTransformSwapError) as e:
+                raise errors.SvgReifyError from e
+
+            reified += 1
+
     def reify(
         self,
         *,
@@ -775,45 +816,7 @@ class Tag(
             True
 
         """
-        if limit < 0:
-            raise ValueError("Limit must be a positive integer")
-
-        if not self.transform:
-            return
-
-        transform.decompose_matrices(self.transform)
-
-        reified = 0
-        i = 0
-
-        while reified < limit and i < len(self.transform):
-            if not isinstance(self.transform[i], transform.Reifiable):
-                i += 1
-                continue
-
-            try:
-                # move the transformation to the end of the list where it can
-                # be directly applied to the elementf
-                _move_transformation_to_end(self.transform, i)
-                transformation = self.transform.pop()
-
-                _apply_transformation(self, transformation)
-
-                for child in self.find_all(recursive=False):
-                    if child.transform is None:
-                        child.transform = []
-
-                    child.transform.insert(0, transformation)
-
-                    child.reify(
-                        limit=1,
-                        recursive=False,
-                        remove_transform_list_if_empty=False,
-                    )
-            except (ValueError, errors.SvgTransformSwapError) as e:
-                raise errors.SvgReifyError from e
-
-            reified += 1
+        self.__reify_this(limit=limit)
 
         if remove_transform_list_if_empty and not self.transform:
             self.transform = None
