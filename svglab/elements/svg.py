@@ -164,6 +164,10 @@ class Svg(
         # skip self; this can be done in a single for loop because the
         # SVG is a tree (probably)
         for child in self.find_all(recursive=False):
+            # this is normally done in the reify method, but we need to do it
+            # before we prepend the new transformations
+            child.decompose_transform_origin()
+
             child.transform = [
                 transform.Translate(tx, ty),
                 transform.Scale(sx, sy),

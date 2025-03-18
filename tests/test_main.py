@@ -602,6 +602,7 @@ _REIFY_SVGS: Final[list[svglab.Svg]] = [
             fill="red",
             stroke="blue",
             transform=[svglab.Translate(10, 20), svglab.Scale(2)],
+            transform_origin=(svglab.Length(5), svglab.Length(0)),
         )
     ),
     svglab.Svg(
@@ -614,6 +615,7 @@ _REIFY_SVGS: Final[list[svglab.Svg]] = [
             height=svglab.Length(100),
             fill="red",
             stroke="blue",
+            transform_origin=(svglab.Length(10), svglab.Length(20)),
             transform=[
                 svglab.Translate(10, 20),
                 svglab.Scale(2),

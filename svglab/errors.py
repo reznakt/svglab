@@ -49,3 +49,13 @@ class SvgTransformSwapError(SvgError):
         super().__init__(
             f"Cannot swap {transform_a!r} and {transform_b!r}"
         )
+
+
+class SvgTransformOriginError(SvgError):
+    """Exception raised when a transform origin value is unsupported."""
+
+    @override
+    def __init__(self, transform_origin: object) -> None:
+        super().__init__(
+            f"Unsupported transform-origin: {transform_origin!r}"
+        )

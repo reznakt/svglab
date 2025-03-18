@@ -4,7 +4,7 @@ import abc
 import collections
 import reprlib
 import sys
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 
 import bs4
 import pydantic
@@ -709,9 +709,51 @@ class Tag(
 
         return tag
 
+    def decompose_transform_origin(self) -> None:
+        """Decompose the `transform-origin` attribute into `transform`.
+
+        This function replaces the `transform-origin` attribute with a pair of
+        `Translate` transformations in the `transform` attribute. The resulting
+        `transform` attribute looks like this:
+
+        ```
+        self.transform = [
+            Translate(tx, ty),
+            *self.transform,
+            Translate(-tx, -ty),
+        ]
+        ```
+
+        If the `transform-origin` attribute is not set, this function does
+        nothing.
+
+        Raises:
+            SvgTransformOriginError: If the value of the `transform-origin`
+                attribute cannot be decomposed.
+
+        """
+        if self.transform_origin is None:
+            return
+
+        if utils.is_type(self.transform_origin, Sequence[length.Length]):
+            tx = float(self.transform_origin[0])
+            ty = float(self.transform_origin[1])
+
+            if not self.transform:
+                self.transform = []
+
+            self.transform.insert(0, transform.Translate(tx, ty))
+            self.transform.append(transform.Translate(-tx, -ty))
+
+            self.transform_origin = None
+        else:
+            raise errors.SvgTransformOriginError(self.transform_origin)
+
     def __reify_this(self, *, limit: int = sys.maxsize) -> None:
         if limit < 0:
             raise ValueError("Limit must be a positive integer")
+
+        self.decompose_transform_origin()
 
         if not self.transform:
             return
@@ -738,6 +780,8 @@ class Tag(
                     if child.transform is None:
                         child.transform = []
 
+                    # decompose transform-origin before we prepend
+                    child.decompose_transform_origin()
                     child.transform.insert(0, transformation)
 
                     child.reify(
@@ -793,6 +837,8 @@ class Tag(
             SvgReifyError: If the `transform` attribute cannot be reified.
             SvgUnitConversionError: If a length value cannot be converted to
                 user units.
+            SvgTransformOriginError: If the value of the `transform-origin`
+                attribute is unsupported.
 
         Examples:
             >>> from svglab import Rect, Length, Translate
