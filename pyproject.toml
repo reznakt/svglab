@@ -164,6 +164,7 @@ ignore = [
   "C901",    # Function is too complex
   "PLR0911", # Too many return statements
   "PLR0912", # Too many branches
+  "TC006",   # Add quotes to type expression in `typing.cast()`
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
