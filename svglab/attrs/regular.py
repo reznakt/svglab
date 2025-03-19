@@ -890,7 +890,7 @@ class ValuesList(common.Attr):
 
 
 class Version(common.Attr):
-    version: models.Attr[Literal["1.0", "1.1"]] = None
+    version: models.Attr[Literal["1.0", "1.1", "1.2"]] = None
 
 
 class VertAdvY(common.Attr):
