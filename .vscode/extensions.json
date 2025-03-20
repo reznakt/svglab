@@ -3,9 +3,9 @@
     "charliermarsh.ruff",
     "dirk-thomas.vscode-lark",
     "EditorConfig.EditorConfig",
-    "matangover.mypy",
     "ms-python.debugpy",
     "ms-python.python",
+    "ms-python.vscode-pylance",
     "SanaAjani.taskrunnercode",
     "tamasfe.even-better-toml",
   ]

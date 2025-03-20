@@ -1,39 +1,43 @@
 import collections
-import itertools
-from typing import Final, cast
 
 import bs4
+from typing_extensions import Final, Literal, TypeAlias, cast
 
-from svglab import elements, types, utils
+import svglab.protocols
+from svglab import utils
+from svglab.elements import common, names, svg, text_elements
 
-DEFAULT_PARSER: Final[types.Parser] = "lxml-xml"
-"""The default parser to use when parsing SVG documents."""
+
+Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
+""" Type for parsers supported by BeautifulSoup. """
 
 
-TAG_NAME_TO_CLASS: Final = {
-    cls().name: cls
-    for cls in set(
-        itertools.chain(
-            elements.Tag.__subclasses__(),
-            elements.PairedTag.__subclasses__(),
-        )
-    )
-    - {elements.PairedTag}
+DEFAULT_PARSER: Final[Parser] = "lxml-xml"
+
+
+_TAG_NAME_TO_CLASS: Final = {
+    common.tag_name(cls): cls
+    for cls in utils.get_all_subclasses(common.Tag)
+    if cls.__name__ in names.TAG_NAME_TO_NORMALIZED.inverse
 }
 
-BS_TO_TEXT_ELEMENT: Final[
+_BS_TO_TEXT_ELEMENT: Final[
     dict[
         type[bs4.NavigableString],
-        type[elements.CData | elements.Comment | elements.RawText],
+        type[
+            text_elements.CData
+            | text_elements.Comment
+            | text_elements.RawText
+        ],
     ]
 ] = {
-    bs4.CData: elements.CData,
-    bs4.Comment: elements.Comment,
-    bs4.NavigableString: elements.RawText,
+    bs4.CData: text_elements.CData,
+    bs4.Comment: text_elements.Comment,
+    bs4.NavigableString: text_elements.RawText,
 }
 
 
-def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
+def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     """Find all root SVG fragments in the given BeautifulSoup object.
 
     The function performs a breadth-first search until it finds an
@@ -49,13 +53,15 @@ def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
         A list of SVG fragments found in the document.
 
     Examples:
-        >>> soup = bs4.BeautifulSoup("<svg><rect/></svg>", features="lxml-xml")
-        >>> get_root_svg_fragments(soup)
+        >>> soup = bs4.BeautifulSoup(
+        ...     "<svg><rect/></svg>", features="lxml-xml"
+        ... )
+        >>> _get_root_svg_fragments(soup)
         [<svg><rect/></svg>]
         >>> soup = bs4.BeautifulSoup(
         ...     "<svg><rect/></svg>", features="html.parser"
         ... )
-        >>> get_root_svg_fragments(soup)
+        >>> _get_root_svg_fragments(soup)
         [<svg><rect></rect></svg>]
 
     """
@@ -76,9 +82,7 @@ def get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def convert_element(
-    backend: bs4.PageElement,
-) -> elements.Element | None:
+def _convert_element(backend: bs4.PageElement) -> common.Element | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
@@ -93,7 +97,7 @@ def convert_element(
     """
     match backend:
         case bs4.NavigableString():
-            cls = BS_TO_TEXT_ELEMENT.get(type(backend))
+            cls = _BS_TO_TEXT_ELEMENT.get(type(backend))
 
             if cls is None:
                 return None
@@ -105,28 +109,22 @@ def convert_element(
 
             return cls(text)
         case bs4.Tag():
-            tag_class = TAG_NAME_TO_CLASS[
-                cast(elements.TagName, backend.name)
+            tag_class = _TAG_NAME_TO_CLASS[
+                cast(names.TagName, backend.name)
             ]
 
+            for key, value in backend.attrs.items():
+                backend.attrs[key] = str(value).strip()
+
             tag = tag_class.model_validate(
-                {
-                    "prefix": backend.prefix,
-                    **backend.attrs,
-                },
-                strict=False,
+                {"prefix": backend.prefix, **backend.attrs}, strict=False
             )
 
-            if isinstance(tag, elements.PairedTag):
-                for child in backend.children:
-                    grandchild = convert_element(child)
+            for child in backend.children:
+                grandchild = _convert_element(child)
 
-                    if grandchild is not None:
-                        tag.add_child(grandchild)
-            elif not utils.is_empty(backend.contents):
-                msg = f"Unpaired tag {tag.name!r} cannot have children."
-                raise TypeError(msg)
-
+                if grandchild is not None:
+                    tag.add_child(grandchild)
             return tag
         case _:
             return None
@@ -135,12 +133,12 @@ def convert_element(
 def parse_svg(
     markup: str
     | bytes
-    | types.SupportsRead[str]
-    | types.SupportsRead[bytes],
+    | svglab.protocols.SupportsRead[str]
+    | svglab.protocols.SupportsRead[bytes],
     /,
     *,
-    parser: types.Parser = DEFAULT_PARSER,
-) -> elements.Svg:
+    parser: Parser = DEFAULT_PARSER,
+) -> svg.Svg:
     """Parse an SVG document.
 
     The document must be a valid XML document containing a single SVG
@@ -166,7 +164,7 @@ def parse_svg(
     """
     soup = bs4.BeautifulSoup(markup, features=parser)
 
-    svg_fragments = get_root_svg_fragments(soup)
+    svg_fragments = _get_root_svg_fragments(soup)
 
     if len(svg_fragments) != 1:
         msg = (
@@ -176,10 +174,10 @@ def parse_svg(
 
         raise ValueError(msg)
 
-    svg = convert_element(svg_fragments[0])
+    svg_ = _convert_element(svg_fragments[0])
 
-    if not isinstance(svg, elements.Svg):
-        msg = f"Expected an <svg> element, found {type(svg).__name__}."
+    if not isinstance(svg_, svg.Svg):
+        msg = f"Expected an <svg> element, found {type(svg_).__name__}."
         raise TypeError(msg)
 
-    return svg
+    return svg_

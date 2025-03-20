@@ -1,0 +1,27 @@
+%import common.WS
+%import common.SIGNED_NUMBER
+
+%ignore WS
+
+?start: length
+
+length: number unit?
+
+?!unit: "%"
+    | "ch"
+    | "cm"
+    | "em"
+    | "ex"
+    | "in"
+    | "mm"
+    | "pc"
+    | "pt"
+    | "px"
+    | "Q"
+    | "rem"
+    | "vh"
+    | "vmax"
+    | "vmin"
+    | "vw"
+
+number: SIGNED_NUMBER
