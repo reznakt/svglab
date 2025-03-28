@@ -62,7 +62,6 @@ class _Point(
     y: float
 
     @override
-    @override
     def serialize(self) -> str:
         formatter = serialize.get_current_formatter()
         x, y = serialize.serialize(self.x, self.y)

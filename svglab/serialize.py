@@ -245,8 +245,6 @@ def _serialize_number(number: float) -> str:
 
     # make sure the number is always a float and not an int, so that str()
     # always includes the decimal point
-    number = float(number)
-
     number = round(float(number), formatter.max_precision)
     abs_value = abs(number)
 
