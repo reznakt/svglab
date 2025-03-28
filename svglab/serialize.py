@@ -22,20 +22,18 @@ _PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
 _PathDataCommandMode: TypeAlias = Literal["explicit", "implicit"]
 _Xmlns: TypeAlias = Literal["always", "never", "original"]
 
-
-Serializable: TypeAlias = (
+_Serializable: TypeAlias = (
     bool
     | int
     | float
     | str
     | protocols.CustomSerializable
-    | Iterable["Serializable"]
+    | Iterable["_Serializable"]
 )
-""" Type for objects that can be serialized to a SVG-friendly string. """
 
 
-def _is_serializable(value: object, /) -> TypeIs[Serializable]:
-    return utils.is_type(value, Serializable)
+def _is_serializable(value: object, /) -> TypeIs[_Serializable]:
+    return utils.is_type(value, _Serializable)
 
 
 @pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
@@ -292,16 +290,16 @@ def _serialize_number(number: float) -> str:
 
 @overload
 def serialize(
-    value: Serializable, /, *, bool_mode: _BoolMode = "text"
+    value: _Serializable, /, *, bool_mode: _BoolMode = "text"
 ) -> str: ...
 
 
 @overload
 def serialize(
-    first: Serializable,
-    second: Serializable,
+    first: _Serializable,
+    second: _Serializable,
     /,
-    *values: Serializable,
+    *values: _Serializable,
     bool_mode: _BoolMode = "text",
 ) -> tuple[str, ...]: ...
 
@@ -341,7 +339,7 @@ def _serialize_bool(
             return "1" if value else "0"
 
 
-def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:
+def _serialize(value: _Serializable, /, *, bool_mode: _BoolMode) -> str:
     formatter = get_current_formatter()
     result: str
 
@@ -377,7 +375,7 @@ def _serialize(value: Serializable, /, *, bool_mode: _BoolMode) -> str:
 
 
 def serialize(
-    *values: Serializable, bool_mode: _BoolMode = "text"
+    *values: _Serializable, bool_mode: _BoolMode = "text"
 ) -> str | tuple[str, ...]:
     """Return an SVG-friendly string representation of the given value(s)."""
     return utils.apply_single_or_many(
@@ -418,7 +416,7 @@ def serialize_attr(value: object, /) -> str:
     return result
 
 
-def serialize_function_call(name: str, *args: Serializable | None) -> str:
+def serialize_function_call(name: str, *args: _Serializable | None) -> str:
     """Serialize a function call into its SVG representation.
 
     Args:
@@ -441,3 +439,47 @@ def serialize_function_call(name: str, *args: Serializable | None) -> str:
     args_str = serialize(arg for arg in args if arg is not None)
 
     return f"{name}({args_str})"
+
+
+def serialize_path_command(
+    *args: _Serializable,
+    char: Literal["M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"],
+    implicit: bool,
+) -> str:
+    """Serialize a path command.
+
+    Args:
+        args: The arguments of the command.
+        char: The command character, in uppercase.
+        implicit: Whether the command is implicit (i.e., the command character
+        is omitted).
+
+    Returns:
+        The serialized command.
+
+    Examples:
+    >>> from svglab import Point
+    >>> serialize_path_command(Point(10, 10), char="M", implicit=False)
+    'M10,10'
+    >>> serialize_path_command(Point(100, 100), char="L", implicit=True)
+    '100,100'
+
+    """
+    formatter = get_current_formatter()
+    parts: list[str] = []
+
+    if not implicit:
+        cmd = (
+            char
+            if formatter.path_data_coordinates == "absolute"
+            else char.lower()
+        )
+        parts.append(cmd)
+
+    if args:
+        args_str = serialize(args, bool_mode="number")
+        parts.append(args_str)
+
+    sep = " " if formatter.path_data_space_before_args else ""
+
+    return sep.join(parts)

@@ -26,10 +26,6 @@ from svglab import errors, mixins, protocols, serialize, utils
 from svglab.attrparse import parse, point, transform
 
 
-_AbsolutePathCommandChar: TypeAlias = Literal[
-    "M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"
-]
-
 _Flag: TypeAlias = Literal["0", "1"]
 
 
@@ -368,49 +364,6 @@ def _relativize(d: D) -> D:
     return result
 
 
-def _serialize_command(
-    *args: serialize.Serializable,
-    char: _AbsolutePathCommandChar,
-    implicit: bool,
-) -> str:
-    """Serialize a path command.
-
-    Args:
-        args: The arguments of the command.
-        char: The command character, in uppercase.
-        implicit: Whether the command is implicit (i.e., the command character
-        is omitted).
-
-    Returns:
-        The serialized command.
-
-    Examples:
-    >>> _serialize_command(point.Point(10, 10), char="M", implicit=False)
-    'M10,10'
-    >>> _serialize_command(point.Point(100, 100), char="L", implicit=True)
-    '100,100'
-
-    """
-    formatter = serialize.get_current_formatter()
-    parts: list[str] = []
-
-    if not implicit:
-        cmd = (
-            char
-            if formatter.path_data_coordinates == "absolute"
-            else char.lower()
-        )
-        parts.append(cmd)
-
-    if args:
-        args_str = serialize.serialize(args, bool_mode="number")
-        parts.append(args_str)
-
-    sep = " " if formatter.path_data_space_before_args else ""
-
-    return sep.join(parts)
-
-
 def _can_use_implicit_command(
     current: PathCommand, /, *, prev: PathCommand | None
 ) -> bool:
@@ -679,31 +632,31 @@ class D(
 
             match command:
                 case MoveTo(end):
-                    yield _serialize_command(
+                    yield serialize.serialize_path_command(
                         end, char="M", implicit=implicit
                     )
                 case LineTo(end):
-                    yield _serialize_command(
+                    yield serialize.serialize_path_command(
                         end, char="L", implicit=implicit
                     )
                 case HorizontalLineTo(x):
-                    yield _serialize_command(
+                    yield serialize.serialize_path_command(
                         x, char="H", implicit=implicit
                     )
                 case VerticalLineTo(y):
-                    yield _serialize_command(
+                    yield serialize.serialize_path_command(
                         y, char="V", implicit=implicit
                     )
                 case QuadraticBezierTo(control, end):
-                    yield _serialize_command(
+                    yield serialize.serialize_path_command(
                         control, end, char="Q", implicit=implicit
                     )
                 case SmoothQuadraticBezierTo(end):
-                    yield _serialize_command(
+                    yield serialize.serialize_path_command(
                         end, char="T", implicit=implicit
                     )
                 case CubicBezierTo(control1, control2, end):
-                    yield _serialize_command(
+                    yield serialize.serialize_path_command(
                         control1,
                         control2,
                         end,
@@ -711,11 +664,11 @@ class D(
                         implicit=implicit,
                     )
                 case SmoothCubicBezierTo(control2, end):
-                    yield _serialize_command(
+                    yield serialize.serialize_path_command(
                         control2, end, char="S", implicit=implicit
                     )
                 case ArcTo(radii, angle, large, sweep, end):
-                    yield _serialize_command(
+                    yield serialize.serialize_path_command(
                         radii,
                         angle,
                         large,
@@ -725,7 +678,9 @@ class D(
                         implicit=implicit,
                     )
                 case ClosePath():
-                    yield _serialize_command(char="Z", implicit=implicit)
+                    yield serialize.serialize_path_command(
+                        char="Z", implicit=implicit
+                    )
 
     @override
     def serialize(self) -> str:
