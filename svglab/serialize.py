@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import math
+import threading
 from collections.abc import Iterable
 from types import TracebackType
 
@@ -37,6 +38,8 @@ _Serializable: TypeAlias = (
     | protocols.CustomSerializable
     | Iterable["_Serializable"]
 )
+
+_FORMATTER_LOCK: Final = threading.RLock()
 
 
 def _is_serializable(value: object, /) -> TypeIs[_Serializable]:
@@ -182,8 +185,14 @@ class Formatter(_Formatter):
     """
 
     def __enter__(self) -> None:
-        self.__original_formatter = get_current_formatter()
-        set_formatter(self)
+        _FORMATTER_LOCK.acquire()
+
+        try:
+            self.__original_formatter = get_current_formatter()
+            set_formatter(self)
+        except:
+            _FORMATTER_LOCK.release()
+            raise
 
     def __exit__(
         self,
@@ -192,7 +201,11 @@ class Formatter(_Formatter):
         exc_tb: TracebackType | None,
     ) -> None:
         del exc_type, exc_val, exc_tb
-        set_formatter(self.__original_formatter)
+
+        try:
+            set_formatter(self.__original_formatter)
+        finally:
+            _FORMATTER_LOCK.release()
 
 
 DEFAULT_FORMATTER: Final = Formatter()
@@ -220,13 +233,15 @@ _formatter = DEFAULT_FORMATTER
 
 def get_current_formatter() -> Formatter:
     """Obtain a reference to the current formatter."""
-    return _formatter
+    with _FORMATTER_LOCK:
+        return _formatter
 
 
 def set_formatter(formatter: Formatter, /) -> None:
     """Set the current formatter."""
-    global _formatter  # noqa: PLW0603
-    _formatter = formatter
+    with _FORMATTER_LOCK:
+        global _formatter  # noqa: PLW0603
+        _formatter = formatter
 
 
 def _serialize_number(number: float) -> str:
