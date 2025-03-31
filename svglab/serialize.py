@@ -1,12 +1,19 @@
 from __future__ import annotations
 
-import contextlib
 import functools
 import math
-from collections.abc import Generator, Iterable
+from collections.abc import Iterable
+from types import TracebackType
 
 import pydantic
-from typing_extensions import Final, Literal, TypeAlias, TypeIs, overload
+from typing_extensions import (
+    Final,
+    Literal,
+    TypeAlias,
+    TypeIs,
+    final,
+    overload,
+)
 
 from svglab import protocols, utils
 
@@ -37,11 +44,51 @@ def _is_serializable(value: object, /) -> TypeIs[_Serializable]:
 
 
 @pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
-class Formatter:
+class _Formatter:
+    # colors
+    color_mode: _ColorMode = "auto"
+    alpha_channel: AlphaChannelMode = "float"
+
+    # numbers
+    show_decimal_part_if_int: bool = False
+    max_precision: int = pydantic.Field(default=15, ge=0, le=15)
+    small_number_scientific_threshold: float | None = pydantic.Field(
+        default=1e-6, gt=0, le=0.1
+    )
+    large_number_scientific_threshold: int | None = pydantic.Field(
+        default=int(1e6), gt=0
+    )
+    strip_leading_zero: bool = True
+
+    # path data
+    path_data_coordinates: _PathDataCoordinateMode = "absolute"
+    path_data_shorthand_line_commands: _PathDataShorthandMode = "always"
+    path_data_shorthand_curve_commands: _PathDataShorthandMode = "always"
+    path_data_commands: _PathDataCommandMode = "implicit"
+    path_data_space_before_args: bool = False
+
+    # separators
+    list_separator: _Separator = " "
+    point_separator: _Separator = ","
+
+    # whitespace
+    indent: int = pydantic.Field(default=2, ge=0)
+    spaces_around_attrs: bool = False
+    spaces_around_function_args: bool = False
+
+    # misc
+    xmlns: _Xmlns = "original"
+
+
+@final
+class Formatter(_Formatter):
     """Formatter for serializing SVG elements.
 
     This class, together with `set_formatter()` and `get_current_formatter()`,
     can be used to customize the serialization of SVG elements.
+
+    The formatter can also be used with a context manager to temporarily
+    change the serialization settings.
 
     Attributes:
     `color_mode`: The color serialization mode (`hsl`, `rgb`, ...)
@@ -134,39 +181,18 @@ class Formatter:
 
     """
 
-    # colors
-    color_mode: _ColorMode = "auto"
-    alpha_channel: AlphaChannelMode = "float"
+    def __enter__(self) -> None:
+        self.__original_formatter = get_current_formatter()
+        set_formatter(self)
 
-    # numbers
-    show_decimal_part_if_int: bool = False
-    max_precision: int = pydantic.Field(default=15, ge=0, le=15)
-    small_number_scientific_threshold: float | None = pydantic.Field(
-        default=1e-6, gt=0, le=0.1
-    )
-    large_number_scientific_threshold: int | None = pydantic.Field(
-        default=int(1e6), gt=0
-    )
-    strip_leading_zero: bool = True
-
-    # path data
-    path_data_coordinates: _PathDataCoordinateMode = "absolute"
-    path_data_shorthand_line_commands: _PathDataShorthandMode = "always"
-    path_data_shorthand_curve_commands: _PathDataShorthandMode = "always"
-    path_data_commands: _PathDataCommandMode = "implicit"
-    path_data_space_before_args: bool = False
-
-    # separators
-    list_separator: _Separator = " "
-    point_separator: _Separator = ","
-
-    # whitespace
-    indent: int = pydantic.Field(default=2, ge=0)
-    spaces_around_attrs: bool = False
-    spaces_around_function_args: bool = False
-
-    # misc
-    xmlns: _Xmlns = "original"
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        del exc_type, exc_val, exc_tb
+        set_formatter(self.__original_formatter)
 
 
 DEFAULT_FORMATTER: Final = Formatter()
@@ -201,18 +227,6 @@ def set_formatter(formatter: Formatter, /) -> None:
     """Set the current formatter."""
     global _formatter  # noqa: PLW0603
     _formatter = formatter
-
-
-@contextlib.contextmanager
-def use_formatter(formatter: Formatter, /) -> Generator[None]:
-    """Temporarily use a custom formatter."""
-    original_formatter = get_current_formatter()
-    set_formatter(formatter)
-
-    try:
-        yield
-    finally:
-        set_formatter(original_formatter)
 
 
 def _serialize_number(number: float) -> str:

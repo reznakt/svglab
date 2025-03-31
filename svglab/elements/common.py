@@ -469,7 +469,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         """
         formatter = formatter or serialize.get_current_formatter()
 
-        with serialize.use_formatter(formatter):
+        with formatter:
             soup = self.to_beautifulsoup_object()
             return utils.beautifulsoup_to_str(
                 soup, pretty=pretty, indent=formatter.indent
