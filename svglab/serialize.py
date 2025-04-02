@@ -2,32 +2,125 @@ from __future__ import annotations
 
 import functools
 import math
+import operator
 import threading
 from collections.abc import Iterable, Mapping, Sequence
 from types import TracebackType
 
 import pydantic
-from typing_extensions import Final, Literal, TypeAlias, final, overload
+from typing_extensions import (
+    Annotated,
+    Final,
+    Literal,
+    Self,
+    TypeAlias,
+    cast,
+    final,
+    overload,
+)
 
-from svglab import protocols, utils, utiltypes
+from svglab import constants, protocols, utils, utiltypes
 from svglab.attrs import names as attrs_names
 from svglab.elements import names as elements_names
 
 
+AlphaChannelMode: TypeAlias = Literal["percentage", "float"]
+
+_BoolMode: TypeAlias = Literal["text", "number"]
 _ColorMode: TypeAlias = Literal[
     "named", "hex-short", "hex-long", "rgb", "hsl", "auto", "original"
 ]
-AlphaChannelMode: TypeAlias = Literal["percentage", "float"]
-_Separator: TypeAlias = Literal[", ", ",", " "]
-_BoolMode: TypeAlias = Literal["text", "number"]
-_PathDataCoordinateMode: TypeAlias = Literal["relative", "absolute"]
 _PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
-_PathDataCommandMode: TypeAlias = Literal["explicit", "implicit"]
-_Xmlns: TypeAlias = Literal["always", "never", "original"]
 _LengthUnitMode: TypeAlias = Literal["preserve"] | utiltypes.LengthUnit
+_Separator: TypeAlias = Literal[", ", ",", " "]
 
+
+_Interval: TypeAlias = tuple[float, float]
+_Precision: TypeAlias = Annotated[int, pydantic.Field(le=15)]
+_PrecisionGroup: TypeAlias = Literal[
+    "general", "coordinate", "opacity", "angle", "scale"
+]
+_PrecisionTable: TypeAlias = Mapping[_Interval, _Precision]
+_SortedPrecisionTable: TypeAlias = Iterable[tuple[_Interval, _Precision]]
 
 _FORMATTER_LOCK: Final = threading.RLock()
+
+
+@pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
+class FloatPrecisionSettings:
+    """Settings regarding float precision.
+
+    This class is used to define the precision settings for floating-point
+    numbers in SVG serialization.
+
+    If you don't need to define a precision table, you can just use the
+    more convenient `float_precision()` function.
+    """
+
+    precision_table: _PrecisionTable = pydantic.Field(default_factory=dict)
+
+    fallback: _Precision = math.ceil(
+        math.log10(1 / constants.FLOAT_ABSOLUTE_TOLERANCE)
+    )
+    """
+    A dictionary mapping intervals of floating-point
+    numbers to their respective precision settings. The keys are tuples
+    representing the start and end of the interval, and the values are
+    integers representing the precision settings for that interval.
+    The intervals are inclusive on the left and exclusive on the right.
+    For example, it is possible to define a precision table like this:
+    ```
+    precision_table = {(0, 1): 2, (1, 10): 3}
+    ```
+    This means that numbers in the interval [0, 1) will be serialized with
+    a precision of 2 digits, numbers in the interval [1, 10) will be
+    serialized with a precision of 3 digits. All other numbers will be
+    serialized with the fallback precision.
+    """
+    """The fallback precision setting to use when the value
+    does not fall within any of the specified intervals."""
+
+    @pydantic.model_validator(mode="after")
+    def __validate_precision_table(self) -> Self:  # type: ignore[reportUnusedFunction]
+        for start, end in self.precision_table:
+            if not (0 <= start < end):
+                msg = f"Invalid interval: {(start, end)}"
+                raise ValueError(msg)
+
+        for fst, snd in utils.pairwise(
+            sorted(self.precision_table.keys())
+        ):
+            if fst is None:
+                continue
+
+            if fst[1] > snd[0]:
+                msg = f"Overlapping intervals: {fst} and {snd}"
+                raise ValueError(msg)
+
+        return self
+
+    @functools.cached_property
+    def __sorted_precision_table(self) -> _SortedPrecisionTable:
+        return sorted(
+            self.precision_table.items(), key=operator.itemgetter(0)
+        )
+
+    def get_precision(self, value: float) -> int:
+        for (start, end), precision in self.__sorted_precision_table:
+            if start <= abs(value) < end:
+                return precision
+
+        return self.fallback
+
+
+_FloatPrecisionSettingsType: TypeAlias = Annotated[
+    FloatPrecisionSettings | _Precision | None,
+    pydantic.AfterValidator(
+        lambda v: v
+        if v is None or isinstance(v, FloatPrecisionSettings)
+        else FloatPrecisionSettings(fallback=v)
+    ),
+]
 
 
 @pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
@@ -38,7 +131,6 @@ class _Formatter:
 
     # numbers
     show_decimal_part_if_int: bool = False
-    max_precision: int = pydantic.Field(default=15, ge=0, le=15)
     small_number_scientific_threshold: float | None = pydantic.Field(
         default=1e-6, gt=0, le=0.1
     )
@@ -47,11 +139,20 @@ class _Formatter:
     )
     strip_leading_zero: bool = True
 
+    # float precision
+    general_precision: _FloatPrecisionSettingsType = (
+        FloatPrecisionSettings()
+    )
+    coordinate_precision: _FloatPrecisionSettingsType = None
+    opacity_precision: _FloatPrecisionSettingsType = None
+    angle_precision: _FloatPrecisionSettingsType = None
+    scale_precision: _FloatPrecisionSettingsType = None
+
     # path data
-    path_data_coordinates: _PathDataCoordinateMode = "absolute"
+    path_data_coordinates: Literal["relative", "absolute"] = "absolute"
+    path_data_commands: Literal["explicit", "implicit"] = "implicit"
     path_data_shorthand_line_commands: _PathDataShorthandMode = "always"
     path_data_shorthand_curve_commands: _PathDataShorthandMode = "always"
-    path_data_commands: _PathDataCommandMode = "implicit"
     path_data_space_before_args: bool = False
 
     # separators
@@ -64,7 +165,7 @@ class _Formatter:
     spaces_around_function_args: bool = False
 
     # misc
-    xmlns: _Xmlns = "original"
+    xmlns: Literal["always", "never", "original"] = "original"
     length_unit: _LengthUnitMode | Iterable[_LengthUnitMode] = "preserve"
     attribute_order: Mapping[
         elements_names.TagName | Literal["*"],
@@ -108,11 +209,6 @@ class Formatter(_Formatter):
 
     `show_decimal_part_if_int`: Whether to show the decimal part of a number
     even if it is an integer. For example, `1.0` instead of `1`.
-    `max_precision`: The maximum number of digits
-    after the decimal point to use when serializing numbers. Must be between 0
-    and 15 (inclusive) due to the limitations of double-precision
-    floating-point numbers (IEEE 754). The number is rounded to the nearest
-    value.
     `small_number_scientific_threshold`: The magnitude threshold below which
     numbers are serialized using scientific notation.
     For example, `1e-06` instead of `0.000001`. If `None`, scientific notation
@@ -124,6 +220,18 @@ class Formatter(_Formatter):
     is not used for large numbers. Must be greater than 0.
     `strip_leading_zero`: Whether to strip the leading zero from numbers
     between -1 and 1. For example, `.5` instead of `0.5`.
+
+    `general_precision`: The precision settings to use when serializing
+    general numbers. This can be an integer that specifies the number of
+    decimal places to use, or a `FloatPrecisionSettings` object.
+    `coordinate_precision`: Settings to use when serializing coordinates.
+    See `general_precision` for more details.
+    `opacity_precision`: Settings to use when serializing opacity values.
+    See `general_precision` for more details.
+    `angle_precision`: Settings to use when serializing angles.
+    See `general_precision` for more details.
+    `scale_precision`: Settings to use when serializing scale values.
+    See `general_precision` for more details.
 
     `path_data_coordinates`: The coordinate mode to use when serializing
     path data coordinates:
@@ -183,6 +291,30 @@ class Formatter(_Formatter):
     pair, the default order (alphabetical) is used.
 
     """
+
+    def get_precision(
+        self, value: float, *, precision_group: _PrecisionGroup
+    ) -> int:
+        settings: _FloatPrecisionSettingsType = None
+
+        for group in precision_group, "general":
+            name = f"{group}_precision"
+
+            if (
+                hasattr(self, name)
+                and (attr := getattr(self, name)) is not None
+            ):
+                settings = attr
+                break
+
+        if settings is None:
+            msg = (
+                "Cannot determine floating point precision for "
+                f"{value=}, {precision_group=}"
+            )
+            raise TypeError(msg)
+
+        return cast(FloatPrecisionSettings, settings).get_precision(value)
 
     def __enter__(self) -> None:
         _FORMATTER_LOCK.acquire()
@@ -244,11 +376,14 @@ def set_formatter(formatter: Formatter, /) -> None:
         _formatter = formatter
 
 
-def _serialize_number(number: float) -> str:
+def _serialize_number(
+    number: float, /, *, precision_group: _PrecisionGroup = "general"
+) -> str:
     """Format a number into a string based on current formatter settings.
 
     Args:
     number: The number to format.
+    precision_group: The precision group to use when formatting the number.
 
     Returns:
     The formatted number as a string.
@@ -264,17 +399,22 @@ def _serialize_number(number: float) -> str:
     '1e+09'
     >>> _serialize_number(-0.1)
     '-.1'
-    >>> _serialize_number(0.12345678912345679)
-    '.123456789123457'
-    >>> _serialize_number(1e-10)
-    '1e-10'
+    >>> _serialize_number(0.123456789)
+    '.123456789'
+    >>> _serialize_number(1e-7)
+    '1e-07'
 
     """
     formatter = get_current_formatter()
 
     # make sure the number is always a float and not an int, so that str()
     # always includes the decimal point
-    number = round(float(number), formatter.max_precision)
+    number = float(number)
+    number = round(
+        number,
+        formatter.get_precision(number, precision_group=precision_group),
+    )
+
     abs_value = abs(number)
 
     use_scientific = number != 0 and (
@@ -315,22 +455,6 @@ def _serialize_number(number: float) -> str:
     return result
 
 
-@overload
-def serialize(
-    value: object, /, *, bool_mode: _BoolMode = "text"
-) -> str: ...
-
-
-@overload
-def serialize(
-    first: object,
-    second: object,
-    /,
-    *values: object,
-    bool_mode: _BoolMode = "text",
-) -> tuple[str, ...]: ...
-
-
 def _serialize_bool(
     value: bool,  # noqa: FBT001
     /,
@@ -366,7 +490,14 @@ def _serialize_bool(
             return "1" if value else "0"
 
 
-def _serialize(value: object, /, *, bool_mode: _BoolMode) -> str:
+def _serialize(
+    value: object,
+    /,
+    *,
+    bool_mode: _BoolMode,
+    precision_group: _PrecisionGroup,
+) -> str:
+    formatter = get_current_formatter()
     result: str
 
     match value:
@@ -387,7 +518,9 @@ def _serialize(value: object, /, *, bool_mode: _BoolMode) -> str:
         case bool():
             result = _serialize_bool(value, mode=bool_mode)
         case int() | float():
-            result = _serialize_number(value)
+            result = _serialize_number(
+                value, precision_group=precision_group
+            )
         case str():
             result = value
         case bytes():
@@ -396,7 +529,10 @@ def _serialize(value: object, /, *, bool_mode: _BoolMode) -> str:
         case Iterable():
             formatter = get_current_formatter()
             result = formatter.list_separator.join(
-                _serialize(v, bool_mode=bool_mode) for v in value
+                _serialize(
+                    v, bool_mode=bool_mode, precision_group=precision_group
+                )
+                for v in value
             )
         case _:
             msg = f"Values of type {type(value)} are not serializable"
@@ -405,36 +541,73 @@ def _serialize(value: object, /, *, bool_mode: _BoolMode) -> str:
     return result
 
 
+@overload
 def serialize(
-    *values: object, bool_mode: _BoolMode = "text"
+    value: object,
+    /,
+    *,
+    bool_mode: _BoolMode = "text",
+    precision_group: _PrecisionGroup = "general",
+) -> str: ...
+
+
+@overload
+def serialize(
+    first: object,
+    second: object,
+    /,
+    *values: object,
+    bool_mode: _BoolMode = "text",
+    precision_group: _PrecisionGroup = "general",
+) -> tuple[str, ...]: ...
+
+
+def serialize(
+    *values: object,
+    bool_mode: _BoolMode = "text",
+    precision_group: _PrecisionGroup = "general",
 ) -> str | tuple[str, ...]:
     """Return an SVG-friendly string representation of the given value(s)."""
     return utils.apply_single_or_many(
-        functools.partial(_serialize, bool_mode=bool_mode), *values
+        functools.partial(
+            _serialize,
+            bool_mode=bool_mode,
+            precision_group=precision_group,
+        ),
+        *values,
     )
 
 
-def serialize_attr(value: object, /) -> str:
-    """Serialize an attribute value into its SVG representation.
+def _get_attr_precision_group(
+    name: attrs_names.AttributeName | str,
+) -> _PrecisionGroup:
+    match name:
+        case (
+            "opacity"
+            | "fill-opacity"
+            | "stroke-opacity"
+            | "stop-opacity"
+            | "flood-opacity"
+        ):
+            return "opacity"
+        case _:
+            return "general"
+
+
+def serialize_attr(name: str, value: object) -> str:
+    """Serialize an attribute into its SVG representation.
 
     Args:
+    name: The name of the attribute.
     value: The value to serialize.
 
     Returns:
     The SVG representation of the value.
 
-    Examples:
-    >>> serialize_attr(42)
-    '42'
-    >>> serialize_attr(3.14)
-    '3.14'
-    >>> serialize_attr("foo")
-    'foo'
-    >>> serialize_attr(["foo", "bar"])
-    'foo bar'
-
     """
-    result = serialize(value)
+    result = serialize(
+        value, precision_group=_get_attr_precision_group(name)
+    )
     formatter = get_current_formatter()
 
     if formatter.spaces_around_attrs:
@@ -443,13 +616,16 @@ def serialize_attr(value: object, /) -> str:
     return result
 
 
-def serialize_function_call(name: str, *args: object) -> str:
+def serialize_function_call(
+    name: str, *args: object, precision_group: _PrecisionGroup = "general"
+) -> str:
     """Serialize a function call into its SVG representation.
 
     Args:
     name: The name of the function.
     args: The arguments to pass to the function. If an argument is `None`,
     it is omitted.
+    precision_group: The precision group to use when formatting the arguments.
 
     Returns:
     The SVG representation of the function call.
@@ -463,7 +639,10 @@ def serialize_function_call(name: str, *args: object) -> str:
     'rgb(255 0 128)'
 
     """
-    args_str = serialize(arg for arg in args if arg is not None)
+    args_str = serialize(
+        (arg for arg in args if arg is not None),
+        precision_group=precision_group,
+    )
 
     return f"{name}({args_str})"
 

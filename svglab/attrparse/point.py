@@ -63,7 +63,9 @@ class _Point(
 
     @override
     def serialize(self) -> str:
-        x, y = serialize.serialize(self.x, self.y)
+        x, y = serialize.serialize(
+            self.x, self.y, precision_group="coordinate"
+        )
         formatter = serialize.get_current_formatter()
 
         return f"{x}{formatter.point_separator}{y}"
