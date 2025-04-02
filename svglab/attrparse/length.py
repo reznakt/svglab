@@ -108,7 +108,9 @@ class Length(
 
     @override
     def serialize(self) -> str:
-        value = serialize.serialize(self.value)
+        value = serialize.serialize(
+            self.value, precision_group="coordinate"
+        )
         return f"{value}{self.unit or ''}"
 
     @classmethod
