@@ -151,6 +151,8 @@ from svglab.errors import (
 from svglab.parse import parse_svg
 from svglab.serialize import (
     DEFAULT_FORMATTER,
+    MINIMAL_FORMATTER,
+    FloatPrecisionSettings,
     Formatter,
     get_current_formatter,
     set_formatter,
@@ -159,6 +161,7 @@ from svglab.serialize import (
 
 __all__ = [
     "DEFAULT_FORMATTER",
+    "MINIMAL_FORMATTER",
     "A",
     "AltGlyph",
     "AltGlyphDef",
@@ -213,6 +216,7 @@ __all__ = [
     "FeTurbulence",
     "Filter",
     "FilterPrimitiveElement",
+    "FloatPrecisionSettings",
     "Font",
     "FontFace",
     "FontFaceFormat",
