@@ -59,39 +59,31 @@ def _length_to_user_units(length: length.Length | None) -> float | None:
         return None
 
 
-def render(
+def _compute_render_size(
     svg: common.Tag,
     *,
     width: float | None = None,
     height: float | None = None,
-) -> PIL.Image.Image:
-    if not isinstance(svg, _SvgTagLike):
-        raise TypeError("Tag must be an SVG element")
+) -> tuple[float, float]:
+    assert isinstance(svg, _SvgTagLike)
 
-    svg_width = _length_to_user_units(svg.width)
+    svg_width = _length_to_user_units(length=svg.width)
     svg_height = _length_to_user_units(svg.height)
-
-    if (
-        width is not None
-        and height is not None
-        and svg_width is not None
-        and svg_height is not None
-        and width / height != svg_width / svg_height
-    ):
-        msg = (
-            "Aspect ratio mismatch: "
-            f"{svg.width=}, {svg.height=}, {width=}, {height=}"
-        )
-        raise ValueError(msg)
 
     if svg_width is not None and svg_height is not None:
         if width is not None and height is None:
             ratio = width / svg_width
             height = svg_height * ratio
-
-        if width is None and height is not None:
+        elif width is None and height is not None:
             ratio = height / svg_height
             width = svg_width * ratio
+        elif width is not None and height is not None:
+            ratio = (svg_width / svg_height) * (height / width)
+
+            if ratio > 1:
+                height = None
+            elif ratio < 1:
+                width = None
 
     width = width if width is not None else svg_width
     height = height if height is not None else svg_height
@@ -103,10 +95,23 @@ def render(
         )
         raise ValueError(msg)
 
+    return width, height
+
+
+def render(
+    svg: common.Tag,
+    *,
+    width: float | None = None,
+    height: float | None = None,
+) -> PIL.Image.Image:
+    if not isinstance(svg, _SvgTagLike):
+        raise TypeError("Tag must be an SVG element")
+
+    render_size = _compute_render_size(svg, width=width, height=height)
     svg = copy.copy(svg)
 
-    svg.width = length.Length(width)
-    svg.height = length.Length(height)
+    svg.width = length.Length(render_size[0])
+    svg.height = length.Length(render_size[1])
 
     xml = svg.to_xml(formatter=serialize.MINIMAL_FORMATTER)
     raw = cast(bytes, resvg_py.svg_to_bytes(svg_string=xml))
