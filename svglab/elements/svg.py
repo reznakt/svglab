@@ -205,9 +205,8 @@ class Svg(
         If the width and height are not specified, the dimensions of the SVG
         element are used. If only one dimension is specified, the other
         dimension is calculated in a way that preserves the aspect ratio set
-        in the SVG element. If both dimensions are specified, the aspect ratio
-        must match the aspect ratio defined by `width` and `height` attributes
-        of the SVG element.
+        in the SVG element. If both dimensions are specified, the SVG is
+        scaled so that the aspect ratio is preserved.
 
         Args:
         svg: The SVG document fragment to render.
