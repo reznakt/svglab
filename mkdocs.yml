@@ -1,0 +1,103 @@
+site_name: "svglab"
+repo_url: https://github.com/reznakt/svglab
+edit_uri: edit/main/docs/
+site_url: http://127.0.0.1:8000
+
+copyright: Copyright &copy 2024 Tomáš Režňák
+
+theme:
+  name: "material"
+  language: "en"
+  logo: &logo "https://www.reshot.com/download/icons/HSMU75PJ3C/reshot-icon-flask-HSMU75PJ3C.svg"
+  favicon: *logo
+
+  icon:
+    repo: fontawesome/brands/github
+
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+  features:
+    - content.action.edit
+    - content.action.view
+    - content.code.copy
+    - header.autohide
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - toc.integrate
+    - content.code.annotate 
+
+plugins:
+  - git-authors
+  - privacy
+  - search
+  - social
+
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+        remove_comments: true
+      cache_safe: true
+
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            extensions:
+              - griffe_fieldz:
+                  include_inherited: true
+            allow_inspection: true
+            show_bases: true
+            docstring_style: google
+            docstring_section_style: list
+            show_if_no_docstring: true
+            show_submodules: true
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            unwrap_annotated: true
+
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js

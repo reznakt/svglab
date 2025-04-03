@@ -86,6 +86,17 @@ ruff = "^0.12.11"
 vermin = "^1.6.0"
 licensecheck = "^2025.1.0"
 
+
+[tool.poetry.group.docs.dependencies]
+griffe-fieldz = "^0.2.1"
+mkdocstrings-python = "^1.16.10"
+mkdocs-minify-plugin = "^0.8.0"
+mkdocs-material = "^9.6.12"
+mkdocs-git-revision-date-localized-plugin = "^1.4.5"
+mkdocs-git-authors-plugin = "^0.9.5"
+pillow = "^11.2.1"
+cairosvg = "^2.7.1"
+
 [tool.poe.tasks]
 test = "pytest"
 typecheck = "pyright --warnings"
