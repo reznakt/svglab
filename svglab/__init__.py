@@ -20,7 +20,7 @@ from svglab.attrparse.d import (
     SmoothQuadraticBezierTo,
     VerticalLineTo,
 )
-from svglab.attrparse.length import Length, LengthUnit
+from svglab.attrparse.length import Length
 from svglab.attrparse.point import Point
 from svglab.attrparse.points import Points
 from svglab.attrparse.transform import (
@@ -155,6 +155,7 @@ from svglab.serialize import (
     get_current_formatter,
     set_formatter,
 )
+from svglab.utiltypes import LengthUnit
 
 
 __all__ = [

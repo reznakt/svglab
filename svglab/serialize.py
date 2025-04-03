@@ -16,7 +16,7 @@ from typing_extensions import (
     overload,
 )
 
-from svglab import protocols, utils
+from svglab import protocols, utils, utiltypes
 
 
 _ColorMode: TypeAlias = Literal[
@@ -29,6 +29,7 @@ _PathDataCoordinateMode: TypeAlias = Literal["relative", "absolute"]
 _PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
 _PathDataCommandMode: TypeAlias = Literal["explicit", "implicit"]
 _Xmlns: TypeAlias = Literal["always", "never", "original"]
+_LengthUnitMode: TypeAlias = Literal["preserve"] | utiltypes.LengthUnit
 
 _Serializable: TypeAlias = (
     bool
@@ -81,6 +82,7 @@ class _Formatter:
 
     # misc
     xmlns: _Xmlns = "original"
+    length_unit: _LengthUnitMode | Iterable[_LengthUnitMode] = "preserve"
 
 
 @final
@@ -181,6 +183,11 @@ class Formatter(_Formatter):
         - `always`: Always add the `xmlns` attribute.
         - `never`: Always remove the `xmlns` attribute.
         - `original`: Serialize the `xmlns` attribute as-is.
+    `length_unit`: The length unit(s) to use when serializing lengths.
+    If set to `preserve`, the original unit is used. If set to a specific
+    unit, the length is converted to that unit. If set to an iterable of
+    units, each unit is tried in order until one succeeds. If the length cannot
+    be converted to any of the specified units, the original unit is used.
 
     """
 

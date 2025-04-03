@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Iterator
+
 import lark
+import more_itertools
 import pydantic
 from typing_extensions import (
     Annotated,
@@ -13,33 +17,11 @@ from typing_extensions import (
     override,
 )
 
-from svglab import mixins, protocols, serialize, units
+from svglab import errors, mixins, protocols, serialize, units, utiltypes
 from svglab.attrparse import parse
 
 
-LengthUnit: TypeAlias = (
-    Literal[
-        "%",
-        "ch",
-        "cm",
-        "em",
-        "ex",
-        "in",
-        "mm",
-        "pc",
-        "pt",
-        "px",
-        "Q",
-        "rem",
-        "vh",
-        "vmax",
-        "vmin",
-        "vw",
-    ]
-    | None
-)
-
-_convert: Final[units.Converter[Length, LengthUnit]] = (
+_convert: Final[units.Converter[Length, utiltypes.LengthUnit]] = (
     units.make_converter(
         conversion_table={
             ("cm", "in"): 2.54,
@@ -84,9 +66,9 @@ class Length(
     """
 
     value: float
-    unit: LengthUnit = None
+    unit: utiltypes.LengthUnit = None
 
-    def to(self, unit: LengthUnit) -> Length:
+    def to(self, unit: utiltypes.LengthUnit) -> Length:
         """Convert the length to a different unit.
 
         Args:
@@ -108,8 +90,23 @@ class Length(
 
     @override
     def serialize(self) -> str:
-        value = serialize.serialize(self.value)
-        return f"{value}{self.unit or ''}"
+        formatter = serialize.get_current_formatter()
+        units: Iterator[utiltypes.LengthUnit | Literal["preserve"]] = (
+            more_itertools.always_iterable(formatter.length_unit)
+        )
+        converted = self
+
+        for unit in units:
+            if unit == "preserve":
+                break
+
+            with contextlib.suppress(errors.SvgUnitConversionError):
+                converted = self.to(unit)
+                break
+
+        return (
+            f"{serialize.serialize(converted.value)}{converted.unit or ''}"
+        )
 
     @classmethod
     def zero(cls) -> Length:
