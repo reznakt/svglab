@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 import math
 import threading
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from types import TracebackType
 
 import pydantic
@@ -17,6 +17,8 @@ from typing_extensions import (
 )
 
 from svglab import protocols, utils, utiltypes
+from svglab.attrs import names as attrs_names
+from svglab.elements import names as elements_names
 
 
 _ColorMode: TypeAlias = Literal[
@@ -83,6 +85,10 @@ class _Formatter:
     # misc
     xmlns: _Xmlns = "original"
     length_unit: _LengthUnitMode | Iterable[_LengthUnitMode] = "preserve"
+    attribute_order: Mapping[
+        elements_names.TagName | Literal["*"],
+        Sequence[attrs_names.AttributeName | str],
+    ] = pydantic.Field(default_factory=dict)
 
 
 @final
@@ -188,6 +194,12 @@ class Formatter(_Formatter):
     unit, the length is converted to that unit. If set to an iterable of
     units, each unit is tried in order until one succeeds. If the length cannot
     be converted to any of the specified units, the original unit is used.
+    `attribute_order`: How to order attributes in the resulting SVG document.
+    The keys are the tag names of the elements, and the values are lists of
+    attribute names. The attributes are ordered in the order they appear in
+    the lists. If a tag name is `*`, the attribute order applies to all
+    elements. If there is no configuration for a specific element-attribute
+    pair, the default order (alphabetical) is used.
 
     """
 

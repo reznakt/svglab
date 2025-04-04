@@ -471,9 +471,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
 
         with formatter:
             soup = self.to_beautifulsoup_object()
-            return utils.beautifulsoup_to_str(
-                soup, pretty=pretty, indent=formatter.indent
-            )
+            return utils.beautifulsoup_to_str(soup, pretty=pretty)
 
     @abc.abstractmethod
     def to_beautifulsoup_object(self) -> bs4.PageElement:
