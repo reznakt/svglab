@@ -1085,8 +1085,6 @@ class Symbol(
     regular.Class,
     regular.ExternalResourcesRequired,
     regular.PreserveAspectRatio,
-    regular.RefX,
-    regular.RefY,
     regular.Style,
     regular.ViewBox,
     traits.StructuralElement,

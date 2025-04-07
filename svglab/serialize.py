@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import math
+import operator
 import threading
 from collections.abc import Iterable, Mapping, Sequence
 from types import TracebackType
@@ -10,27 +11,26 @@ import pydantic
 from typing_extensions import (
     Final,
     Literal,
+    Self,
     TypeAlias,
     TypeIs,
     final,
     overload,
 )
 
-from svglab import protocols, utils, utiltypes
+from svglab import constants, protocols, utils, utiltypes
 from svglab.attrs import names as attrs_names
 from svglab.elements import names as elements_names
 
 
+AlphaChannelMode: TypeAlias = Literal["percentage", "float"]
+
+_BoolMode: TypeAlias = Literal["text", "number"]
 _ColorMode: TypeAlias = Literal[
     "named", "hex-short", "hex-long", "rgb", "hsl", "auto", "original"
 ]
-AlphaChannelMode: TypeAlias = Literal["percentage", "float"]
-_Separator: TypeAlias = Literal[", ", ",", " "]
-_BoolMode: TypeAlias = Literal["text", "number"]
-_PathDataCoordinateMode: TypeAlias = Literal["relative", "absolute"]
 _PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
-_PathDataCommandMode: TypeAlias = Literal["explicit", "implicit"]
-_Xmlns: TypeAlias = Literal["always", "never", "original"]
+_Separator: TypeAlias = Literal[", ", ",", " "]
 _LengthUnitMode: TypeAlias = Literal["preserve"] | utiltypes.LengthUnit
 
 _Serializable: TypeAlias = (
@@ -42,11 +42,53 @@ _Serializable: TypeAlias = (
     | Iterable["_Serializable"]
 )
 
+
+_Interval: TypeAlias = tuple[float, float]
+_PrecisionTable: TypeAlias = Mapping[_Interval, int]
+_SortedPrecisionTable: TypeAlias = Iterable[tuple[_Interval, int]]
+_PrecisionGroup: TypeAlias = Literal["general", "coordinate", "opacity"]
+
 _FORMATTER_LOCK: Final = threading.RLock()
 
 
-def _is_serializable(value: object, /) -> TypeIs[_Serializable]:
-    return utils.is_type(value, _Serializable)
+@pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
+class FloatPrecisionSettings:
+    precision_table: _PrecisionTable = pydantic.Field(default_factory=dict)
+    fallback: int = math.ceil(
+        math.log10(1 / constants.FLOAT_ABSOLUTE_TOLERANCE)
+    )
+
+    @pydantic.model_validator(mode="after")
+    def __validate_precision_table(self) -> Self:  # type: ignore[reportUnusedFunction]
+        for start, end in self.precision_table:
+            if not (0 <= start < end):
+                msg = f"Invalid interval: {(start, end)}"
+                raise ValueError(msg)
+
+        for fst, snd in utils.pairwise(
+            sorted(self.precision_table.keys())
+        ):
+            if fst is None:
+                continue
+
+            if fst[1] > snd[0]:
+                msg = f"Overlapping intervals: {fst} and {snd}"
+                raise ValueError(msg)
+
+        return self
+
+    @functools.cached_property
+    def __sorted_precision_table(self) -> _SortedPrecisionTable:
+        return sorted(
+            self.precision_table.items(), key=operator.itemgetter(0)
+        )
+
+    def get_precision(self, value: float) -> int:
+        for (start, end), precision in self.__sorted_precision_table:
+            if start <= abs(value) < end:
+                return precision
+
+        return self.fallback
 
 
 @pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
@@ -57,7 +99,6 @@ class _Formatter:
 
     # numbers
     show_decimal_part_if_int: bool = False
-    max_precision: int = pydantic.Field(default=15, ge=0, le=15)
     small_number_scientific_threshold: float | None = pydantic.Field(
         default=1e-6, gt=0, le=0.1
     )
@@ -66,11 +107,16 @@ class _Formatter:
     )
     strip_leading_zero: bool = True
 
+    # float precision
+    general_precision: FloatPrecisionSettings = FloatPrecisionSettings()
+    coordinate_precision: FloatPrecisionSettings = FloatPrecisionSettings()
+    opacity_precision: FloatPrecisionSettings = FloatPrecisionSettings()
+
     # path data
-    path_data_coordinates: _PathDataCoordinateMode = "absolute"
+    path_data_coordinates: Literal["relative", "absolute"] = "absolute"
+    path_data_commands: Literal["explicit", "implicit"] = "implicit"
     path_data_shorthand_line_commands: _PathDataShorthandMode = "always"
     path_data_shorthand_curve_commands: _PathDataShorthandMode = "always"
-    path_data_commands: _PathDataCommandMode = "implicit"
     path_data_space_before_args: bool = False
 
     # separators
@@ -83,7 +129,7 @@ class _Formatter:
     spaces_around_function_args: bool = False
 
     # misc
-    xmlns: _Xmlns = "original"
+    xmlns: Literal["always", "never", "original"] = "original"
     length_unit: _LengthUnitMode | Iterable[_LengthUnitMode] = "preserve"
     attribute_order: Mapping[
         elements_names.TagName | Literal["*"],
@@ -203,6 +249,17 @@ class Formatter(_Formatter):
 
     """
 
+    def get_precision(
+        self, value: float, *, precision_group: _PrecisionGroup
+    ) -> int:
+        match precision_group:
+            case "coordinate":
+                return self.coordinate_precision.get_precision(value)
+            case "opacity":
+                return self.opacity_precision.get_precision(value)
+            case _:
+                return self.general_precision.get_precision(value)
+
     def __enter__(self) -> None:
         _FORMATTER_LOCK.acquire()
 
@@ -263,11 +320,14 @@ def set_formatter(formatter: Formatter, /) -> None:
         _formatter = formatter
 
 
-def _serialize_number(number: float) -> str:
+def _serialize_number(
+    number: float, /, *, precision_group: _PrecisionGroup = "general"
+) -> str:
     """Format a number into a string based on current formatter settings.
 
     Args:
     number: The number to format.
+    precision_group: The precision group to use when formatting the number.
 
     Returns:
     The formatted number as a string.
@@ -283,17 +343,22 @@ def _serialize_number(number: float) -> str:
     '1e+09'
     >>> _serialize_number(-0.1)
     '-.1'
-    >>> _serialize_number(0.12345678912345679)
-    '.123456789123457'
-    >>> _serialize_number(1e-10)
-    '1e-10'
+    >>> _serialize_number(0.123456789)
+    '.123456789'
+    >>> _serialize_number(1e-7)
+    '1e-07'
 
     """
     formatter = get_current_formatter()
 
     # make sure the number is always a float and not an int, so that str()
     # always includes the decimal point
-    number = round(float(number), formatter.max_precision)
+    number = float(number)
+    number = round(
+        number,
+        formatter.get_precision(number, precision_group=precision_group),
+    )
+
     abs_value = abs(number)
 
     use_scientific = number != 0 and (
@@ -334,22 +399,6 @@ def _serialize_number(number: float) -> str:
     return result
 
 
-@overload
-def serialize(
-    value: _Serializable, /, *, bool_mode: _BoolMode = "text"
-) -> str: ...
-
-
-@overload
-def serialize(
-    first: _Serializable,
-    second: _Serializable,
-    /,
-    *values: _Serializable,
-    bool_mode: _BoolMode = "text",
-) -> tuple[str, ...]: ...
-
-
 def _serialize_bool(
     value: bool,  # noqa: FBT001
     /,
@@ -385,7 +434,13 @@ def _serialize_bool(
             return "1" if value else "0"
 
 
-def _serialize(value: _Serializable, /, *, bool_mode: _BoolMode) -> str:
+def _serialize(
+    value: _Serializable,
+    /,
+    *,
+    bool_mode: _BoolMode,
+    precision_group: _PrecisionGroup,
+) -> str:
     formatter = get_current_formatter()
     result: str
 
@@ -406,7 +461,9 @@ def _serialize(value: _Serializable, /, *, bool_mode: _BoolMode) -> str:
         case bool():
             result = _serialize_bool(value, mode=bool_mode)
         case int() | float():
-            result = _serialize_number(value)
+            result = _serialize_number(
+                value, precision_group=precision_group
+            )
         case str():
             result = value
         case bytes():
@@ -414,19 +471,54 @@ def _serialize(value: _Serializable, /, *, bool_mode: _BoolMode) -> str:
         # this should go last to avoid classifying strings as iterables, etc.
         case Iterable():
             result = formatter.list_separator.join(
-                _serialize(v, bool_mode=bool_mode) for v in value
+                _serialize(
+                    v, bool_mode=bool_mode, precision_group=precision_group
+                )
+                for v in value
             )
 
     return result
 
 
+@overload
 def serialize(
-    *values: _Serializable, bool_mode: _BoolMode = "text"
+    value: _Serializable,
+    /,
+    *,
+    bool_mode: _BoolMode = "text",
+    precision_group: _PrecisionGroup = "general",
+) -> str: ...
+
+
+@overload
+def serialize(
+    first: _Serializable,
+    second: _Serializable,
+    /,
+    *values: _Serializable,
+    bool_mode: _BoolMode = "text",
+    precision_group: _PrecisionGroup = "general",
+) -> tuple[str, ...]: ...
+
+
+def serialize(
+    *values: _Serializable,
+    bool_mode: _BoolMode = "text",
+    precision_group: _PrecisionGroup = "general",
 ) -> str | tuple[str, ...]:
     """Return an SVG-friendly string representation of the given value(s)."""
     return utils.apply_single_or_many(
-        functools.partial(_serialize, bool_mode=bool_mode), *values
+        functools.partial(
+            _serialize,
+            bool_mode=bool_mode,
+            precision_group=precision_group,
+        ),
+        *values,
     )
+
+
+def _is_serializable(value: object, /) -> TypeIs[_Serializable]:
+    return utils.is_type(value, _Serializable)
 
 
 def serialize_attr(value: object, /) -> str:
