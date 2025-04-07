@@ -4,7 +4,7 @@ import functools
 import math
 import operator
 import threading
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from types import TracebackType
 
 import pydantic
@@ -18,7 +18,9 @@ from typing_extensions import (
     overload,
 )
 
-from svglab import constants, protocols, utils
+from svglab import constants, protocols, utils, utiltypes
+from svglab.attrs import names as attrs_names
+from svglab.elements import names as elements_names
 
 
 AlphaChannelMode: TypeAlias = Literal["percentage", "float"]
@@ -29,6 +31,7 @@ _ColorMode: TypeAlias = Literal[
 ]
 _PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
 _Separator: TypeAlias = Literal[", ", ",", " "]
+_LengthUnitMode: TypeAlias = Literal["preserve"] | utiltypes.LengthUnit
 
 _Serializable: TypeAlias = (
     bool
@@ -127,6 +130,11 @@ class _Formatter:
 
     # misc
     xmlns: Literal["always", "never", "original"] = "original"
+    length_unit: _LengthUnitMode | Iterable[_LengthUnitMode] = "preserve"
+    attribute_order: Mapping[
+        elements_names.TagName | Literal["*"],
+        Sequence[attrs_names.AttributeName | str],
+    ] = pydantic.Field(default_factory=dict)
 
 
 @final
@@ -227,6 +235,17 @@ class Formatter(_Formatter):
         - `always`: Always add the `xmlns` attribute.
         - `never`: Always remove the `xmlns` attribute.
         - `original`: Serialize the `xmlns` attribute as-is.
+    `length_unit`: The length unit(s) to use when serializing lengths.
+    If set to `preserve`, the original unit is used. If set to a specific
+    unit, the length is converted to that unit. If set to an iterable of
+    units, each unit is tried in order until one succeeds. If the length cannot
+    be converted to any of the specified units, the original unit is used.
+    `attribute_order`: How to order attributes in the resulting SVG document.
+    The keys are the tag names of the elements, and the values are lists of
+    attribute names. The attributes are ordered in the order they appear in
+    the lists. If a tag name is `*`, the attribute order applies to all
+    elements. If there is no configuration for a specific element-attribute
+    pair, the default order (alphabetical) is used.
 
     """
 

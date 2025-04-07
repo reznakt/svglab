@@ -7,17 +7,21 @@ from collections.abc import Callable, Generator, Iterable, Sequence, Sized
 import bs4
 import typeguard
 from typing_extensions import (
+    Any,
     Literal,
     SupportsFloat,
     SupportsIndex,
     TypeAlias,
     TypeIs,
     TypeVar,
+    cast,
     overload,
+    override,
 )
 from useful_types import SupportsRichComparisonT
 
-from svglab import constants
+from svglab import constants, serialize
+from svglab.elements import names
 
 
 _T = TypeVar("_T")
@@ -25,6 +29,36 @@ _DT = TypeVar("_DT")
 _NT = TypeVar("_NT")
 
 _Map: TypeAlias = Callable[[_T], _NT]
+
+
+class BsFormatter(bs4.formatter.XMLFormatter):
+    def __init__(self) -> None:
+        formatter = serialize.get_current_formatter()
+        super().__init__(indent=formatter.indent)
+
+    @override
+    def attributes(self, tag: bs4.Tag) -> Iterable[tuple[str, Any]]:
+        formatter = serialize.get_current_formatter()
+        order = []
+
+        if tag.name in formatter.attribute_order:
+            order = formatter.attribute_order[
+                cast(names.TagName, tag.name)
+            ]
+        elif "*" in formatter.attribute_order:
+            order = formatter.attribute_order["*"]
+
+        order_index = {attr: i for i, attr in enumerate(order)}
+        order_length = len(order)
+
+        # first sort by the predefined order, then by name
+        return sorted(
+            tag.attrs.items(),
+            key=lambda item: (
+                order_index.get(item[0], order_length),
+                item[0],
+            ),
+        )
 
 
 def take_last(iterable: Iterable[_T], /) -> _T | None:
@@ -56,15 +90,8 @@ def make_soup(element: bs4.PageElement, /) -> bs4.BeautifulSoup:
     return soup
 
 
-def get_formatter(*, indent: int) -> bs4.formatter.Formatter:
-    if indent < 0:
-        raise ValueError("Indent must be a non-negative integer.")
-
-    return bs4.formatter.XMLFormatter(indent=indent)
-
-
 def beautifulsoup_to_str(
-    element: bs4.PageElement, /, *, pretty: bool, indent: int
+    element: bs4.PageElement, /, *, pretty: bool
 ) -> str:
     result: str
 
@@ -72,10 +99,9 @@ def beautifulsoup_to_str(
         case bs4.NavigableString(), _:
             result = str(make_soup(element))
         case bs4.Tag(), True:
-            formatter = get_formatter(indent=indent)
             soup = make_soup(element)
 
-            result = soup.prettify(formatter=formatter)
+            result = soup.prettify(formatter=BsFormatter())
         case bs4.Tag(), False:
             result = str(element)
         case _:

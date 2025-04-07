@@ -11,3 +11,26 @@ NpFloat: TypeAlias = np.float64
 
 NpFloatArray: TypeAlias = npt.NDArray[NpFloat]
 """An ndarray of floating-point numbers."""
+
+LengthUnit: TypeAlias = (
+    Literal[
+        "%",
+        "ch",
+        "cm",
+        "em",
+        "ex",
+        "in",
+        "mm",
+        "pc",
+        "pt",
+        "px",
+        "Q",
+        "rem",
+        "vh",
+        "vmax",
+        "vmin",
+        "vw",
+    ]
+    | None
+)
+"""Units of `<length>`."""
