@@ -4,7 +4,7 @@ import pathlib
 
 import lark
 import pydantic
-from typing_extensions import Any, Final, LiteralString, TypeVar
+from typing_extensions import Any, Final, LiteralString, TypeVar, cast
 
 
 _T = TypeVar("_T")
@@ -17,15 +17,9 @@ _CURRENT_DIR: Final = pathlib.Path(__file__).parent
 _GRAMMARS_DIR: Final = _CURRENT_DIR / "grammars"
 
 
-def parse(
-    text: str,
-    /,
-    *,
-    grammar: LiteralString,
-    transformer: lark.Transformer[_LeafT, _ReturnT],
-    **kwargs: object,
-) -> lark.ParseTree:
-    parser = lark.Lark.open(
+@functools.cache
+def _get_parser(*, grammar: LiteralString) -> lark.Lark:
+    return lark.Lark.open(
         grammar_filename=str(_GRAMMARS_DIR / grammar),
         rel_to=None,
         cache=True,
@@ -33,12 +27,21 @@ def parse(
         ordered_sets=False,
         parser="lalr",
         propagate_positions=False,
-        transformer=transformer,
-        **kwargs,
     )
 
+
+def parse(
+    text: str,
+    /,
+    *,
+    grammar: LiteralString,
+    transformer: lark.Transformer[_LeafT, _ReturnT],
+) -> _ReturnT:
+    parser = _get_parser(grammar=grammar)
+
     try:
-        return parser.parse(text)
+        tree = parser.parse(text)
+        return transformer.transform(cast(lark.Tree[_LeafT], tree))
     except lark.LarkError as e:
         msg = f"Failed to parse text with grammar {grammar!r}. Reason: \n\n{e}"
         raise ValueError(msg) from e
