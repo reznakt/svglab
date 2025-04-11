@@ -367,12 +367,12 @@ def _serialize_bool(
 
 
 def _serialize(value: object, /, *, bool_mode: _BoolMode) -> str:
-    formatter = get_current_formatter()
     result: str
 
     match value:
         case protocols.CustomSerializable():
             result = value.serialize()
+            formatter = get_current_formatter()
 
             if (
                 formatter.spaces_around_function_args
@@ -394,6 +394,7 @@ def _serialize(value: object, /, *, bool_mode: _BoolMode) -> str:
             result = value.decode()
         # this should go last to avoid classifying strings as iterables, etc.
         case Iterable():
+            formatter = get_current_formatter()
             result = formatter.list_separator.join(
                 _serialize(v, bool_mode=bool_mode) for v in value
             )

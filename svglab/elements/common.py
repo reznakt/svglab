@@ -467,9 +467,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         '<rect id="foo" stroke-linecap="round"/>'
 
         """
-        formatter = formatter or serialize.get_current_formatter()
-
-        with formatter:
+        with formatter or serialize.get_current_formatter():
             soup = self.to_beautifulsoup_object()
             return utils.beautifulsoup_to_str(soup, pretty=pretty)
 
