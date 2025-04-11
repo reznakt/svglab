@@ -4,7 +4,7 @@ import abc
 import collections
 import reprlib
 import sys
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping
 
 import bs4
 import pydantic
@@ -733,7 +733,11 @@ class Tag(
         if self.transform_origin is None:
             return
 
-        if utils.is_type(self.transform_origin, Sequence[length.Length]):
+        if (
+            isinstance(self.transform_origin, tuple)
+            and isinstance(self.transform_origin[0], length.Length)
+            and isinstance(self.transform_origin[1], length.Length)
+        ):
             tx = float(self.transform_origin[0])
             ty = float(self.transform_origin[1])
 

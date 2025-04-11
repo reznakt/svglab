@@ -5,7 +5,6 @@ import re
 from collections.abc import Callable, Generator, Iterable, Sequence, Sized
 
 import bs4
-import typeguard
 from typing_extensions import (
     Any,
     Literal,
@@ -403,50 +402,6 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
         return None
 
     return match.group(1), match.group(2)
-
-
-@overload
-def is_type(value: object, type_: type[_T], /) -> TypeIs[_T]: ...
-
-
-@overload
-def is_type(value: object, type_: object, /) -> bool: ...
-
-
-def is_type(value: object, type_: object, /) -> bool:
-    """Check if a value is of a certain type.
-
-    Compared to `isinstance`, this function accepts (almost) arbitrary type
-    annotations and also checks the contents of collections.
-
-    See the `typeguard`
-    [documentation](https://typeguard.readthedocs.io/en/latest/features.html)
-    for limitations and more information.
-
-    Args:
-        value: The value to check.
-        type_: The type to check against.
-
-    Returns:
-        `True` if the value is of the given type, `False` otherwise.
-
-    Examples:
-        >>> is_type(1, int)
-        True
-        >>> is_type(1, str)
-        False
-        >>> is_type([1, 2, 3], list[int])
-        True
-        >>> is_type([1, 2, 3], list[str])
-        False
-
-    """
-    try:
-        typeguard.check_type(value, type_)
-    except typeguard.TypeCheckError:
-        return False
-    else:
-        return True
 
 
 def tan(degrees: float) -> float:

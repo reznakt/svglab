@@ -109,9 +109,7 @@ class _Point(
 
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         as_tuple = tuple(self)
-
         transformed = other.to_affine() @ as_tuple
-        assert utils.is_type(transformed, tuple[float, float])
 
         return type(self)(*transformed)
 

@@ -46,7 +46,10 @@ _FORMATTER_LOCK: Final = threading.RLock()
 
 
 def _is_serializable(value: object, /) -> TypeIs[_Serializable]:
-    return utils.is_type(value, _Serializable)
+    return isinstance(
+        value,
+        bool | int | float | str | protocols.CustomSerializable | Iterable,
+    )
 
 
 @pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
