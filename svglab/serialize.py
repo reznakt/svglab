@@ -7,14 +7,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from types import TracebackType
 
 import pydantic
-from typing_extensions import (
-    Final,
-    Literal,
-    TypeAlias,
-    TypeIs,
-    final,
-    overload,
-)
+from typing_extensions import Final, Literal, TypeAlias, final, overload
 
 from svglab import protocols, utils, utiltypes
 from svglab.attrs import names as attrs_names
@@ -33,23 +26,8 @@ _PathDataCommandMode: TypeAlias = Literal["explicit", "implicit"]
 _Xmlns: TypeAlias = Literal["always", "never", "original"]
 _LengthUnitMode: TypeAlias = Literal["preserve"] | utiltypes.LengthUnit
 
-_Serializable: TypeAlias = (
-    bool
-    | int
-    | float
-    | str
-    | protocols.CustomSerializable
-    | Iterable["_Serializable"]
-)
 
 _FORMATTER_LOCK: Final = threading.RLock()
-
-
-def _is_serializable(value: object, /) -> TypeIs[_Serializable]:
-    return isinstance(
-        value,
-        bool | int | float | str | protocols.CustomSerializable | Iterable,
-    )
 
 
 @pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
@@ -339,16 +317,16 @@ def _serialize_number(number: float) -> str:
 
 @overload
 def serialize(
-    value: _Serializable, /, *, bool_mode: _BoolMode = "text"
+    value: object, /, *, bool_mode: _BoolMode = "text"
 ) -> str: ...
 
 
 @overload
 def serialize(
-    first: _Serializable,
-    second: _Serializable,
+    first: object,
+    second: object,
     /,
-    *values: _Serializable,
+    *values: object,
     bool_mode: _BoolMode = "text",
 ) -> tuple[str, ...]: ...
 
@@ -388,7 +366,7 @@ def _serialize_bool(
             return "1" if value else "0"
 
 
-def _serialize(value: _Serializable, /, *, bool_mode: _BoolMode) -> str:
+def _serialize(value: object, /, *, bool_mode: _BoolMode) -> str:
     formatter = get_current_formatter()
     result: str
 
@@ -419,12 +397,15 @@ def _serialize(value: _Serializable, /, *, bool_mode: _BoolMode) -> str:
             result = formatter.list_separator.join(
                 _serialize(v, bool_mode=bool_mode) for v in value
             )
+        case _:
+            msg = f"Values of type {type(value)} are not serializable"
+            raise TypeError(msg)
 
     return result
 
 
 def serialize(
-    *values: _Serializable, bool_mode: _BoolMode = "text"
+    *values: object, bool_mode: _BoolMode = "text"
 ) -> str | tuple[str, ...]:
     """Return an SVG-friendly string representation of the given value(s)."""
     return utils.apply_single_or_many(
@@ -452,12 +433,8 @@ def serialize_attr(value: object, /) -> str:
     'foo bar'
 
     """
-    if not _is_serializable(value):
-        msg = f"Type {type(value)} is not serializable."
-        raise TypeError(msg)
-
-    formatter = get_current_formatter()
     result = serialize(value)
+    formatter = get_current_formatter()
 
     if formatter.spaces_around_attrs:
         result = f" {result} "
@@ -465,7 +442,7 @@ def serialize_attr(value: object, /) -> str:
     return result
 
 
-def serialize_function_call(name: str, *args: _Serializable | None) -> str:
+def serialize_function_call(name: str, *args: object) -> str:
     """Serialize a function call into its SVG representation.
 
     Args:
@@ -491,7 +468,7 @@ def serialize_function_call(name: str, *args: _Serializable | None) -> str:
 
 
 def serialize_path_command(
-    *args: _Serializable,
+    *args: object,
     char: Literal["M", "L", "H", "V", "C", "S", "Q", "T", "A", "Z"],
     implicit: bool,
 ) -> str:
