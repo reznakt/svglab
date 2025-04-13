@@ -1,3 +1,4 @@
+import collections
 import functools
 from collections.abc import Callable, Mapping
 
@@ -26,7 +27,7 @@ class _HasUnit(Protocol[_UnitT_co]):
 
 
 _HasUnitT = TypeVar("_HasUnitT", bound=_HasUnit[_Unit])
-
+_ConversionGraph: TypeAlias = Mapping[_UnitT_co, Mapping[_UnitT_co, float]]
 
 ConversionTable: TypeAlias = Mapping[tuple[_UnitT_co, _UnitT_co], float]
 """
@@ -41,93 +42,46 @@ Converter: TypeAlias = Callable[[_HasUnitT, _UnitT_co], _HasUnitT]
 """A function that converts a value to a different unit."""
 
 
-def _get_conversion_rate_helper(
-    source: _UnitT_co,
-    target: _UnitT_co,
-    *,
-    visited: set[_UnitT_co],
+def _table_to_graph(
     conversion_table: ConversionTable[_UnitT_co],
-) -> float | None:
-    if source == target:
-        return 1
+) -> _ConversionGraph[_UnitT_co]:
+    graph = collections.defaultdict(dict)
 
-    if (source, target) in conversion_table:
-        return conversion_table[(source, target)]
+    for (source, target), rate in conversion_table.items():
+        graph[source][target] = rate
+        graph[target][source] = 1 / rate
 
-    if (target, source) in conversion_table:
-        return 1 / conversion_table[(target, source)]
-
-    for (from_unit, to_unit), rate in conversion_table.items():
-        if from_unit == source and to_unit not in visited:
-            visited.add(to_unit)
-
-            sub_rate = _get_conversion_rate_helper(
-                to_unit,
-                target,
-                visited=visited,
-                conversion_table=conversion_table,
-            )
-
-            if sub_rate is not None:
-                return rate * sub_rate
-
-        elif to_unit == source and from_unit not in visited:
-            visited.add(from_unit)
-
-            sub_rate = _get_conversion_rate_helper(
-                from_unit,
-                target,
-                visited=visited,
-                conversion_table=conversion_table,
-            )
-
-            if sub_rate is not None:
-                return sub_rate / rate
-
-    return None
+    return graph
 
 
 def _get_conversion_rate(
     source: _UnitT_co,
     target: _UnitT_co,
     *,
-    conversion_table: ConversionTable[_UnitT_co],
+    graph: _ConversionGraph[_UnitT_co],
 ) -> float | None:
-    """Get the conversion rate for conversion from `source` to `target`.
+    if source == target:
+        return 1
 
-    Args:
-        source: The source unit.
-        target: The target unit.
-        conversion_table: A table of conversion rates.
+    queue = collections.deque([(source, 1.0)])
+    visited = {source}
 
-    Returns:
-        The conversion rate for converting from `source` to `target`,
-        or `None` if the conversion is not possible.
+    while queue:
+        u, u_rate = queue.popleft()
 
-    Examples:
-        >>> conversion_table = {
-        ...     ("foo", "bar"): 2,
-        ...     ("bar", "baz"): 4,
-        ...     ("abc", "def"): 1,
-        ... }
-        >>> _get_conversion_rate(
-        ...     "foo", "bar", conversion_table=conversion_table
-        ... )
-        2
-        >>> _get_conversion_rate(
-        ...     "foo", "baz", conversion_table=conversion_table
-        ... )
-        8
-        >>> _get_conversion_rate(
-        ...     "foo", "abc", conversion_table=conversion_table
-        ... ) is None
-        True
+        for v, v_rate in graph[u].items():
+            if v in visited:
+                continue
 
+            rate = u_rate * v_rate
 
-    """
-    return _get_conversion_rate_helper(
-        source, target, visited=set(), conversion_table=conversion_table
-    )
+            if v == target:
+                return rate
+
+            queue.append((v, rate))
+            visited.add(v)
+
+    return None
 
 
 def make_converter(
@@ -146,15 +100,16 @@ def make_converter(
         a `SvgUnitConversionError` is raised.
 
     """
+    graph = _table_to_graph(conversion_table)
 
     @functools.cache
-    def rate(source: _UnitT_co, target: _UnitT_co) -> float | None:
-        return _get_conversion_rate(
-            source, target, conversion_table=conversion_table
-        )
+    def get_conversion_rate(
+        source: _UnitT_co, target: _UnitT_co
+    ) -> float | None:
+        return _get_conversion_rate(source, target, graph=graph)
 
     def convert(obj: _HasUnitT, unit: _UnitT_co) -> _HasUnitT:
-        conversion_rate: float | None = rate(obj.unit, unit)
+        conversion_rate: float | None = get_conversion_rate(obj.unit, unit)
 
         if conversion_rate is None:
             raise errors.SvgUnitConversionError(
