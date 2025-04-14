@@ -476,7 +476,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         """Convert the element to a corresponding `BeautifulSoup` object."""
 
     @abc.abstractmethod
-    def _eq(self, other: Self, /) -> bool: ...
+    def _eq(self, other: Element, /) -> bool: ...
 
     @property
     def parents(self) -> Generator[Tag]:
@@ -564,9 +564,10 @@ class Tag(
         return {**standard, **extra}
 
     @override
-    def _eq(self, other: Self) -> bool:
+    def _eq(self, other: Element) -> bool:
         return (
-            self.prefix == other.prefix
+            isinstance(other, Tag)
+            and self.prefix == other.prefix
             and self.all_attrs() == other.all_attrs()
             and self.num_children == other.num_children
             and all(
@@ -1071,8 +1072,11 @@ class TextElement(Element, metaclass=abc.ABCMeta):
     content: str = pydantic.Field(frozen=True, min_length=1)
 
     @override
-    def _eq(self, other: Self) -> bool:
-        return self.content == other.content
+    def _eq(self, other: Element) -> bool:
+        return (
+            isinstance(other, TextElement)
+            and self.content == other.content
+        )
 
     @override
     def __repr__(self) -> str:
