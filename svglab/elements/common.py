@@ -156,12 +156,16 @@ def _scale(tag: object, scale: transform.Scale) -> None:
     # not a <coordinate> and vice versa
     if isinstance(tag, regular.XNumber):  # noqa: SIM114
         tag.x = _scale_attr(tag.x, factor)
-    elif isinstance(tag, regular.XCoordinate):
+    elif isinstance(tag, regular.XCoordinate):  # noqa: SIM114
+        tag.x = _scale_attr(tag.x, factor)
+    elif isinstance(tag, regular.XListOfCoordinates):
         tag.x = _scale_attr(tag.x, factor)
 
     if isinstance(tag, regular.YNumber):  # noqa: SIM114
         tag.y = _scale_attr(tag.y, factor)
-    elif isinstance(tag, regular.YCoordinate):
+    elif isinstance(tag, regular.YCoordinate):  # noqa: SIM114
+        tag.y = _scale_attr(tag.y, factor)
+    elif isinstance(tag, regular.YListOfCoordinates):
         tag.y = _scale_attr(tag.y, factor)
 
     if isinstance(tag, presentation.StrokeWidth):
@@ -243,11 +247,15 @@ def _translate(tag: object, translate: transform.Translate) -> None:
         tag.x = _translate_attr(tag.x or 0, tx)
     elif isinstance(tag, regular.XCoordinate):
         tag.x = _translate_attr(tag.x or zero, tx)
+    elif isinstance(tag, regular.XListOfCoordinates):
+        tag.x = _translate_attr(tag.x, tx)
 
     if isinstance(tag, regular.YNumber):
         tag.y = _translate_attr(tag.y or 0, ty)
     elif isinstance(tag, regular.YCoordinate):
         tag.y = _translate_attr(tag.y or zero, ty)
+    elif isinstance(tag, regular.YListOfCoordinates):
+        tag.y = _translate_attr(tag.y, ty)
 
     if isinstance(tag, regular.Points) and tag.points is not None:
         tag.points = [translate @ point for point in tag.points]
