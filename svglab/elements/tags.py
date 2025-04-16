@@ -628,7 +628,6 @@ class FontFace(
     regular.Bbox,
     regular.CapHeight,
     regular.Descent,
-    regular.FontFamily,
     regular.Hanging,
     regular.Ideographic,
     regular.Mathematical,

@@ -13,6 +13,7 @@ class Core(
 
 class Presentation(
     common.Fill,
+    common.FontFamily,
     common.FontSize,
     common.FontStretch,
     common.FontStyle,

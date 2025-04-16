@@ -13,6 +13,13 @@ class Attr(models.BaseModel):
 # TODO: figure out how the standard intends us to handle this
 
 
+class FontFamily(Attr):
+    font_family: models.Attr[
+        models.List[typedefs.FamilyName | typedefs.GenericFamily]
+        | typedefs.Inherit
+    ] = None
+
+
 class FontWeight(Attr):
     font_weight: models.Attr[
         typedefs.All

@@ -185,12 +185,6 @@ class FilterUnits(common.Attr):
     ] = None
 
 
-class FontFamily(common.Attr):
-    font_family: models.Attr[
-        models.List[typedefs.FamilyName | typedefs.GenericFamily]
-    ] = None
-
-
 class Format(common.Attr):
     format: models.Attr[typedefs.Unparsed] = None
 
