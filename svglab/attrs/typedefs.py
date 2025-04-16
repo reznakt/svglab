@@ -34,6 +34,7 @@ Name: TypeAlias = Unparsed
 ProfileName: TypeAlias = Unparsed
 Shape: TypeAlias = Unparsed
 Urange: TypeAlias = Unparsed
+Url: TypeAlias = Unparsed
 XmlName: TypeAlias = Unparsed
 
 # basic types that are parsed
@@ -60,7 +61,6 @@ Number: TypeAlias = float
 PathData: TypeAlias = d.DType
 RelativeSize: TypeAlias = Literal["smaller", "larger"]
 TransformList: TypeAlias = transform.TransformType
-Url: TypeAlias = pydantic.AnyUrl
 
 
 # composite types
