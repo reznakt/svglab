@@ -33,7 +33,11 @@ _Map: TypeAlias = Callable[[_T], _NT]
 class BsFormatter(bs4.formatter.XMLFormatter):
     def __init__(self) -> None:
         formatter = serialize.get_current_formatter()
-        super().__init__(indent=formatter.indent)
+        super().__init__(
+            # replaces special characters with XML entities (e.g. < -> &lt;)
+            entity_substitution=bs4.formatter.EntitySubstitution.substitute_xml,
+            indent=formatter.indent,
+        )
 
     @override
     def attributes(self, tag: bs4.Tag) -> Iterable[tuple[str, Any]]:
@@ -83,7 +87,7 @@ def take_last(iterable: Iterable[_T], /) -> _T | None:
     return functools.reduce(lambda _, s: s, iterable, None)
 
 
-def make_soup(element: bs4.PageElement, /) -> bs4.BeautifulSoup:
+def _make_soup(element: bs4.PageElement, /) -> bs4.BeautifulSoup:
     soup = bs4.BeautifulSoup()
     soup.append(element)
     return soup
@@ -96,9 +100,9 @@ def beautifulsoup_to_str(
 
     match element, pretty:
         case bs4.NavigableString(), _:
-            result = str(make_soup(element))
+            result = _make_soup(element).decode(formatter=BsFormatter())
         case bs4.Tag(), True:
-            soup = make_soup(element)
+            soup = _make_soup(element)
 
             result = soup.prettify(formatter=BsFormatter())
         case bs4.Tag(), False:

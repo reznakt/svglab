@@ -898,3 +898,7 @@ def test_composed_decompose_equals_compose(
 )
 def test_decompose_simple(transform: svglab.Transform) -> None:
     assert svglab.compose(transform).decompose() == transform
+
+
+def test_entity_substitution() -> None:
+    assert svglab.RawText(">").to_xml() == "&gt;"
