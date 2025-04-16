@@ -19,6 +19,7 @@ class Presentation(
     common.FontVariant,
     common.FontWeight,
     presentation.BaselineShift,
+    presentation.ClipPath,
     presentation.ClipRule,
     presentation.Color,
     presentation.ColorInterpolation,
