@@ -113,7 +113,7 @@ def scale_distance_along_a_path_attrs(tag: object, by: float) -> None:
         tag.stroke_dashoffset = _scale_attr(tag.stroke_dashoffset, by)
 
 
-def _scale(tag: object, scale: transform.Scale) -> None:
+def _scale(tag: object, scale: transform.Scale) -> None:  # noqa: PLR0915
     if not utils.is_close(scale.sx, scale.sy):
         raise ValueError("Non-uniform scaling is not supported.")
 
@@ -144,6 +144,10 @@ def _scale(tag: object, scale: transform.Scale) -> None:
         tag.cx = _scale_attr(tag.cx, factor)
     if isinstance(tag, regular.Cy):
         tag.cy = _scale_attr(tag.cy, factor)
+    if isinstance(tag, regular.Fx):
+        tag.fx = _scale_attr(tag.fx, factor)
+    if isinstance(tag, regular.Fy):
+        tag.fy = _scale_attr(tag.fy, factor)
     if isinstance(tag, common_attrs.FontSize):
         tag.font_size = _scale_attr(tag.font_size, factor)
     if isinstance(tag, regular.Points) and tag.points is not None:
