@@ -104,9 +104,11 @@ class Length(
                 converted = self.to(unit)
                 break
 
-        return (
-            f"{serialize.serialize(converted.value)}{converted.unit or ''}"
+        value = serialize.serialize(
+            converted.value, precision_group="coordinate"
         )
+
+        return f"{value}{converted.unit or ''}"
 
     @classmethod
     def zero(cls) -> Length:

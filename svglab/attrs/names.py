@@ -331,14 +331,14 @@ def _normalize_attr_name(name: AttributeName) -> str:
     return normalized
 
 
-_ATTRIBUTE_NAMES: Final[frozenset[AttributeName]] = frozenset(
+ATTRIBUTE_NAMES: Final[frozenset[AttributeName]] = frozenset(
     typing_extensions.get_args(AttributeName)
 )
 """A set of all valid SVG attribute names."""
 
 
 ATTR_NAME_TO_NORMALIZED: Final = bidict.frozenbidict(
-    {attr: _normalize_attr_name(attr) for attr in _ATTRIBUTE_NAMES}
+    {attr: _normalize_attr_name(attr) for attr in ATTRIBUTE_NAMES}
 )
 """
 A bidirectional mapping of SVG attribute names to normalized

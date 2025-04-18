@@ -902,3 +902,44 @@ def test_decompose_simple(transform: svglab.Transform) -> None:
 
 def test_entity_substitution() -> None:
     assert svglab.RawText(">").to_xml() == "&gt;"
+
+
+def test_float_precision_settings() -> None:
+    formatter = svglab.Formatter(
+        general_precision=10,
+        angle_precision=1,
+        coordinate_precision=0,
+        scale_precision=-1,
+    )
+
+    with formatter:
+        assert svglab.Length(1.123456).serialize() == "1"
+        assert svglab.Rotate(1.123456).serialize() == "rotate(1.1)"
+        assert svglab.SkewX(1.123456).serialize() == "skewX(1.1)"
+        assert (
+            svglab.Translate(1.123456).serialize() == "translate(1.123456)"
+        )
+        assert svglab.Scale(1.123456).serialize() == "scale(0)"
+
+
+def test_precision_table() -> None:
+    formatter = svglab.Formatter(
+        general_precision=svglab.FloatPrecisionSettings(
+            precision_table={
+                (0, 1): 3,
+                (1, 10): 2,
+                (10, 100): 1,
+                (100, 1000): 0,
+            },
+            fallback=15,
+        )
+    )
+
+    with formatter:
+        assert svglab.Length(0.123456).serialize() == ".123"
+        assert svglab.Rotate(1.123456).serialize() == "rotate(1.12)"
+        assert svglab.SkewX(10.123456).serialize() == "skewX(10.1)"
+        assert svglab.Translate(100.123456).serialize() == "translate(100)"
+        assert (
+            svglab.Scale(1000.123456).serialize() == "scale(1000.123456)"
+        )
