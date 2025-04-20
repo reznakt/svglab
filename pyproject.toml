@@ -36,7 +36,7 @@ bidict = "^0.23.1"
 html5lib = "^1.1"
 lark = "^1.2.2"
 lxml = "^5.3.0"
-pydantic = "^2.10.4"
+pydantic = ">=2.0.0,<2.11.0" # temp fix because 2.11 breaks stuff
 pydantic-extra-types = "^2.10.1"
 useful-types = "^0.2.1"
 typing-extensions = "^4.12.2"
