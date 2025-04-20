@@ -133,7 +133,9 @@ class _Scale(_TransformFunctionBase):
         if not utils.is_close(self.sx, self.sy):
             args.append(self.sy)
 
-        return serialize.serialize_function_call("scale", *args)
+        return serialize.serialize_function_call(
+            "scale", *args, precision_group="scale"
+        )
 
     @override
     def to_affine(self) -> affine.Affine:
@@ -168,14 +170,15 @@ class _Rotate(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        args = [self.angle]
+        angle = serialize.serialize(self.angle, precision_group="angle")
+        origin = []
 
         if not utils.is_close(self.cx, 0) or not utils.is_close(
             self.cy, 0
         ):
-            args.extend([self.cx, self.cy])
+            origin.extend([self.cx, self.cy])
 
-        return serialize.serialize_function_call("rotate", *args)
+        return serialize.serialize_function_call("rotate", angle, *origin)
 
     @override
     def to_affine(self) -> affine.Affine:
@@ -215,7 +218,9 @@ class SkewY(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize_function_call("skewY", self.angle)
+        return serialize.serialize_function_call(
+            "skewY", self.angle, precision_group="angle"
+        )
 
     @override
     def to_affine(self) -> affine.Affine:
@@ -235,7 +240,9 @@ class SkewX(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize_function_call("skewX", self.angle)
+        return serialize.serialize_function_call(
+            "skewX", self.angle, precision_group="angle"
+        )
 
     @override
     def to_affine(self) -> affine.Affine:

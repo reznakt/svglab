@@ -74,7 +74,7 @@ class Angle(
 
     @override
     def serialize(self) -> str:
-        value = serialize.serialize(self.value)
+        value = serialize.serialize(self.value, precision_group="angle")
         return f"{value}{self.unit or ''}"
 
     @override

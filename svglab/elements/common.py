@@ -703,7 +703,7 @@ class Tag(
         tag.can_be_empty_element = len(self.__children) == 0
 
         for key, value in self.all_attrs().items():
-            tag[key] = serialize.serialize_attr(value)
+            tag[key] = serialize.serialize_attr(key, value)
 
         for child in self.children:
             tag.append(child.to_beautifulsoup_object())

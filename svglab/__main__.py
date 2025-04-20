@@ -24,7 +24,7 @@ from svglab import (
 )
 
 
-set_formatter(Formatter(indent=4, max_precision=2, color_mode="rgb"))
+set_formatter(Formatter(indent=4, general_precision=2, color_mode="rgb"))
 
 
 def main() -> None:
