@@ -1,10 +1,48 @@
-[tool.poetry]
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[project]
 name = "svglab"
-version = "0.0.0" # managed by poetry-dynamic-versioning, do not edit
 description = "A manipulation and optimization library for Scalable Vector Graphics"
-authors = ["Tomáš Režňák <tomas.reznak@volny.cz>"]
+authors = [{ name = "Tomáš Režňák", email = "tomas.reznak@volny.cz" }]
+keywords = [
+  "svg",
+  "svg manipulation",
+  "image processing",
+  "vector graphics",
+  "image optimization",
+  "affine transformation",
+]
 license = "MIT"
 readme = "README.md"
+dynamic = ["version", "classifiers"]
+requires-python = ">=3.10,<4.0"
+dependencies = [
+  "beautifulsoup4 (>=4.12.3,<5.0.0)",
+  "bidict (>=0.23.1,<0.24.0)",
+  "html5lib (>=1.1,<2.0)",
+  "lark (>=1.2.2,<2.0.0)",
+  "lxml (>=5.3.0,<6.0.0)",
+  "pydantic (>=2.0.0,<2.11.0)",
+  "pydantic-extra-types (>=2.10.1,<3.0.0)",
+  "useful-types (>=0.2.1,<0.3.0)",
+  "typing-extensions (>=4.12.2,<5.0.0)",
+  "resvg-py (>=0.1.6,<0.3.0)",
+  "pillow (>=11.1.0,<12.0.0)",
+  "affine (>=3.0b1,<4.0)",
+  "numpy (>=1.26.4,<3.0.0)",
+  "more-itertools (>=10.6.0,<11.0.0)",
+]
+
+[project.urls]
+"GitHub" = "https://github.com/reznakt/svglab"
+"Issues" = "https://github.com/reznakt/svglab/issues"
+
+[project.scripts]
+svglab = "svglab.__main__:main"
+
+[tool.poetry]
 classifiers = [
   "Framework :: Pydantic :: 2",
   "Intended Audience :: Developers",
@@ -15,36 +53,19 @@ classifiers = [
   "Topic :: Text Processing :: Markup :: XML",
   "Typing :: Typed",
 ]
+requires-poetry = ">=2.0.0,<3.0.0"
+version = "0.0.0" # managed by poetry-dynamic-versioning, do not edit
 
-[tool.poetry.urls]
-"GitHub" = "https://github.com/reznakt/svglab"
-"Issues" = "https://github.com/reznakt/svglab/issues"
+[tool.poetry.requires-plugins]
+"poetry-dynamic-versioning" = ">=1.0.0,<2.0.0"
 
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
 style = "semver"
 
-[build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"
-
 [tool.poetry.dependencies]
-python = "^3.10"
-beautifulsoup4 = "^4.12.3"
-bidict = "^0.23.1"
-html5lib = "^1.1"
-lark = "^1.2.2"
-lxml = "^5.3.0"
-pydantic = ">=2.0.0,<2.11.0" # temp fix because 2.11 breaks stuff
-pydantic-extra-types = "^2.10.1"
-useful-types = "^0.2.1"
-typing-extensions = "^4.12.2"
-resvg-py = ">=0.1.6,<0.3.0"
-pillow = "^11.1.0"
-affine = { version = "^3.0b1", allow-prereleases = true }
-numpy = ">=1.26.4,<3.0.0"
-more-itertools = "^10.6.0"
+affine = { allow-prereleases = true }
 
 [tool.poetry.group.types.dependencies]
 types-beautifulsoup4 = "^4.12.0.20241020"
@@ -66,9 +87,6 @@ ruff = ">=0.8.4,<0.12.0"
 vermin = "^1.6.0"
 ssort = "^0.14.0"
 
-[tool.poetry.scripts]
-svglab = "svglab.__main__:main"
-
 [tool.poe.tasks]
 lint = "ruff check"
 lint-fix = "ruff check --fix"
@@ -86,11 +104,11 @@ _ssort-fix = "ssort"
 format-fix = ["_ruff-format-fix", "_ssort-fix"]
 
 [tool.pytest.ini_options]
-addopts = ["--cov", "--doctest-continue-on-failure", "--doctest-modules"]
 filterwarnings = [
   # https://bugs.launchpad.net/beautifulsoup/+bug/2076897
   "ignore:The 'strip_cdata' option of HTMLParser\\(\\) has never done anything and will eventually be removed.",
 ]
+addopts = ["--cov", "--doctest-continue-on-failure", "--doctest-modules"]
 
 [tool.coverage.run]
 omit = ["tests/*"]
