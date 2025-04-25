@@ -1,3 +1,11 @@
+"""Classes to represent textual entities in XML.
+
+This module contains the following classes:
+- `CData`: Represents a CDATA section.
+- `Comment`: Represents a comment.
+- `RawText`: Represents text.
+"""
+
 import bs4
 from typing_extensions import final, override
 
@@ -18,6 +26,13 @@ class CData(common.TextElement):
     """
 
     def __init__(self, content: str, /) -> None:
+        """Initialize a CDATA section.
+
+        Args:
+            content: The text content of the CDATA section (excluding the
+                `<![CDATA[` and `]]>` markers).
+
+        """
         super().__init__(content=content)
 
     @override
@@ -39,6 +54,13 @@ class Comment(common.TextElement):
     """
 
     def __init__(self, content: str, /) -> None:
+        """Initialize a comment.
+
+        Args:
+            content: The text content of the comment (excluding the `<!--` and
+                `-->` markers).
+
+        """
         super().__init__(content=content)
 
     @override
@@ -59,6 +81,12 @@ class RawText(common.TextElement):
     """
 
     def __init__(self, content: str, /) -> None:
+        """Initialize a text node.
+
+        Args:
+            content: The text content of the node.
+
+        """
         super().__init__(content=content)
 
     @override

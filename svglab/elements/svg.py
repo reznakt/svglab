@@ -1,3 +1,12 @@
+"""The definition of the <svg> element.
+
+This module contains the definition of the <svg> element (see the `Svg` class).
+
+The <svg> element is of special importance in SVG documents, as it is the root
+of the element tree. For this reason, it contains several methods not found on
+other elements, and thus is defined in its own module.
+"""
+
 import base64
 import contextlib
 import os
@@ -35,6 +44,15 @@ class Svg(
     traits.StructuralElement,
     traits.ContainerElement,
 ):
+    """The `<svg>` element.
+
+    The `<svg>` element is the root of an SVG document fragment.
+
+    You can either create a new SVG document from scratch by creating an
+    instance of this class, or you can parse an existing SVG document
+    using the `parse_svg` function.
+    """
+
     @overload
     def save(
         self,

@@ -1,3 +1,8 @@
+"""Definition of the SVG `<color>` type.
+
+Use `Color` to represent colors in SVG. Use `ColorType` in Pydantic fields.
+"""
+
 import pydantic_extra_types.color
 from typing_extensions import TypeAlias, override
 
@@ -39,6 +44,11 @@ def _alpha_channel_as_percentage(original: str) -> str:
 class Color(
     pydantic_extra_types.color.Color, protocols.CustomSerializable
 ):
+    """Represents the SVG `<color>` type.
+
+    This class is used to represent colors in SVG.
+    """
+
     @override
     def as_rgb(
         self, *, alpha_channel: serialize.AlphaChannelMode = "float"

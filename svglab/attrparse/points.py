@@ -1,3 +1,8 @@
+"""Definition of the SVG `<points>` type.
+
+Use `Points` to represent points in SVG. Use `PointsType` in Pydantic fields.
+"""
+
 import lark
 import lark.visitors
 from typing_extensions import Annotated, TypeAlias

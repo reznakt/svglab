@@ -1,3 +1,16 @@
+"""Serialization of Python objects into SVG-friendly strings.
+
+This module provides mechanisms to serialize various Python objects into
+SVG-friendly strings.
+
+The main components of this module are:
+- `Formatter`: A dataclass for configuring the serialization settings.
+- `serialize()`: A function that serializes a single value or multiple
+  values into SVG-friendly strings.
+- `get_current_formatter()` and `set_formatter()`: Functions to manage the
+    current formatter.
+"""
+
 from __future__ import annotations
 
 import functools
@@ -107,6 +120,15 @@ class FloatPrecisionSettings:
         )
 
     def get_precision(self, value: float) -> int:
+        """Get the number of decimal places to use for a given number.
+
+        Args:
+            value: The number to get the precision for.
+
+        Returns:
+            The number of decimal places to use when serializing the number.
+
+        """
         return next(
             (
                 precision
@@ -302,6 +324,21 @@ class Formatter(_Formatter):
     def get_precision(
         self, value: float, *, precision_group: _PrecisionGroup
     ) -> int:
+        """Get the number of decimal places to use for a given number.
+
+        The value is determined by the relevant settings in the formatter (
+        `general_precision`, `coordinate_precision`, etc.), the precision group
+        and the value itself.
+
+        Args:
+            value: The number to get the precision for.
+            precision_group: The precision group to use when formatting
+            the number.
+
+        Returns:
+            The number of decimal places to use when serializing the number.
+
+        """
         settings: _FloatPrecisionSettingsType = None
 
         for group in precision_group, "general":

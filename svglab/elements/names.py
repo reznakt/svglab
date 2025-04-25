@@ -1,3 +1,9 @@
+"""Names of all elements.
+
+This module contains the names of all elements in the SVG specification.
+It also provides functions to normalize these names to Python identifiers.
+"""
+
 import bidict
 import typing_extensions
 from typing_extensions import Final, Literal, TypeAlias

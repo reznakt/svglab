@@ -1,3 +1,7 @@
+"""Definitions of attributes that are both regular and presentation attrs."""
+
+# ruff: noqa:  D101
+
 from typing_extensions import Literal
 
 from svglab import models

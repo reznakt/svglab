@@ -1,3 +1,8 @@
+"""Definition of the SVG `<angle>` type.
+
+Use `Angle` to represent angles in SVG. Use `AngleType` in Pydantic fields.
+"""
+
 from __future__ import annotations
 
 import math

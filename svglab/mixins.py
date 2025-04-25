@@ -1,3 +1,10 @@
+"""Miscellaneous useful utility mixins.
+
+This module is used to define mixins that can be used to add common
+functionality to classes. The mixins are used to define common functionality
+that is not specific to a particular class, but is useful for multiple classes.
+"""
+
 import abc
 
 import pydantic
@@ -56,6 +63,8 @@ class SubWithNeg(
     protocols.SupportsSub[_SupportsNegT_contra],
     metaclass=abc.ABCMeta,
 ):
+    """Implement subtraction using negation and addition."""
+
     @override
     def __sub__(self, other: _SupportsNegT_contra, /) -> Self:
         return self + -other
@@ -66,6 +75,8 @@ class RAddWithAdd(
     protocols.SupportsAdd[_T_contra],
     metaclass=abc.ABCMeta,
 ):
+    """Implement right addition using addition."""
+
     @override
     def __radd__(self, other: _T_contra, /) -> Self:
         return self + other
@@ -76,6 +87,8 @@ class RSubWithSub(
     protocols.SupportsSub[_T_contra],
     metaclass=abc.ABCMeta,
 ):
+    """Implement right subtraction using subtraction."""
+
     @override
     def __rsub__(self, other: _T_contra, /) -> Self:
         return self - other
@@ -86,6 +99,8 @@ class RMulWithMul(
     protocols.SupportsMul[_T_contra],
     metaclass=abc.ABCMeta,
 ):
+    """Implement right multiplication using multiplication."""
+
     @override
     def __rmul__(self, other: _T_contra, /) -> Self:
         return self * other
@@ -96,6 +111,8 @@ class RTruedivWithTrueDiv(
     protocols.SupportsTrueDiv[_T_contra],
     metaclass=abc.ABCMeta,
 ):
+    """Implement right true division using true division."""
+
     @override
     def __rtruediv__(self, other: _T_contra, /) -> Self:
         return self / other
@@ -106,6 +123,8 @@ class NegWithMul(
     protocols.SupportsMul[Literal[-1]],
     metaclass=abc.ABCMeta,
 ):
+    """Implement negation using multiplication by -1."""
+
     @override
     def __neg__(self) -> Self:
         return self * -1
@@ -116,6 +135,8 @@ class TrueDivWithMul(
     protocols.SupportsMul[_SupportsRTrueDivT_contra],
     metaclass=abc.ABCMeta,
 ):
+    """Implement true division using multiplication by the reciprocal."""
+
     @override
     def __truediv__(self, other: _SupportsRTrueDivT_contra, /) -> Self:
         return self * (1 / other)
@@ -128,7 +149,7 @@ class FloatMulDiv(
     TrueDivWithMul[float],
     metaclass=abc.ABCMeta,
 ):
-    pass
+    """Implement multiplication and division as effortlessly as possible."""
 
 
 class AddSub(
@@ -137,4 +158,4 @@ class AddSub(
     RSubWithSub[_SupportsNegT_contra],
     metaclass=abc.ABCMeta,
 ):
-    pass
+    """Implement addition and subtraction as effortlessly as possible."""

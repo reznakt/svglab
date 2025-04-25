@@ -1,3 +1,14 @@
+"""Definitions of SVG elements.
+
+This module contains the definitions of all SVG elements, including their
+attributes and methods.
+
+The elements are defined as classes, which inherit traits from the `traits`
+module and attributes from the `attrs` package.
+"""
+
+# ruff: noqa: D101
+
 from __future__ import annotations
 
 import itertools

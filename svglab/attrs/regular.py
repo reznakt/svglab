@@ -1,4 +1,5 @@
-# ruff: noqa: N815
+"""Definitions of regular attributes."""
+# ruff: noqa: N815, D101
 
 from typing_extensions import Literal
 

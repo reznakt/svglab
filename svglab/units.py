@@ -1,3 +1,13 @@
+"""Utilities for converting between units.
+
+This module provides a way to convert between different units of measurement.
+
+The main output of this module is the `make_converter` function, which creates
+a converter function that can convert between units based on a conversion
+table.
+
+"""
+
 import collections
 import functools
 from collections.abc import Callable, Mapping

@@ -1,3 +1,13 @@
+"""Representation of a point in 2D space.
+
+This module defines the `Point` class, which represents a point in 2D space.
+
+The `Point` class is used to define the `<list-of-points>` type in SVG.
+
+Use the `Point` class to represent points in SVG. Use `PointType` in Pydantic
+fields.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -26,39 +36,6 @@ class _Point(
     protocols.PointLike,
     protocols.CustomSerializable,
 ):
-    """A point in a 2D plane.
-
-    Attributes:
-        x: The x-coordinate of the point.
-        y: The y-coordinate of the point.
-
-    Examples:
-        >>> point = Point(1, 2)
-        >>> point.x
-        1.0
-        >>> point.y
-        2.0
-        >>> point == Point(1, 2)
-        True
-        >>> point == Point(1, 3)
-        False
-        >>> point += Point(2, 3)
-        >>> point
-        Point(x=3.0, y=5.0)
-        >>> point -= Point(1, 2)
-        >>> point
-        Point(x=2.0, y=3.0)
-        >>> point *= 2
-        >>> point
-        Point(x=4.0, y=6.0)
-        >>> point /= 2
-        >>> point
-        Point(x=2.0, y=3.0)
-        >>> point + point
-        Point(x=4.0, y=6.0)
-
-    """
-
     x: float
     y: float
 
@@ -134,6 +111,39 @@ class _Point(
 
 @final
 class Point(_Point):
+    """A point in a 2D plane.
+
+    Attributes:
+        x: The x-coordinate of the point.
+        y: The y-coordinate of the point.
+
+    Examples:
+        >>> point = Point(1, 2)
+        >>> point.x
+        1.0
+        >>> point.y
+        2.0
+        >>> point == Point(1, 2)
+        True
+        >>> point == Point(1, 3)
+        False
+        >>> point += Point(2, 3)
+        >>> point
+        Point(x=3.0, y=5.0)
+        >>> point -= Point(1, 2)
+        >>> point
+        Point(x=2.0, y=3.0)
+        >>> point *= 2
+        >>> point
+        Point(x=4.0, y=6.0)
+        >>> point /= 2
+        >>> point
+        Point(x=2.0, y=3.0)
+        >>> point + point
+        Point(x=4.0, y=6.0)
+
+    """
+
     @override
     def __init__(
         self,

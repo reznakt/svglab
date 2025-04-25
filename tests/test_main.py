@@ -1,3 +1,7 @@
+"""Tests for the svglab package."""
+
+# ruff: noqa: D103
+
 import copy
 
 import hypothesis

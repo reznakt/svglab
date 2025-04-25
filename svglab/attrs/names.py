@@ -1,3 +1,10 @@
+"""Names of all attributes.
+
+This module contains the names of all attributes in the SVG specification.
+It also provides functions to normalize these names to valid Python
+identifiers.
+"""
+
 import keyword
 
 import bidict

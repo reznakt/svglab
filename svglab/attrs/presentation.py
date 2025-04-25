@@ -1,3 +1,7 @@
+"""Definitions of presentation attributes."""
+
+# ruff: noqa:  D101
+
 from typing_extensions import Literal
 
 from svglab import models

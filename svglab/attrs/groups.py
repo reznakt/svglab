@@ -1,3 +1,5 @@
+"""Groups of attributes that are commonly used together."""
+
 from svglab.attrs import common, presentation, regular
 
 
@@ -8,7 +10,12 @@ class Core(
     regular.XmlLang,
     regular.XmlSpace,
 ):
-    pass
+    """The core attributes.
+
+    From the SVG 1.1 specification:
+    > "The core attributes are those attributes that can be specified on any
+    SVG element."
+    """
 
 
 class Presentation(
@@ -74,19 +81,35 @@ class Presentation(
     presentation.WordSpacing,
     presentation.WritingMode,
 ):
-    pass
+    """The presentation attributes.
+
+    From the SVG 1.1 specification:
+    > "An XML attribute on an SVG element which specifies a value for a given
+    property for that element."
+    """
 
 
 class AnimationEvents(
     regular.OnBegin, regular.OnEnd, regular.OnLoad, regular.OnRepeat
 ):
-    pass
+    """The animation event attributes.
+
+    From the SVG 1.1 specification:
+    > "An animation event attribute is an event attribute that specifies script
+    to run for a particular animation-related event."
+    """
 
 
 class AnimationAttributeTarget(
     regular.AttributeName, regular.AttributeType
 ):
-    pass
+    """The animation attribute target attributes.
+
+    From the SVG 1.1 specification:
+    > "[...] identify the target attribute or property for the given target
+    element whose value changes over time."
+
+    """
 
 
 class AnimationTiming(
@@ -100,7 +123,14 @@ class AnimationTiming(
     regular.RepeatDur,
     regular.Restart,
 ):
-    pass
+    """The animation timing attributes.
+
+    From the SVG 1.1 specification:
+    > "They are common to all animation elements and control the timing of the
+    animation, including what causes the animation to start and end, whether
+    the animation runs repeatedly, and whether to retain the end state the
+    animation once the animation ends."
+    """
 
 
 class AnimationValue(
@@ -112,11 +142,24 @@ class AnimationValue(
     regular.To,
     regular.ValuesList,
 ):
-    pass
+    """The animation value attributes.
+
+    From the SVG 1.1 specification:
+    > "They are common to elements `animate`, `animateColor`, `animateMotion`
+    and `animateTransform`. These attributes define the values that are
+    assigned to the target attribute or property over time. The attributes
+    [...] provide control over the relative timing of keyframes and the
+    interpolation method between discrete values."
+    """
 
 
 class AnimationAddition(regular.Accumulate, regular.Additive):
-    pass
+    """The animation addition attributes.
+
+    From the SVG 1.1 specification:
+    > "[...] are common to elements `animate`, `animateColor`, `animateMotion`
+    and `animateTransform`."
+    """
 
 
 class ConditionalProcessing(
@@ -124,7 +167,13 @@ class ConditionalProcessing(
     regular.RequiredExtensions,
     regular.SystemLanguage,
 ):
-    pass
+    """The conditional processing attributes.
+
+    From the SVG 1.1 specification:
+    > "A conditional processing attribute is one that controls whether or not
+    the element on which it appears is processed. Most elements, but not all,
+    may have conditional processing attributes specified on them."
+    """
 
 
 class DocumentEvents(
@@ -135,7 +184,12 @@ class DocumentEvents(
     regular.OnUnload,
     regular.OnZoom,
 ):
-    pass
+    """The document event attributes.
+
+    From the SVG 1.1 specification:
+    > "A document event attribute is an event attribute that specifies script
+    to run for a particular document-wide event."
+    """
 
 
 class GraphicalEvents(
@@ -150,11 +204,16 @@ class GraphicalEvents(
     regular.OnMouseOver,
     regular.OnMouseUp,
 ):
-    pass
+    """The graphical event attributes.
+
+    From the SVG 1.1 specification:
+    > "A graphical event attribute is an event attribute that specifies script
+    to run for a particular user interaction event."
+    """
 
 
 class Event(GraphicalEvents, AnimationEvents, DocumentEvents):
-    pass
+    """All event attributes."""
 
 
 class FilterPrimitives(
@@ -164,7 +223,12 @@ class FilterPrimitives(
     regular.Height,
     regular.Result,
 ):
-    pass
+    """The filter primitive attributes.
+
+    From the SVG 1.1 specification:
+    > "The filter primitive attributes is the set of attributes that are common
+    to all filter primitive elements."
+    """
 
 
 class Xlink(
@@ -177,7 +241,13 @@ class Xlink(
     regular.XlinkTitle,
     regular.XlinkType,
 ):
-    pass
+    """The XLink attributes.
+
+    From the SVG 1.1 specification:
+    > "The XLink attributes are the seven attributes defined in the XML Linking
+    Language specification, which are used on various SVG elements that can
+    reference resources."
+    """
 
 
 class TransferFunction(
@@ -189,4 +259,9 @@ class TransferFunction(
     regular.TableValues,
     regular.TypeFeFunc,
 ):
-    pass
+    """The transfer function attributes.
+
+    From the SVG 1.1 specification:
+    > "[...] apply to sub-elements `feFuncR`, `feFuncG`, `feFuncB` and
+    `feFuncA` that define the transfer functions."
+    """

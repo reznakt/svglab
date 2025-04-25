@@ -1,3 +1,19 @@
+"""Useful traits for SVG elements.
+
+Traits are mixins that are used to add common functionality to SVG elements.
+
+For example, we want to be able to normalize the `pathLength` attribute of
+all shapes in SVG. Therefore, the `Shape` trait contains the `set_path_length`
+method. Elements that are shapes inherit from the `Shape` trait and therefore
+automatically have the `set_path_length` method.
+
+This approach allows us to define common functionality in one place and reuse
+it on different elements.
+
+Most traits are defined based on the "1.6 Definitions" section of the SVG 1.1
+specification.
+"""
+
 import abc
 
 from typing_extensions import Protocol
@@ -10,7 +26,7 @@ from svglab.elements import common
 
 # common attributes are defined directly on the Tag class
 class Element(common.Tag):
-    pass
+    """An SVG element."""
 
 
 class _GraphicalOperations(Element):
@@ -79,10 +95,22 @@ class GraphicsElement(
     common.StrokeWidthScaled,
     Element,
 ):
-    pass
+    """A graphics element.
+
+    From the SVG 1.1 specification:
+    > "One of the element types that can cause graphics to be drawn onto the
+    target canvas."
+    """
 
 
 class Shape(regular.PathLength, GraphicsElement):
+    """A shape.
+
+    From the SVG 1.1 specification:
+    > "A graphics element that is defined by some combination of straight lines
+    and curves."
+    """
+
     def set_path_length(self, value: float) -> None:
         """Set a new value for the `pathLength` attribute.
 
@@ -122,6 +150,13 @@ class _PathLike(Protocol):
 
 
 class BasicShape(Shape, metaclass=abc.ABCMeta):
+    """A basic shape.
+
+    From the SVG 1.1 specification:
+    > "Standard shapes which are predefined in SVG as a convenience for common
+    graphical operations."
+    """
+
     @abc.abstractmethod
     def to_d(self) -> d.D:
         """Convert this basic shape into path data.
@@ -153,46 +188,101 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
 class AnimationElement(
     groups.AnimationEvents, groups.AnimationTiming, Element
 ):
-    pass
+    """An animation element.
+
+    From the SVG 1.1 specification:
+    > "An animation element is an element that can be used to animate the
+    attribute or property value of another element."
+    """
 
 
 class ContainerElement(
     _GraphicalOperations, groups.GraphicalEvents, Element
 ):
-    pass
+    """A container element.
+
+    From the SVG 1.1 specification:
+    > "An element which can have graphics elements and other container elements
+    as child elements."
+    """
 
 
 class DescriptiveElement(Element):
-    pass
+    """A descriptive element.
+
+    From the SVG 1.1 specification:
+    > "An element which provides supplementary descriptive information about
+    its parent."
+    """
 
 
 class FilterPrimitiveElement(groups.FilterPrimitives, Element):
-    pass
+    """A filter primitive element.
+
+    From the SVG 1.1 specification:
+    > "A filter primitive element is one that can be used as a child of
+    a `filter` element to specify a node in the filter graph."
+    """
 
 
 class GradientElement(Element):
-    pass
+    """A gradient element.
+
+    From the SVG 1.1 specification:
+    > "A gradient element is one that defines a gradient paint server."
+    """
 
 
 class GraphicsReferencingElement(Element):
-    pass
+    """A graphics referencing element.
+
+    From the SVG 1.1 specification:
+    > "A graphics element which uses a reference to a different document or
+    element as the source of its graphical content."
+    """
 
 
 class LightSourceElement(Element):
-    pass
+    """A light source element.
+
+    From the SVG 1.1 specification:
+    > "A light source element is one that can specify light source information
+    for an `feDiffuseLighting` or `feSpecularLighting` element."
+    """
 
 
 class StructuralElement(Element):
-    pass
+    """A structural element.
+
+    From the SVG 1.1 specification:
+    > "The structural elements are those which define the primary structure of
+    an SVG document."
+    """
 
 
 class TextContentElement(GraphicsElement):
-    pass
+    """A text content element.
+
+    From the SVG 1.1 specification:
+    > "A text content element is an SVG element that causes a text string to be
+    rendered onto the canvas."
+    """
 
 
 class TextContentChildElement(Element):
-    pass
+    """A text content child element.
+
+    From the SVG 1.1 specification:
+    > "A text content child element is a text content element that is allowed
+    as a descendant of another text content element."
+    """
 
 
 class TextContentBlockElement(Element):
-    pass
+    """A text content block element.
+
+    From the SVG 1.1 specification:
+    > "A text content block element is a text content element that serves as a
+    standalone element for a unit of text, and which may optionally contain
+    certain child text content elements (e.g. `tspan`)."
+    """

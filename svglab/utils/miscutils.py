@@ -1,3 +1,5 @@
+"""Miscellaneous utility functions that don't fit anywhere else."""
+
 import collections
 import re
 from collections.abc import Generator

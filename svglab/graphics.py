@@ -1,3 +1,5 @@
+"""Functions related to rendering and other graphics operations."""
+
 import copy
 import io
 import uuid
@@ -60,7 +62,7 @@ def _length_to_user_units(length: length.Length | None) -> float | None:
         return None
 
 
-def render(
+def render(  # noqa: D103
     svg: common.Tag,
     *,
     width: float | None = None,
@@ -233,7 +235,7 @@ def _mask_to_image(mask: Mask) -> PIL.Image.Image:
     return PIL.Image.fromarray(rgba)
 
 
-def mask(
+def mask(  # noqa: D103
     tag: common.Tag,
     *,
     width: float | None = None,
@@ -252,7 +254,7 @@ def mask(
     return array[:, :, 3] > 0  # alpha channel > 0
 
 
-def visible_mask(
+def visible_mask(  # noqa: D103
     tag: common.Tag,
     *,
     width: float | None = None,
@@ -285,7 +287,7 @@ def visible_mask(
     return diff
 
 
-def bbox(tag: common.Tag) -> BBox | None:
+def bbox(tag: common.Tag) -> BBox | None:  # noqa: D103
     img = _render_tree(
         tag, render_this=True, render_other=False, make_tag_visible=True
     )
@@ -293,7 +295,7 @@ def bbox(tag: common.Tag) -> BBox | None:
     return img.getbbox()
 
 
-def visible_bbox(tag: common.Tag) -> BBox | None:
+def visible_bbox(tag: common.Tag) -> BBox | None:  # noqa: D103
     mask = visible_mask(tag)
     img = _mask_to_image(mask)
 

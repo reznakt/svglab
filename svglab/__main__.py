@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-# ruff: noqa: T201
+"""Entry point for the svglab package."""
+
+# ruff: noqa: T201, D103
 
 import sys
 

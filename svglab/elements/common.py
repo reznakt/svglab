@@ -1,3 +1,12 @@
+"""Abstract base classes for representing common XML entities.
+
+This module defines the following classes:
+- `Element`: The base class for all XML entities.
+- `Tag`: A subclass of `Element` that represents an XML element.
+- `TextElement`: A subclass of `Element` that represents a textual entity
+(e.g., a comment or a CDATA section).
+"""
+
 from __future__ import annotations
 
 import abc
@@ -104,6 +113,17 @@ def _scale_stroke_width(tag: presentation.StrokeWidth, by: float) -> None:
 
 
 def scale_distance_along_a_path_attrs(tag: object, by: float) -> None:
+    """Scale distance-along-a-path attributes of the element.
+
+    The attributes are:
+    - `stroke-dasharray`
+    - `stroke-dashoffset`
+
+    Args:
+        tag: The element to scale.
+        by: The factor by which to scale the attributes.
+
+    """
     if isinstance(tag, presentation.StrokeDasharray) and isinstance(
         tag.stroke_dasharray, list
     ):
@@ -493,6 +513,19 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
 
     @property
     def parents(self) -> Generator[Tag]:
+        """Iterate over the ancestors of the element.
+
+        The ancestors are the element's parent, grandparent, and so on, up to
+        the root ancestor. The root ancestor is the first ancestor that has no
+        parent.
+
+        The ancestors are returned in the order from the closest ancestor
+        to the root ancestor.
+
+        Yields:
+            The ancestors of the element.
+
+        """
         curr = self.parent
 
         while curr is not None:
@@ -558,10 +591,29 @@ class Tag(
         return self
 
     def extra_attrs(self) -> Mapping[str, str]:
+        """Get the extra attributes of the element.
+
+        Extra attributes are user-defined attributes that are not part of the
+        SVG standard.
+
+        Returns:
+            A mapping of extra attribute names to their values. The mapping
+            should be considered immutable.
+
+        """
         assert self.model_extra is not None, "model_extra is None"
         return self.model_extra
 
     def standard_attrs(self) -> Mapping[attr_names.AttributeName, object]:
+        """Get the standard attributes of the element.
+
+        Standard attributes are attributes that are part of the SVG standard.
+
+        Returns:
+            A mapping of standard attribute names to their values. The mapping
+            should be considered immutable.
+
+        """
         dump = self.model_dump(by_alias=True, exclude_none=True)
 
         return {
@@ -572,6 +624,15 @@ class Tag(
         }
 
     def all_attrs(self) -> Mapping[str, object]:
+        """Get all attributes of the element.
+
+        This includes both standard and extra attributes.
+
+        Returns:
+            A mapping of attribute names to their values. The mapping should
+            be considered immutable.
+
+        """
         standard = cast(Mapping[str, object], self.standard_attrs())
         extra = self.extra_attrs()
 
@@ -594,10 +655,28 @@ class Tag(
 
     @property
     def children(self) -> Generator[Element]:
+        """Iterate over the children of the element.
+
+        The children are returned in the order they were added to the
+        element.
+
+        Yields:
+            The children of the element.
+
+        """
         yield from self.__children
 
     @property
     def descendants(self) -> Generator[Element]:
+        """Iterate over the descendants of the element.
+
+        The descendants of the element are the children and their children,
+        and so on. The descendants are returned in a breath-first order.
+
+        Yields:
+            The descendants of the element.
+
+        """
         queue = collections.deque(self.children)
 
         while queue:
@@ -609,6 +688,15 @@ class Tag(
 
     @property
     def next_siblings(self) -> Generator[Element]:
+        """Iterate over the next siblings of the element.
+
+        The next siblings are the siblings that come after the element in
+        the parent's children list.
+
+        Yields:
+            The next siblings of the element.
+
+        """
         if self.parent is None:
             return
 
@@ -622,6 +710,15 @@ class Tag(
 
     @property
     def prev_siblings(self) -> Generator[Element]:
+        """Iterate over the previous siblings of the element.
+
+        The previous siblings are the siblings that come before the element
+        in the parent's children list.
+
+        Yields:
+            The previous siblings of the element.
+
+        """
         if self.parent is None:
             return
 
@@ -633,12 +730,38 @@ class Tag(
 
     @property
     def siblings(self) -> Generator[Element]:
+        """Iterate over the siblings of the element.
+
+        The siblings are the children of the element's parent, excluding
+        the element itself.
+
+        If you wish to include the element itself, use `self.parent.children`
+
+        Yields:
+            The siblings of the element.
+
+        """
         yield from self.prev_siblings
         yield from self.next_siblings
 
     def add_child(
         self, child: Element, /, *, index: int | None = None
     ) -> Self:
+        """Add a child to the element.
+
+        Args:
+            child: The child to add.
+            index: The index at which to add the child. If `None`, the child
+                is added at the end of the children list.
+
+        Returns:
+            The element itself.
+
+        Raises:
+            ValueError: If the child is the same as the element itself or
+                if the child already has a parent.
+
+        """
         if child is self:
             raise ValueError("Cannot add a tag as a child of itself.")
 
@@ -657,12 +780,41 @@ class Tag(
         return self
 
     def add_children(self, *children: Element) -> Self:
+        """Add multiple children to the element.
+
+        Args:
+            children: The children to add.
+
+        Returns:
+            The element itself.
+
+        Raises:
+            ValueError: If any child is the same as the element itself or
+                if any child already has a parent.
+
+        """
         for child in children:
             self.add_child(child)
 
         return self
 
     def remove_child(self, child: Element, /) -> Element:
+        """Remove a child from the element.
+
+        The child is compared with the children of the element based on
+        identity (reference), not equality. This means that the child must be
+        the same object as the one that was added to the element.
+
+        Args:
+            child: The child to remove.
+
+        Returns:
+            The removed child.
+
+        Raises:
+            ValueError: If the child is not a child of the element.
+
+        """
         for i, elem in enumerate(self.children):
             if elem is child:
                 return self.pop_child(i)
@@ -670,18 +822,45 @@ class Tag(
         raise ValueError("Child not found")
 
     def pop_child(self, index: SupportsIndex = -1, /) -> Element:
+        """Remove a child from the element based on its index.
+
+        Args:
+            index: The index of the child to remove. If unspecified, the last
+                child is removed.
+
+        Returns:
+            The removed child.
+
+        Raises:
+            IndexError: If the index is out of range.
+
+        """
         child = self.__children.pop(index)
         child.parent = None
 
         return child
 
     def clear_children(self) -> None:
+        """Remove all children from the element."""
         for child in self.__children:
             child.parent = None
 
         self.__children.clear()
 
     def get_child(self, index: SupportsIndex = -1, /) -> Element:
+        """Get a child of the element based on its index.
+
+        Args:
+            index: The index of the child to get. If unspecified, the last
+                child is returned.
+
+        Returns:
+            The child at the specified index.
+
+        Raises:
+            IndexError: If the index is out of range.
+
+        """
         return self.__children[index]
 
     def get_child_index(
@@ -691,6 +870,25 @@ class Tag(
         start: SupportsIndex = 0,
         stop: SupportsIndex = sys.maxsize,
     ) -> int:
+        """Get the index of a child in the element's children list.
+
+        The child is compared with the children of the element based on
+        identity (reference), not equality. This means that the child must be
+        the same object as the one that was added to the element.
+
+        Args:
+            child: The child to find.
+            start: The starting index for the search. Defaults to 0.
+            stop: The ending index for the search. Defaults to the end of the
+                list.
+
+        Returns:
+            The index of the child in the children list.
+
+        Raises:
+            ValueError: If the child is not found in the list.
+
+        """
         return self.__children.index(child, start, stop)
 
     @override
@@ -1009,9 +1207,21 @@ class Tag(
 
     @property
     def num_children(self) -> int:
+        """Get the number of children of the element.
+
+        Returns:
+        The number of children of the element.
+
+        """
         return len(self.__children)
 
     def has_children(self) -> bool:
+        """Check if the element has any children.
+
+        Returns:
+        `True` if the element has children, `False` otherwise.
+
+        """
         return self.num_children > 0
 
     def __getitem__(self, key: str) -> str:

@@ -1,3 +1,43 @@
+"""A manipulation and optimization library for Scalable Vector Graphics (SVG).
+
+This package provides a set of tools for parsing, manipulating, and serializing
+SVG files. It allows you to create, modify, and optimize SVG graphics in a
+Pythonic way.
+
+The package has a flat import structure, so you can import any symbol directly
+by using the following syntax:
+```
+from svglab import <symbol>
+```
+
+Some stuff to get you started:
+- use `parse_svg` to parse an SVG string or file into an `Svg` object,
+- use `Svg` directly to create a new SVG document from scratch,
+- use `.find()` and `.find_all()` to search for elements in the SVG tree,
+- use `.to_xml()` to serialize an SVG element to a string,
+- use `.save()` to serialize an SVG document and write it to a file,
+- use `Formatter` and `set_formatter()` to customize the serialization of SVG
+elements.
+
+Example usage:
+```
+>>> from svglab import parse_svg, Circle, Rect, Length, Rotate
+>>> svg = parse_svg("<svg><circle cx='50' cy='50' r='40'/></svg>")
+>>> circle = svg.find(Circle)
+>>> circle.cx
+Length(value=50.0, unit=None)
+>>> _ = svg.add_child(
+...    Rect(width=Length(100), height=Length(100), transform=[Rotate(45)])
+... )
+>>> print(svg.to_xml())
+<svg>
+  <circle cx="50" cy="50" r="40"/>
+  <rect height="100" transform="rotate(45)" width="100"/>
+</svg>
+
+```
+"""
+
 from importlib import metadata as __metadata
 
 import affine as __affine

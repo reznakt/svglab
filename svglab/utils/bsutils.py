@@ -1,3 +1,5 @@
+"""Utilities for working with BeautifulSoup."""
+
 from collections.abc import Iterable
 
 import bs4
@@ -50,6 +52,19 @@ def _make_soup(element: bs4.PageElement, /) -> bs4.BeautifulSoup:
 def beautifulsoup_to_str(
     element: bs4.PageElement, /, *, pretty: bool
 ) -> str:
+    """Convert a BeautifulSoup PageElement to a string.
+
+    The current formatter settings are used to format the output.
+
+    Args:
+        element: The BeautifulSoup PageElement to convert.
+        pretty: If `True`, the output will be pretty-printed.
+            If `False`, the output will be a single line.
+
+    Returns:
+        The string representation of the PageElement.
+
+    """
     result: str
 
     match element, pretty:

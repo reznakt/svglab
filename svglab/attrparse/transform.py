@@ -1,3 +1,13 @@
+"""Definition of the SVG `<transform-list>` type and transformation functions.
+
+Use `Transform` to represent transform lists in SVG.
+Use `TransformType` in Pydantic fields.
+
+Use `Translate`, `Scale`, `Rotate`, `SkewX`, `SkewY`, and `Matrix` to represent
+transformations. Use `TransformFunction` to represent any transformation. Use
+`Reifiable` to represent transformations that can be reified.
+"""
+
 from __future__ import annotations
 
 import abc
@@ -153,6 +163,8 @@ class _Scale(_TransformFunctionBase):
 
 @final
 class Scale(_Scale):
+    """A transformation that scales a shape by a given factor."""
+
     @overload
     def __init__(self, sx: float, /) -> None: ...
 
@@ -160,6 +172,14 @@ class Scale(_Scale):
     def __init__(self, sx: float, sy: float, /) -> None: ...
 
     def __init__(self, sx: float, sy: float | None = None, /) -> None:
+        """Initialize a `Scale` transformation.
+
+        Args:
+            sx: The scaling factor on the x-axis.
+            sy: The scaling factor on the y-axis. If not given, is assumed to
+                be equal to `sx`.
+
+        """
         super().__init__(sx, sy if sy is not None else sx)
 
 
@@ -200,6 +220,8 @@ class _Rotate(_TransformFunctionBase):
 
 @final
 class Rotate(_Rotate):
+    """A transformation that rotates a shape by a given angle."""
+
     @overload
     def __init__(self, angle: float, /) -> None: ...
 
@@ -209,12 +231,28 @@ class Rotate(_Rotate):
     def __init__(
         self, angle: float, /, cx: float = 0, cy: float = 0
     ) -> None:
+        """Initialize a `Rotate` transformation.
+
+        Args:
+            angle: The angle to rotate the shape by, in degrees. The rotation
+                is counter-clockwise.
+            cx: The x-coordinate of the point to rotate around. If not given,
+                is assumed to be 0.
+            cy: The y-coordinate of the point to rotate around. If not given,
+                is assumed to be 0.
+
+        """
         super().__init__(angle, cx, cy)
 
 
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
 class SkewY(_TransformFunctionBase):
+    """A transformation that skews a shape along the y-axis.
+
+    The shape is skewed by `angle` degrees along the y-axis.
+    """
+
     angle: float
 
     @override
@@ -237,6 +275,11 @@ class SkewY(_TransformFunctionBase):
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
 class SkewX(_TransformFunctionBase):
+    """A transformation that skews a shape along the x-axis.
+
+    The shape is skewed by `angle` degrees along the x-axis.
+    """
+
     angle: float
 
     @override
@@ -314,6 +357,8 @@ class _Translate(_TransformFunctionBase):
 
 @final
 class Translate(_Translate):
+    """A transformation that translates a shape by a given distance."""
+
     @overload
     def __init__(self, tx: float, /) -> None: ...
 
@@ -321,6 +366,14 @@ class Translate(_Translate):
     def __init__(self, tx: float, ty: float, /) -> None: ...
 
     def __init__(self, tx: float, ty: float = 0, /) -> None:
+        """Initialize a `Translate` transformation.
+
+        Args:
+            tx: The distance to translate the shape by on the x-axis.
+            ty: The distance to translate the shape by on the y-axis. If not
+                given, is assumed to be equal to 0.
+
+        """
         super().__init__(tx, ty)
 
 
@@ -352,6 +405,17 @@ def _remove_redundant_transformations(
 @final
 @pydantic.dataclasses.dataclass(frozen=True)
 class Matrix(_TransformFunctionBase):
+    """An arbitrary affine transformation.
+
+    The transformation is represented by a 3x3 matrix in homogeneous
+    coordinates:
+    ```
+    | a c e |
+    | b d f |
+    | 0 0 1 |
+    ```
+    """
+
     a: float
     b: float
     c: float
@@ -605,6 +669,8 @@ class PointAddSubWithTranslateRMatmul(
     mixins.AddSub[protocols.PointLike],
     metaclass=abc.ABCMeta,
 ):
+    """Implement moving by a vector using multiplication with `Translate`."""
+
     @override
     def __add__(self, other: protocols.PointLike, /) -> Self:
         return Translate(other.x, other.y) @ self

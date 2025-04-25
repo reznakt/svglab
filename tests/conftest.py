@@ -1,3 +1,5 @@
+"""Pytest configuration and utilities for testing."""
+
 import numpy as np
 import PIL.Image
 import PIL.ImageChops
@@ -6,6 +8,17 @@ import svglab
 
 
 def mean_squared_error(a: PIL.Image.Image, b: PIL.Image.Image) -> float:
+    """Calculate the mean squared error (MSE) between two images.
+
+    Args:
+        a: The first image.
+        b: The second image.
+
+    Returns:
+        The MSE between the two images. A lower value indicates a closer
+        match.
+
+    """
     diff = PIL.ImageChops.difference(a, b)
     errors = np.asarray(diff) / 255
 
@@ -63,6 +76,7 @@ def assert_svg_visually_equal(
 
 
 def complex_svg() -> svglab.Svg:
+    """Create a complex SVG with various shapes and transformations."""
     svg = svglab.Svg(width=svglab.Length(1000), height=svglab.Length(1000))
 
     background = svglab.Rect(
@@ -214,6 +228,7 @@ def complex_svg() -> svglab.Svg:
 
 
 def nested_svg() -> svglab.Svg:
+    """Create an SVG with lots of nesting."""
     transform_: svglab.Transform = [
         svglab.Rotate(-1),
         svglab.Scale(1.01),

@@ -1,3 +1,5 @@
+"""Business logic exceptions for the svglab package."""
+
 from typing_extensions import override
 
 

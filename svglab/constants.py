@@ -1,3 +1,5 @@
+"""Useful constants that should be available globally."""
+
 import typing_extensions
 from typing_extensions import Final
 

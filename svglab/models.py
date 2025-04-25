@@ -1,3 +1,5 @@
+"""Utilities for working with Pydantic."""
+
 import copy
 import functools
 import re

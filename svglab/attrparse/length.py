@@ -1,3 +1,8 @@
+"""Definition of the SVG `<length>` type.
+
+Use `Length` to represent lengths in SVG. Use `LengthType` in Pydantic fields.
+"""
+
 from __future__ import annotations
 
 import contextlib
@@ -63,6 +68,8 @@ class Length(
     - `vmin`: minimum of the viewport's height and width
     - `vw`: viewport width
 
+    If the unit is set to `None`, the length is considered to be in user units.
+
     """
 
     value: float
@@ -112,6 +119,7 @@ class Length(
 
     @classmethod
     def zero(cls) -> Length:
+        """Return a length of zero."""
         return cls(0)
 
     @override

@@ -1,3 +1,5 @@
+"""Definitions of basic types that can be composed to define attributes."""
+
 import pydantic
 from typing_extensions import Annotated, Literal, TypeAlias
 

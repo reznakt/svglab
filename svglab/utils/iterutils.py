@@ -1,3 +1,5 @@
+"""Utilities for working with iterables."""
+
 import functools
 from collections.abc import Generator, Iterable, Sequence
 

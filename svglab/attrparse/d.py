@@ -1,3 +1,8 @@
+"""Definition of the SVG `<path-data>` type.
+
+Use `D` to represent path data in SVG. Use `DType` in Pydantic fields.
+"""
+
 from __future__ import annotations
 
 import abc
@@ -50,11 +55,18 @@ class _PhysicalPathCommand(
 @final
 @pydantic.dataclasses.dataclass
 class ClosePath(_PathCommandBase):
-    pass
+    """Close the current subpath (Z).
+
+    The subpath is closed by drawing a straight line from the current
+    point to current subpath's initial point.
+
+    """
 
 
 @pydantic.dataclasses.dataclass
 class LineTo(_HasEnd, _PhysicalPathCommand):
+    """Draw a line from the current point to the given end point (L)."""
+
     end: point.Point
 
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
@@ -64,9 +76,12 @@ class LineTo(_HasEnd, _PhysicalPathCommand):
 @final
 @pydantic.dataclasses.dataclass
 class HorizontalLineTo(_PhysicalPathCommand):
+    """Draw a horizontal line from the current point (H)."""
+
     x: float
 
     def to_line(self) -> LineTo:
+        """Convert to a `LineTo` instance."""
         return LineTo(end=point.Point(self.x, 0))
 
     @overload
@@ -92,9 +107,12 @@ class HorizontalLineTo(_PhysicalPathCommand):
 @final
 @pydantic.dataclasses.dataclass
 class VerticalLineTo(_PhysicalPathCommand):
+    """Draw a vertical line from the current point (V)."""
+
     y: float
 
     def to_line(self) -> LineTo:
+        """Convert to a `LineTo` instance."""
         return LineTo(end=point.Point(0, self.y))
 
     @overload
@@ -120,6 +138,13 @@ class VerticalLineTo(_PhysicalPathCommand):
 @final
 @pydantic.dataclasses.dataclass
 class SmoothQuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
+    """Draw a smooth/shorthand quadratic Bézier curve (T).
+
+    The curve is drawn from the current point to the end point. The control
+    point is calculated based on the previous command as a reflection of the
+    previous control point across the end point of the previous command.
+    """
+
     end: point.Point
 
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
@@ -129,6 +154,14 @@ class SmoothQuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
 @final
 @pydantic.dataclasses.dataclass
 class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
+    """Draw a smooth/shorthand cubic Bézier curve (S).
+
+    The curve is drawn from the current point to the end point. The first
+    control point is calculated based on the previous command as a reflection
+    of the second control point of the previous command across the end point
+    of the previous command. The second control point is given as an argument.
+    """
+
     control2: point.Point
     end: point.Point
 
@@ -141,6 +174,8 @@ class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
 @final
 @pydantic.dataclasses.dataclass
 class MoveTo(_HasEnd, _PhysicalPathCommand):
+    """Move the current point to the end point and start a new subpath (M)."""
+
     end: point.Point
 
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
@@ -150,6 +185,12 @@ class MoveTo(_HasEnd, _PhysicalPathCommand):
 @final
 @pydantic.dataclasses.dataclass
 class QuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
+    """Draw a quadratic Bézier curve (Q).
+
+    The curve is drawn from the current point to the end point using `control`
+    as the control point.
+    """
+
     control: point.Point
     end: point.Point
 
@@ -162,6 +203,12 @@ class QuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
 @final
 @pydantic.dataclasses.dataclass
 class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
+    """Draw a cubic Bézier curve (C).
+
+    The curve is drawn from the current point to the end point using
+    `control1` and `control2` as the control points.
+    """
+
     control1: point.Point
     control2: point.Point
     end: point.Point
@@ -177,6 +224,17 @@ class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
 @final
 @pydantic.dataclasses.dataclass
 class ArcTo(_HasEnd, _PhysicalPathCommand):
+    """Draw an elliptical arc (A).
+
+    The arc is drawn from the current point to the end point using the
+    following parameters:
+    - `radii`: The radii of the arc.
+    - `angle`: The x-axis rotation angle in degrees.
+    - `large`: A flag indicating whether the arc is large or small.
+    - `sweep`: A flag indicating whether the arc is drawn in a positive or
+    negative angle direction.
+    """
+
     radii: point.Point
     angle: float
     large: bool
@@ -463,6 +521,16 @@ class D(
         *,
         start: point.Point | None = None,
     ) -> None:
+        """Initialize a new `D` instance.
+
+        Args:
+            iterable: An iterable of `PathCommand` instances (for example,
+            another `D` instance).
+            start: The starting point of the path. If `start` is not `None`,
+            a `MoveTo` command is automatically added to the path, moving the
+            "pen" to the starting point.
+
+        """
         self.__commands: Final[list[PathCommand]] = []
 
         if start is not None:
@@ -483,11 +551,33 @@ class D(
     def move_to(
         self, end: point.Point, /, *, relative: bool = False
     ) -> Self:
+        """Move the current point to the end point and start a new subpath (M).
+
+        Args:
+            end: The end point of the move command.
+            relative: Whether the coordinates are relative to the current
+            point.
+
+        Returns:
+            A reference to the current `D` instance.
+
+        """
         return self.__add(MoveTo(end=end), relative=relative)
 
     def line_to(
         self, end: point.Point, /, *, relative: bool = False
     ) -> Self:
+        """Draw a line from the current point to the end point (L).
+
+        Args:
+            end: The end point of the line command.
+            relative: Whether the coordinates are relative to the current
+            point.
+
+        Returns:
+            A reference to the current `D` instance.
+
+        """
         return self.__add(LineTo(end=end), relative=relative)
 
     def horizontal_line_to(
@@ -497,6 +587,17 @@ class D(
         *,
         relative: bool = False,
     ) -> Self:
+        """Draw a horizontal line from the current point (H).
+
+        Args:
+            x: The x-coordinate of the end point of the line command.
+            relative: Whether the coordinates are relative to the current
+            point.
+
+        Returns:
+            A reference to the current `D` instance.
+
+        """
         return self.__add(HorizontalLineTo(x=float(x)), relative=relative)
 
     def vertical_line_to(
@@ -506,6 +607,17 @@ class D(
         *,
         relative: bool = False,
     ) -> Self:
+        """Draw a vertical line from the current point (V).
+
+        Args:
+            y: The y-coordinate of the end point of the line command.
+            relative: Whether the coordinates are relative to the current
+            point.
+
+        Returns:
+            A reference to the current `D` instance.
+
+        """
         return self.__add(VerticalLineTo(y=float(y)), relative=relative)
 
     def quadratic_bezier_to(
@@ -516,6 +628,21 @@ class D(
         *,
         relative: bool = False,
     ) -> Self:
+        """Draw a quadratic Bézier curve (Q).
+
+        The curve is drawn from the current point to the end point using
+        `control` as the control point.
+
+        Args:
+            control: The control point of the curve.
+            end: The end point of the curve.
+            relative: Whether the coordinates are relative to the current
+            point.
+
+        Returns:
+            A reference to the current `D` instance.
+
+        """
         return self.__add(
             QuadraticBezierTo(control=control, end=end), relative=relative
         )
@@ -528,6 +655,22 @@ class D(
         *,
         relative: bool = False,
     ) -> Self:
+        """Draw a cubic Bézier curve (C).
+
+        The curve is drawn from the current point to the end point using
+        `control1` and `control2` as the control points.
+
+        Args:
+            control1: The first control point of the curve.
+            control2: The second control point of the curve.
+            end: The end point of the curve.
+            relative: Whether the coordinates are relative to the current
+            point.
+
+        Returns:
+            A reference to the current `D` instance.
+
+        """
         return self.__add(
             CubicBezierTo(control1=control1, control2=control2, end=end),
             relative=relative,
@@ -543,6 +686,24 @@ class D(
         sweep: bool,
         relative: bool = False,
     ) -> Self:
+        """Draw an elliptical arc (A).
+
+        The arc is drawn from the current point to the end point.
+
+        Args:
+            radii: The radii of the arc.
+            angle: The x-axis rotation angle in degrees.
+            end: The end point of the arc.
+            large: A flag indicating whether the arc is large or small.
+            sweep: A flag indicating whether the arc is drawn in a positive or
+            negative angle direction.
+            relative: Whether the coordinates are relative to the current
+            point.
+
+        Returns:
+            A reference to the current `D` instance.
+
+        """
         return self.__add(
             ArcTo(
                 radii=radii, angle=angle, large=large, sweep=sweep, end=end
@@ -553,6 +714,22 @@ class D(
     def smooth_quadratic_bezier_to(
         self, end: point.Point, /, *, relative: bool = False
     ) -> Self:
+        """Draw a smooth/shorthand quadratic Bézier curve (T).
+
+        The curve is drawn from the current point to the end point. The
+        control point is calculated based on the previous command as a
+        reflection of the previous control point across the end point of the
+        previous command.
+
+        Args:
+            end: The end point of the curve.
+            relative: Whether the coordinates are relative to the current
+            point.
+
+        Returns:
+            A reference to the current `D` instance.
+
+        """
         return self.__add(
             SmoothQuadraticBezierTo(end=end), relative=relative
         )
@@ -565,16 +742,61 @@ class D(
         *,
         relative: bool = False,
     ) -> Self:
+        """Draw a smooth/shorthand cubic Bézier curve (S).
+
+        The curve is drawn from the current point to the end point. The first
+        control point is calculated based on the previous command as a
+        reflection of the second control point of the previous command across
+        the end point of the previous command. The second control point is
+        given as an argument.
+
+        Args:
+            control2: The second control point of the curve.
+            end: The end point of the curve.
+            relative: Whether the coordinates are relative to the current
+            point.
+
+        Returns:
+            A reference to the current `D` instance.
+
+        """
         return self.__add(
             SmoothCubicBezierTo(control2=control2, end=end),
             relative=relative,
         )
 
     def close(self) -> Self:
+        """Close the current subpath (Z).
+
+        The subpath is closed by drawing a straight line from the current
+        point to the current subpath's initial point.
+
+        Returns:
+            A reference to the current `D` instance.
+
+        """
         return self.__add(ClosePath())
 
     @classmethod
     def from_str(cls, text: str) -> Self:
+        """Parse a string into a `D` instance.
+
+        Args:
+            text: The string to parse.
+
+        Returns:
+            A new `D` instance created from the parsed string.
+
+        Raises:
+            ValueError: If the string cannot be parsed into a valid `D`
+            instance.
+
+        Examples:
+            >>> d = D.from_str("M 10,10 Z")
+            >>> d
+            D(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
+
+        """
         d = parse.parse(text, grammar="d.lark", transformer=_Transformer())
 
         assert isinstance(d, cls), f"Expected {cls}, got {type(d)}"

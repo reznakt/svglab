@@ -1,3 +1,5 @@
+"""Mathematical utility functions."""
+
 import math
 
 from typing_extensions import Literal, SupportsFloat, SupportsIndex

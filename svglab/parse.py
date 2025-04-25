@@ -1,3 +1,5 @@
+"""Logic for parsing SVG documents."""
+
 import collections
 
 import bs4
