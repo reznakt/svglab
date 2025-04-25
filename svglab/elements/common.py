@@ -84,10 +84,10 @@ def _scale_stroke_width(tag: presentation.StrokeWidth, by: float) -> None:
 
     sw_set = tag.stroke_width is not None
 
-    if not sw_set and not isinstance(tag, StrokeWidthScaled):
-        return
-
     if not sw_set:
+        if not isinstance(tag, StrokeWidthScaled):
+            return
+
         tag.stroke_width = length.Length(1)
 
     tag.stroke_width = _scale_attr(tag.stroke_width, by)  # type: ignore[reportAttributeAccessIssue]
@@ -500,10 +500,11 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
 
     @override
     def __eq__(self, other: object) -> bool:
-        if not utils.basic_compare(other, self=self):
-            return False
-
-        return self._eq(other)
+        return (
+            self._eq(other)
+            if utils.basic_compare(other, self=self)
+            else False
+        )
 
 
 class Tag(
@@ -930,7 +931,7 @@ class Tag(
         """
         for child in self.descendants if recursive else self.children:
             if isinstance(child, Tag) and (
-                len(tags) == 0
+                not tags
                 or any(_match_tag(child, search=tag) for tag in tags)
             ):
                 yield child

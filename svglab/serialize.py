@@ -106,11 +106,17 @@ class FloatPrecisionSettings:
         )
 
     def get_precision(self, value: float) -> int:
-        for (start, end), precision in self.__sorted_precision_table:
-            if start <= abs(value) < end:
-                return precision
-
-        return self.fallback
+        return next(
+            (
+                precision
+                for (
+                    start,
+                    end,
+                ), precision in self.__sorted_precision_table
+                if start <= abs(value) < end
+            ),
+            self.fallback,
+        )
 
 
 _FloatPrecisionSettingsType: TypeAlias = Annotated[
@@ -378,7 +384,7 @@ def set_formatter(formatter: Formatter, /) -> None:
 
 def _serialize_number(
     number: float, /, *, precision_group: _PrecisionGroup = "general"
-) -> str:
+) -> str:  # sourcery skip: remove-unnecessary-cast
     """Format a number into a string based on current formatter settings.
 
     Args:

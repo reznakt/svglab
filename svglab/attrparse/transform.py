@@ -513,20 +513,20 @@ class Matrix(_TransformFunctionBase):
         ldu = _remove_redundant_transformations(self.__ldu_decompose())
         qr = _remove_redundant_transformations(self.__qr_decompose())
 
-        if _transform_weight(ldu) < _transform_weight(qr):
-            return ldu
-
-        return qr
+        return (
+            ldu if _transform_weight(ldu) < _transform_weight(qr) else qr
+        )
 
     def __eq__(self, other: object, /) -> bool:
         if not utils.basic_compare(other, self=self):
             return False
 
-        for x1, x2 in zip(self.to_tuple(), other.to_tuple(), strict=True):
-            if not utils.is_close(x1, x2):
-                return False
-
-        return True
+        return all(
+            utils.is_close(x1, x2)
+            for x1, x2 in zip(
+                self.to_tuple(), other.to_tuple(), strict=True
+            )
+        )
 
 
 TransformFunction: TypeAlias = (

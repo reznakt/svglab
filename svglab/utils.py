@@ -402,10 +402,7 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     """
     match = re.match(r"^([^\(\)]+)\(([^\(\)]+)\)$", attr)
 
-    if match is None:
-        return None
-
-    return match.group(1), match.group(2)
+    return None if match is None else (match[1], match[2])
 
 
 def tan(degrees: float) -> float:
@@ -496,10 +493,7 @@ def degrees(radians: float) -> float:
     deg = math.degrees(radians)
     normalized = ((deg + 180) % 360) - 180
 
-    if is_close(normalized, -180):
-        return 180.0
-
-    return normalized
+    return 180.0 if is_close(normalized, -180) else normalized
 
 
 def signum(x: float) -> Literal[-1, 0, 1]:
@@ -524,10 +518,7 @@ def signum(x: float) -> Literal[-1, 0, 1]:
     if x < 0:
         return -1
 
-    if x > 0:
-        return 1
-
-    return 0
+    return 1 if x > 0 else 0
 
 
 def arccos(value: float) -> float:

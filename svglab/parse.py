@@ -70,9 +70,7 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     while queue:
         node = queue.popleft()
 
-        svg_fragments = node.find_all("svg")
-
-        if svg_fragments:
+        if svg_fragments := node.find_all("svg"):
             return svg_fragments
 
         queue.extend(
@@ -104,10 +102,7 @@ def _convert_element(backend: bs4.PageElement) -> common.Element | None:
 
             text = backend.get_text(strip=True)
 
-            if not text:
-                return None
-
-            return cls(text)
+            return cls(text) if text else None
         case bs4.Tag():
             tag_class = _TAG_NAME_TO_CLASS[
                 cast(names.TagName, backend.name)

@@ -100,10 +100,7 @@ def _get_validator(
     func: Callable[[str], object], /
 ) -> pydantic.BeforeValidator:
     def validator(value: object) -> object:
-        if isinstance(value, str):
-            return func(value)
-
-        return value
+        return func(value) if isinstance(value, str) else value
 
     return pydantic.BeforeValidator(validator)
 
