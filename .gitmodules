@@ -1,0 +1,3 @@
+[submodule "test-suites/resvg"]
+	path = test-suites/resvg
+	url = https://github.com/linebender/resvg-test-suite.git

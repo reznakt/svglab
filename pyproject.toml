@@ -108,7 +108,12 @@ filterwarnings = [
   # https://bugs.launchpad.net/beautifulsoup/+bug/2076897
   "ignore:The 'strip_cdata' option of HTMLParser\\(\\) has never done anything and will eventually be removed.",
 ]
-addopts = ["--cov", "--doctest-continue-on-failure", "--doctest-modules"]
+addopts = [
+  "--cov",
+  "--doctest-continue-on-failure",
+  "--doctest-modules",
+  "--ignore=test-suites",
+]
 
 [tool.coverage.run]
 omit = ["tests/*"]

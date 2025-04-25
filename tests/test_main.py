@@ -3,6 +3,7 @@
 # ruff: noqa: D103
 
 import copy
+import pathlib
 
 import hypothesis
 import hypothesis.strategies as st
@@ -947,3 +948,9 @@ def test_precision_table() -> None:
         assert (
             svglab.Scale(1000.123456).serialize() == "scale(1000.123456)"
         )
+
+
+@pytest.mark.parametrize("path", conftest.SVG_FILES)
+def test_parse_svg_parses_valid_svg(path: pathlib.Path) -> None:
+    with path.open() as f:
+        svglab.parse_svg(f)

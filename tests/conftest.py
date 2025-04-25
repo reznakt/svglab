@@ -1,10 +1,23 @@
 """Pytest configuration and utilities for testing."""
 
+import itertools
+import pathlib
+
 import numpy as np
 import PIL.Image
 import PIL.ImageChops
+from typing_extensions import Final
 
 import svglab
+
+
+_TEST_SUITES_DIR = pathlib.Path(__file__).parent / ".." / "test-suites"
+
+_SVG_TEST_SUITS: Final = [_TEST_SUITES_DIR / "resvg" / "tests"]
+
+SVG_FILES: Final = itertools.chain.from_iterable(
+    path.rglob("**/*.svg") for path in _SVG_TEST_SUITS
+)
 
 
 def mean_squared_error(a: PIL.Image.Image, b: PIL.Image.Image) -> float:
