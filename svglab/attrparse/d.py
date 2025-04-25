@@ -15,7 +15,6 @@ from typing_extensions import (
     Self,
     SupportsIndex,
     TypeAlias,
-    cast,
     final,
     overload,
     override,
@@ -355,8 +354,7 @@ def _relativize(d: D) -> D:
 
     for command in d:
         if isinstance(command, _PhysicalPathCommand):
-            # TODO: this cast can be removed fairly easily
-            result.append(cast(PathCommand, command - pos))
+            result.append(command - pos)
         else:
             result.append(command)
 
