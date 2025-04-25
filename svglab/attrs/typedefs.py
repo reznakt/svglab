@@ -1,8 +1,9 @@
 import pydantic
 from typing_extensions import Annotated, Literal, TypeAlias
 
-from svglab import models, utils
+from svglab import models
 from svglab.attrparse import angle, color, d, length, points, transform
+from svglab.utils import mathutils
 
 
 Unparsed: TypeAlias = str
@@ -99,7 +100,7 @@ NumberOptionalNumber: TypeAlias = Number | models.Tuple2[Number, Number]
 OpacityValue: TypeAlias = Annotated[
     Number,
     pydantic.AfterValidator(
-        lambda x: utils.clamp(x, min_value=0, max_value=1)
+        lambda x: mathutils.clamp(x, min_value=0, max_value=1)
     ),
 ]
 Paint: TypeAlias = (

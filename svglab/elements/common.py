@@ -18,12 +18,13 @@ from typing_extensions import (
     override,
 )
 
-from svglab import constants, errors, models, serialize, utils
+from svglab import constants, errors, models, serialize
 from svglab.attrparse import length, transform
 from svglab.attrs import common as common_attrs
 from svglab.attrs import groups, presentation, regular
 from svglab.attrs import names as attr_names
 from svglab.elements import names
+from svglab.utils import bsutils, mathutils, miscutils
 
 
 _T = TypeVar("_T")
@@ -97,7 +98,7 @@ def _scale_stroke_width(tag: presentation.StrokeWidth, by: float) -> None:
     if (
         not sw_set
         and isinstance(tag.stroke_width, length.Length)
-        and utils.is_close(float(tag.stroke_width), 1)
+        and mathutils.is_close(float(tag.stroke_width), 1)
     ):
         tag.stroke_width = None
 
@@ -114,12 +115,12 @@ def scale_distance_along_a_path_attrs(tag: object, by: float) -> None:
 
 
 def _scale(tag: object, scale: transform.Scale) -> None:  # noqa: PLR0915
-    if not utils.is_close(scale.sx, scale.sy):
+    if not mathutils.is_close(scale.sx, scale.sy):
         raise ValueError("Non-uniform scaling is not supported.")
 
     factor = scale.sx
 
-    if utils.is_close(factor, 1):
+    if mathutils.is_close(factor, 1):
         return
 
     if isinstance(tag, regular.Width):
@@ -225,7 +226,7 @@ def _translate_attr(attr: _T, /, by: float) -> _T:
 def _translate(tag: object, translate: transform.Translate) -> None:
     tx, ty = translate.tx, translate.ty
 
-    if utils.is_close(tx, 0) and utils.is_close(ty, 0):
+    if mathutils.is_close(tx, 0) and mathutils.is_close(ty, 0):
         return
 
     zero = length.Length.zero()
@@ -326,44 +327,44 @@ def swap_transforms(
 
         # translate <-> skew
         case transform.SkewX(angle) as skew_x, transform.Translate(tx, ty):
-            return type(b)(tx + ty * utils.tan(angle), ty), skew_x
+            return type(b)(tx + ty * mathutils.tan(angle), ty), skew_x
 
         case transform.Translate(tx, ty), transform.SkewX(angle) as skew_x:
-            return skew_x, type(a)(tx - ty * utils.tan(angle), ty)
+            return skew_x, type(a)(tx - ty * mathutils.tan(angle), ty)
 
         case transform.SkewY(angle) as skew_y, transform.Translate(tx, ty):
-            return type(b)(tx, ty + tx * utils.tan(angle)), skew_y
+            return type(b)(tx, ty + tx * mathutils.tan(angle)), skew_y
 
         case transform.Translate(tx, ty), transform.SkewY(angle) as skew_y:
-            return skew_y, type(a)(tx, ty - tx * utils.tan(angle))
+            return skew_y, type(a)(tx, ty - tx * mathutils.tan(angle))
 
         # scale <-> skew
         case transform.Scale(sx, sy) as scale, transform.SkewX(angle):
-            if utils.is_close(sx, sy):
+            if mathutils.is_close(sx, sy):
                 return b, a
 
-            angle = utils.arctan(sx / sy * utils.tan(angle))
+            angle = mathutils.arctan(sx / sy * mathutils.tan(angle))
             return type(b)(angle), scale
 
         case transform.SkewX(angle), transform.Scale(sx, sy) as scale:
-            if utils.is_close(sx, sy):
+            if mathutils.is_close(sx, sy):
                 return b, a
 
-            angle = utils.arctan(sy / sx * utils.tan(angle))
+            angle = mathutils.arctan(sy / sx * mathutils.tan(angle))
             return scale, type(a)(angle)
 
         case transform.Scale(sx, sy) as scale, transform.SkewY(angle):
-            if utils.is_close(sx, sy):
+            if mathutils.is_close(sx, sy):
                 return b, a
 
-            angle = utils.arctan(sy / sx * utils.tan(angle))
+            angle = mathutils.arctan(sy / sx * mathutils.tan(angle))
             return type(b)(angle), scale
 
         case transform.SkewY(angle), transform.Scale(sx, sy) as scale:
-            if utils.is_close(sx, sy):
+            if mathutils.is_close(sx, sy):
                 return b, a
 
-            angle = utils.arctan(sx / sy * utils.tan(angle))
+            angle = mathutils.arctan(sx / sy * mathutils.tan(angle))
 
             return scale, type(a)(angle)
         case _:
@@ -481,7 +482,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         """
         with formatter or serialize.get_current_formatter():
             soup = self.to_beautifulsoup_object()
-            return utils.beautifulsoup_to_str(soup, pretty=pretty)
+            return bsutils.beautifulsoup_to_str(soup, pretty=pretty)
 
     @abc.abstractmethod
     def to_beautifulsoup_object(self) -> bs4.PageElement:
@@ -502,7 +503,7 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
     def __eq__(self, other: object) -> bool:
         return (
             self._eq(other)
-            if utils.basic_compare(other, self=self)
+            if miscutils.basic_compare(other, self=self)
             else False
         )
 

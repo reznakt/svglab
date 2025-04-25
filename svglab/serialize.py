@@ -19,9 +19,10 @@ from typing_extensions import (
     overload,
 )
 
-from svglab import constants, protocols, utils, utiltypes
+from svglab import constants, protocols, utiltypes
 from svglab.attrs import names as attrs_names
 from svglab.elements import names as elements_names
+from svglab.utils import iterutils, miscutils
 
 
 AlphaChannelMode: TypeAlias = Literal["percentage", "float"]
@@ -87,7 +88,7 @@ class FloatPrecisionSettings:
                 msg = f"Invalid interval: {(start, end)}"
                 raise ValueError(msg)
 
-        for fst, snd in utils.pairwise(
+        for fst, snd in iterutils.pairwise(
             sorted(self.precision_table.keys())
         ):
             if fst is None:
@@ -514,7 +515,9 @@ def _serialize(
             if (
                 formatter.spaces_around_function_args
                 and (
-                    fn_call := utils.extract_function_name_and_args(result)
+                    fn_call := miscutils.extract_function_name_and_args(
+                        result
+                    )
                 )
                 is not None
             ):

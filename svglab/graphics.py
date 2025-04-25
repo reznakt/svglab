@@ -15,9 +15,10 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import errors, serialize, utils
+from svglab import errors, serialize
 from svglab.attrparse import color, length
 from svglab.elements import common
+from svglab.utils import iterutils
 
 
 Mask: TypeAlias = npt.NDArray[np.bool_]
@@ -130,7 +131,7 @@ def _copy_tree(tag: _TagT) -> tuple[_TagT, _SvgTagLike]:
         ValueError: If the tag is not a part of an SVG tree.
 
     """
-    svg = utils.take_last(tag.parents)
+    svg = iterutils.take_last(tag.parents)
 
     if not isinstance(svg, _SvgTagLike):
         raise ValueError("Tag must be part of an SVG tree")  # noqa: TRY004

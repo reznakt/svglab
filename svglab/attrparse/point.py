@@ -13,8 +13,9 @@ from typing_extensions import (
     override,
 )
 
-from svglab import mixins, protocols, serialize, utils
+from svglab import mixins, protocols, serialize
 from svglab.attrparse import parse, transform
+from svglab.utils import mathutils, miscutils
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
@@ -117,10 +118,10 @@ class _Point(
 
     @override
     def __eq__(self, other: object) -> bool:
-        if not utils.basic_compare(other, self=self):
+        if not miscutils.basic_compare(other, self=self):
             return False
 
-        return utils.is_close(self.x, other.x) and utils.is_close(
+        return mathutils.is_close(self.x, other.x) and mathutils.is_close(
             self.y, other.y
         )
 

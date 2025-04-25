@@ -6,10 +6,11 @@ import pathlib
 import PIL.Image
 from typing_extensions import final, overload
 
-from svglab import graphics, protocols, serialize, utils
+from svglab import graphics, protocols, serialize
 from svglab.attrparse import transform
 from svglab.attrs import groups, regular
 from svglab.elements import traits
+from svglab.utils import mathutils
 
 
 @final
@@ -158,7 +159,7 @@ class Svg(
         sx = width / old_width
         sy = height / old_height
 
-        if not utils.is_close(sx, sy):
+        if not mathutils.is_close(sx, sy):
             raise ValueError("Aspect ratios of old and new viewBox differ")
 
         # skip self; this can be done in a single for loop because the

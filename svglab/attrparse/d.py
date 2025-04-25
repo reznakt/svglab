@@ -22,8 +22,9 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import errors, mixins, protocols, serialize, utils
+from svglab import errors, mixins, protocols, serialize
 from svglab.attrparse import parse, point, transform
+from svglab.utils import iterutils, miscutils
 
 
 _Flag: TypeAlias = Literal["0", "1"]
@@ -247,12 +248,12 @@ def _get_end(d: D, command: PathCommand) -> point.Point:
     """
     match command:
         case ClosePath():
-            return _get_end(d, utils.prev(d, command))
+            return _get_end(d, iterutils.prev(d, command))
         case HorizontalLineTo(x=x):
-            end = _get_end(d, utils.prev(d, command))
+            end = _get_end(d, iterutils.prev(d, command))
             return point.Point(x, end.y)
         case VerticalLineTo(y=y):
-            end = _get_end(d, utils.prev(d, command))
+            end = _get_end(d, iterutils.prev(d, command))
             return point.Point(end.x, y)
         case _:
             return command.end
@@ -282,7 +283,7 @@ def _quadratic_control(
     Point(x=20.0, y=40.0)
 
     """
-    prev = utils.prev(d, command)
+    prev = iterutils.prev(d, command)
     end = _get_end(d, prev)
 
     match prev:
@@ -319,7 +320,7 @@ def _cubic_control(d: D, command: SmoothCubicBezierTo) -> point.Point:
     Point(x=60.0, y=60.0)
 
     """
-    prev = utils.prev(d, command)
+    prev = iterutils.prev(d, command)
     end = _get_end(d, prev)
 
     if isinstance(prev, CubicBezierTo | SmoothCubicBezierTo):
@@ -474,7 +475,7 @@ class D(
 
     @override
     def insert(self, index: SupportsIndex, value: PathCommand) -> None:
-        if utils.is_first_index(self, index) and not isinstance(
+        if iterutils.is_first_index(self, index) and not isinstance(
             value, MoveTo
         ):
             raise errors.SvgPathMissingMoveToError
@@ -624,7 +625,7 @@ class D(
         if formatter.path_data_coordinates == "relative":
             d = _relativize(d)
 
-        for prev, command in utils.pairwise(d):
+        for prev, command in iterutils.pairwise(d):
             implicit = (
                 formatter.path_data_commands == "implicit"
                 and _can_use_implicit_command(command, prev=prev)
@@ -832,7 +833,7 @@ class D(
 
         assert isinstance(values, PathCommand)
 
-        if utils.is_first_index(self, index) and not isinstance(
+        if iterutils.is_first_index(self, index) and not isinstance(
             values, MoveTo
         ):
             raise errors.SvgPathMissingMoveToError
@@ -853,7 +854,7 @@ class D(
             )
 
         if (
-            utils.is_first_index(self, index)
+            iterutils.is_first_index(self, index)
             and len(self) > 1
             and not isinstance(self[int(index) + 1], MoveTo)
         ):
@@ -876,7 +877,7 @@ class D(
 
     @override
     def __eq__(self, other: object) -> bool:
-        if not utils.basic_compare(other, self=self):
+        if not miscutils.basic_compare(other, self=self):
             return False
 
         if len(self) != len(other):

@@ -4,8 +4,8 @@ import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
 
 import svglab.protocols
-from svglab import utils
 from svglab.elements import common, names, svg, text_elements
+from svglab.utils import miscutils
 
 
 Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
@@ -17,7 +17,7 @@ DEFAULT_PARSER: Final[Parser] = "lxml-xml"
 
 _TAG_NAME_TO_CLASS: Final = {
     common.tag_name(cls): cls
-    for cls in utils.get_all_subclasses(common.Tag)
+    for cls in miscutils.get_all_subclasses(common.Tag)
     if cls.__name__ in names.TAG_NAME_TO_NORMALIZED.inverse
 }
 

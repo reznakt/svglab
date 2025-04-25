@@ -20,8 +20,9 @@ from typing_extensions import (
     override,
 )
 
-from svglab import mixins, protocols, serialize, utils, utiltypes
+from svglab import mixins, protocols, serialize, utiltypes
 from svglab.attrparse import parse
+from svglab.utils import mathutils, miscutils
 
 
 _Vector: TypeAlias = tuple[float, float]
@@ -130,7 +131,7 @@ class _Scale(_TransformFunctionBase):
     def serialize(self) -> str:
         args = [self.sx]
 
-        if not utils.is_close(self.sx, self.sy):
+        if not mathutils.is_close(self.sx, self.sy):
             args.append(self.sy)
 
         return serialize.serialize_function_call(
@@ -142,12 +143,12 @@ class _Scale(_TransformFunctionBase):
         return affine.Affine.scale(self.sx, self.sy or self.sx)
 
     def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
+        if not miscutils.basic_compare(other, self=self):
             return False
 
-        return utils.is_close(self.sx, other.sx) and utils.is_close(
-            self.sy, other.sy
-        )
+        return mathutils.is_close(
+            self.sx, other.sx
+        ) and mathutils.is_close(self.sy, other.sy)
 
 
 @final
@@ -173,7 +174,7 @@ class _Rotate(_TransformFunctionBase):
         angle = serialize.serialize(self.angle, precision_group="angle")
         origin = []
 
-        if not utils.is_close(self.cx, 0) or not utils.is_close(
+        if not mathutils.is_close(self.cx, 0) or not mathutils.is_close(
             self.cy, 0
         ):
             origin.extend([self.cx, self.cy])
@@ -187,13 +188,13 @@ class _Rotate(_TransformFunctionBase):
         )
 
     def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
+        if not miscutils.basic_compare(other, self=self):
             return False
 
         return (
-            utils.is_close(self.angle, other.angle)
-            and utils.is_close(self.cx, other.cx)
-            and utils.is_close(self.cy, other.cy)
+            mathutils.is_close(self.angle, other.angle)
+            and mathutils.is_close(self.cx, other.cx)
+            and mathutils.is_close(self.cy, other.cy)
         )
 
 
@@ -227,10 +228,10 @@ class SkewY(_TransformFunctionBase):
         return affine.Affine.shear(y_angle=self.angle)
 
     def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
+        if not miscutils.basic_compare(other, self=self):
             return False
 
-        return utils.is_close(self.angle, other.angle)
+        return mathutils.is_close(self.angle, other.angle)
 
 
 @final
@@ -249,10 +250,10 @@ class SkewX(_TransformFunctionBase):
         return affine.Affine.shear(x_angle=self.angle)
 
     def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
+        if not miscutils.basic_compare(other, self=self):
             return False
 
-        return utils.is_close(self.angle, other.angle)
+        return mathutils.is_close(self.angle, other.angle)
 
 
 def _transform_weight(transform: Iterable[TransformFunction], /) -> int:
@@ -274,7 +275,7 @@ def _transform_weight(transform: Iterable[TransformFunction], /) -> int:
         match t:
             case SkewX() | SkewY():
                 weight += 1_000_000
-            case Scale(sx, sy) if not utils.is_close(sx, sy):
+            case Scale(sx, sy) if not mathutils.is_close(sx, sy):
                 weight += 1_000_000
             case Rotate():
                 weight += 1_000
@@ -293,7 +294,7 @@ class _Translate(_TransformFunctionBase):
     def serialize(self) -> str:
         args = [self.tx]
 
-        if not utils.is_close(self.ty, 0):
+        if not mathutils.is_close(self.ty, 0):
             args.append(self.ty)
 
         return serialize.serialize_function_call("translate", *args)
@@ -303,12 +304,12 @@ class _Translate(_TransformFunctionBase):
         return affine.Affine.translation(self.tx, self.ty or 0)
 
     def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
+        if not miscutils.basic_compare(other, self=self):
             return False
 
-        return utils.is_close(self.tx, other.tx) and utils.is_close(
-            self.ty, other.ty
-        )
+        return mathutils.is_close(
+            self.tx, other.tx
+        ) and mathutils.is_close(self.ty, other.ty)
 
 
 @final
@@ -330,16 +331,16 @@ def _remove_redundant_transformations(
 
     for t in transform:
         match t:
-            case Translate(tx, ty) if utils.is_close(
+            case Translate(tx, ty) if mathutils.is_close(
                 tx, 0
-            ) and utils.is_close(ty, 0):
+            ) and mathutils.is_close(ty, 0):
                 continue
-            case Scale(sx, sy) if utils.is_close(sx, 1) and utils.is_close(
-                sy, 1
-            ):
+            case Scale(sx, sy) if mathutils.is_close(
+                sx, 1
+            ) and mathutils.is_close(sy, 1):
                 continue
             case Rotate(angle) | SkewX(angle) | SkewY(angle) if (
-                utils.is_close(angle, 0)
+                mathutils.is_close(angle, 0)
             ):
                 continue
             case _:
@@ -423,33 +424,33 @@ class Matrix(_TransformFunctionBase):
         a, b, c, d, e, f = self.to_tuple()
 
         # we prefer to use r over s if possible
-        if not utils.is_close(a, 0) or not utils.is_close(b, 0):
+        if not mathutils.is_close(a, 0) or not mathutils.is_close(b, 0):
             result.append(Translate(e, f))
 
             r = _magnitude((a, b))
-            angle = utils.signum(b) * utils.arccos(a / r)
+            angle = mathutils.signum(b) * mathutils.arccos(a / r)
             result.append(Rotate(angle))
 
             det = self.determinant()
             result.append(Scale(r, det / r))
 
             col_dot = _dot_product((a, b), (c, d))
-            angle = utils.arctan(col_dot / r**2)
+            angle = mathutils.arctan(col_dot / r**2)
             result.append(SkewX(angle))
 
         # if r is unsuitable, we use s
-        elif not utils.is_close(c, 0) or not utils.is_close(d, 0):
+        elif not mathutils.is_close(c, 0) or not mathutils.is_close(d, 0):
             result.append(Translate(e, f))
 
             s = _magnitude((c, d))
-            angle = 90 - utils.signum(d) * utils.arccos(-c / s)
+            angle = 90 - mathutils.signum(d) * mathutils.arccos(-c / s)
             result.append(Rotate(angle))
 
             det = self.determinant()
             result.append(Scale(det / s, s))
 
             col_dot = _dot_product((a, b), (c, d))
-            angle = utils.arctan(col_dot / s**2)
+            angle = mathutils.arctan(col_dot / s**2)
             result.append(SkewY(angle))
 
         # degenrate transformation
@@ -464,14 +465,14 @@ class Matrix(_TransformFunctionBase):
 
         result.append(Translate(e, f))
 
-        if not utils.is_close(a, 0):
-            result.append(SkewY(utils.arctan(b / a)))
+        if not mathutils.is_close(a, 0):
+            result.append(SkewY(mathutils.arctan(b / a)))
             result.append(Scale(a, self.determinant() / a))
-            result.append(SkewX(utils.arctan(c / a)))
-        elif not utils.is_close(b, 0):
+            result.append(SkewX(mathutils.arctan(c / a)))
+        elif not mathutils.is_close(b, 0):
             result.append(Rotate(90))
             result.append(Scale(b, self.determinant() / b))
-            result.append(SkewY(utils.arctan(d / b)))
+            result.append(SkewY(mathutils.arctan(d / b)))
         else:
             result.append(Scale(c, d))
             result.append(SkewX(45))
@@ -518,11 +519,11 @@ class Matrix(_TransformFunctionBase):
         )
 
     def __eq__(self, other: object, /) -> bool:
-        if not utils.basic_compare(other, self=self):
+        if not miscutils.basic_compare(other, self=self):
             return False
 
         return all(
-            utils.is_close(x1, x2)
+            mathutils.is_close(x1, x2)
             for x1, x2 in zip(
                 self.to_tuple(), other.to_tuple(), strict=True
             )
