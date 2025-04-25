@@ -422,7 +422,7 @@ def set_formatter(formatter: Formatter, /) -> None:
 
 def _serialize_number(
     number: float, /, *, precision_group: _PrecisionGroup = "general"
-) -> str:  # sourcery skip: remove-unnecessary-cast
+) -> str:
     """Format a number into a string based on current formatter settings.
 
     Args:
