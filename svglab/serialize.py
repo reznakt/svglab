@@ -574,14 +574,14 @@ def serialize(
     precision_group: _PrecisionGroup = "general",
 ) -> str | tuple[str, ...]:
     """Return an SVG-friendly string representation of the given value(s)."""
-    return utils.apply_single_or_many(
-        functools.partial(
-            _serialize,
-            bool_mode=bool_mode,
-            precision_group=precision_group,
-        ),
-        *values,
+    results = tuple(
+        _serialize(
+            value, bool_mode=bool_mode, precision_group=precision_group
+        )
+        for value in values
     )
+
+    return results[0] if len(results) == 1 else results
 
 
 def _get_attr_precision_group(
