@@ -8,7 +8,6 @@
 [![Dependency status](https://img.shields.io/librariesio/release/pypi/svglab)](https://libraries.io/pypi/svglab/tree)
 [![Test coverage](https://codecov.io/github/reznakt/svglab/graph/badge.svg)](https://codecov.io/github/reznakt/svglab)
 ![GitHub repo size](https://img.shields.io/github/repo-size/reznakt/svglab)
-![LOC](https://img.shields.io/endpoint?url=https%3A%2F%2Floc-counter.onrender.com%3Frepo%3Dreznakt%2Fsvglab%26branch%3Dmain&label=LOC&color=blue)
 
 <br />
 <div align="center">
@@ -104,7 +103,7 @@ graph TD
 ### Prerequisites
 
 - [CPython](https://www.python.org/) $\geq$ 3.10
-- [Poetry](https://python-poetry.org/) (development only)
+- [Poetry](https://python-poetry.org/) $\geq$ 2.0 (development only)
 
 ### Installation
 
