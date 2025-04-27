@@ -28,6 +28,7 @@ FamilyName: TypeAlias = Unparsed
 FilterPrimitiveReference: TypeAlias = Unparsed
 FuncIri: TypeAlias = Unparsed
 GenericFamily: TypeAlias = Unparsed
+IccColor: TypeAlias = Unparsed
 Iri: TypeAlias = Unparsed
 LanguageCodes: TypeAlias = Unparsed
 LanguageId: TypeAlias = Unparsed

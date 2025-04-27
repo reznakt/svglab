@@ -175,9 +175,9 @@ class Filter(common.Attr):
 class FloodColor(common.Attr):
     flood_color: models.Attr[
         Literal["currentColor"]
-        | typedefs.Color
         | typedefs.Inherit
-        | typedefs.Unparsed  # <color> [<icccolor>]
+        | typedefs.IccColor
+        | typedefs.Color
     ] = None
 
 
@@ -306,7 +306,8 @@ class StopColor(common.Attr):
     stop_color: models.Attr[
         Literal["currentColor"]
         | typedefs.Inherit
-        | typedefs.Unparsed  # <color> <icccolor>
+        | typedefs.IccColor
+        | typedefs.Color
     ] = None
 
 
