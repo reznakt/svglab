@@ -8,10 +8,14 @@ import hypothesis
 import hypothesis.strategies as st
 import pydantic
 import pytest
-from typing_extensions import Final
+from typing_extensions import Final, Protocol
 
 import svglab
 from tests import conftest
+
+
+class _SupportsSerialize(Protocol):
+    def serialize(self) -> str: ...
 
 
 numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
@@ -908,7 +912,19 @@ def test_entity_substitution() -> None:
     assert svglab.RawText(">").to_xml() == "&gt;"
 
 
-def test_float_precision_settings() -> None:
+@pytest.mark.parametrize(
+    ("value", "serialized"),
+    [
+        (svglab.Length(1.123456), "1"),
+        (svglab.Rotate(1.123456), "rotate(1.1)"),
+        (svglab.SkewX(1.123456), "skewX(1.1)"),
+        (svglab.Translate(1.123456), "translate(1.123456)"),
+        (svglab.Scale(1.123456), "scale(0)"),
+    ],
+)
+def test_float_precision_settings(
+    value: _SupportsSerialize, serialized: str
+) -> None:
     formatter = svglab.Formatter(
         general_precision=10,
         angle_precision=1,
@@ -917,16 +933,22 @@ def test_float_precision_settings() -> None:
     )
 
     with formatter:
-        assert svglab.Length(1.123456).serialize() == "1"
-        assert svglab.Rotate(1.123456).serialize() == "rotate(1.1)"
-        assert svglab.SkewX(1.123456).serialize() == "skewX(1.1)"
-        assert (
-            svglab.Translate(1.123456).serialize() == "translate(1.123456)"
-        )
-        assert svglab.Scale(1.123456).serialize() == "scale(0)"
+        assert value.serialize() == serialized
 
 
-def test_precision_table() -> None:
+@pytest.mark.parametrize(
+    ("value", "serialized"),
+    [
+        (svglab.Length(0.123456), ".123"),
+        (svglab.Rotate(1.123456), "rotate(1.12)"),
+        (svglab.SkewX(10.123456), "skewX(10.1)"),
+        (svglab.Translate(100.123456), "translate(100)"),
+        (svglab.Scale(1000.123456), "scale(1000.123456)"),
+    ],
+)
+def test_precision_table(
+    value: _SupportsSerialize, serialized: str
+) -> None:
     formatter = svglab.Formatter(
         general_precision=svglab.FloatPrecisionSettings(
             precision_table={
@@ -940,10 +962,4 @@ def test_precision_table() -> None:
     )
 
     with formatter:
-        assert svglab.Length(0.123456).serialize() == ".123"
-        assert svglab.Rotate(1.123456).serialize() == "rotate(1.12)"
-        assert svglab.SkewX(10.123456).serialize() == "skewX(10.1)"
-        assert svglab.Translate(100.123456).serialize() == "translate(100)"
-        assert (
-            svglab.Scale(1000.123456).serialize() == "scale(1000.123456)"
-        )
+        assert value.serialize() == serialized
