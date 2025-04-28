@@ -71,7 +71,7 @@ affine = { allow-prereleases = true }
 types-beautifulsoup4 = "^4.12.0.20241020"
 
 [tool.poetry.group.test.dependencies]
-hypothesis = "^6.123.2"
+hypothesis = "^6.131.9"
 pytest = "^8.3.4"
 pytest-accept = "^0.1.12"
 pytest-clarity = "^1.0.1"
@@ -80,9 +80,9 @@ pytest-randomly = "^3.16.0"
 pytest-sugar = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
-poethepoet = ">=0.32,<0.34"
+poethepoet = ">=0.32,<0.35"
 pre-commit = "^4.0.1"
-pyright = "^1.1.391"
+pyright = "^1.1.400"
 ruff = ">=0.8.4,<0.12.0"
 vermin = "^1.6.0"
 ssort = "^0.14.0"
