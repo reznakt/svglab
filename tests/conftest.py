@@ -82,7 +82,7 @@ def complex_svg() -> svglab.Svg:
     background = svglab.Rect(
         width=svglab.Length(1000),
         height=svglab.Length(1000),
-        fill="#f0f0f0",
+        fill=svglab.Color("#f0f0f0"),
     )
     svg.add_child(background)
 
@@ -94,7 +94,7 @@ def complex_svg() -> svglab.Svg:
                 d=svglab.D()
                 .move_to(svglab.Point(0, i))
                 .line_to(svglab.Point(1000, i)),
-                stroke="#cccccc",
+                stroke=svglab.Color("#cccccc"),
             )
         )
         grid.add_child(
@@ -102,7 +102,7 @@ def complex_svg() -> svglab.Svg:
                 d=svglab.D()
                 .move_to(svglab.Point(i, 0))
                 .line_to(svglab.Point(i, 1000)),
-                stroke="#cccccc",
+                stroke=svglab.Color("#cccccc"),
             )
         )
     svg.add_child(grid)
@@ -112,8 +112,8 @@ def complex_svg() -> svglab.Svg:
         y=svglab.Length(200),
         width=svglab.Length(100),
         height=svglab.Length(100),
-        fill="red",
-        stroke="blue",
+        fill=svglab.Color("red"),
+        stroke=svglab.Color("blue"),
         stroke_width=svglab.Length(2),
         transform=[
             svglab.Translate(10, 20),
@@ -127,7 +127,7 @@ def complex_svg() -> svglab.Svg:
         cx=svglab.Length(500),
         cy=svglab.Length(500),
         r=svglab.Length(100),
-        fill="#00ff00",
+        fill=svglab.Color("#00ff00"),
         opacity=0.7,
     )
     svg.add_child(circle)
@@ -145,8 +145,8 @@ def complex_svg() -> svglab.Svg:
             svglab.Point(800, 150), svglab.Point(700, 200)
         )
         .close(),
-        fill="#0000ff",
-        stroke="#000000",
+        fill=svglab.Color("#0000ff"),
+        stroke=svglab.Color("#000000"),
         stroke_width=svglab.Length(3),
         transform=[svglab.SkewX(15)],
     )
@@ -166,8 +166,8 @@ def complex_svg() -> svglab.Svg:
     ]
     polygon = svglab.Polygon(
         points=star_points,
-        fill="yellow",
-        stroke="black",
+        fill=svglab.Color("yellow"),
+        stroke=svglab.Color("black"),
         stroke_width=svglab.Length(2),
     )
     svg.add_child(polygon)
@@ -180,7 +180,7 @@ def complex_svg() -> svglab.Svg:
             svglab.Point(400, 650),
             svglab.Point(500, 600),
         ],
-        stroke="#ff00ff",
+        stroke=svglab.Color("#ff00ff"),
         stroke_width=svglab.Length(4),
         fill="none",
         stroke_linecap="round",
@@ -193,7 +193,7 @@ def complex_svg() -> svglab.Svg:
         y=svglab.Length(600),
         width=svglab.Length(200),
         height=svglab.Length(150),
-        fill="#ff9900",
+        fill=svglab.Color("#ff9900"),
         transform=[svglab.Translate(100, 50), svglab.SkewY(-20)],
     )
     svg.add_child(rect2)
@@ -204,20 +204,20 @@ def complex_svg() -> svglab.Svg:
         cx=svglab.Length(50),
         cy=svglab.Length(50),
         r=svglab.Length(30),
-        fill="#993366",
+        fill=svglab.Color("#993366"),
     )
     small_circle2 = svglab.Circle(
         cx=svglab.Length(150),
         cy=svglab.Length(50),
         r=svglab.Length(30),
-        fill="#336699",
+        fill=svglab.Color("#336699"),
     )
     connecting_line = svglab.Line(
         x1=svglab.Length(50),
         y1=svglab.Length(50),
         x2=svglab.Length(150),
         y2=svglab.Length(50),
-        stroke="black",
+        stroke=svglab.Color("black"),
         stroke_width=svglab.Length(2),
     )
 
@@ -239,7 +239,7 @@ def nested_svg() -> svglab.Svg:
     svg = elem = svglab.Svg(
         width=svglab.Length(1000),
         height=svglab.Length(1000),
-        fill="transparent",
+        fill=svglab.Color("transparent"),
     )
 
     for _ in range(10):
@@ -248,13 +248,13 @@ def nested_svg() -> svglab.Svg:
             svglab.Rect(
                 width=svglab.Length(100),
                 height=svglab.Length(100),
-                stroke="black",
+                stroke=svglab.Color("black"),
             ),
             svglab.Circle(
                 cx=svglab.Length(50),
                 cy=svglab.Length(50),
                 r=svglab.Length(50),
-                stroke="black",
+                stroke=svglab.Color("black"),
             ),
             svglab.Polygon(
                 points=[
@@ -262,7 +262,7 @@ def nested_svg() -> svglab.Svg:
                     svglab.Point(100, 0),
                     svglab.Point(50, 100),
                 ],
-                stroke="black",
+                stroke=svglab.Color("black"),
             ),
         )
 

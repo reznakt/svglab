@@ -4,7 +4,15 @@ import pydantic
 from typing_extensions import Annotated, Literal, TypeAlias
 
 from svglab import models
-from svglab.attrparse import angle, color, d, length, points, transform
+from svglab.attrparse import (
+    angle,
+    color,
+    d,
+    iri,
+    length,
+    points,
+    transform,
+)
 from svglab.utils import mathutils
 
 
@@ -26,10 +34,8 @@ ContentType: TypeAlias = Unparsed  # MIME type
 EndValueList: TypeAlias = Unparsed
 FamilyName: TypeAlias = Unparsed
 FilterPrimitiveReference: TypeAlias = Unparsed
-FuncIri: TypeAlias = Unparsed
 GenericFamily: TypeAlias = Unparsed
 IccColor: TypeAlias = Unparsed
-Iri: TypeAlias = Unparsed
 LanguageCodes: TypeAlias = Unparsed
 LanguageId: TypeAlias = Unparsed
 LanguageTag: TypeAlias = Unparsed
@@ -58,7 +64,9 @@ Character: TypeAlias = Annotated[
     str, pydantic.Field(min_length=1, max_length=1)
 ]
 Color: TypeAlias = color.ColorType
+FuncIri: TypeAlias = iri.FuncIriType
 Integer: TypeAlias = int
+Iri: TypeAlias = iri.IriType
 Length: TypeAlias = length.LengthType
 ListOfPoints: TypeAlias = points.PointsType
 Number: TypeAlias = float
@@ -111,8 +119,7 @@ Paint: TypeAlias = (
     | Literal["currentColor", "context-fill", "context-stroke"]
     | Inherit
     | Color
-    # <funciri> [ none | currentColor | <color> [<icccolor>] ]
-    | Unparsed
+    | FuncIri
 )
 Percentage: TypeAlias = Length
 

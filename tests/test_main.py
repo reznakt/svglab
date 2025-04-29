@@ -164,7 +164,7 @@ def test_attribute_normalization_native() -> None:
         stroke_linejoin="round",
         stroke_width=svglab.Length(1),
         stroke_opacity=0.9,
-        xml_base="http://example.com",
+        xml_base=svglab.Iri(scheme="https", authority="example.com"),
         xml_lang="en",
         xml_space="preserve",
     )
@@ -230,7 +230,7 @@ def test_attribute_normalization_serialize() -> None:
         stroke_linejoin="round",
         stroke_width=svglab.Length(1),
         stroke_opacity=0.9,
-        xml_base="http://example.com",
+        xml_base=svglab.Iri(scheme="https", authority="example.com"),
         xml_lang="en",
         xml_space="preserve",
     )
@@ -302,7 +302,7 @@ def test_eq_tag_simple() -> None:
     )
 
     assert svglab.Rect(stroke_width=stroke_width) != svglab.Rect(
-        stroke_width=stroke_width, stroke="red"
+        stroke_width=stroke_width, stroke=svglab.Color("red")
     )
 
 
@@ -594,8 +594,8 @@ _REIFY_SVGS: Final[list[svglab.Svg]] = [
             width=svglab.Length(100),
             height=svglab.Length(100),
             stroke_width=svglab.Length(1),
-            fill="red",
-            stroke="blue",
+            fill=svglab.Color("red"),
+            stroke=svglab.Color("blue"),
         )
     ),
     svglab.Svg(
@@ -607,8 +607,8 @@ _REIFY_SVGS: Final[list[svglab.Svg]] = [
             width=svglab.Length(100),
             height=svglab.Length(100),
             stroke_width=svglab.Length(1),
-            fill="red",
-            stroke="blue",
+            fill=svglab.Color("red"),
+            stroke=svglab.Color("blue"),
             transform=[svglab.Translate(10, 20), svglab.Scale(2)],
             transform_origin=(svglab.Length(5), svglab.Length(0)),
         )
@@ -621,8 +621,8 @@ _REIFY_SVGS: Final[list[svglab.Svg]] = [
             y=svglab.Length(200),
             width=svglab.Length(100),
             height=svglab.Length(100),
-            fill="red",
-            stroke="blue",
+            fill=svglab.Color("red"),
+            stroke=svglab.Color("blue"),
             transform_origin=(svglab.Length(10), svglab.Length(20)),
             transform=[
                 svglab.Translate(10, 20),
@@ -640,8 +640,8 @@ _REIFY_SVGS: Final[list[svglab.Svg]] = [
         svglab.Rect(
             width=svglab.Length(100),
             height=svglab.Length(100),
-            fill="red",
-            stroke="blue",
+            fill=svglab.Color("red"),
+            stroke=svglab.Color("blue"),
         )
     ),
     svglab.Svg(
@@ -656,8 +656,8 @@ _REIFY_SVGS: Final[list[svglab.Svg]] = [
                 svglab.Point(400, 300),
                 svglab.Point(500, 300),
             ),
-            stroke="blue",
-            fill="red",
+            stroke=svglab.Color("blue"),
+            fill=svglab.Color("red"),
             transform=[svglab.SkewX(30)],
         )
     ),
@@ -669,20 +669,20 @@ _REIFY_SVGS: Final[list[svglab.Svg]] = [
                 cx=svglab.Length(50),
                 cy=svglab.Length(50),
                 r=svglab.Length(30),
-                stroke="black",
+                stroke=svglab.Color("black"),
             ),
             svglab.Circle(
                 cx=svglab.Length(150),
                 cy=svglab.Length(50),
                 r=svglab.Length(30),
-                stroke="black",
+                stroke=svglab.Color("black"),
             ),
             svglab.Line(
                 x1=svglab.Length(50),
                 y1=svglab.Length(50),
                 x2=svglab.Length(150),
                 y2=svglab.Length(50),
-                stroke="black",
+                stroke=svglab.Color("black"),
             ),
         )
     ),
@@ -709,7 +709,7 @@ def test_reify_produces_visually_equal_svg_simple(
             y=svglab.Length(200),
             width=svglab.Length(100),
             height=svglab.Length(100),
-            fill="red",
+            fill=svglab.Color("red"),
             transform=transform,
         )
     )
@@ -756,20 +756,20 @@ def test_set_viewbox_sets_viewbox_attr() -> None:
                         cx=svglab.Length(50),
                         cy=svglab.Length(50),
                         r=svglab.Length(30),
-                        stroke="black",
+                        stroke=svglab.Color("black"),
                     ),
                     svglab.Circle(
                         cx=svglab.Length(150),
                         cy=svglab.Length(50),
                         r=svglab.Length(30),
-                        stroke="black",
+                        stroke=svglab.Color("black"),
                     ),
                     svglab.Line(
                         x1=svglab.Length(50),
                         y1=svglab.Length(50),
                         x2=svglab.Length(150),
                         y2=svglab.Length(50),
-                        stroke="black",
+                        stroke=svglab.Color("black"),
                     ),
                 )
             ),
@@ -785,8 +785,8 @@ def test_set_viewbox_sets_viewbox_attr() -> None:
                 y=svglab.Length(200),
                 width=svglab.Length(100),
                 height=svglab.Length(100),
-                fill="red",
-                stroke="blue",
+                fill=svglab.Color("red"),
+                stroke=svglab.Color("blue"),
                 transform=[
                     svglab.compose(
                         [

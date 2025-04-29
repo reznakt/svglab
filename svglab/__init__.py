@@ -60,6 +60,7 @@ from svglab.attrparse.d import (
     SmoothQuadraticBezierTo,
     VerticalLineTo,
 )
+from svglab.attrparse.iri import FuncIri, Iri
 from svglab.attrparse.length import Length
 from svglab.attrparse.point import Point
 from svglab.attrparse.points import Points
@@ -266,6 +267,7 @@ __all__ = [
     "FontFaceUri",
     "ForeignObject",
     "Formatter",
+    "FuncIri",
     "G",
     "Glyph",
     "GlyphRef",
@@ -275,6 +277,7 @@ __all__ = [
     "Hkern",
     "HorizontalLineTo",
     "Image",
+    "Iri",
     "Length",
     "LengthUnit",
     "LightSourceElement",
