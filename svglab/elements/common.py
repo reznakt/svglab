@@ -13,12 +13,14 @@ import abc
 import collections
 import reprlib
 import sys
+import warnings
 from collections.abc import Generator, Mapping
 
 import bs4
 import pydantic
 from typing_extensions import (
     Final,
+    Literal,
     Self,
     SupportsIndex,
     TypeVar,
@@ -32,7 +34,7 @@ from svglab.attrparse import iri, length, transform
 from svglab.attrs import common, groups, presentation, regular
 from svglab.attrs import names as attr_names
 from svglab.elements import names
-from svglab.utils import bsutils, mathutils, miscutils
+from svglab.utils import bsutils, iterutils, mathutils, miscutils
 
 
 _T = TypeVar("_T")
@@ -208,6 +210,9 @@ def _scale(element: object, scale: transform.Scale) -> None:  # noqa: PLR0915
     if not isinstance(element, regular.PathLengthAttr):
         scale_distance_along_a_path_attrs(element, factor)
 
+    if isinstance(tag, regular.OffsetNumberPercentage):
+        tag.offset = _scale_attr(tag.offset, factor)
+
 
 def _translate_attr(attr: _T, /, by: float) -> _T:
     """Translate an attribute by the given amount.
@@ -296,6 +301,9 @@ def _translate(element: object, translate: transform.Translate) -> None:
 
     if isinstance(element, regular.DAttr) and element.d is not None:
         element.d = translate @ element.d
+
+    if isinstance(tag, regular.OffsetNumberPercentage):
+        tag.offset = _translate_attr(tag.offset, tx)
 
 
 def swap_transforms(
@@ -930,6 +938,135 @@ class Element(
 
         return element
 
+    def __get_main_transform_attribute(
+        self,
+    ) -> Literal["transform", "gradientTransform", "patternTransform"]:
+        match tag_name(self):
+            case "linearGradient" | "radialGradient":
+                return "gradientTransform"
+            case "pattern":
+                return "patternTransform"
+            case _:
+                return "transform"
+
+    @property
+    def main_transform(self) -> transform.Transform | None:
+        """The main transform attribute of the element.
+
+        For most elements, this is the `transform` attribute. However, certain
+        elements such as `linearGradient` have theis own specialized
+        transform attribute, in which case the `transform` attribute is
+        ignored.
+
+        This attribute is an alias to the "main" or "active" transform
+        attribute of the element.
+
+        The main transform attributes for the elements are:
+        - `gradientTransform` for `linearGradient` and `radialGradient`
+        - `patternTransform` for `pattern`
+        - `transform` for all other elements
+        """
+        transform_attr_name = self.__get_main_transform_attribute()
+
+        return getattr(self, transform_attr_name)
+
+    def get_root(self) -> Tag:
+        """Get the top-level ancestor of the element.
+
+        The root ancestor is the first ancestor that has no parent. If the
+        element has no parent, it is considered the root ancestor.
+
+        Returns:
+            The root ancestor of the element.
+
+        """
+        return iterutils.take_last(self.parents) or self
+
+    def resolve_iri(self, iri_: iri.Iri, /) -> Tag:
+        """Resolve a local IRI reference to an element in the document.
+
+        This method attempts to resolve an IRI reference to an element in the
+        descendants of this element. The IRI reference must be local.
+
+        Args:
+            iri_: The IRI reference to resolve. Must be local.
+
+        Returns:
+            The element that the IRI reference points to.
+
+        Raises:
+            ValueError: If the IRI reference is not local or if the element
+                cannot be found in the document.
+
+        """
+        if not iri_.is_local:
+            raise ValueError(
+                "Unable to resolve a non-local IRI reference in this document."
+            )
+
+        try:
+            return next(
+                tag for tag in self.find_all() if tag.id == iri_.fragment
+            )
+        except StopIteration as e:
+            msg = (
+                "Unable to find element by IRI "
+                f"{iri_.serialize()} in the document."
+            )
+            raise ValueError(msg) from e
+
+    def references_other_element(self) -> bool:
+        """Check if the element contains IRI reference to another element.
+
+        This method checks if the element contains any attributes that
+        reference another element in the document. The reference must be
+        local and valid, meaning that if the IRI cannot be resolved to an
+        element in the document, the method returns `False`. The entire
+        document is searched (not just the descendants of this element).
+
+        A warning is emitted if a dangling IRI reference is found.
+
+        Returns:
+            `True` if the element contains a local IRI reference to another
+            element in the document, `False` otherwise.
+
+        """
+        reference_attr_names: list[attr_names.AttributeName] = [
+            "xlink:href",
+            "href",
+            "fill",
+            "stroke",
+            "mask",
+            "clip-path",
+        ]
+
+        for attr_name in reference_attr_names:
+            if not hasattr(self, attr_name):
+                continue
+
+            attr = getattr(self, attr_name)
+
+            if not (isinstance(attr, iri.Iri) and attr.is_local):
+                continue
+
+            try:
+                self.get_root().resolve_iri(attr)
+            except ValueError:
+                warnings.warn(
+                    f"Dangling IRI reference {attr_name}={attr.serialize()!r}",
+                    stacklevel=2,
+                )
+            else:
+                return True
+
+        return False
+
+    @main_transform.setter
+    def main_transform(self, value: transform.Transform | None) -> None:
+        transform_attr_name = self.__get_main_transform_attribute()
+
+        setattr(self, transform_attr_name, value)
+
     def decompose_transform_origin(self) -> None:
         """Decompose the `transform-origin` attribute into `transform`.
 
@@ -963,14 +1100,14 @@ class Element(
         ):
             raise errors.SvgTransformOriginError(self.transform_origin)
 
-        if not self.transform:
-            self.transform = []
+        if not self.main_transform:
+            self.main_transform = []
 
         tx = float(self.transform_origin[0])
         ty = float(self.transform_origin[1])
 
-        self.transform.insert(0, transform.Translate(tx, ty))
-        self.transform.append(transform.Translate(-tx, -ty))
+        self.main_transform.insert(0, transform.Translate(tx, ty))
+        self.main_transform.append(transform.Translate(-tx, -ty))
 
         self.transform_origin = None
 
@@ -980,34 +1117,37 @@ class Element(
 
         self.decompose_transform_origin()
 
-        if not self.transform:
+        if not self.main_transform:
             return
 
-        transform.decompose_matrices(transform=self.transform)
+        transform.decompose_matrices(transform=self.main_transform)
 
         reified = 0
         i = 0
 
-        while reified < limit and i < len(self.transform):
-            if not isinstance(self.transform[i], transform.Reifiable):
+        while reified < limit and i < len(self.main_transform):
+            if not isinstance(self.main_transform[i], transform.Reifiable):
                 i += 1
                 continue
 
             try:
                 # move the transformation to the end of the list where it can
                 # be directly applied to the elementf
-                _move_transformation_to_end(self.transform, i)
-                transformation = self.transform.pop()
+                _move_transformation_to_end(self.main_transform, i)
+                transformation = self.main_transform.pop()
 
                 _apply_transformation(self, transformation)
 
                 for child in self.find_all(recursive=False):
-                    if child.transform is None:
-                        child.transform = []
+                    if tag_name(child) == "stop":
+                        continue
+
+                    if child.main_transform is None:
+                        child.main_transform = []
 
                     # decompose transform-origin before we prepend
                     child.decompose_transform_origin()
-                    child.transform.insert(0, transformation)
+                    child.main_transform.insert(0, transformation)
 
                     child.reify(
                         limit=1,
@@ -1087,6 +1227,48 @@ class Element(
             True
 
         """
+        # transformations on <use> elements cannot be reified.
+        # reification would only work if all usages of the referenced element
+        # via <use> have equal transform attributes (f.e. if the referenced
+        # element is only used once), in which case we would continue with
+        # reification on the referenced element (probably not worth the hassle)
+        if tag_name(self) == "use":
+            return
+
+        # reification of elements that reference other elements (f.e. paint
+        # servers or clipping paths) is problematic. there is a lot of stuff
+        # that can go wrong here, so we just disable this for now
+        if self.references_other_element():
+            # TODO: this is overly general; find out in which cases this is
+            # actually needed
+            return
+
+        main_transform_attr_name = self.__get_main_transform_attribute()
+
+        if main_transform_attr_name != "transform" and self.transform:
+            warnings.warn(
+                (
+                    f"Attribute 'transform' on element {type(self)} has "
+                    f"no effect. Use {main_transform_attr_name!r} instead."
+                ),
+                stacklevel=2,
+            )
+
+        if main_transform_attr_name == "patternTransform":
+            pattern_units = self.standard_attrs().get(
+                "patternUnits", "objectBoundingBox"
+            )
+            pattern_content_units = self.standard_attrs().get(
+                "patternContentUnits", "userSpaceOnUse"
+            )
+
+            if not (
+                pattern_units
+                == pattern_content_units
+                == "objectBoundingBox"
+            ):
+                return
+
         self.__reify_this(limit=limit)
 
         if remove_transform_list_if_empty and not self.transform:
