@@ -943,23 +943,23 @@ class Tag(
         if self.transform_origin is None:
             return
 
-        if (
+        if not (
             isinstance(self.transform_origin, tuple)
             and isinstance(self.transform_origin[0], length.Length)
             and isinstance(self.transform_origin[1], length.Length)
         ):
-            tx = float(self.transform_origin[0])
-            ty = float(self.transform_origin[1])
-
-            if not self.transform:
-                self.transform = []
-
-            self.transform.insert(0, transform.Translate(tx, ty))
-            self.transform.append(transform.Translate(-tx, -ty))
-
-            self.transform_origin = None
-        else:
             raise errors.SvgTransformOriginError(self.transform_origin)
+
+        if not self.transform:
+            self.transform = []
+
+        tx = float(self.transform_origin[0])
+        ty = float(self.transform_origin[1])
+
+        self.transform.insert(0, transform.Translate(tx, ty))
+        self.transform.append(transform.Translate(-tx, -ty))
+
+        self.transform_origin = None
 
     def __reify_this(self, *, limit: int = sys.maxsize) -> None:
         if limit < 0:
