@@ -253,7 +253,7 @@ class HorizOriginY(common.Attr):
 
 
 class Href(common.Attr):
-    href: models.Attr[typedefs.Url] = None
+    href: models.Attr[typedefs.Iri] = None
 
 
 class Id(common.Attr):

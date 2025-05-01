@@ -44,7 +44,6 @@ Name: TypeAlias = Unparsed
 ProfileName: TypeAlias = Unparsed
 Shape: TypeAlias = Unparsed
 Urange: TypeAlias = Unparsed
-Url: TypeAlias = Unparsed
 XmlName: TypeAlias = Unparsed
 
 # basic types that are parsed
