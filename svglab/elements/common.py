@@ -29,8 +29,7 @@ from typing_extensions import (
 
 from svglab import constants, errors, models, serialize
 from svglab.attrparse import length, transform
-from svglab.attrs import common as common_attrs
-from svglab.attrs import groups, presentation, regular
+from svglab.attrs import common, groups, presentation, regular
 from svglab.attrs import names as attr_names
 from svglab.elements import names
 from svglab.utils import bsutils, mathutils, miscutils
@@ -169,7 +168,7 @@ def _scale(tag: object, scale: transform.Scale) -> None:  # noqa: PLR0915
         tag.fx = _scale_attr(tag.fx, factor)
     if isinstance(tag, regular.Fy):
         tag.fy = _scale_attr(tag.fy, factor)
-    if isinstance(tag, common_attrs.FontSize):
+    if isinstance(tag, common.FontSize):
         tag.font_size = _scale_attr(tag.font_size, factor)
     if isinstance(tag, regular.Points) and tag.points is not None:
         tag.points = [scale @ point for point in tag.points]
