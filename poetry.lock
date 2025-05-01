@@ -623,18 +623,6 @@ files = [
 ]
 
 [[package]]
-name = "pathspec"
-version = "0.12.1"
-description = "Utility library for gitignore style pattern matching of file paths."
-optional = false
-python-versions = ">=3.8"
-groups = ["dev"]
-files = [
-    {file = "pathspec-0.12.1-py3-none-any.whl", hash = "sha256:a0d503e138a4c123b27490a4f7beda6a01c6f288df0e4a8b79c7eb0dc7b4cc08"},
-    {file = "pathspec-0.12.1.tar.gz", hash = "sha256:a482d51503a1ab33b1c67a6c3813a26953dbdc71c31dacaef9a838c4e29f5712"},
-]
-
-[[package]]
 name = "pillow"
 version = "11.2.1"
 description = "Python Imaging Library (Fork)"
@@ -1391,21 +1379,6 @@ files = [
 ]
 
 [[package]]
-name = "ssort"
-version = "0.14.0"
-description = "The python statement sorter"
-optional = false
-python-versions = ">=3.8"
-groups = ["dev"]
-files = [
-    {file = "ssort-0.14.0-py3-none-any.whl", hash = "sha256:31864909eb7b4a02b14fb52d1918315b5fb8a8124b5d721b0adebe9c0d293219"},
-    {file = "ssort-0.14.0.tar.gz", hash = "sha256:4ab15d04d94012158f2eac43478f61e08befb53809c78324921dcf872d7172ef"},
-]
-
-[package.dependencies]
-pathspec = ">=0.9.0"
-
-[[package]]
 name = "termcolor"
 version = "2.5.0"
 description = "ANSI color formatting for output in terminal"
@@ -1565,4 +1538,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "6bdf8e4ec2aea8071f5ce5a05eef32d135f33a93af33e0143fe937eb9aaab084"
+content-hash = "88fb091230c7c30e651bab6cc4d0ac402aa481a5d7dd0351e66fb6bd32fd50df"

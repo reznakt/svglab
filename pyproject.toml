@@ -86,7 +86,6 @@ pre-commit = "^4.0.1"
 pyright = "^1.1.400"
 ruff = ">=0.8.4,<0.12.0"
 vermin = "^1.6.0"
-ssort = "^0.14.0"
 
 [tool.poe.tasks]
 lint = "ruff check"
@@ -95,14 +94,8 @@ start = "poetry run svglab"
 test = "pytest"
 typecheck = "pyright --warnings"
 versioncheck = "vermin ."
-
-_ruff-format = "ruff format --diff"
-_ssort = "ssort --check"
-format = ["_ruff-format", "_ssort"]
-
-_ruff-format-fix = "ruff format"
-_ssort-fix = "ssort"
-format-fix = ["_ruff-format-fix", "_ssort-fix"]
+format = "ruff format --diff"
+format-fix = "ruff format"
 
 [tool.pytest.ini_options]
 filterwarnings = [
