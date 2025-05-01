@@ -181,7 +181,9 @@ def test_attribute_normalization_native() -> None:
     assert rect.stroke_linejoin == "round"
     assert rect.stroke_width == svglab.Length(1)
     assert rect.stroke_opacity == 0.9
-    assert rect.xml_base == "http://example.com"
+    assert rect.xml_base == svglab.Iri(
+        scheme="https", authority="example.com"
+    )
     assert rect.xml_lang == "en"
     assert rect.xml_space == "preserve"
 
@@ -213,7 +215,9 @@ def test_attribute_normalization_validate() -> None:
     assert rect.stroke_linejoin == "round"
     assert rect.stroke_width == svglab.Length(1)
     assert rect.stroke_opacity == 0.9
-    assert rect.xml_base == "http://example.com"
+    assert rect.xml_base == svglab.Iri(
+        scheme="http", authority="example.com"
+    )
     assert rect.xml_lang == "en"
     assert rect.xml_space == "preserve"
 
@@ -246,7 +250,7 @@ def test_attribute_normalization_serialize() -> None:
         "stroke-linejoin": "round",
         "stroke-width": {"value": 1},
         "stroke-opacity": 0.9,
-        "xml:base": "http://example.com",
+        "xml:base": {"authority": "example.com", "scheme": "https"},
         "xml:lang": "en",
         "xml:space": "preserve",
     }

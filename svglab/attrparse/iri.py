@@ -157,7 +157,15 @@ class FuncIri(Iri):
         return super().from_str(iri)
 
 
-IriType: TypeAlias = Annotated[Iri, pydantic.BeforeValidator(Iri.from_str)]
+IriType: TypeAlias = Annotated[
+    Iri,
+    pydantic.BeforeValidator(
+        lambda v: Iri.from_str(v) if isinstance(v, str) else v
+    ),
+]
 FuncIriType: TypeAlias = Annotated[
-    FuncIri, pydantic.BeforeValidator(FuncIri.from_str)
+    FuncIri,
+    pydantic.BeforeValidator(
+        lambda v: FuncIri.from_str(v) if isinstance(v, str) else v
+    ),
 ]
