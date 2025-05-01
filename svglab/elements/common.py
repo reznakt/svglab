@@ -210,8 +210,8 @@ def _scale(element: object, scale: transform.Scale) -> None:  # noqa: PLR0915
     if not isinstance(element, regular.PathLengthAttr):
         scale_distance_along_a_path_attrs(element, factor)
 
-    if isinstance(tag, regular.OffsetNumberPercentage):
-        tag.offset = _scale_attr(tag.offset, factor)
+    if isinstance(element, regular.OffsetNumberPercentageAttr):
+        element.offset = _scale_attr(element.offset, factor)
 
 
 def _translate_attr(attr: _T, /, by: float) -> _T:
@@ -302,8 +302,8 @@ def _translate(element: object, translate: transform.Translate) -> None:
     if isinstance(element, regular.DAttr) and element.d is not None:
         element.d = translate @ element.d
 
-    if isinstance(tag, regular.OffsetNumberPercentage):
-        tag.offset = _translate_attr(tag.offset, tx)
+    if isinstance(element, regular.OffsetNumberPercentageAttr):
+        element.offset = _translate_attr(element.offset, tx)
 
 
 def swap_transforms(
@@ -941,7 +941,7 @@ class Element(
     def __get_main_transform_attribute(
         self,
     ) -> Literal["transform", "gradientTransform", "patternTransform"]:
-        match tag_name(self):
+        match element_name(self):
             case "linearGradient" | "radialGradient":
                 return "gradientTransform"
             case "pattern":
@@ -968,9 +968,12 @@ class Element(
         """
         transform_attr_name = self.__get_main_transform_attribute()
 
-        return getattr(self, transform_attr_name)
+        return cast(
+            transform.Transform | None,
+            self.__get_attr_or_default(transform_attr_name),
+        )
 
-    def get_root(self) -> Tag:
+    def get_root(self) -> Element:
         """Get the top-level ancestor of the element.
 
         The root ancestor is the first ancestor that has no parent. If the
@@ -980,9 +983,9 @@ class Element(
             The root ancestor of the element.
 
         """
-        return iterutils.take_last(self.parents) or self
+        return iterutils.take_last(self.ancestors) or self
 
-    def resolve_iri(self, iri_: iri.Iri, /) -> Tag:
+    def resolve_iri(self, iri_: iri.Iri, /) -> Element:
         """Resolve a local IRI reference to an element in the document.
 
         This method attempts to resolve an IRI reference to an element in the
@@ -1044,7 +1047,7 @@ class Element(
             if not hasattr(self, attr_name):
                 continue
 
-            attr = getattr(self, attr_name)
+            attr = self.__get_attr_or_default(attr_name)
 
             if not (isinstance(attr, iri.Iri) and attr.is_local):
                 continue
@@ -1066,6 +1069,24 @@ class Element(
         transform_attr_name = self.__get_main_transform_attribute()
 
         setattr(self, transform_attr_name, value)
+
+    def __get_attr_or_default(
+        self, attr_name: attr_names.AttributeName
+    ) -> object:
+        attrs = self.standard_attrs()
+
+        if attr_name in attrs:
+            return attrs[attr_name]
+
+        match attr_name:
+            case "gradientUnits":
+                return "objectBoundingBox"
+            case "patternUnits":
+                return "objectBoundingBox"
+            case "patternContentUnits":
+                return "userSpaceOnUse"
+            case _:
+                return None
 
     def decompose_transform_origin(self) -> None:
         """Decompose the `transform-origin` attribute into `transform`.
@@ -1139,7 +1160,7 @@ class Element(
                 _apply_transformation(self, transformation)
 
                 for child in self.find_all(recursive=False):
-                    if tag_name(child) == "stop":
+                    if element_name(child) == "stop":
                         continue
 
                     if child.main_transform is None:
@@ -1158,6 +1179,42 @@ class Element(
                 raise errors.SvgReifyError from e
 
             reified += 1
+
+    def __can_reify(self) -> bool:
+        # transformations on <use> elements cannot be reified.
+        # reification would only work if all usages of the referenced element
+        # via <use> have equal transform attributes (f.e. if the referenced
+        # element is only used once), in which case we would continue with
+        # reification on the referenced element (probably not worth the hassle)
+        # patternTransforms also cannot be reified (no clue why)
+        if element_name(self) in ["use", "pattern"]:
+            return False
+
+        main_transform_attr_name = self.__get_main_transform_attribute()
+
+        if main_transform_attr_name != "transform" and self.transform:
+            warnings.warn(
+                (
+                    f"Attribute 'transform' on element {type(self)} has "
+                    f"no effect. Use {main_transform_attr_name!r} instead."
+                ),
+                stacklevel=2,
+            )
+
+        if (
+            main_transform_attr_name == "gradientTransform"
+            and self.__get_attr_or_default("gradientUnits")
+            == "objectBoundingBox"
+        ):
+            return False
+
+        # reification of elements that reference other elements (f.e. paint
+        # servers or clipping paths) is problematic. there is a lot of stuff
+        # that can go wrong here, so we just disable this for now
+
+        # TODO: this is overly general; find out in which cases this is
+        # actually needed
+        return not self.references_other_element()
 
     def reify(
         self,
@@ -1227,47 +1284,8 @@ class Element(
             True
 
         """
-        # transformations on <use> elements cannot be reified.
-        # reification would only work if all usages of the referenced element
-        # via <use> have equal transform attributes (f.e. if the referenced
-        # element is only used once), in which case we would continue with
-        # reification on the referenced element (probably not worth the hassle)
-        if tag_name(self) == "use":
+        if not self.__can_reify():
             return
-
-        # reification of elements that reference other elements (f.e. paint
-        # servers or clipping paths) is problematic. there is a lot of stuff
-        # that can go wrong here, so we just disable this for now
-        if self.references_other_element():
-            # TODO: this is overly general; find out in which cases this is
-            # actually needed
-            return
-
-        main_transform_attr_name = self.__get_main_transform_attribute()
-
-        if main_transform_attr_name != "transform" and self.transform:
-            warnings.warn(
-                (
-                    f"Attribute 'transform' on element {type(self)} has "
-                    f"no effect. Use {main_transform_attr_name!r} instead."
-                ),
-                stacklevel=2,
-            )
-
-        if main_transform_attr_name == "patternTransform":
-            pattern_units = self.standard_attrs().get(
-                "patternUnits", "objectBoundingBox"
-            )
-            pattern_content_units = self.standard_attrs().get(
-                "patternContentUnits", "userSpaceOnUse"
-            )
-
-            if not (
-                pattern_units
-                == pattern_content_units
-                == "objectBoundingBox"
-            ):
-                return
 
         self.__reify_this(limit=limit)
 
