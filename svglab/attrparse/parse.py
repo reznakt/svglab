@@ -2,6 +2,7 @@
 
 import functools
 import itertools
+import os
 import pathlib
 
 import lark
@@ -19,10 +20,23 @@ _CURRENT_DIR: Final = pathlib.Path(__file__).parent
 _GRAMMARS_DIR: Final = _CURRENT_DIR / "grammars"
 
 
+def _get_grammar_path(grammar: LiteralString) -> pathlib.Path:
+    """Get the path to a grammar file.
+
+    Args:
+        grammar: The name of the grammar file.
+
+    Returns:
+        The path to the grammar file.
+
+    """
+    return _GRAMMARS_DIR / grammar
+
+
 @functools.cache
 def _get_parser(*, grammar: LiteralString) -> lark.Lark:
     return lark.Lark.open(
-        grammar_filename=str(_GRAMMARS_DIR / grammar),
+        grammar_filename=str(_get_grammar_path(grammar)),
         rel_to=None,
         cache=True,
         maybe_placeholders=False,
@@ -82,7 +96,15 @@ def get_validator(
         A Pydantic BeforeValidator that can be used to parse strings with the
         specified grammar.
 
+    Raises:
+        ValueError: If the grammar file cannot be read.
+
     """
+    grammar_path = _get_grammar_path(grammar)
+
+    if not os.access(grammar_path, os.R_OK):
+        msg = f"Cannot read grammar file: {grammar_path}"
+        raise ValueError(msg)
 
     def validator(value: object) -> object:
         if isinstance(value, str):
