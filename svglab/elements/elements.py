@@ -16,7 +16,7 @@ import itertools
 from typing_extensions import final, override
 
 from svglab import models
-from svglab.attrparse import d, length, point
+from svglab.attrparse import length, path_data, point
 from svglab.attrs import groups, regular
 from svglab.elements import traits
 
@@ -53,18 +53,18 @@ def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
     return path
 
 
-def _points_to_d(element: regular.Points) -> d.D:
-    """Convert an element with a `points` attribute to a `D` instance."""
+def _points_to_d(element: regular.Points) -> path_data.PathData:
+    """Convert element with a `points` attribute to a `PathData` instance."""
     points = element.points if element.points is not None else []
-    path_data = d.D()
+    d = path_data.PathData()
 
     if points:
-        path_data.move_to(points[0])
+        d.move_to(points[0])
 
         for point in itertools.islice(points, 1, None):
-            path_data.line_to(point)
+            d.line_to(point)
 
-    return path_data
+    return d
 
 
 def _ellipse_to_d(
@@ -73,8 +73,8 @@ def _ellipse_to_d(
     cy: length.Length,
     rx: length.Length,
     ry: length.Length,
-) -> d.D:
-    """Convert an ellipse to a `D` instance.
+) -> path_data.PathData:
+    """Convert an ellipse to a `PathData` instance.
 
     Args:
         cx: The x-coordinate of the center of the ellipse.
@@ -83,7 +83,7 @@ def _ellipse_to_d(
         ry: The y-radius of the ellipse.
 
     Returns:
-        A `D` instance representing the ellipse.
+        A `PathData` instance representing the ellipse.
 
     References:
         https://stackoverflow.com/a/10477334
@@ -91,7 +91,7 @@ def _ellipse_to_d(
 
     """
     return (
-        d.D()
+        path_data.PathData()
         .move_to(point.Point(cx - rx, cy))
         .arc_to(
             point.Point(rx, ry),
@@ -228,7 +228,7 @@ class Circle(
     traits.Element,
 ):
     @override
-    def to_d(self) -> d.D:
+    def to_d(self) -> path_data.PathData:
         cx = _length_or_zero(self.cx)
         cy = _length_or_zero(self.cy)
         r = _length_or_zero(self.r)
@@ -308,7 +308,7 @@ class Ellipse(
     traits.Element,
 ):
     @override
-    def to_d(self) -> d.D:
+    def to_d(self) -> path_data.PathData:
         cx = _length_or_zero(self.cx)
         cy = _length_or_zero(self.cy)
         rx = _length_or_zero(self.rx)
@@ -792,14 +792,16 @@ class Line(
     traits.Element,
 ):
     @override
-    def to_d(self) -> d.D:
+    def to_d(self) -> path_data.PathData:
         x1 = _length_or_zero(self.x1)
         y1 = _length_or_zero(self.y1)
         x2 = _length_or_zero(self.x2)
         y2 = _length_or_zero(self.y2)
 
         return (
-            d.D().move_to(point.Point(x1, y1)).line_to(point.Point(x2, y2))
+            path_data.PathData()
+            .move_to(point.Point(x1, y1))
+            .line_to(point.Point(x2, y2))
         )
 
     @override
@@ -917,7 +919,7 @@ class Polygon(
     traits.Element,
 ):
     @override
-    def to_d(self) -> d.D:
+    def to_d(self) -> path_data.PathData:
         return _points_to_d(self).close()
 
     @override
@@ -936,7 +938,7 @@ class Polyline(
     traits.Element,
 ):
     @override
-    def to_d(self) -> d.D:
+    def to_d(self) -> path_data.PathData:
         return _points_to_d(self)
 
     @override
@@ -981,7 +983,7 @@ class Rect(
     traits.Element,
 ):
     @override
-    def to_d(self) -> d.D:
+    def to_d(self) -> path_data.PathData:
         x = _length_or_zero(self.x)
         y = _length_or_zero(self.y)
         width = _length_or_zero(self.width)
@@ -999,7 +1001,7 @@ class Rect(
                 ry = self.ry
 
         return (
-            d.D()
+            path_data.PathData()
             .move_to(point.Point(x + rx, y))
             .horizontal_line_to(x + width - rx)
             .arc_to(

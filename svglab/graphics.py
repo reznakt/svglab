@@ -28,13 +28,13 @@ BBox: TypeAlias = tuple[int, int, int, int]
 
 _ImageArray: TypeAlias = npt.NDArray[np.uint8]
 
-_TagT = TypeVar("_TagT", bound=common.Tag)
+_ElementT = TypeVar("_ElementT", bound=common.Element)
 
 _BLACK: Final = color.Color((0, 0, 0))
 
 
 @runtime_checkable
-class _SvgTagLike(Protocol):
+class _SvgElementLike(Protocol):
     width: length.Length | None
     height: length.Length | None
 
@@ -63,13 +63,13 @@ def _length_to_user_units(length: length.Length | None) -> float | None:
 
 
 def _compute_render_size(
-    svg: common.Tag,
+    svg: common.Element,
     *,
     width: float | None = None,
     height: float | None = None,
 ) -> tuple[float, float]:
-    if not isinstance(svg, _SvgTagLike):
-        msg = "Svg must be an instance of _SvgTagLike"
+    if not isinstance(svg, _SvgElementLike):
+        msg = "Svg must be an instance of _SvgElementLike"
         raise TypeError(msg)
 
     svg_width = _length_to_user_units(length=svg.width)
@@ -104,13 +104,13 @@ def _compute_render_size(
 
 
 def render(  # noqa: D103
-    svg: common.Tag,
+    svg: common.Element,
     *,
     width: float | None = None,
     height: float | None = None,
 ) -> PIL.Image.Image:
-    if not isinstance(svg, _SvgTagLike):
-        raise TypeError("Tag must be an SVG element")
+    if not isinstance(svg, _SvgElementLike):
+        raise TypeError("Element must be an SVG element")
 
     render_size = _compute_render_size(svg, width=width, height=height)
     svg = copy.copy(svg)
@@ -124,60 +124,61 @@ def render(  # noqa: D103
     return PIL.Image.open(io.BytesIO(raw))
 
 
-def _copy_tree(tag: _TagT) -> tuple[_TagT, _SvgTagLike]:
-    """Resolve the root `Svg` tag and create a deep copy of the SVG tree.
+def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
+    """Resolve the root `Svg` element and create a deep copy of the SVG tree.
 
-    The source tag is identified in the copied tree and returned for easy
+    The source element is identified in the copied tree and returned for easy
     access.
 
     Args:
-        tag: The tag in the SVG tree to copy.
+        element: The element in the SVG tree to copy.
 
     Returns:
-        A tuple of the copied tag and the root `Svg` tag of the copied tree.
+        A tuple of the copied element and the root `Svg` element of the copied
+        tree.
 
     Raises:
-        ValueError: If the tag is not a part of an SVG tree.
+        ValueError: If the element is not a part of an SVG tree.
 
     """
-    svg = iterutils.take_last(tag.parents)
+    svg = iterutils.take_last(element.ancestors)
 
-    if not isinstance(svg, _SvgTagLike):
-        raise ValueError("Tag must be part of an SVG tree")  # noqa: TRY004
+    if not isinstance(svg, _SvgElementLike):
+        raise ValueError("Element must be part of an SVG tree")  # noqa: TRY004
 
-    original_id = tag.id
-    tag.id = uuid.uuid4().hex
+    original_id = element.id
+    element.id = uuid.uuid4().hex
 
     try:
         svg = copy.deepcopy(svg)
-
-        candidates = svg.find_all(type(tag))
-
-        this = next(tag for tag in candidates if tag.id == tag.id)
+        candidates = svg.find_all(type(element))
+        this = next(
+            element for element in candidates if element.id == element.id
+        )
     finally:
-        tag.id = original_id
+        element.id = original_id
 
     return this, svg
 
 
 def _render_tree(
-    tag: common.Tag,
+    element: common.Element,
     *,
     render_this: bool,
     render_other: bool,
-    make_tag_visible: bool,
+    make_element_visible: bool,
     width: float | None = None,
     height: float | None = None,
 ) -> PIL.Image.Image:
-    """Resolve the root `Svg` tag and render the SVG tree to an image.
+    """Resolve the root `Svg` element and render the SVG tree to an image.
 
     Args:
-        tag: The tag in the SVG tree to render.
-        render_this: Whether to render the specified tag.
-        render_other: Whether to render all other tags in the tree.
-        make_tag_visible: Whether to attempt to make the specified tag visible,
-            even if it would normally not be rendered (e.g., if due to a
-            transparent fill).
+        element: The element in the SVG tree to render.
+        render_this: Whether to render the specified element.
+        render_other: Whether to render all other elements in the tree.
+        make_element_visible: Whether to attempt to make the specified element
+            visible, even if it would normally not be rendered (e.g., if due
+            to a transparent fill).
         width: The width of the rendered image, in pixels. If `None`, the width
             attribute of the SVG element is used.
         height: The height of the rendered image, in pixels. If `None`, the
@@ -187,31 +188,31 @@ def _render_tree(
         The rendered image.
 
     Raises:
-        ValueError: If `make_tag_visible` is `True` and `render_this`
+        ValueError: If `make_element_visible` is `True` and `render_this`
         is `False`.
 
     """
-    if make_tag_visible and not render_this:
+    if make_element_visible and not render_this:
         raise ValueError(
-            "make_tag_visible cannot be True if render_this is False"
+            "make_element_visible cannot be True if render_this is False"
         )
 
-    tag_copy, svg = _copy_tree(tag)
-    assert isinstance(svg, common.Tag)
+    element_copy, svg = _copy_tree(element)
+    assert isinstance(svg, common.Element)
 
     for t in svg.find_all():
         t.visibility = "visible" if render_other else "hidden"
 
-    tag_copy.visibility = "visible" if render_this else "hidden"
+    element_copy.visibility = "visible" if render_this else "hidden"
 
-    if make_tag_visible:
-        del tag_copy.display
-        tag_copy.fill = _BLACK
-        tag_copy.fill_opacity = 1
-        tag_copy.opacity = 1
-        tag_copy.stroke = _BLACK
-        tag_copy.stroke_opacity = 1
-        tag_copy.visibility = "visible"
+    if make_element_visible:
+        del element_copy.display
+        element_copy.fill = _BLACK
+        element_copy.fill_opacity = 1
+        element_copy.opacity = 1
+        element_copy.stroke = _BLACK
+        element_copy.stroke_opacity = 1
+        element_copy.visibility = "visible"
 
     return svg.render(width=width, height=height)
 
@@ -243,16 +244,16 @@ def _mask_to_image(mask: Mask) -> PIL.Image.Image:
 
 
 def mask(  # noqa: D103
-    tag: common.Tag,
+    element: common.Element,
     *,
     width: float | None = None,
     height: float | None = None,
 ) -> Mask:
     img = _render_tree(
-        tag,
+        element,
         render_this=True,
         render_other=False,
-        make_tag_visible=True,
+        make_element_visible=True,
         width=width,
         height=height,
     )
@@ -262,48 +263,51 @@ def mask(  # noqa: D103
 
 
 def visible_mask(  # noqa: D103
-    tag: common.Tag,
+    element: common.Element,
     *,
     width: float | None = None,
     height: float | None = None,
 ) -> Mask:
-    without_tag = _render_tree(
-        tag,
+    without_element = _render_tree(
+        element,
         render_this=False,
         render_other=True,
-        make_tag_visible=False,
+        make_element_visible=False,
         width=width,
         height=height,
     )
 
-    with_tag = _render_tree(
-        tag,
+    with_element = _render_tree(
+        element,
         render_this=True,
         render_other=True,
-        make_tag_visible=False,
+        make_element_visible=False,
         width=width,
         height=height,
     )
 
-    without_tag_array: _ImageArray = np.array(without_tag)
-    with_tag_array: _ImageArray = np.array(with_tag)
+    without_element_array: _ImageArray = np.array(without_element)
+    with_element_array: _ImageArray = np.array(with_element)
 
-    diff = np.any(without_tag_array != with_tag_array, axis=2)
+    diff = np.any(without_element_array != with_element_array, axis=2)
     assert isinstance(diff, np.ndarray)
 
     return diff
 
 
-def bbox(tag: common.Tag) -> BBox | None:  # noqa: D103
+def bbox(element: common.Element) -> BBox | None:  # noqa: D103
     img = _render_tree(
-        tag, render_this=True, render_other=False, make_tag_visible=True
+        element,
+        render_this=True,
+        render_other=False,
+        make_element_visible=True,
     )
 
     return img.getbbox()
 
 
-def visible_bbox(tag: common.Tag) -> BBox | None:  # noqa: D103
-    mask = visible_mask(tag)
+def visible_bbox(element: common.Element) -> BBox | None:  # noqa: D103
+    mask = visible_mask(element)
     img = _mask_to_image(mask)
 
     return img.getbbox()

@@ -17,10 +17,10 @@ Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
 DEFAULT_PARSER: Final[Parser] = "lxml-xml"
 
 
-_TAG_NAME_TO_CLASS: Final = {
-    common.tag_name(cls): cls
-    for cls in miscutils.get_all_subclasses(common.Tag)
-    if cls.__name__ in names.TAG_NAME_TO_NORMALIZED.inverse
+_ELEMENT_NAME_TO_CLASS: Final = {
+    common.element_name(cls): cls
+    for cls in miscutils.get_all_subclasses(common.Element)
+    if cls.__name__ in names.ELEMENT_NAME_TO_NORMALIZED.inverse
 }
 
 _BS_TO_TEXT_ELEMENT: Final[
@@ -46,10 +46,11 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     SVG fragment. It then returns a list of all SVG fragments found in the same
     depth of the tree. This allows us to consider an SVG fragment as a root
     element when using HTML parsers that implicitly wrap the document in
-    certain HTML tags (e.g., <html>).
+    certain HTML elements (e.g., <html>).
 
     Args:
-        soup: A BeautifulSoup tag object representing the root of the document.
+        soup: A BeautifulSoup `Tag` object representing the root of the
+        document.
 
     Returns:
         A list of SVG fragments found in the document.
@@ -82,7 +83,7 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def _convert_element(backend: bs4.PageElement) -> common.Element | None:
+def _convert_element(backend: bs4.PageElement) -> common.Entity | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
@@ -106,14 +107,14 @@ def _convert_element(backend: bs4.PageElement) -> common.Element | None:
 
             return cls(text) if text else None
         case bs4.Tag():
-            tag_class = _TAG_NAME_TO_CLASS[
-                cast(names.TagName, backend.name)
+            element_class = _ELEMENT_NAME_TO_CLASS[
+                cast(names.ElementName, backend.name)
             ]
 
             for key, value in backend.attrs.items():
                 backend.attrs[key] = str(value).strip()
 
-            tag = tag_class.model_validate(
+            element = element_class.model_validate(
                 {"prefix": backend.prefix, **backend.attrs}, strict=False
             )
 
@@ -121,8 +122,8 @@ def _convert_element(backend: bs4.PageElement) -> common.Element | None:
                 grandchild = _convert_element(child)
 
                 if grandchild is not None:
-                    tag.add_child(grandchild)
-            return tag
+                    element.add_child(grandchild)
+            return element
         case _:
             return None
 
@@ -165,16 +166,13 @@ def parse_svg(
 
     if len(svg_fragments) != 1:
         msg = (
-            f"Expected 1 <svg> element, found {len(svg_fragments)}."
-            " This does not look like a valid SVG."
+            f"Expected one <svg> element, found {len(svg_fragments)}."
+            " This does not look like a well-formed SVG."
         )
 
         raise ValueError(msg)
 
-    svg_ = _convert_element(svg_fragments[0])
+    root_svg_fragment = _convert_element(svg_fragments[0])
+    assert isinstance(root_svg_fragment, svg.Svg)
 
-    if not isinstance(svg_, svg.Svg):
-        msg = f"Expected an <svg> element, found {type(svg_).__name__}."
-        raise TypeError(msg)
-
-    return svg_
+    return root_svg_fragment

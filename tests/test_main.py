@@ -288,7 +288,7 @@ def test_eq_text(text: str) -> None:
     assert svglab.Comment(text) != svglab.CData(text)
 
 
-def test_eq_tag_simple() -> None:
+def test_eq_element_simple() -> None:
     assert svglab.Rect() == svglab.Rect()
     assert svglab.Rect() != svglab.Circle()
 
@@ -310,40 +310,44 @@ def test_eq_tag_simple() -> None:
     )
 
 
-def test_eq_tag_group() -> None:
+def test_eq_element_group() -> None:
     assert svglab.G().add_child(svglab.Rect()) == svglab.G().add_child(
         svglab.Rect()
     )
 
 
 @hypothesis.given(st.text())
-def test_eq_tag_prefix(prefix: str) -> None:
+def test_eq_element_prefix(prefix: str) -> None:
     assert svglab.Rect(prefix=prefix) == svglab.Rect(prefix=prefix)
 
 
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("", svglab.D()),
-        ("M 10,10", svglab.D().move_to(svglab.Point(10, 10))),
+        ("", svglab.PathData()),
+        ("M 10,10", svglab.PathData().move_to(svglab.Point(10, 10))),
         (
             "M0,0L 10,10",
-            svglab.D()
+            svglab.PathData()
             .move_to(svglab.Point(0, 0))
             .line_to(svglab.Point(10, 10)),
         ),
         (
             "M0,0H 10",
-            svglab.D().move_to(svglab.Point(0, 0)).horizontal_line_to(10),
+            svglab.PathData()
+            .move_to(svglab.Point(0, 0))
+            .horizontal_line_to(10),
         ),
         (
             "M0,0V 10",
-            svglab.D().move_to(svglab.Point(0, 0)).vertical_line_to(10),
+            svglab.PathData()
+            .move_to(svglab.Point(0, 0))
+            .vertical_line_to(10),
         ),
         (
             # https://github.com/mathandy/svgpathtools/issues/185
             "M12 22a10 10 0 110-20 10 10 0 010 20z",
-            svglab.D()
+            svglab.PathData()
             .move_to(svglab.Point(12, 22))
             .arc_to(
                 svglab.Point(10, 10),
@@ -363,7 +367,7 @@ def test_eq_tag_prefix(prefix: str) -> None:
         ),
         (
             "M1 1 2 2 3 3 4 4",
-            svglab.D()
+            svglab.PathData()
             .move_to(svglab.Point(1, 1))
             .line_to(svglab.Point(2, 2))
             .line_to(svglab.Point(3, 3))
@@ -372,7 +376,7 @@ def test_eq_tag_prefix(prefix: str) -> None:
         (
             "M0,0C 10,10 20,20 30,30S 40,40 50,50Q 60,60 70,70T 80,80A 90,90 0"
             " 1 0 100,100T 110,110ZH 120V 130L 140,140Z",
-            svglab.D()
+            svglab.PathData()
             .move_to(svglab.Point(0, 0))
             .cubic_bezier_to(
                 svglab.Point(10, 10),
@@ -403,46 +407,51 @@ def test_eq_tag_prefix(prefix: str) -> None:
     ],
 )
 def test_path_data_parse(text: str, expected: str) -> None:
-    assert svglab.D.from_str(text) == expected
+    assert svglab.PathData.from_str(text) == expected
 
 
 def test_path_data_parse_moveto_must_be_first() -> None:
     with pytest.raises(
-        ValueError, match="Failed to parse text with grammar 'd.lark'"
+        ValueError,
+        match="Failed to parse text with grammar 'path_data.lark'",
     ):
-        svglab.D.from_str("L 10,10")
+        svglab.PathData.from_str("L 10,10")
 
 
-SHORTHAND_TESTS: Final[list[tuple[svglab.D, svglab.D]]] = [
-    (svglab.D(), svglab.D()),
+SHORTHAND_TESTS: Final[list[tuple[svglab.PathData, svglab.PathData]]] = [
+    (svglab.PathData(), svglab.PathData()),
     (
-        svglab.D().move_to(svglab.Point(10, 10)),
-        svglab.D().move_to(svglab.Point(10, 10)),
+        svglab.PathData().move_to(svglab.Point(10, 10)),
+        svglab.PathData().move_to(svglab.Point(10, 10)),
     ),
     (
-        svglab.D()
+        svglab.PathData()
         .move_to(svglab.Point.zero())
         .line_to(svglab.Point(0, 10)),
-        svglab.D().move_to(svglab.Point.zero()).vertical_line_to(10),
+        svglab.PathData()
+        .move_to(svglab.Point.zero())
+        .vertical_line_to(10),
     ),
     (
-        svglab.D()
+        svglab.PathData()
         .move_to(svglab.Point.zero())
         .line_to(svglab.Point(10, 0)),
-        svglab.D().move_to(svglab.Point.zero()).horizontal_line_to(10),
+        svglab.PathData()
+        .move_to(svglab.Point.zero())
+        .horizontal_line_to(10),
     ),
     (
-        svglab.D()
+        svglab.PathData()
         .move_to(svglab.Point.zero())
         .quadratic_bezier_to(svglab.Point(20, 0), svglab.Point(20, 20))
         .quadratic_bezier_to(svglab.Point(20, 40), svglab.Point(40, 40)),
-        svglab.D()
+        svglab.PathData()
         .move_to(svglab.Point.zero())
         .quadratic_bezier_to(svglab.Point(20, 0), svglab.Point(20, 20))
         .smooth_quadratic_bezier_to(svglab.Point(40, 40)),
     ),
     (
-        svglab.D()
+        svglab.PathData()
         .move_to(svglab.Point.zero())
         .cubic_bezier_to(
             svglab.Point(20, 0), svglab.Point(40, 0), svglab.Point(40, 20)
@@ -452,7 +461,7 @@ SHORTHAND_TESTS: Final[list[tuple[svglab.D, svglab.D]]] = [
             svglab.Point(20, 40),
             svglab.Point(20, 20),
         ),
-        svglab.D()
+        svglab.PathData()
         .move_to(svglab.Point.zero())
         .cubic_bezier_to(
             svglab.Point(20, 0), svglab.Point(40, 0), svglab.Point(40, 20)
@@ -466,21 +475,21 @@ SHORTHAND_TESTS: Final[list[tuple[svglab.D, svglab.D]]] = [
 
 @pytest.mark.parametrize(("before", "after"), SHORTHAND_TESTS)
 def test_path_data_apply_shorthands(
-    before: svglab.D, after: svglab.D
+    before: svglab.PathData, after: svglab.PathData
 ) -> None:
     assert before.apply_shorthands() == after
 
 
 @pytest.mark.parametrize(("after", "before"), SHORTHAND_TESTS)
 def test_path_data_resolve_shorthands(
-    after: svglab.D, before: svglab.D
+    after: svglab.PathData, before: svglab.PathData
 ) -> None:
     assert before.resolve_shorthands() == after
 
 
 @pytest.mark.parametrize(("before", "after"), SHORTHAND_TESTS)
 def test_path_data_shorthands_cancel(
-    before: svglab.D, after: svglab.D
+    before: svglab.PathData, after: svglab.PathData
 ) -> None:
     assert before.apply_shorthands().resolve_shorthands() == before
     assert after.resolve_shorthands().apply_shorthands() == after
@@ -488,7 +497,7 @@ def test_path_data_shorthands_cancel(
 
 @pytest.mark.parametrize(("before", "after"), SHORTHAND_TESTS)
 def test_path_data_shorthands_idempotent(
-    before: svglab.D, after: svglab.D
+    before: svglab.PathData, after: svglab.PathData
 ) -> None:
     assert (
         before.apply_shorthands()
@@ -517,15 +526,17 @@ def test_path_data_shorthands_idempotent(
     ],
 )
 def test_path_data_parse_serialize(text: str, expected: str) -> None:
-    assert svglab.D.from_str(text).serialize() == expected
+    assert svglab.PathData.from_str(text).serialize() == expected
 
 
 def test_path_data_first_command_is_move_to() -> None:
     with pytest.raises(svglab.SvgPathMissingMoveToError):
-        svglab.D().line_to(svglab.Point(0, 0))
+        svglab.PathData().line_to(svglab.Point(0, 0))
 
     path = (
-        svglab.D().move_to(svglab.Point(0, 0)).line_to(svglab.Point(0, 0))
+        svglab.PathData()
+        .move_to(svglab.Point(0, 0))
+        .line_to(svglab.Point(0, 0))
     )
     line_to = path[1]
 
@@ -536,10 +547,10 @@ def test_path_data_first_command_is_move_to() -> None:
         path[0] = line_to
 
     with pytest.raises(svglab.SvgPathMissingMoveToError):
-        svglab.D().insert(0, line_to)
+        svglab.PathData().insert(0, line_to)
 
     with pytest.raises(svglab.SvgPathMissingMoveToError):
-        svglab.D().append(line_to)
+        svglab.PathData().append(line_to)
 
 
 @pytest.mark.parametrize(
@@ -652,7 +663,7 @@ _REIFY_SVGS: Final[list[svglab.Svg]] = [
         width=svglab.Length(1000), height=svglab.Length(1000)
     ).add_child(
         svglab.Path(
-            d=svglab.D()
+            d=svglab.PathData()
             .move_to(svglab.Point(100, 100))
             .line_to(svglab.Point(200, 200))
             .cubic_bezier_to(
@@ -973,6 +984,6 @@ def test_invalid_add_child_direct_circular_reference() -> None:
     g = svglab.G()
 
     with pytest.raises(
-        ValueError, match="Cannot add a tag as a child of itself."
+        ValueError, match="Cannot add an element as a child of itself."
     ):
         g.add_child(g)

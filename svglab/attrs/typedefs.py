@@ -7,9 +7,9 @@ from svglab import models
 from svglab.attrparse import (
     angle,
     color,
-    d,
     iri,
     length,
+    path_data,
     points,
     transform,
 )
@@ -69,7 +69,7 @@ Iri: TypeAlias = iri.IriType
 Length: TypeAlias = length.LengthType
 ListOfPoints: TypeAlias = points.PointsType
 Number: TypeAlias = float
-PathData: TypeAlias = d.DType
+PathData: TypeAlias = path_data.PathDataType
 RelativeSize: TypeAlias = Literal["smaller", "larger"]
 TransformList: TypeAlias = transform.TransformType
 

@@ -46,22 +46,22 @@ from typing_extensions import Final as __Final
 from svglab import constants as __constants
 from svglab.attrparse.angle import Angle, AngleUnit
 from svglab.attrparse.color import Color
-from svglab.attrparse.d import (
+from svglab.attrparse.iri import FuncIri, Iri
+from svglab.attrparse.length import Length
+from svglab.attrparse.path_data import (
     ArcTo,
     ClosePath,
     CubicBezierTo,
-    D,
     HorizontalLineTo,
     LineTo,
     MoveTo,
     PathCommand,
+    PathData,
     QuadraticBezierTo,
     SmoothCubicBezierTo,
     SmoothQuadraticBezierTo,
     VerticalLineTo,
 )
-from svglab.attrparse.iri import FuncIri, Iri
-from svglab.attrparse.length import Length
 from svglab.attrparse.point import Point
 from svglab.attrparse.points import Points
 from svglab.attrparse.transform import (
@@ -77,13 +77,12 @@ from svglab.attrparse.transform import (
     compose,
 )
 from svglab.elements.common import (
+    CharacterData,
     Element,
-    Tag,
-    TextElement,
+    Entity,
     swap_transforms,
 )
-from svglab.elements.svg import Svg
-from svglab.elements.tags import (
+from svglab.elements.elements import (
     A,
     AltGlyph,
     AltGlyphDef,
@@ -164,6 +163,7 @@ from svglab.elements.tags import (
     View,
     Vkern,
 )
+from svglab.elements.svg import Svg
 from svglab.elements.text_elements import CData, Comment, RawText
 from svglab.elements.traits import (
     BasicShape,
@@ -217,6 +217,7 @@ __all__: __Final = [
     "ArcTo",
     "BasicShape",
     "CData",
+    "CharacterData",
     "Circle",
     "ClipPath",
     "ClosePath",
@@ -226,12 +227,12 @@ __all__: __Final = [
     "ContainerElement",
     "CubicBezierTo",
     "Cursor",
-    "D",
     "Defs",
     "Desc",
     "DescriptiveElement",
     "Element",
     "Ellipse",
+    "Entity",
     "FeBlend",
     "FeColorMatrix",
     "FeComponentTransfer",
@@ -293,6 +294,7 @@ __all__: __Final = [
     "Mpath",
     "Path",
     "PathCommand",
+    "PathData",
     "Pattern",
     "Point",
     "Points",
@@ -325,12 +327,10 @@ __all__: __Final = [
     "SvgUnitConversionError",
     "Switch",
     "Symbol",
-    "Tag",
     "Text",
     "TextContentBlockElement",
     "TextContentChildElement",
     "TextContentElement",
-    "TextElement",
     "TextPath",
     "Title",
     "Transform",

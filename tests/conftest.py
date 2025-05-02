@@ -91,7 +91,7 @@ def complex_svg() -> svglab.Svg:
     for i in range(0, 1001, 100):
         grid.add_child(
             svglab.Path(
-                d=svglab.D()
+                d=svglab.PathData()
                 .move_to(svglab.Point(0, i))
                 .line_to(svglab.Point(1000, i)),
                 stroke=svglab.Color("#cccccc"),
@@ -99,7 +99,7 @@ def complex_svg() -> svglab.Svg:
         )
         grid.add_child(
             svglab.Path(
-                d=svglab.D()
+                d=svglab.PathData()
                 .move_to(svglab.Point(i, 0))
                 .line_to(svglab.Point(i, 1000)),
                 stroke=svglab.Color("#cccccc"),
@@ -133,7 +133,7 @@ def complex_svg() -> svglab.Svg:
     svg.add_child(circle)
 
     path = svglab.Path(
-        d=svglab.D()
+        d=svglab.PathData()
         .move_to(svglab.Point(700, 200))
         .line_to(svglab.Point(800, 300))
         .cubic_bezier_to(

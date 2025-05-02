@@ -1,6 +1,7 @@
 """Definition of the SVG `<path-data>` type.
 
-Use `D` to represent path data in SVG. Use `DType` in Pydantic fields.
+Use `PathData` to represent path data in SVG. Use `PathDataType` in Pydantic
+fields.
 """
 
 from __future__ import annotations
@@ -281,7 +282,7 @@ PathCommand: TypeAlias = (
 )
 
 
-def _get_end(d: D, command: PathCommand) -> point.Point:
+def _get_end(path_data: PathData, command: PathCommand) -> point.Point:
     """Get the end point of a path command.
 
     For commands that have a set end point, this function returns the end
@@ -289,35 +290,35 @@ def _get_end(d: D, command: PathCommand) -> point.Point:
     calculates the end point based on the previous command.
 
     Args:
-        d: The path containing the command.
+        path_data: The path containing the command.
         command: The command to get the end point of.
 
     Returns:
         The end point of the command.
 
     Examples:
-    >>> d = D.from_str("M 10,10 H 100 V 100 Z")
-    >>> _get_end(d, d[0])
+    >>> path_data = PathData.from_str("M 10,10 H 100 V 100 Z")
+    >>> _get_end(path_data, path_data[0])
     Point(x=10.0, y=10.0)
-    >>> _get_end(d, d[1])
+    >>> _get_end(path_data, path_data[1])
     Point(x=100.0, y=10.0)
 
     """
     match command:
         case ClosePath():
-            return _get_end(d, iterutils.prev(d, command))
+            return _get_end(path_data, iterutils.prev(path_data, command))
         case HorizontalLineTo(x=x):
-            end = _get_end(d, iterutils.prev(d, command))
+            end = _get_end(path_data, iterutils.prev(path_data, command))
             return point.Point(x, end.y)
         case VerticalLineTo(y=y):
-            end = _get_end(d, iterutils.prev(d, command))
+            end = _get_end(path_data, iterutils.prev(path_data, command))
             return point.Point(end.x, y)
         case _:
             return command.end
 
 
 def _quadratic_control(
-    d: D, command: SmoothQuadraticBezierTo
+    path_data: PathData, command: SmoothQuadraticBezierTo
 ) -> point.Point:
     """Compute the control point for a smooth quadratic Bézier command (`T`).
 
@@ -328,33 +329,35 @@ def _quadratic_control(
     control point is coincident with the end point of the previous command.
 
     Args:
-        d: The path containing the command.
+        path_data: The path containing the command.
         command: The smooth quadratic Bézier command.
 
     Returns:
         The control point for the command.
 
     Examples:
-    >>> d = D.from_str("M 0,0 Q 20,0 20,20 T 40,40")
-    >>> _quadratic_control(d, d[2])
+    >>> path_data = PathData.from_str("M 0,0 Q 20,0 20,20 T 40,40")
+    >>> _quadratic_control(path_data, path_data[2])
     Point(x=20.0, y=40.0)
 
     """
-    prev = iterutils.prev(d, command)
-    end = _get_end(d, prev)
+    prev = iterutils.prev(path_data, command)
+    end = _get_end(path_data, prev)
 
     match prev:
         case QuadraticBezierTo(control=control):
             pass
         case SmoothQuadraticBezierTo():
-            control = _quadratic_control(d, prev)
+            control = _quadratic_control(path_data, prev)
         case _:
             return end
 
     return control.line_reflect(end)
 
 
-def _cubic_control(d: D, command: SmoothCubicBezierTo) -> point.Point:
+def _cubic_control(
+    path_data: PathData, command: SmoothCubicBezierTo
+) -> point.Point:
     """Compute the first control point for a smooth cubic Bézier command (`S`).
 
     The control point is calculated based on the previous command. If the
@@ -365,20 +368,22 @@ def _cubic_control(d: D, command: SmoothCubicBezierTo) -> point.Point:
     command.
 
     Args:
-        d: The path containing the command.
+        path_data: The path containing the command.
         command: The smooth cubic Bézier command.
 
     Returns:
         The first control point for the command.
 
     Examples:
-    >>> d = D.from_str("M 0,0 C 20,0 20,20 40,40 S 100,100 50,50")
-    >>> _cubic_control(d, d[2])
+    >>> path_data = PathData.from_str(
+    ...     "M 0,0 C 20,0 20,20 40,40 S 100,100 50,50"
+    ... )
+    >>> _cubic_control(path_data, path_data[2])
     Point(x=60.0, y=60.0)
 
     """
-    prev = iterutils.prev(d, command)
-    end = _get_end(d, prev)
+    prev = iterutils.prev(path_data, command)
+    end = _get_end(path_data, prev)
 
     if isinstance(prev, CubicBezierTo | SmoothCubicBezierTo):
         return prev.control2.line_reflect(end)
@@ -386,7 +391,7 @@ def _cubic_control(d: D, command: SmoothCubicBezierTo) -> point.Point:
     return end
 
 
-def _relativize(d: D) -> D:
+def _relativize(path_data: PathData) -> PathData:
     """Recompute the coordinates of path commands as if they were relative.
 
     This function takes a path and recomputes the coordinates of the path
@@ -395,28 +400,28 @@ def _relativize(d: D) -> D:
     may be used for serialization with relative coordinates.
 
     Args:
-        d: The path to relativize.
+        path_data: The path to relativize.
 
     Returns:
-        A new `D` instance with the coordinates of the path commands recomputed
-        as if they were relative.
+        A new `PathData` instance with the coordinates of the path commands
+        recomputed as if they were relative.
 
     Examples:
-    >>> d = D.from_str("M 10,10 L 100,100")
-    >>> _relativize(d)
-    D(MoveTo(end=Point(x=10.0, y=10.0)), LineTo(end=Point(x=90.0, y=90.0)))
+    >>> path_data = PathData.from_str("M 10,10")
+    >>> _relativize(path_data)
+    PathData(MoveTo(end=Point(x=10.0, y=10.0)))
 
     """
-    result = D()
+    result = PathData()
     pos = point.Point.zero()
 
-    for command in d:
+    for command in path_data:
         if isinstance(command, _PhysicalPathCommand):
             result.append(command - pos)
         else:
             result.append(command)
 
-        pos = _get_end(d, command)
+        pos = _get_end(path_data, command)
 
     return result
 
@@ -456,18 +461,18 @@ def _can_use_implicit_command(
 
 
 def _add_command(
-    d: D, command: PathCommand, *, relative: bool = False
+    path_data: PathData, command: PathCommand, *, relative: bool = False
 ) -> None:
     if relative and isinstance(command, _PhysicalPathCommand):
         # if there is no previous command, just do nothing
         with contextlib.suppress(IndexError):
-            command += _get_end(d, d[-1])
+            command += _get_end(path_data, path_data[-1])
 
-    d.append(command)
+    path_data.append(command)
 
 
 @final
-class D(
+class PathData(
     MutableSequence[PathCommand],
     mixins.CustomModel,
     transform.PointAddSubWithTranslateRMatmul,
@@ -476,34 +481,32 @@ class D(
     """A class representing the `d` attribute of a path element.
 
     The `d` attribute is used to define a path in SVG. This class provides
-    methods for building a path by adding commands. `D` is also
+    methods for building a path by adding commands. `PathData` is also
     a `MutableSequence` of `PathCommand` instances.
 
     Args:
         iterable: An iterable of `PathCommand` instances (for example,
-        another `D` instance).
+        another `PathData` instance).
         start: The starting point of the path. If `start` is not `None`, a
         `MoveTo` command is automatically added to the path, moving the "pen"
         to the starting point.
 
     Examples:
-    >>> d = (
-    ...     D()
+    >>> path_data = (
+    ...     PathData()
     ...     .move_to(point.Point(10, 10))
     ...     .line_to(point.Point(100, 100), relative=True)
     ... )
-    >>> d
-    D(MoveTo(end=Point(x=10.0, y=10.0)), LineTo(end=Point(x=110.0, y=110.0)))
-    >>> len(d)
+    >>> len(path_data)
     2
-    >>> bool(d)
+    >>> bool(path_data)
     True
-    >>> d[0]
+    >>> path_data[0]
     MoveTo(end=Point(x=10.0, y=10.0))
-    >>> d.pop()
+    >>> path_data.pop()
     LineTo(end=Point(x=110.0, y=110.0))
-    >>> d.close()
-    D(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
+    >>> path_data.close()
+    PathData(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
 
     """
 
@@ -521,11 +524,11 @@ class D(
         *,
         start: point.Point | None = None,
     ) -> None:
-        """Initialize a new `D` instance.
+        """Initialize a new `PathData` instance.
 
         Args:
             iterable: An iterable of `PathCommand` instances (for example,
-            another `D` instance).
+            another `PathData` instance).
             start: The starting point of the path. If `start` is not `None`,
             a `MoveTo` command is automatically added to the path, moving the
             "pen" to the starting point.
@@ -559,7 +562,7 @@ class D(
             point.
 
         Returns:
-            A reference to the current `D` instance.
+            A reference to the current `PathData` instance.
 
         """
         return self.__add(MoveTo(end=end), relative=relative)
@@ -575,7 +578,7 @@ class D(
             point.
 
         Returns:
-            A reference to the current `D` instance.
+            A reference to the current `PathData` instance.
 
         """
         return self.__add(LineTo(end=end), relative=relative)
@@ -595,7 +598,7 @@ class D(
             point.
 
         Returns:
-            A reference to the current `D` instance.
+            A reference to the current `PathData` instance.
 
         """
         return self.__add(HorizontalLineTo(x=float(x)), relative=relative)
@@ -615,7 +618,7 @@ class D(
             point.
 
         Returns:
-            A reference to the current `D` instance.
+            A reference to the current `PathData` instance.
 
         """
         return self.__add(VerticalLineTo(y=float(y)), relative=relative)
@@ -640,7 +643,7 @@ class D(
             point.
 
         Returns:
-            A reference to the current `D` instance.
+            A reference to the current `PathData` instance.
 
         """
         return self.__add(
@@ -668,7 +671,7 @@ class D(
             point.
 
         Returns:
-            A reference to the current `D` instance.
+            A reference to the current `PathData` instance.
 
         """
         return self.__add(
@@ -701,7 +704,7 @@ class D(
             point.
 
         Returns:
-            A reference to the current `D` instance.
+            A reference to the current `PathData` instance.
 
         """
         return self.__add(
@@ -727,7 +730,7 @@ class D(
             point.
 
         Returns:
-            A reference to the current `D` instance.
+            A reference to the current `PathData` instance.
 
         """
         return self.__add(
@@ -757,7 +760,7 @@ class D(
             point.
 
         Returns:
-            A reference to the current `D` instance.
+            A reference to the current `PathData` instance.
 
         """
         return self.__add(
@@ -772,80 +775,83 @@ class D(
         point to the current subpath's initial point.
 
         Returns:
-            A reference to the current `D` instance.
+            A reference to the current `PathData` instance.
 
         """
         return self.__add(ClosePath())
 
     @classmethod
     def from_str(cls, text: str) -> Self:
-        """Parse a string into a `D` instance.
+        """Parse a string into a `PathData` instance.
 
         Args:
             text: The string to parse.
 
         Returns:
-            A new `D` instance created from the parsed string.
+            A new `PathData` instance created from the parsed string.
 
         Raises:
-            ValueError: If the string cannot be parsed into a valid `D`
+            ValueError: If the string cannot be parsed into a valid `PathData`
             instance.
 
         Examples:
-            >>> d = D.from_str("M 10,10 Z")
-            >>> d
-            D(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
+            >>> path_data = PathData.from_str("M 10,10 Z")
+            >>> path_data
+            PathData(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
 
         """
-        d = parse.parse(text, grammar="d.lark", transformer=_Transformer())
+        path_data = parse.parse(
+            text, grammar="path_data.lark", transformer=_Transformer()
+        )
 
-        assert isinstance(d, cls), f"Expected {cls}, got {type(d)}"
-        return d
+        assert isinstance(path_data, cls), (
+            f"Expected {cls}, got {type(path_data)}"
+        )
+        return path_data
 
     @classmethod
     def _validate(
         cls, value: object, info: pydantic_core.core_schema.ValidationInfo
-    ) -> D:
+    ) -> PathData:
         del info
 
         match value:
             case str():
                 return cls.from_str(value)
-            case D():
+            case PathData():
                 return value
             case _:
                 msg = f"Expected str or D, got {type(value)}"
                 raise TypeError(msg)
 
-    def __apply_shorthand_formatting(self) -> D:
+    def __apply_shorthand_formatting(self) -> PathData:
         """Apply shorthand formatting based on the formatter settings."""
         formatter = serialize.get_current_formatter()
         line = formatter.path_data_shorthand_line_commands
         curve = formatter.path_data_shorthand_curve_commands
 
-        d = self
+        path_data = self
 
         if "never" in (line, curve):
-            d = d.resolve_shorthands(
+            path_data = path_data.resolve_shorthands(
                 lines=line == "never", curves=curve == "never"
             )
 
         if "always" in (line, curve):
-            d = d.apply_shorthands(
+            path_data = path_data.apply_shorthands(
                 lines=line == "always", curves=curve == "always"
             )
 
-        return d
+        return path_data
 
     def __serialize_commands(self) -> Generator[str]:
         formatter = serialize.get_current_formatter()
-
-        d = self.__apply_shorthand_formatting()
+        path_data = self.__apply_shorthand_formatting()
 
         if formatter.path_data_coordinates == "relative":
-            d = _relativize(d)
+            path_data = _relativize(path_data)
 
-        for prev, command in iterutils.pairwise(d):
+        for prev, command in iterutils.pairwise(path_data):
             implicit = (
                 formatter.path_data_commands == "implicit"
                 and _can_use_implicit_command(command, prev=prev)
@@ -919,36 +925,37 @@ class D(
             the full-length equivalent (`C`, `Q`).
 
         Returns:
-            A new `D` instance with the shorthand commands (`H`, `V`, `S`, `T`)
-            replaced by their full-length equivalents (`L`, `C`, `Q`).
+            A new `PathData` instance with the shorthand commands
+            (`H`, `V`, `S`, `T`) replaced by their full-length equivalents
+            (`L`, `C`, `Q`).
 
         Examples:
-        >>> d = D.from_str("M 0,0 H 10")
-        >>> d.resolve_shorthands()
-        D(MoveTo(end=Point(x=0.0, y=0.0)), LineTo(end=Point(x=10.0, y=0.0)))
+        >>> path_data = PathData.from_str("M 0,0")
+        >>> path_data.resolve_shorthands()
+        PathData(MoveTo(end=Point(x=0.0, y=0.0)))
 
         """
-        d = type(self)()
+        path_data = type(self)()
 
         for command in self:
             match command:
                 case SmoothQuadraticBezierTo(end=end) if curves:
                     control = _quadratic_control(self, command)
-                    d.quadratic_bezier_to(control, end)
+                    path_data.quadratic_bezier_to(control, end)
                 case SmoothCubicBezierTo(control2=control2, end=end) if (
                     curves
                 ):
                     control1 = _cubic_control(self, command)
-                    d.cubic_bezier_to(control1, control2, end)
+                    path_data.cubic_bezier_to(control1, control2, end)
                 case HorizontalLineTo(x=x) if lines:
-                    end = _get_end(d, d[-1])
-                    d.line_to(point.Point(x, end.y))
+                    end = _get_end(path_data, path_data[-1])
+                    path_data.line_to(point.Point(x, end.y))
                 case VerticalLineTo(y=y) if lines:
-                    end = _get_end(d, d[-1])
-                    d.line_to(point.Point(end.x, y))
+                    end = _get_end(path_data, path_data[-1])
+                    path_data.line_to(point.Point(end.x, y))
                 case _:
-                    d.append(command)
-        return d
+                    path_data.append(command)
+        return path_data
 
     def apply_shorthands(
         self, *, lines: bool = True, curves: bool = True
@@ -962,58 +969,59 @@ class D(
             (`T`, `S`) where possible.
 
         Returns:
-            A new `D` instance with the full-length commands (`L`, `C`, `Q`)
-            replaced by their shorthand equivalents (`H`, `V`, `S`, `T`).
+            A new `PathData` instance with the full-length commands
+            (`L`, `C`, `Q`) replaced by their shorthand equivalents
+            (`H`, `V`, `S`, `T`).
 
         Examples:
-        >>> d = D.from_str("M 10,10 L 100,10")
-        >>> d.apply_shorthands()
-        D(MoveTo(end=Point(x=10.0, y=10.0)), HorizontalLineTo(x=100.0))
+        >>> path_data = PathData.from_str("M 10,10 L 100,10")
+        >>> path_data.apply_shorthands()
+        PathData(MoveTo(end=Point(x=10.0, y=10.0)), HorizontalLineTo(x=100.0))
 
         """
-        d = type(self)()
+        path_data = type(self)()
 
         for command in self:
             match command:
                 case LineTo(end=end) if lines and end.x == (
-                    _get_end(d, d[-1]).x
+                    _get_end(path_data, path_data[-1]).x
                 ):
-                    d.vertical_line_to(end.y)
+                    path_data.vertical_line_to(end.y)
                 case LineTo(end=end) if lines and end.y == (
-                    _get_end(d, d[-1]).y
+                    _get_end(path_data, path_data[-1]).y
                 ):
-                    d.horizontal_line_to(end.x)
+                    path_data.horizontal_line_to(end.x)
                 case QuadraticBezierTo(control=control, end=end) if curves:
-                    d.smooth_quadratic_bezier_to(end)
+                    path_data.smooth_quadratic_bezier_to(end)
 
-                    shorthand = d[-1]
+                    shorthand = path_data[-1]
                     assert isinstance(shorthand, SmoothQuadraticBezierTo)
 
                     # try to replace the command with a shorthand
-                    auto_control = _quadratic_control(d, shorthand)
+                    auto_control = _quadratic_control(path_data, shorthand)
 
                     # if the shorthand turns out not to be compatible, revert
                     # to the original command
                     if control != auto_control:
-                        d[-1] = command
+                        path_data[-1] = command
 
                 case CubicBezierTo(
                     control1=control1, control2=control2, end=end
                 ) if curves:
-                    d.smooth_cubic_bezier_to(control2, end)
+                    path_data.smooth_cubic_bezier_to(control2, end)
 
-                    shorthand = d[-1]
+                    shorthand = path_data[-1]
                     assert isinstance(shorthand, SmoothCubicBezierTo)
 
-                    auto_control = _cubic_control(d, shorthand)
+                    auto_control = _cubic_control(path_data, shorthand)
 
                     if control1 != auto_control:
-                        d[-1] = command
+                        path_data[-1] = command
 
                 case _:
-                    d.append(command)
+                    path_data.append(command)
 
-        return d
+        return path_data
 
     @overload
     def __getitem__(self, index: SupportsIndex) -> PathCommand: ...
@@ -1114,7 +1122,7 @@ class D(
 
 @lark.v_args(inline=True)
 @parse.visit_tokens  # there are a few terminals we want to parse
-class _Transformer(lark.Transformer[object, D]):
+class _Transformer(lark.Transformer[object, PathData]):
     point = point.Point
     NUMBER = float
 
@@ -1146,14 +1154,14 @@ class _Transformer(lark.Transformer[object, D]):
     @lark.v_args(inline=False)
     def path(
         self, args: list[PathCommand | lark.Tree[PathCommand | lark.Token]]
-    ) -> D:
-        d = D()
+    ) -> PathData:
+        path_data = PathData()
 
         for item in args:
             match item:
                 # simple commands like `Z` require no further processing
                 case _PathCommandBase() as command:
-                    _add_command(d, command)
+                    _add_command(path_data, command)
                 # commands that are part of a group need to be extracted;
                 # the relative flag is applied if the group is relative
                 case lark.Tree(data=name, children=commands):
@@ -1163,11 +1171,14 @@ class _Transformer(lark.Transformer[object, D]):
 
                     for command in commands:
                         assert isinstance(command, PathCommand)
-                        _add_command(d, command, relative=relative)
+                        _add_command(path_data, command, relative=relative)
 
-        return d
+        return path_data
 
 
-DType: TypeAlias = Annotated[
-    D, parse.get_validator(grammar="d.lark", transformer=_Transformer())
+PathDataType: TypeAlias = Annotated[
+    PathData,
+    parse.get_validator(
+        grammar="path_data.lark", transformer=_Transformer()
+    ),
 ]

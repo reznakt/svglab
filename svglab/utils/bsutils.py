@@ -25,7 +25,7 @@ class _BsFormatter(bs4.formatter.XMLFormatter):
 
         if tag.name in formatter.attribute_order:
             order = formatter.attribute_order[
-                cast(names.TagName, tag.name)
+                cast(names.ElementName, tag.name)
             ]
         elif "*" in formatter.attribute_order:
             order = formatter.attribute_order["*"]

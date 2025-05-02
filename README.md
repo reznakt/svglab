@@ -52,7 +52,7 @@
 - SVG parsing, manipulation, and writing
 - Support for all SVG 1.1 elements and attributes
 - Partial support for SVG 2
-- Support for special XML elements (`CDATA`, comments, text)
+- Support for special XML entities (`CDATA`, comments, text)
 - Attributes are parsed into native Python types for easy manipulation
 - Highly configurable formatting options:
   - indentation level
@@ -72,22 +72,22 @@
 
 ```mermaid
 ---
-title: Element hierarchy
+title: Entity hierarchy
 ---
 
 graph TD
-  Element:::abc --> TextElement
-  Element --> Tag
+  Entity:::abc --> CharacterData
+  Entity --> Element
 
-  Tag:::abc --> G
-  Tag --> Svg
-  Tag --> Rect
-  Tag --> Circle
-  Tag --> etc1[...]
+  Element:::abc --> G
+  Element --> Svg
+  Element --> Rect
+  Element --> Circle
+  Element --> etc1[...]
 
-  TextElement:::abc --> RawText
-  TextElement --> Comment
-  TextElement --> CData
+  CharacterData:::abc --> RawText
+  CharacterData --> Comment
+  CharacterData --> CData
 
   etc1:::etc
 
@@ -108,10 +108,13 @@ graph TD
 ### Installation
 
 **From PyPi**:
+
 ```sh
 pip install svglab
 ```
+
 **From source**:
+
 ```sh
 # Via HTTPS
 pip install git+https://github.com/reznakt/svglab.git
@@ -203,7 +206,7 @@ svg.x = Length(10, "px")
 # Save to a file
 svg.save(sys.stdout)
 
-# Search the element tree
+# Search the entity tree
 print(*svg.find_all(Rect), sep="\n")
 rect = svg.find(G).find(Rect)
 
