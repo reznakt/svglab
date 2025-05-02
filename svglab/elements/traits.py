@@ -91,7 +91,7 @@ class _GraphicalOperations(Element):
 
 class GraphicsElement(
     _GraphicalOperations,
-    groups.GraphicalEvents,
+    groups.GraphicalEventsAttrs,
     common.StrokeWidthScaled,
     Element,
 ):
@@ -103,7 +103,7 @@ class GraphicsElement(
     """
 
 
-class Shape(regular.PathLength, GraphicsElement):
+class Shape(regular.PathLengthAttr, GraphicsElement):
     """A shape.
 
     From the SVG 1.1 specification:
@@ -186,7 +186,7 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
 
 
 class AnimationElement(
-    groups.AnimationEvents, groups.AnimationTiming, Element
+    groups.AnimationEventsAttrs, groups.AnimationTimingAttrs, Element
 ):
     """An animation element.
 
@@ -197,7 +197,7 @@ class AnimationElement(
 
 
 class ContainerElement(
-    _GraphicalOperations, groups.GraphicalEvents, Element
+    _GraphicalOperations, groups.GraphicalEventsAttrs, Element
 ):
     """A container element.
 
@@ -216,7 +216,7 @@ class DescriptiveElement(Element):
     """
 
 
-class FilterPrimitiveElement(groups.FilterPrimitives, Element):
+class FilterPrimitiveElement(groups.FilterPrimitivesAttrs, Element):
     """A filter primitive element.
 
     From the SVG 1.1 specification:

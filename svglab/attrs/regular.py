@@ -7,59 +7,59 @@ from svglab import models, utiltypes
 from svglab.attrs import common, typedefs
 
 
-class AccentHeight(common.Attr):
+class AccentHeightAttr(common.Attr):
     accent_height: models.Attr[typedefs.Number] = None
 
 
-class Accumulate(common.Attr):
+class AccumulateAttr(common.Attr):
     accumulate: models.Attr[typedefs.None_ | Literal["sum"]] = None
 
 
-class Additive(common.Attr):
+class AdditiveAttr(common.Attr):
     additive: models.Attr[Literal["replace", "sum"]] = None
 
 
-class Alphabetic(common.Attr):
+class AlphabeticAttr(common.Attr):
     alphabetic: models.Attr[typedefs.Number] = None
 
 
-class Amplitude(common.Attr):
+class AmplitudeAttr(common.Attr):
     amplitude: models.Attr[typedefs.Number] = None
 
 
-class ArabicForm(common.Attr):
+class ArabicFormAttr(common.Attr):
     arabic_form: models.Attr[
         Literal["initial", "medial", "terminal", "isolated"]
     ] = None
 
 
-class Ascent(common.Attr):
+class AscentAttr(common.Attr):
     ascent: models.Attr[typedefs.Number] = None
 
 
-class AttributeName(common.Attr):
+class AttributeNameAttr(common.Attr):
     attributeName: models.Attr[typedefs.Unparsed] = None
 
 
-class AttributeType(common.Attr):
+class AttributeTypeAttr(common.Attr):
     attributeType: models.Attr[Literal["CSS", "XML"] | typedefs.Auto] = (
         None
     )
 
 
-class Azimuth(common.Attr):
+class AzimuthAttr(common.Attr):
     azimuth: models.Attr[typedefs.Number] = None
 
 
-class BaseFrequency(common.Attr):
+class BaseFrequencyAttr(common.Attr):
     baseFrequency: models.Attr[typedefs.NumberOptionalNumber] = None
 
 
-class BaseProfile(common.Attr):
+class BaseProfileAttr(common.Attr):
     baseProfile: models.Attr[typedefs.ProfileName] = None
 
 
-class Bbox(common.Attr):
+class BboxAttr(common.Attr):
     bbox: models.Attr[
         models.Tuple4[
             typedefs.Number,
@@ -70,201 +70,201 @@ class Bbox(common.Attr):
     ] = None
 
 
-class Begin(common.Attr):
+class BeginAttr(common.Attr):
     begin: models.Attr[typedefs.BeginValueList] = None
 
 
-class Bias(common.Attr):
+class BiasAttr(common.Attr):
     bias: models.Attr[typedefs.Number] = None
 
 
-class By(common.Attr):
+class ByAttr(common.Attr):
     by: models.Attr[typedefs.Unparsed] = None
 
 
-class CalcMode(common.Attr):
+class CalcModeAttr(common.Attr):
     calcMode: models.Attr[
         Literal["discrete", "linear", "paced", "spline"]
     ] = None
 
 
-class CapHeight(common.Attr):
+class CapHeightAttr(common.Attr):
     cap_height: models.Attr[typedefs.Number] = None
 
 
-class Class(common.Attr):
+class ClassAttr(common.Attr):
     class_: models.Attr[typedefs.ListOfStrings] = None
 
 
-class ClipPathUnits(common.Attr):
+class ClipPathUnitsAttr(common.Attr):
     clipPathUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
-class ContentScriptType(common.Attr):
+class ContentScriptTypeAttr(common.Attr):
     contentScriptType: models.Attr[typedefs.ContentType] = None
 
 
-class ContentStyleType(common.Attr):
+class ContentStyleTypeAttr(common.Attr):
     contentStyleType: models.Attr[typedefs.ContentType] = None
 
 
-class Cx(common.Attr):
+class CxAttr(common.Attr):
     cx: models.Attr[typedefs.Coordinate] = None
 
 
-class Cy(common.Attr):
+class CyAttr(common.Attr):
     cy: models.Attr[typedefs.Coordinate] = None
 
 
-class D(common.Attr):
+class DAttr(common.Attr):
     d: models.Attr[typedefs.PathData] = None
 
 
-class Descent(common.Attr):
+class DescentAttr(common.Attr):
     descent: models.Attr[typedefs.Number] = None
 
 
-class DiffuseConstant(common.Attr):
+class DiffuseConstantAttr(common.Attr):
     diffuseConstant: models.Attr[typedefs.Number] = None
 
 
-class Divisor(common.Attr):
+class DivisorAttr(common.Attr):
     divisor: models.Attr[typedefs.Number] = None
 
 
-class Dur(common.Attr):
+class DurAttr(common.Attr):
     dur: models.Attr[
         typedefs.ClockValue | Literal["media", "indefinite"]
     ] = None
 
 
-class DxListOfLengths(common.Attr):
+class DxListOfLengthsAttr(common.Attr):
     dx: models.Attr[typedefs.ListOfLengths] = None
 
 
-class DxNumber(common.Attr):
+class DxNumberAttr(common.Attr):
     dx: models.Attr[typedefs.Number] = None
 
 
-class DyListOfLengths(common.Attr):
+class DyListOfLengthsAttr(common.Attr):
     dy: models.Attr[typedefs.ListOfLengths] = None
 
 
-class DyNumber(common.Attr):
+class DyNumberAttr(common.Attr):
     dy: models.Attr[typedefs.Number] = None
 
 
-class EdgeMode(common.Attr):
+class EdgeModeAttr(common.Attr):
     edgeMode: models.Attr[Literal["duplicate", "wrap", "none"]] = None
 
 
-class Elevation(common.Attr):
+class ElevationAttr(common.Attr):
     elevation: models.Attr[typedefs.Number] = None
 
 
-class End(common.Attr):
+class EndAttr(common.Attr):
     end: models.Attr[typedefs.EndValueList] = None
 
 
-class Exponent(common.Attr):
+class ExponentAttr(common.Attr):
     exponent: models.Attr[typedefs.Number] = None
 
 
-class ExternalResourcesRequired(common.Attr):
+class ExternalResourcesRequiredAttr(common.Attr):
     externalResourcesRequired: models.Attr[typedefs.Boolean] = None
 
 
-class FilterRes(common.Attr):
+class FilterResAttr(common.Attr):
     filterRes: models.Attr[typedefs.NumberOptionalNumber] = None
 
 
-class FilterUnits(common.Attr):
+class FilterUnitsAttr(common.Attr):
     filterUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
-class Format(common.Attr):
+class FormatAttr(common.Attr):
     format: models.Attr[typedefs.Unparsed] = None
 
 
-class Fr(common.Attr):
+class FrAttr(common.Attr):
     fr: models.Attr[typedefs.Length] = None
 
 
-class From(common.Attr):
+class FromAttr(common.Attr):
     from_: models.Attr[typedefs.Unparsed] = None
 
 
-class Fx(common.Attr):
+class FxAttr(common.Attr):
     fx: models.Attr[typedefs.Coordinate] = None
 
 
-class Fy(common.Attr):
+class FyAttr(common.Attr):
     fy: models.Attr[typedefs.Coordinate] = None
 
 
-class G1(common.Attr):
+class G1Attr(common.Attr):
     g1: models.Attr[typedefs.ListOfNames] = None
 
 
-class G2(common.Attr):
+class G2Attr(common.Attr):
     g2: models.Attr[typedefs.ListOfNames] = None
 
 
-class GlyphName(common.Attr):
+class GlyphNameAttr(common.Attr):
     glyph_name: models.Attr[typedefs.ListOfNames] = None
 
 
-class GlyphRef(common.Attr):
+class GlyphRefAttr(common.Attr):
     glyphRef: models.Attr[typedefs.Unparsed] = None
 
 
-class GradientTransform(common.Attr):
+class GradientTransformAttr(common.Attr):
     gradientTransform: models.Attr[typedefs.TransformList] = None
 
 
-class GradientUnits(common.Attr):
+class GradientUnitsAttr(common.Attr):
     gradientUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
-class Hanging(common.Attr):
+class HangingAttr(common.Attr):
     hanging: models.Attr[typedefs.Number] = None
 
 
-class Height(common.Attr):
+class HeightAttr(common.Attr):
     height: models.Attr[typedefs.Length] = None
 
 
-class HorizAdvX(common.Attr):
+class HorizAdvXAttr(common.Attr):
     horiz_adv_x: models.Attr[typedefs.Number] = None
 
 
-class HorizOriginX(common.Attr):
+class HorizOriginXAttr(common.Attr):
     horiz_origin_x: models.Attr[typedefs.Number] = None
 
 
-class HorizOriginY(common.Attr):
+class HorizOriginYAttr(common.Attr):
     horiz_origin_y: models.Attr[typedefs.Number] = None
 
 
-class Href(common.Attr):
+class HrefAttr(common.Attr):
     href: models.Attr[typedefs.Iri] = None
 
 
-class Id(common.Attr):
+class IdAttr(common.Attr):
     id: models.Attr[typedefs.Name] = None
 
 
-class Ideographic(common.Attr):
+class IdeographicAttr(common.Attr):
     ideographic: models.Attr[typedefs.Number] = None
 
 
-class In(common.Attr):
+class InAttr(common.Attr):
     in_: models.Attr[
         typedefs.Paint
         | typedefs.FilterPrimitiveReference
@@ -272,7 +272,7 @@ class In(common.Attr):
     ] = None
 
 
-class In2(common.Attr):
+class In2Attr(common.Attr):
     in2: models.Attr[
         typedefs.Paint
         | typedefs.FilterPrimitiveReference
@@ -280,257 +280,257 @@ class In2(common.Attr):
     ] = None
 
 
-class Intercept(common.Attr):
+class InterceptAttr(common.Attr):
     intercept: models.Attr[typedefs.Number] = None
 
 
-class K(common.Attr):
+class KAttr(common.Attr):
     k: models.Attr[typedefs.Number] = None
 
 
-class K1(common.Attr):
+class K1Attr(common.Attr):
     k1: models.Attr[typedefs.Number] = None
 
 
-class K2(common.Attr):
+class K2Attr(common.Attr):
     k2: models.Attr[typedefs.Number] = None
 
 
-class K3(common.Attr):
+class K3Attr(common.Attr):
     k3: models.Attr[typedefs.Number] = None
 
 
-class K4(common.Attr):
+class K4Attr(common.Attr):
     k4: models.Attr[typedefs.Number] = None
 
 
-class KernelMatrix(common.Attr):
+class KernelMatrixAttr(common.Attr):
     kernelMatrix: models.Attr[typedefs.ListOfNumbers] = None
 
 
-class KernelUnitLength(common.Attr):
+class KernelUnitLengthAttr(common.Attr):
     kernelUnitLength: models.Attr[typedefs.NumberOptionalNumber] = None
 
 
-class KeyPoints(common.Attr):
+class KeyPointsAttr(common.Attr):
     keyPoints: models.Attr[typedefs.ListOfNumbers] = None
 
 
-class KeySplines(common.Attr):
+class KeySplinesAttr(common.Attr):
     keySplines: models.Attr[typedefs.Unparsed] = None
 
 
-class KeyTimes(common.Attr):
+class KeyTimesAttr(common.Attr):
     keyTimes: models.Attr[typedefs.Unparsed] = None
 
 
-class Lang(common.Attr):
+class LangAttr(common.Attr):
     lang: models.Attr[typedefs.LanguageTag] = None
 
 
-class LangGlyph(common.Attr):
+class LangGlyphAttr(common.Attr):
     lang: models.Attr[typedefs.LanguageCodes] = None
 
 
-class LengthAdjust(common.Attr):
+class LengthAdjustAttr(common.Attr):
     lengthAdjust: models.Attr[Literal["spacing", "spacingAndGlyphs"]] = (
         None
     )
 
 
-class LimitingConeAngle(common.Attr):
+class LimitingConeAngleAttr(common.Attr):
     limitingConeAngle: models.Attr[typedefs.Number] = None
 
 
-class Local(common.Attr):
+class LocalAttr(common.Attr):
     local: models.Attr[typedefs.Unparsed] = None
 
 
-class MarkerHeight(common.Attr):
+class MarkerHeightAttr(common.Attr):
     markerHeight: models.Attr[typedefs.Length] = None
 
 
-class MarkerUnits(common.Attr):
+class MarkerUnitsAttr(common.Attr):
     markerUnits: models.Attr[Literal["strokeWidth", "userSpaceOnUse"]] = (
         None
     )
 
 
-class MarkerWidth(common.Attr):
+class MarkerWidthAttr(common.Attr):
     markerWidth: models.Attr[typedefs.Length] = None
 
 
-class MaskContentUnits(common.Attr):
+class MaskContentUnitsAttr(common.Attr):
     maskContentUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
-class MaskUnits(common.Attr):
+class MaskUnitsAttr(common.Attr):
     maskUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
-class Mathematical(common.Attr):
+class MathematicalAttr(common.Attr):
     mathematical: models.Attr[typedefs.Number] = None
 
 
-class Max(common.Attr):
+class MaxAttr(common.Attr):
     max: models.Attr[Literal["media"] | typedefs.ClockValue] = None
 
 
-class Media(common.Attr):
+class MediaAttr(common.Attr):
     media: models.Attr[typedefs.MediaDescriptors] = None
 
 
-class Method(common.Attr):
+class MethodAttr(common.Attr):
     method: models.Attr[Literal["align", "stretch"]] = None
 
 
-class Min(common.Attr):
+class MinAttr(common.Attr):
     min: models.Attr[Literal["media"] | typedefs.ClockValue] = None
 
 
-class Mode(common.Attr):
+class ModeAttr(common.Attr):
     mode: models.Attr[
         Literal["normal", "multiply", "screen", "darken", "lighten"]
     ] = None
 
 
-class NameName(common.Attr):
+class NameNameAttr(common.Attr):
     name: models.Attr[typedefs.Name] = None
 
 
-class NameAnything(common.Attr):
+class NameAnythingAttr(common.Attr):
     name: models.Attr[typedefs.Anything] = None
 
 
-class NumOctaves(common.Attr):
+class NumOctavesAttr(common.Attr):
     numOctaves: models.Attr[typedefs.Integer] = None
 
 
-class OffsetNumberPercentage(common.Attr):
+class OffsetNumberPercentageAttr(common.Attr):
     offset: models.Attr[typedefs.Number | typedefs.Percentage] = None
 
 
-class OffsetNumber(common.Attr):
+class OffsetNumberAttr(common.Attr):
     offset: models.Attr[typedefs.Number] = None
 
 
-class OnAbort(common.Attr):
+class OnAbortAttr(common.Attr):
     onabort: models.Attr[typedefs.Anything] = None
 
 
-class OnActivate(common.Attr):
+class OnActivateAttr(common.Attr):
     onactivate: models.Attr[typedefs.Anything] = None
 
 
-class OnBegin(common.Attr):
+class OnBeginAttr(common.Attr):
     onbegin: models.Attr[typedefs.Anything] = None
 
 
-class OnClick(common.Attr):
+class OnClickAttr(common.Attr):
     onclick: models.Attr[typedefs.Anything] = None
 
 
-class OnEnd(common.Attr):
+class OnEndAttr(common.Attr):
     onend: models.Attr[typedefs.Anything] = None
 
 
-class OnError(common.Attr):
+class OnErrorAttr(common.Attr):
     onerror: models.Attr[typedefs.Anything] = None
 
 
-class OnFocusIn(common.Attr):
+class OnFocusInAttr(common.Attr):
     onfocusin: models.Attr[typedefs.Anything] = None
 
 
-class OnFocusOut(common.Attr):
+class OnFocusOutAttr(common.Attr):
     onfocusout: models.Attr[typedefs.Anything] = None
 
 
-class OnLoad(common.Attr):
+class OnLoadAttr(common.Attr):
     onload: models.Attr[typedefs.Anything] = None
 
 
-class OnMouseDown(common.Attr):
+class OnMouseDownAttr(common.Attr):
     onmousedown: models.Attr[typedefs.Anything] = None
 
 
-class OnMouseMove(common.Attr):
+class OnMouseMoveAttr(common.Attr):
     onmousemove: models.Attr[typedefs.Anything] = None
 
 
-class OnMouseOut(common.Attr):
+class OnMouseOutAttr(common.Attr):
     onmouseout: models.Attr[typedefs.Anything] = None
 
 
-class OnMouseOver(common.Attr):
+class OnMouseOverAttr(common.Attr):
     onmouseover: models.Attr[typedefs.Anything] = None
 
 
-class OnMouseUp(common.Attr):
+class OnMouseUpAttr(common.Attr):
     onmouseup: models.Attr[typedefs.Anything] = None
 
 
-class OnRepeat(common.Attr):
+class OnRepeatAttr(common.Attr):
     onrepeat: models.Attr[typedefs.Anything] = None
 
 
-class OnResize(common.Attr):
+class OnResizeAttr(common.Attr):
     onresize: models.Attr[typedefs.Anything] = None
 
 
-class OnScroll(common.Attr):
+class OnScrollAttr(common.Attr):
     onscroll: models.Attr[typedefs.Anything] = None
 
 
-class OnUnload(common.Attr):
+class OnUnloadAttr(common.Attr):
     onunload: models.Attr[typedefs.Anything] = None
 
 
-class OnZoom(common.Attr):
+class OnZoomAttr(common.Attr):
     onzoom: models.Attr[typedefs.Anything] = None
 
 
-class OperatorFeComposite(common.Attr):
+class OperatorFeCompositeAttr(common.Attr):
     operator: models.Attr[
         Literal["over", "in", "out", "atop", "xor", "arithmetic"]
     ] = None
 
 
-class OperatorFeMorphology(common.Attr):
+class OperatorFeMorphologyAttr(common.Attr):
     operator: models.Attr[Literal["erode", "dilate"]] = None
 
 
-class Order(common.Attr):
+class OrderAttr(common.Attr):
     order: models.Attr[typedefs.NumberOptionalNumber] = None
 
 
-class Orient(common.Attr):
+class OrientAttr(common.Attr):
     orient: models.Attr[
         typedefs.Auto | Literal["auto-start-reverse"] | typedefs.Angle
     ] = None
 
 
-class Orientation(common.Attr):
+class OrientationAttr(common.Attr):
     orientation: models.Attr[Literal["h", "v"]] = None
 
 
-class Origin(common.Attr):
+class OriginAttr(common.Attr):
     origin: models.Attr[Literal["default"]] = None
 
 
-class OverlinePosition(common.Attr):
+class OverlinePositionAttr(common.Attr):
     overline_position: models.Attr[typedefs.Number] = None
 
 
-class OverlineThickness(common.Attr):
+class OverlineThicknessAttr(common.Attr):
     overline_thickness: models.Attr[typedefs.Number] = None
 
 
-class Panose1(common.Attr):
+class Panose1Attr(common.Attr):
     panose1: models.Attr[
         models.Tuple[
             tuple[
@@ -549,51 +549,51 @@ class Panose1(common.Attr):
     ] = None
 
 
-class Path(common.Attr):
+class PathAttr(common.Attr):
     path: models.Attr[typedefs.PathData] = None
 
 
-class PathLength(common.Attr):
+class PathLengthAttr(common.Attr):
     pathLength: models.Attr[typedefs.Number] = None
 
 
-class PatternContentUnits(common.Attr):
+class PatternContentUnitsAttr(common.Attr):
     patternContentUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
-class PatternTransform(common.Attr):
+class PatternTransformAttr(common.Attr):
     patternTransform: models.Attr[typedefs.TransformList] = None
 
 
-class PatternUnits(common.Attr):
+class PatternUnitsAttr(common.Attr):
     patternUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
-class Points(common.Attr):
+class PointsAttr(common.Attr):
     points: models.Attr[typedefs.ListOfPoints] = None
 
 
-class PointsAtX(common.Attr):
+class PointsAtXAttr(common.Attr):
     pointsAtX: models.Attr[typedefs.Number] = None
 
 
-class PointsAtY(common.Attr):
+class PointsAtYAttr(common.Attr):
     pointsAtY: models.Attr[typedefs.Number] = None
 
 
-class PointsAtZ(common.Attr):
+class PointsAtZAttr(common.Attr):
     pointsAtZ: models.Attr[typedefs.Number] = None
 
 
-class PreserveAlpha(common.Attr):
+class PreserveAlphaAttr(common.Attr):
     preserveAlpha: models.Attr[typedefs.Boolean] = None
 
 
-class PreserveAspectRatio(common.Attr):
+class PreserveAspectRatioAttr(common.Attr):
     preserveAspectRatio: models.Attr[
         None
         | Literal[
@@ -611,33 +611,33 @@ class PreserveAspectRatio(common.Attr):
     ] = None
 
 
-class PrimitiveUnits(common.Attr):
+class PrimitiveUnitsAttr(common.Attr):
     primitiveUnits: models.Attr[
         Literal["userSpaceOnUse", "objectBoundingBox"]
     ] = None
 
 
-class R(common.Attr):
+class RAttr(common.Attr):
     r: models.Attr[typedefs.Length] = None
 
 
-class Radius(common.Attr):
+class RadiusAttr(common.Attr):
     radius: models.Attr[typedefs.NumberOptionalNumber] = None
 
 
-class RefX(common.Attr):
+class RefXAttr(common.Attr):
     ref_x: models.Attr[
         Literal["left", "center", "right"] | typedefs.Coordinate
     ] = None
 
 
-class RefY(common.Attr):
+class RefYAttr(common.Attr):
     ref_y: models.Attr[
         Literal["top", "center", "bottom"] | typedefs.Coordinate
     ] = None
 
 
-class RenderingIntent(common.Attr):
+class RenderingIntentAttr(common.Attr):
     rendering_intent: models.Attr[
         Literal[
             "auto",
@@ -649,41 +649,41 @@ class RenderingIntent(common.Attr):
     ] = None
 
 
-class RepeatCount(common.Attr):
+class RepeatCountAttr(common.Attr):
     repeatCount: models.Attr[
         Literal["indefinite"] | typedefs.NumericValue
     ] = None
 
 
-class RepeatDur(common.Attr):
+class RepeatDurAttr(common.Attr):
     repeatDur: models.Attr[Literal["indefinite"] | typedefs.ClockValue] = (
         None
     )
 
 
-class RequiredExtensions(common.Attr):
+class RequiredExtensionsAttr(common.Attr):
     requiredExtensions: models.Attr[typedefs.ListOfExtensions] = None
 
 
-class RequiredFeatures(common.Attr):
+class RequiredFeaturesAttr(common.Attr):
     requiredFeatures: models.Attr[typedefs.ListOfFeatures] = None
 
 
-class Restart(common.Attr):
+class RestartAttr(common.Attr):
     restart: models.Attr[Literal["always", "whenNotActive", "never"]] = (
         None
     )
 
 
-class Result(common.Attr):
+class ResultAttr(common.Attr):
     result: models.Attr[typedefs.FilterPrimitiveReference] = None
 
 
-class RotateListOfNumbers(common.Attr):
+class RotateListOfNumbersAttr(common.Attr):
     rotate: models.Attr[typedefs.ListOfNumbers] = None
 
 
-class RotateNumberAutoAutoReverse(common.Attr):
+class RotateNumberAutoAutoReverseAttr(common.Attr):
     rotate: (
         models.Attr[typedefs.Number]
         | typedefs.Auto
@@ -691,216 +691,216 @@ class RotateNumberAutoAutoReverse(common.Attr):
     ) = None
 
 
-class Rx(common.Attr):
+class RxAttr(common.Attr):
     rx: models.Attr[typedefs.Length] = None
 
 
-class Ry(common.Attr):
+class RyAttr(common.Attr):
     ry: models.Attr[typedefs.Length] = None
 
 
-class Scale(common.Attr):
+class ScaleAttr(common.Attr):
     scale: models.Attr[typedefs.Number] = None
 
 
-class Seed(common.Attr):
+class SeedAttr(common.Attr):
     seed: models.Attr[typedefs.Number] = None
 
 
-class Slope(common.Attr):
+class SlopeAttr(common.Attr):
     slope: models.Attr[typedefs.Number] = None
 
 
-class Spacing(common.Attr):
+class SpacingAttr(common.Attr):
     spacing: models.Attr[Literal["auto", "exact"]] = None
 
 
-class SpecularConstant(common.Attr):
+class SpecularConstantAttr(common.Attr):
     specularConstant: models.Attr[typedefs.Number] = None
 
 
-class SpecularExponent(common.Attr):
+class SpecularExponentAttr(common.Attr):
     specularExponent: models.Attr[typedefs.Number] = None
 
 
-class SpreadMethod(common.Attr):
+class SpreadMethodAttr(common.Attr):
     spreadMethod: models.Attr[Literal["pad", "reflect", "repeat"]] = None
 
 
-class StartOffset(common.Attr):
+class StartOffsetAttr(common.Attr):
     startOffset: models.Attr[typedefs.Length] = None
 
 
-class StdDeviation(common.Attr):
+class StdDeviationAttr(common.Attr):
     stdDeviation: models.Attr[typedefs.NumberOptionalNumber] = None
 
 
-class Stemh(common.Attr):
+class StemhAttr(common.Attr):
     stemh: models.Attr[typedefs.Number] = None
 
 
-class Stemv(common.Attr):
+class StemvAttr(common.Attr):
     stemv: models.Attr[typedefs.Number] = None
 
 
-class StitchTiles(common.Attr):
+class StitchTilesAttr(common.Attr):
     stitchTiles: models.Attr[Literal["stitch", "noStitch"]] = None
 
 
-class StrikethroughPosition(common.Attr):
+class StrikethroughPositionAttr(common.Attr):
     strikethrough_position: models.Attr[typedefs.Number] = None
 
 
-class StrikethroughThickness(common.Attr):
+class StrikethroughThicknessAttr(common.Attr):
     strikethrough_thickness: models.Attr[typedefs.Number] = None
 
 
-class String(common.Attr):
+class StringAttr(common.Attr):
     string: models.Attr[typedefs.Anything] = None
 
 
-class Style(common.Attr):
+class StyleAttr(common.Attr):
     style: models.Attr[typedefs.Unparsed] = None
 
 
-class SurfaceScale(common.Attr):
+class SurfaceScaleAttr(common.Attr):
     surfaceScale: models.Attr[typedefs.Number] = None
 
 
-class SystemLanguage(common.Attr):
+class SystemLanguageAttr(common.Attr):
     systemLanguage: models.Attr[typedefs.LanguageCodes] = None
 
 
-class TableValues(common.Attr):
+class TableValuesAttr(common.Attr):
     tableValues: models.Attr[typedefs.ListOfNumbers] = None
 
 
-class Target(common.Attr):
+class TargetAttr(common.Attr):
     target: models.Attr[
         Literal["_replace", "_self", "_parent", "_top", "_blank"]
         | typedefs.XmlName
     ] = None
 
 
-class TargetX(common.Attr):
+class TargetXAttr(common.Attr):
     targetX: models.Attr[typedefs.Integer] = None
 
 
-class TargetY(common.Attr):
+class TargetYAttr(common.Attr):
     targetY: models.Attr[typedefs.Integer] = None
 
 
-class TextLength(common.Attr):
+class TextLengthAttr(common.Attr):
     textLength: models.Attr[typedefs.Length] = None
 
 
-class Title(common.Attr):
+class TitleAttr(common.Attr):
     title: models.Attr[typedefs.AdvisoryTitle] = None
 
 
-class To(common.Attr):
+class ToAttr(common.Attr):
     to: models.Attr[typedefs.Unparsed] = None
 
 
-class TypeAnimateTransform(common.Attr):
+class TypeAnimateTransformAttr(common.Attr):
     type: models.Attr[
         Literal["translate", "scale", "rotate", "skewX", "skewY"]
     ] = None
 
 
-class TypeFeColorMatrix(common.Attr):
+class TypeFeColorMatrixAttr(common.Attr):
     type: models.Attr[
         Literal["matrix", "saturate", "hueRotate", "luminanceToAlpha"]
     ] = None
 
 
-class TypeFeTurbluence(common.Attr):
+class TypeFeTurbluenceAttr(common.Attr):
     type: models.Attr[Literal["fractalNoise", "turbulence"]] = None
 
 
-class TypeContentType(common.Attr):
+class TypeContentTypeAttr(common.Attr):
     type: models.Attr[typedefs.ContentType] = None
 
 
-class TypeFeFunc(common.Attr):
+class TypeFeFuncAttr(common.Attr):
     type: models.Attr[
         Literal["identity", "table", "discrete", "linear", "gamma"]
     ] = None
 
 
-class U1(common.Attr):
+class U1Attr(common.Attr):
     u1: models.Attr[models.List[typedefs.Character | typedefs.Urange]] = (
         None
     )
 
 
-class U2(common.Attr):
+class U2Attr(common.Attr):
     u2: models.Attr[models.List[typedefs.Character | typedefs.Urange]] = (
         None
     )
 
 
-class UnderlinePosition(common.Attr):
+class UnderlinePositionAttr(common.Attr):
     underline_position: models.Attr[typedefs.Number] = None
 
 
-class UnderlineThickness(common.Attr):
+class UnderlineThicknessAttr(common.Attr):
     underline_thickness: models.Attr[typedefs.Number] = None
 
 
-class Unicode(common.Attr):
+class UnicodeAttr(common.Attr):
     unicode: models.Attr[typedefs.Anything] = None
 
 
-class UnicodeRange(common.Attr):
+class UnicodeRangeAttr(common.Attr):
     unicode_range: models.Attr[models.List[typedefs.Urange]] = None
 
 
-class UnitsPerEm(common.Attr):
+class UnitsPerEmAttr(common.Attr):
     units_per_em: models.Attr[typedefs.Number] = None
 
 
-class VAlphabetic(common.Attr):
+class VAlphabeticAttr(common.Attr):
     v_alphabetic: models.Attr[typedefs.Number] = None
 
 
-class VHanging(common.Attr):
+class VHangingAttr(common.Attr):
     v_hanging: models.Attr[typedefs.Number] = None
 
 
-class VIdeographic(common.Attr):
+class VIdeographicAttr(common.Attr):
     v_ideographic: models.Attr[typedefs.Number] = None
 
 
-class VMathematical(common.Attr):
+class VMathematicalAttr(common.Attr):
     v_mathematical: models.Attr[typedefs.Number] = None
 
 
-class ValuesListOfNumbers(common.Attr):
+class ValuesListOfNumbersAttr(common.Attr):
     values: models.Attr[typedefs.ListOfNumbers] = None
 
 
-class ValuesList(common.Attr):
+class ValuesListAttr(common.Attr):
     values: models.Attr[typedefs.Unparsed] = None
 
 
-class Version(common.Attr):
+class VersionAttr(common.Attr):
     version: models.Attr[Literal["1.0", "1.1", "1.2"]] = None
 
 
-class VertAdvY(common.Attr):
+class VertAdvYAttr(common.Attr):
     vert_adv_y: models.Attr[typedefs.Number] = None
 
 
-class VertOriginX(common.Attr):
+class VertOriginXAttr(common.Attr):
     vert_origin_x: models.Attr[typedefs.Number] = None
 
 
-class VertOriginY(common.Attr):
+class VertOriginYAttr(common.Attr):
     vert_origin_y: models.Attr[typedefs.Number] = None
 
 
-class ViewBox(common.Attr):
+class ViewBoxAttr(common.Attr):
     viewBox: models.Attr[
         models.Tuple4[
             typedefs.Number,
@@ -911,15 +911,15 @@ class ViewBox(common.Attr):
     ] = None
 
 
-class ViewTarget(common.Attr):
+class ViewTargetAttr(common.Attr):
     viewTarget: models.Attr[models.List[typedefs.XmlName]] = None
 
 
-class Width(common.Attr):
+class WidthAttr(common.Attr):
     width: models.Attr[typedefs.Length] = None
 
 
-class Widths(common.Attr):
+class WidthsAttr(common.Attr):
     widths: models.Attr[
         models.List[
             typedefs.Urange
@@ -928,111 +928,111 @@ class Widths(common.Attr):
     ] = None
 
 
-class XListOfCoordinates(common.Attr):
+class XListOfCoordinatesAttr(common.Attr):
     x: models.Attr[typedefs.ListOfCoordinates] = None
 
 
-class XCoordinate(common.Attr):
+class XCoordinateAttr(common.Attr):
     x: models.Attr[typedefs.Coordinate] = None
 
 
-class XNumber(common.Attr):
+class XNumberAttr(common.Attr):
     x: models.Attr[typedefs.Number] = None
 
 
-class XHeight(common.Attr):
+class XHeightAttr(common.Attr):
     x_height: models.Attr[typedefs.Number] = None
 
 
-class X1(common.Attr):
+class X1Attr(common.Attr):
     x1: models.Attr[typedefs.Coordinate] = None
 
 
-class X2(common.Attr):
+class X2Attr(common.Attr):
     x2: models.Attr[typedefs.Coordinate] = None
 
 
-class XChannelSelector(common.Attr):
+class XChannelSelectorAttr(common.Attr):
     xChannelSelector: models.Attr[Literal["R", "G", "B", "A"]] = None
 
 
-class XlinkActuateOnRequest(common.Attr):
+class XlinkActuateOnRequestAttr(common.Attr):
     xlink_actuate: models.Attr[Literal["onRequest"]] = None
 
 
-class XlinkActuateOnLoad(common.Attr):
+class XlinkActuateOnLoadAttr(common.Attr):
     xlink_actuate: models.Attr[Literal["onLoad"]] = None
 
 
-class XlinkArcrole(common.Attr):
+class XlinkArcroleAttr(common.Attr):
     xlink_arcrole: models.Attr[typedefs.Iri] = None
 
 
-class XlinkHref(common.Attr):
+class XlinkHrefAttr(common.Attr):
     xlink_href: models.Attr[typedefs.Iri] = None
 
 
-class XlinkRole(common.Attr):
+class XlinkRoleAttr(common.Attr):
     xlink_role: models.Attr[typedefs.Iri] = None
 
 
-class XlinkShow(common.Attr):
+class XlinkShowAttr(common.Attr):
     xlink_show: models.Attr[
         Literal["new", "replace", "embed", "other", "none"]
     ] = None
 
 
-class XlinkTitle(common.Attr):
+class XlinkTitleAttr(common.Attr):
     xlink_title: models.Attr[typedefs.Anything] = None
 
 
-class XlinkType(common.Attr):
+class XlinkTypeAttr(common.Attr):
     xlink_type: models.Attr[Literal["simple"]] = None
 
 
-class XmlBase(common.Attr):
+class XmlBaseAttr(common.Attr):
     xml_base: models.Attr[typedefs.Iri] = None
 
 
-class XmlLang(common.Attr):
+class XmlLangAttr(common.Attr):
     xml_lang: models.Attr[typedefs.LanguageId] = None
 
 
-class Xmlns(common.Attr):
+class XmlnsAttr(common.Attr):
     xmlns: models.Attr[utiltypes.Xmlns] = None
 
 
-class XmlSpace(common.Attr):
+class XmlSpaceAttr(common.Attr):
     xml_space: models.Attr[Literal["default", "preserve"]] = None
 
 
-class YListOfCoordinates(common.Attr):
+class YListOfCoordinatesAttr(common.Attr):
     y: models.Attr[typedefs.ListOfCoordinates] = None
 
 
-class YCoordinate(common.Attr):
+class YCoordinateAttr(common.Attr):
     y: models.Attr[typedefs.Coordinate] = None
 
 
-class YNumber(common.Attr):
+class YNumberAttr(common.Attr):
     y: models.Attr[typedefs.Number] = None
 
 
-class Y1(common.Attr):
+class Y1Attr(common.Attr):
     y1: models.Attr[typedefs.Coordinate] = None
 
 
-class Y2(common.Attr):
+class Y2Attr(common.Attr):
     y2: models.Attr[typedefs.Coordinate] = None
 
 
-class YChannelSelector(common.Attr):
+class YChannelSelectorAttr(common.Attr):
     yChannelSelector: models.Attr[Literal["R", "G", "B", "A"]] = None
 
 
-class Z(common.Attr):
+class ZAttr(common.Attr):
     z: models.Attr[typedefs.Number] = None
 
 
-class ZoomAndPan(common.Attr):
+class ZoomAndPanAttr(common.Attr):
     zoomAndPan: models.Attr[Literal["disable", "magnify"]] = None

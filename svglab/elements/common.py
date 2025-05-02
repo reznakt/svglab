@@ -85,10 +85,10 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
 
 
 def _scale_stroke_width(
-    element: presentation.StrokeWidth, by: float
+    element: presentation.StrokeWidthAttr, by: float
 ) -> None:
     if (
-        isinstance(element, presentation.VectorEffect)
+        isinstance(element, presentation.VectorEffectAttr)
         and element.vector_effect == "non-scaling-stroke"
     ):
         return
@@ -125,13 +125,13 @@ def scale_distance_along_a_path_attrs(element: object, by: float) -> None:
         by: The factor by which to scale the attributes.
 
     """
-    if isinstance(element, presentation.StrokeDasharray) and isinstance(
-        element.stroke_dasharray, list
-    ):
+    if isinstance(
+        element, presentation.StrokeDasharrayAttr
+    ) and isinstance(element.stroke_dasharray, list):
         element.stroke_dasharray = [
             _scale_attr(dash, by) for dash in element.stroke_dasharray
         ]
-    if isinstance(element, presentation.StrokeDashoffset):
+    if isinstance(element, presentation.StrokeDashoffsetAttr):
         element.stroke_dashoffset = _scale_attr(
             element.stroke_dashoffset, by
         )
@@ -146,63 +146,66 @@ def _scale(element: object, scale: transform.Scale) -> None:  # noqa: PLR0915
     if mathutils.is_close(factor, 1):
         return
 
-    if isinstance(element, regular.Width):
+    if isinstance(element, regular.WidthAttr):
         element.width = _scale_attr(element.width, factor)
-    if isinstance(element, regular.Height):
+    if isinstance(element, regular.HeightAttr):
         element.height = _scale_attr(element.height, factor)
-    if isinstance(element, regular.R):
+    if isinstance(element, regular.RAttr):
         element.r = _scale_attr(element.r, factor)
-    if isinstance(element, regular.X1):
+    if isinstance(element, regular.X1Attr):
         element.x1 = _scale_attr(element.x1, factor)
-    if isinstance(element, regular.Y1):
+    if isinstance(element, regular.Y1Attr):
         element.y1 = _scale_attr(element.y1, factor)
-    if isinstance(element, regular.X2):
+    if isinstance(element, regular.X2Attr):
         element.x2 = _scale_attr(element.x2, factor)
-    if isinstance(element, regular.Y2):
+    if isinstance(element, regular.Y2Attr):
         element.y2 = _scale_attr(element.y2, factor)
-    if isinstance(element, regular.Rx):
+    if isinstance(element, regular.RxAttr):
         element.rx = _scale_attr(element.rx, factor)
-    if isinstance(element, regular.Ry):
+    if isinstance(element, regular.RyAttr):
         element.ry = _scale_attr(element.ry, factor)
-    if isinstance(element, regular.Cx):
+    if isinstance(element, regular.CxAttr):
         element.cx = _scale_attr(element.cx, factor)
-    if isinstance(element, regular.Cy):
+    if isinstance(element, regular.CyAttr):
         element.cy = _scale_attr(element.cy, factor)
-    if isinstance(element, regular.Fx):
+    if isinstance(element, regular.FxAttr):
         element.fx = _scale_attr(element.fx, factor)
-    if isinstance(element, regular.Fy):
+    if isinstance(element, regular.FyAttr):
         element.fy = _scale_attr(element.fy, factor)
-    if isinstance(element, common.FontSize):
+    if isinstance(element, common.FontSizeAttr):
         element.font_size = _scale_attr(element.font_size, factor)
-    if isinstance(element, regular.Points) and element.points is not None:
+    if (
+        isinstance(element, regular.PointsAttr)
+        and element.points is not None
+    ):
         element.points = [scale @ point for point in element.points]
-    if isinstance(element, regular.D) and element.d is not None:
+    if isinstance(element, regular.DAttr) and element.d is not None:
         element.d = scale @ element.d
 
     # these assignments have to be mutually exclusive, because the
     # type checker doesn't know that x being a <number> implies that x is
     # not a <coordinate> and vice versa
-    if isinstance(element, regular.XNumber):  # noqa: SIM114
+    if isinstance(element, regular.XNumberAttr):  # noqa: SIM114
         element.x = _scale_attr(element.x, factor)
-    elif isinstance(element, regular.XCoordinate):  # noqa: SIM114
+    elif isinstance(element, regular.XCoordinateAttr):  # noqa: SIM114
         element.x = _scale_attr(element.x, factor)
-    elif isinstance(element, regular.XListOfCoordinates):
+    elif isinstance(element, regular.XListOfCoordinatesAttr):
         element.x = _scale_attr(element.x, factor)
 
-    if isinstance(element, regular.YNumber):  # noqa: SIM114
+    if isinstance(element, regular.YNumberAttr):  # noqa: SIM114
         element.y = _scale_attr(element.y, factor)
-    elif isinstance(element, regular.YCoordinate):  # noqa: SIM114
+    elif isinstance(element, regular.YCoordinateAttr):  # noqa: SIM114
         element.y = _scale_attr(element.y, factor)
-    elif isinstance(element, regular.YListOfCoordinates):
+    elif isinstance(element, regular.YListOfCoordinatesAttr):
         element.y = _scale_attr(element.y, factor)
 
-    if isinstance(element, presentation.StrokeWidth):
+    if isinstance(element, presentation.StrokeWidthAttr):
         _scale_stroke_width(element, factor)
 
     # no need to scale distance-along-a-path attributes if a custom path
     # length is provided because those attributes and pathLength are
     # proportional
-    if not isinstance(element, regular.PathLength):
+    if not isinstance(element, regular.PathLengthAttr):
         scale_distance_along_a_path_attrs(element, factor)
 
 
@@ -255,40 +258,43 @@ def _translate(element: object, translate: transform.Translate) -> None:
     zero = length.Length.zero()
 
     # these attributes are mandatory for the respective elements
-    if isinstance(element, regular.X1):
+    if isinstance(element, regular.X1Attr):
         element.x1 = _translate_attr(element.x1, tx)
-    if isinstance(element, regular.Y1):
+    if isinstance(element, regular.Y1Attr):
         element.y1 = _translate_attr(element.y1, ty)
-    if isinstance(element, regular.X2):
+    if isinstance(element, regular.X2Attr):
         element.x2 = _translate_attr(element.x2, tx)
-    if isinstance(element, regular.Y2):
+    if isinstance(element, regular.Y2Attr):
         element.y2 = _translate_attr(element.y2, ty)
 
     # but these are not, so if they are not present, we initialize them
     # to 0
-    if isinstance(element, regular.Cx):
+    if isinstance(element, regular.CxAttr):
         element.cx = _translate_attr(element.cx or zero, tx)
-    if isinstance(element, regular.Cy):
+    if isinstance(element, regular.CyAttr):
         element.cy = _translate_attr(element.cy or zero, ty)
 
-    if isinstance(element, regular.XNumber):
+    if isinstance(element, regular.XNumberAttr):
         element.x = _translate_attr(element.x or 0, tx)
-    elif isinstance(element, regular.XCoordinate):
+    elif isinstance(element, regular.XCoordinateAttr):
         element.x = _translate_attr(element.x or zero, tx)
-    elif isinstance(element, regular.XListOfCoordinates):
+    elif isinstance(element, regular.XListOfCoordinatesAttr):
         element.x = _translate_attr(element.x, tx)
 
-    if isinstance(element, regular.YNumber):
+    if isinstance(element, regular.YNumberAttr):
         element.y = _translate_attr(element.y or 0, ty)
-    elif isinstance(element, regular.YCoordinate):
+    elif isinstance(element, regular.YCoordinateAttr):
         element.y = _translate_attr(element.y or zero, ty)
-    elif isinstance(element, regular.YListOfCoordinates):
+    elif isinstance(element, regular.YListOfCoordinatesAttr):
         element.y = _translate_attr(element.y, ty)
 
-    if isinstance(element, regular.Points) and element.points is not None:
+    if (
+        isinstance(element, regular.PointsAttr)
+        and element.points is not None
+    ):
         element.points = [translate @ point for point in element.points]
 
-    if isinstance(element, regular.D) and element.d is not None:
+    if isinstance(element, regular.DAttr) and element.d is not None:
         element.d = translate @ element.d
 
 
@@ -545,7 +551,10 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
 
 
 class Element(
-    Entity, groups.Core, groups.Presentation, metaclass=abc.ABCMeta
+    Entity,
+    groups.CoreAttrs,
+    groups.PresentationAttrs,
+    metaclass=abc.ABCMeta,
 ):
     """An element.
 

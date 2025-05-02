@@ -3,12 +3,12 @@
 from svglab.attrs import common, presentation, regular
 
 
-class Core(
-    regular.Id,
-    regular.Lang,
-    regular.XmlBase,
-    regular.XmlLang,
-    regular.XmlSpace,
+class CoreAttrs(
+    regular.IdAttr,
+    regular.LangAttr,
+    regular.XmlBaseAttr,
+    regular.XmlLangAttr,
+    regular.XmlSpaceAttr,
 ):
     """The core attributes.
 
@@ -18,68 +18,68 @@ class Core(
     """
 
 
-class Presentation(
-    common.Fill,
-    common.FontFamily,
-    common.FontSize,
-    common.FontStretch,
-    common.FontStyle,
-    common.FontVariant,
-    common.FontWeight,
-    presentation.BaselineShift,
-    presentation.ClipPath,
-    presentation.ClipRule,
-    presentation.Color,
-    presentation.ColorInterpolation,
-    presentation.ColorInterpolationFilters,
-    presentation.ColorProfile,
-    presentation.ColorRendering,
-    presentation.Cursor,
-    presentation.Direction,
-    presentation.Display,
-    presentation.DominantBaseline,
-    presentation.FillOpacity,
-    presentation.FillRule,
-    presentation.FontSizeAdjust,
-    presentation.GlyphOrientationHorizontal,
-    presentation.GlyphOrientationVertical,
-    presentation.ImageRendering,
-    presentation.Kerning,
-    presentation.LetterSpacing,
-    presentation.MarkerEnd,
-    presentation.MarkerMid,
-    presentation.MarkerStart,
-    presentation.Mask,
-    presentation.Opacity,
-    presentation.Overflow,
-    presentation.PaintOrder,
-    presentation.PointerEvents,
-    presentation.ShapeRendering,
-    presentation.StopColor,
-    presentation.StopOpacity,
-    presentation.Stroke,
-    presentation.StrokeDasharray,
-    presentation.StrokeDashoffset,
-    presentation.StrokeLinecap,
-    presentation.StrokeLinejoin,
-    presentation.StrokeMiterlimit,
-    presentation.StrokeOpacity,
-    presentation.StrokeWidth,
-    presentation.TextAlign,
-    presentation.TextAlignAll,
-    presentation.TextAlignLast,
-    presentation.TextAnchor,
-    presentation.TextDecoration,
-    presentation.TextIndent,
-    presentation.TextRendering,
-    presentation.Transform,
-    presentation.TransformOrigin,
-    presentation.UnicodeBidi,
-    presentation.VectorEffect,
-    presentation.Visibility,
-    presentation.WhiteSpace,
-    presentation.WordSpacing,
-    presentation.WritingMode,
+class PresentationAttrs(
+    common.FillAttr,
+    common.FontFamilyAttr,
+    common.FontSizeAttr,
+    common.FontStretchAttr,
+    common.FontStyleAttr,
+    common.FontVariantAttr,
+    common.FontWeightAttr,
+    presentation.BaselineShiftAttr,
+    presentation.ClipPathAttr,
+    presentation.ClipRuleAttr,
+    presentation.ColorAttr,
+    presentation.ColorInterpolationAttr,
+    presentation.ColorInterpolationFiltersAttr,
+    presentation.ColorProfileAttr,
+    presentation.ColorRenderingAttr,
+    presentation.CursorAttr,
+    presentation.DirectionAttr,
+    presentation.DisplayAttr,
+    presentation.DominantBaselineAttr,
+    presentation.FillOpacityAttr,
+    presentation.FillRuleAttr,
+    presentation.FontSizeAdjustAttr,
+    presentation.GlyphOrientationHorizontalAttr,
+    presentation.GlyphOrientationVerticalAttr,
+    presentation.ImageRenderingAttr,
+    presentation.KerningAttr,
+    presentation.LetterSpacingAttr,
+    presentation.MarkerEndAttr,
+    presentation.MarkerMidAttr,
+    presentation.MarkerStartAttr,
+    presentation.MaskAttr,
+    presentation.OpacityAttr,
+    presentation.OverflowAttr,
+    presentation.PaintOrderAttr,
+    presentation.PointerEventsAttr,
+    presentation.ShapeRenderingAttr,
+    presentation.StopColorAttr,
+    presentation.StopOpacityAttr,
+    presentation.StrokeAttr,
+    presentation.StrokeDasharrayAttr,
+    presentation.StrokeDashoffsetAttr,
+    presentation.StrokeLinecapAttr,
+    presentation.StrokeLinejoinAttr,
+    presentation.StrokeMiterlimitAttr,
+    presentation.StrokeOpacityAttr,
+    presentation.StrokeWidthAttr,
+    presentation.TextAlignAttr,
+    presentation.TextAlignAllAttr,
+    presentation.TextAlignLastAttr,
+    presentation.TextAnchorAttr,
+    presentation.TextDecorationAttr,
+    presentation.TextIndentAttr,
+    presentation.TextRenderingAttr,
+    presentation.TransformAttr,
+    presentation.TransformOriginAttr,
+    presentation.UnicodeBidiAttr,
+    presentation.VectorEffectAttr,
+    presentation.VisibilityAttr,
+    presentation.WhiteSpaceAttr,
+    presentation.WordSpacingAttr,
+    presentation.WritingModeAttr,
 ):
     """The presentation attributes.
 
@@ -89,8 +89,11 @@ class Presentation(
     """
 
 
-class AnimationEvents(
-    regular.OnBegin, regular.OnEnd, regular.OnLoad, regular.OnRepeat
+class AnimationEventsAttrs(
+    regular.OnBeginAttr,
+    regular.OnEndAttr,
+    regular.OnLoadAttr,
+    regular.OnRepeatAttr,
 ):
     """The animation event attributes.
 
@@ -100,8 +103,8 @@ class AnimationEvents(
     """
 
 
-class AnimationAttributeTarget(
-    regular.AttributeName, regular.AttributeType
+class AnimationAttributeTargetAttrs(
+    regular.AttributeNameAttr, regular.AttributeTypeAttr
 ):
     """The animation attribute target attributes.
 
@@ -112,16 +115,16 @@ class AnimationAttributeTarget(
     """
 
 
-class AnimationTiming(
-    regular.Begin,
-    regular.Dur,
-    regular.End,
-    common.Fill,
-    regular.Max,
-    regular.Min,
-    regular.RepeatCount,
-    regular.RepeatDur,
-    regular.Restart,
+class AnimationTimingAttrs(
+    regular.BeginAttr,
+    regular.DurAttr,
+    regular.EndAttr,
+    common.FillAttr,
+    regular.MaxAttr,
+    regular.MinAttr,
+    regular.RepeatCountAttr,
+    regular.RepeatDurAttr,
+    regular.RestartAttr,
 ):
     """The animation timing attributes.
 
@@ -133,14 +136,14 @@ class AnimationTiming(
     """
 
 
-class AnimationValue(
-    regular.By,
-    regular.CalcMode,
-    regular.From,
-    regular.KeySplines,
-    regular.KeyTimes,
-    regular.To,
-    regular.ValuesList,
+class AnimationValueAttrs(
+    regular.ByAttr,
+    regular.CalcModeAttr,
+    regular.FromAttr,
+    regular.KeySplinesAttr,
+    regular.KeyTimesAttr,
+    regular.ToAttr,
+    regular.ValuesListAttr,
 ):
     """The animation value attributes.
 
@@ -153,7 +156,7 @@ class AnimationValue(
     """
 
 
-class AnimationAddition(regular.Accumulate, regular.Additive):
+class AnimationAdditionAttrs(regular.AccumulateAttr, regular.AdditiveAttr):
     """The animation addition attributes.
 
     From the SVG 1.1 specification:
@@ -162,10 +165,10 @@ class AnimationAddition(regular.Accumulate, regular.Additive):
     """
 
 
-class ConditionalProcessing(
-    regular.RequiredFeatures,
-    regular.RequiredExtensions,
-    regular.SystemLanguage,
+class ConditionalProcessingAttrs(
+    regular.RequiredFeaturesAttr,
+    regular.RequiredExtensionsAttr,
+    regular.SystemLanguageAttr,
 ):
     """The conditional processing attributes.
 
@@ -176,13 +179,13 @@ class ConditionalProcessing(
     """
 
 
-class DocumentEvents(
-    regular.OnAbort,
-    regular.OnError,
-    regular.OnResize,
-    regular.OnScroll,
-    regular.OnUnload,
-    regular.OnZoom,
+class DocumentEventsAttrs(
+    regular.OnAbortAttr,
+    regular.OnErrorAttr,
+    regular.OnResizeAttr,
+    regular.OnScrollAttr,
+    regular.OnUnloadAttr,
+    regular.OnZoomAttr,
 ):
     """The document event attributes.
 
@@ -192,17 +195,17 @@ class DocumentEvents(
     """
 
 
-class GraphicalEvents(
-    regular.OnActivate,
-    regular.OnClick,
-    regular.OnFocusIn,
-    regular.OnFocusOut,
-    regular.OnLoad,
-    regular.OnMouseDown,
-    regular.OnMouseMove,
-    regular.OnMouseOut,
-    regular.OnMouseOver,
-    regular.OnMouseUp,
+class GraphicalEventsAttrs(
+    regular.OnActivateAttr,
+    regular.OnClickAttr,
+    regular.OnFocusInAttr,
+    regular.OnFocusOutAttr,
+    regular.OnLoadAttr,
+    regular.OnMouseDownAttr,
+    regular.OnMouseMoveAttr,
+    regular.OnMouseOutAttr,
+    regular.OnMouseOverAttr,
+    regular.OnMouseUpAttr,
 ):
     """The graphical event attributes.
 
@@ -212,16 +215,18 @@ class GraphicalEvents(
     """
 
 
-class Event(GraphicalEvents, AnimationEvents, DocumentEvents):
+class EventAttrs(
+    GraphicalEventsAttrs, AnimationEventsAttrs, DocumentEventsAttrs
+):
     """All event attributes."""
 
 
-class FilterPrimitives(
-    regular.XCoordinate,
-    regular.YCoordinate,
-    regular.Width,
-    regular.Height,
-    regular.Result,
+class FilterPrimitivesAttrs(
+    regular.XCoordinateAttr,
+    regular.YCoordinateAttr,
+    regular.WidthAttr,
+    regular.HeightAttr,
+    regular.ResultAttr,
 ):
     """The filter primitive attributes.
 
@@ -231,15 +236,15 @@ class FilterPrimitives(
     """
 
 
-class Xlink(
-    regular.Href,
-    regular.XlinkActuateOnLoad,
-    regular.XlinkArcrole,
-    regular.XlinkHref,
-    regular.XlinkRole,
-    regular.XlinkShow,
-    regular.XlinkTitle,
-    regular.XlinkType,
+class XlinkAttrs(
+    regular.HrefAttr,
+    regular.XlinkActuateOnLoadAttr,
+    regular.XlinkArcroleAttr,
+    regular.XlinkHrefAttr,
+    regular.XlinkRoleAttr,
+    regular.XlinkShowAttr,
+    regular.XlinkTitleAttr,
+    regular.XlinkTypeAttr,
 ):
     """The XLink attributes.
 
@@ -250,14 +255,14 @@ class Xlink(
     """
 
 
-class TransferFunction(
-    regular.Amplitude,
-    regular.Exponent,
-    regular.Intercept,
-    regular.OffsetNumber,
-    regular.Slope,
-    regular.TableValues,
-    regular.TypeFeFunc,
+class TransferFunctionAttrs(
+    regular.AmplitudeAttr,
+    regular.ExponentAttr,
+    regular.InterceptAttr,
+    regular.OffsetNumberAttr,
+    regular.SlopeAttr,
+    regular.TableValuesAttr,
+    regular.TypeFeFuncAttr,
 ):
     """The transfer function attributes.
 

@@ -17,14 +17,14 @@ class Attr(models.BaseModel):
 # TODO: figure out how the standard intends us to handle this
 
 
-class FontFamily(Attr):
+class FontFamilyAttr(Attr):
     font_family: models.Attr[
         models.List[typedefs.FamilyName | typedefs.GenericFamily]
         | typedefs.Inherit
     ] = None
 
 
-class FontWeight(Attr):
+class FontWeightAttr(Attr):
     font_weight: models.Attr[
         typedefs.All
         | models.List[
@@ -48,7 +48,7 @@ class FontWeight(Attr):
     ] = None
 
 
-class FontStretch(Attr):
+class FontStretchAttr(Attr):
     font_stretch: models.Attr[
         typedefs.All
         | Literal[
@@ -69,7 +69,7 @@ class FontStretch(Attr):
     ] = None
 
 
-class FontStyle(Attr):
+class FontStyleAttr(Attr):
     font_style: models.Attr[
         typedefs.All
         | models.List[Literal["normal", "italic", "oblique"]]
@@ -77,13 +77,13 @@ class FontStyle(Attr):
     ] = None
 
 
-class FontVariant(Attr):
+class FontVariantAttr(Attr):
     font_variant: models.Attr[
         Literal["normal", "small-caps"] | typedefs.Inherit
     ] = None
 
 
-class FontSize(Attr):
+class FontSizeAttr(Attr):
     font_size: models.Attr[
         typedefs.AbsoluteSize
         | typedefs.RelativeSize
@@ -95,5 +95,5 @@ class FontSize(Attr):
     ] = None
 
 
-class Fill(Attr):
+class FillAttr(Attr):
     fill: models.Attr[typedefs.Paint | Literal["freeze", "remove"]] = None
