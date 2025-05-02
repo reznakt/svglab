@@ -967,3 +967,12 @@ def test_precision_table(
 
     with formatter:
         assert value.serialize() == serialized
+
+
+def test_invalid_add_child_direct_circular_reference() -> None:
+    g = svglab.G()
+
+    with pytest.raises(
+        ValueError, match="Cannot add a tag as a child of itself."
+    ):
+        g.add_child(g)
