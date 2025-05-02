@@ -1,8 +1,9 @@
-.idea
 __pycache__
+.coverage
+.hypothesis
+.idea
 .mypy_cache
 .ruff_cache
-.hypothesis
-.coverage
-dist
 *.png
+dist
+notebooks

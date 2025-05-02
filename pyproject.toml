@@ -40,9 +40,6 @@ dependencies = [
 "GitHub" = "https://github.com/reznakt/svglab"
 "Issues" = "https://github.com/reznakt/svglab/issues"
 
-[project.scripts]
-svglab = "svglab.__main__:main"
-
 [tool.poetry]
 classifiers = [
   "Framework :: Pydantic :: 2",
@@ -90,7 +87,6 @@ vermin = "^1.6.0"
 [tool.poe.tasks]
 lint = "ruff check"
 lint-fix = "ruff check --fix"
-start = "poetry run svglab"
 test = "pytest"
 typecheck = "pyright --warnings"
 versioncheck = "vermin ."
