@@ -201,7 +201,7 @@ from svglab.serialize import (
 from svglab.utiltypes import LengthUnit
 
 
-__all__ = [
+__all__: __Final = [
     "DEFAULT_FORMATTER",
     "MINIMAL_FORMATTER",
     "A",
