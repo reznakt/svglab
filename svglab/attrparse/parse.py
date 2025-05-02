@@ -43,7 +43,7 @@ def parse(
 
     Args:
         text: The text to parse.
-        grammar: The name of the grammar file (without the `.lark` extension).
+        grammar: The name of the grammar file.
         transformer: A Lark transformer to use for transforming the parse tree.
             The transformer must be a subclass of `lark.Transformer`.
 
@@ -73,7 +73,7 @@ def get_validator(
     """Get a Pydantic BeforeValidator for parsing with Lark.
 
     Args:
-        grammar: The name of the grammar file (without the `.lark` extension).
+        grammar: The name of the grammar file.
         transformer: A Lark transformer to use for transforming the parse tree.
             The transformer must be a subclass of `lark.Transformer`.
         **kwargs: Additional keyword arguments to pass to the parser.
