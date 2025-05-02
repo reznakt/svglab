@@ -28,7 +28,7 @@ from typing_extensions import (
 )
 
 from svglab import constants, errors, models, serialize
-from svglab.attrparse import length, transform
+from svglab.attrparse import iri, length, transform
 from svglab.attrs import common, groups, presentation, regular
 from svglab.attrs import names as attr_names
 from svglab.elements import names
@@ -1250,6 +1250,40 @@ class Tag(
         )
 
         return f"{name}({attr_repr})"
+
+    def get_iri(self) -> iri.Iri:
+        """Obtain a local IRI reference to this element.
+
+        The reference is constructed based on the element's id. If the element
+        has no id, an exception is raised.
+
+        Returns:
+            A local IRI reference to this element.
+
+        Raises:
+            RuntimeError: If the element has no id.
+
+        """
+        if self.id is None:
+            msg = "Unable to create local IRI reference to element with no id"
+            raise RuntimeError(msg)
+
+        return iri.Iri(fragment=self.id)
+
+    def get_func_iri(self) -> iri.FuncIri:
+        """Obtain a local FuncIRI reference to this element.
+
+        The reference is constructed based on the element's id. If the element
+        has no id, an exception is raised.
+
+        Returns:
+            A local FuncIRI reference to this element.
+
+        Raises:
+            RuntimeError: If the element has no id.
+
+        """
+        return self.get_iri().to_func_iri()
 
 
 def _match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
