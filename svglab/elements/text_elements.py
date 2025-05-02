@@ -13,7 +13,7 @@ from svglab.elements import common
 
 
 @final
-class CData(common.TextElement):
+class CData(common.CharacterData):
     """A `CDATA` section.
 
     A `CDATA` section is a block of text that is not parsed by the XML parser,
@@ -41,7 +41,7 @@ class CData(common.TextElement):
 
 
 @final
-class Comment(common.TextElement):
+class Comment(common.CharacterData):
     """A comment.
 
     A comment is a block of text that is not parsed by the XML parser,
@@ -69,7 +69,7 @@ class Comment(common.TextElement):
 
 
 @final
-class RawText(common.TextElement):
+class RawText(common.CharacterData):
     """A text node.
 
     A text node is a block of text that is parsed by the XML parser.

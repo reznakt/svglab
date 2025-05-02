@@ -197,7 +197,7 @@ class _Formatter:
     xmlns: Literal["always", "never", "original"] = "original"
     length_unit: _LengthUnitMode | Iterable[_LengthUnitMode] = "preserve"
     attribute_order: Mapping[
-        elements_names.TagName | Literal["*"],
+        elements_names.ElementName | Literal["*"],
         Sequence[attrs_names.AttributeName | str],
     ] = pydantic.Field(default_factory=dict)
 
@@ -313,9 +313,9 @@ class Formatter(_Formatter):
     units, each unit is tried in order until one succeeds. If the length cannot
     be converted to any of the specified units, the original unit is used.
     `attribute_order`: How to order attributes in the resulting SVG document.
-    The keys are the tag names of the elements, and the values are lists of
+    The keys are the element names of the elements, and the values are lists of
     attribute names. The attributes are ordered in the order they appear in
-    the lists. If a tag name is `*`, the attribute order applies to all
+    the lists. If an element name is `*`, the attribute order applies to all
     elements. If there is no configuration for a specific element-attribute
     pair, the default order (alphabetical) is used.
 
