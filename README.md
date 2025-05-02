@@ -3,6 +3,7 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/reznakt/svglab/check.yml)
 ![GitHub License](https://img.shields.io/github/license/reznakt/svglab)
 [![PyPI - Version](https://img.shields.io/pypi/v/svglab)](https://pypi.org/project/svglab/)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/svglab)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/svglab)
 ![Maintenance](https://img.shields.io/maintenance/yes/2025)
 [![Dependency status](https://img.shields.io/librariesio/release/pypi/svglab)](https://libraries.io/pypi/svglab/tree)
