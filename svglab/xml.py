@@ -3,8 +3,9 @@
 This module defines the following classes:
 - `Entity`: The base class for all XML entities.
 - `Element`: A subclass of `Entity` that represents an XML element.
-- `CharacterData`: A subclass of `Entity` that represents a textual entity
-(e.g., a comment or a CDATA section).
+- `CharacterData`: A subclass of `Entity` that represents a textual entity.
+- `CData`, `Comment`, `RawText`: Subclasses of `CharacterData` that represent
+    specific types of character data in XML.
 """
 
 from __future__ import annotations
@@ -25,13 +26,14 @@ from typing_extensions import (
     SupportsIndex,
     TypeVar,
     cast,
+    final,
     overload,
     override,
 )
 
 from svglab import constants, errors, models, serialize
 from svglab.attrparse import iri, length, transform
-from svglab.attrs import common, groups, presentation, regular
+from svglab.attrs import attrdefs, attrgroups
 from svglab.attrs import names as attr_names
 from svglab.elements import names
 from svglab.utils import bsutils, iterutils, mathutils, miscutils
@@ -87,10 +89,10 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
 
 
 def _scale_stroke_width(
-    element: presentation.StrokeWidthAttr, by: float
+    element: attrdefs.StrokeWidthAttr, by: float
 ) -> None:
     if (
-        isinstance(element, presentation.VectorEffectAttr)
+        isinstance(element, attrdefs.VectorEffectAttr)
         and element.vector_effect == "non-scaling-stroke"
     ):
         return
@@ -127,13 +129,13 @@ def scale_distance_along_a_path_attrs(element: object, by: float) -> None:
         by: The factor by which to scale the attributes.
 
     """
-    if isinstance(
-        element, presentation.StrokeDasharrayAttr
-    ) and isinstance(element.stroke_dasharray, list):
+    if isinstance(element, attrdefs.StrokeDasharrayAttr) and isinstance(
+        element.stroke_dasharray, list
+    ):
         element.stroke_dasharray = [
             _scale_attr(dash, by) for dash in element.stroke_dasharray
         ]
-    if isinstance(element, presentation.StrokeDashoffsetAttr):
+    if isinstance(element, attrdefs.StrokeDashoffsetAttr):
         element.stroke_dashoffset = _scale_attr(
             element.stroke_dashoffset, by
         )
@@ -148,69 +150,69 @@ def _scale(element: object, scale: transform.Scale) -> None:  # noqa: PLR0915
     if mathutils.is_close(factor, 1):
         return
 
-    if isinstance(element, regular.WidthAttr):
+    if isinstance(element, attrdefs.WidthAttr):
         element.width = _scale_attr(element.width, factor)
-    if isinstance(element, regular.HeightAttr):
+    if isinstance(element, attrdefs.HeightAttr):
         element.height = _scale_attr(element.height, factor)
-    if isinstance(element, regular.RAttr):
+    if isinstance(element, attrdefs.RAttr):
         element.r = _scale_attr(element.r, factor)
-    if isinstance(element, regular.X1Attr):
+    if isinstance(element, attrdefs.X1Attr):
         element.x1 = _scale_attr(element.x1, factor)
-    if isinstance(element, regular.Y1Attr):
+    if isinstance(element, attrdefs.Y1Attr):
         element.y1 = _scale_attr(element.y1, factor)
-    if isinstance(element, regular.X2Attr):
+    if isinstance(element, attrdefs.X2Attr):
         element.x2 = _scale_attr(element.x2, factor)
-    if isinstance(element, regular.Y2Attr):
+    if isinstance(element, attrdefs.Y2Attr):
         element.y2 = _scale_attr(element.y2, factor)
-    if isinstance(element, regular.RxAttr):
+    if isinstance(element, attrdefs.RxAttr):
         element.rx = _scale_attr(element.rx, factor)
-    if isinstance(element, regular.RyAttr):
+    if isinstance(element, attrdefs.RyAttr):
         element.ry = _scale_attr(element.ry, factor)
-    if isinstance(element, regular.CxAttr):
+    if isinstance(element, attrdefs.CxAttr):
         element.cx = _scale_attr(element.cx, factor)
-    if isinstance(element, regular.CyAttr):
+    if isinstance(element, attrdefs.CyAttr):
         element.cy = _scale_attr(element.cy, factor)
-    if isinstance(element, regular.FxAttr):
+    if isinstance(element, attrdefs.FxAttr):
         element.fx = _scale_attr(element.fx, factor)
-    if isinstance(element, regular.FyAttr):
+    if isinstance(element, attrdefs.FyAttr):
         element.fy = _scale_attr(element.fy, factor)
-    if isinstance(element, common.FontSizeAttr):
+    if isinstance(element, attrdefs.FontSizeAttr):
         element.font_size = _scale_attr(element.font_size, factor)
     if (
-        isinstance(element, regular.PointsAttr)
+        isinstance(element, attrdefs.PointsAttr)
         and element.points is not None
     ):
         element.points = [scale @ point for point in element.points]
-    if isinstance(element, regular.DAttr) and element.d is not None:
+    if isinstance(element, attrdefs.DAttr) and element.d is not None:
         element.d = scale @ element.d
 
     # these assignments have to be mutually exclusive, because the
     # type checker doesn't know that x being a <number> implies that x is
     # not a <coordinate> and vice versa
-    if isinstance(element, regular.XNumberAttr):  # noqa: SIM114
+    if isinstance(element, attrdefs.XNumberAttr):  # noqa: SIM114
         element.x = _scale_attr(element.x, factor)
-    elif isinstance(element, regular.XCoordinateAttr):  # noqa: SIM114
+    elif isinstance(element, attrdefs.XCoordinateAttr):  # noqa: SIM114
         element.x = _scale_attr(element.x, factor)
-    elif isinstance(element, regular.XListOfCoordinatesAttr):
+    elif isinstance(element, attrdefs.XListOfCoordinatesAttr):
         element.x = _scale_attr(element.x, factor)
 
-    if isinstance(element, regular.YNumberAttr):  # noqa: SIM114
+    if isinstance(element, attrdefs.YNumberAttr):  # noqa: SIM114
         element.y = _scale_attr(element.y, factor)
-    elif isinstance(element, regular.YCoordinateAttr):  # noqa: SIM114
+    elif isinstance(element, attrdefs.YCoordinateAttr):  # noqa: SIM114
         element.y = _scale_attr(element.y, factor)
-    elif isinstance(element, regular.YListOfCoordinatesAttr):
+    elif isinstance(element, attrdefs.YListOfCoordinatesAttr):
         element.y = _scale_attr(element.y, factor)
 
-    if isinstance(element, presentation.StrokeWidthAttr):
+    if isinstance(element, attrdefs.StrokeWidthAttr):
         _scale_stroke_width(element, factor)
 
     # no need to scale distance-along-a-path attributes if a custom path
     # length is provided because those attributes and pathLength are
     # proportional
-    if not isinstance(element, regular.PathLengthAttr):
+    if not isinstance(element, attrdefs.PathLengthAttr):
         scale_distance_along_a_path_attrs(element, factor)
 
-    if isinstance(element, regular.OffsetNumberPercentageAttr):
+    if isinstance(element, attrdefs.OffsetNumberPercentageAttr):
         element.offset = _scale_attr(element.offset, factor)
 
 
@@ -263,46 +265,46 @@ def _translate(element: object, translate: transform.Translate) -> None:
     zero = length.Length.zero()
 
     # these attributes are mandatory for the respective elements
-    if isinstance(element, regular.X1Attr):
+    if isinstance(element, attrdefs.X1Attr):
         element.x1 = _translate_attr(element.x1, tx)
-    if isinstance(element, regular.Y1Attr):
+    if isinstance(element, attrdefs.Y1Attr):
         element.y1 = _translate_attr(element.y1, ty)
-    if isinstance(element, regular.X2Attr):
+    if isinstance(element, attrdefs.X2Attr):
         element.x2 = _translate_attr(element.x2, tx)
-    if isinstance(element, regular.Y2Attr):
+    if isinstance(element, attrdefs.Y2Attr):
         element.y2 = _translate_attr(element.y2, ty)
 
     # but these are not, so if they are not present, we initialize them
     # to 0
-    if isinstance(element, regular.CxAttr):
+    if isinstance(element, attrdefs.CxAttr):
         element.cx = _translate_attr(element.cx or zero, tx)
-    if isinstance(element, regular.CyAttr):
+    if isinstance(element, attrdefs.CyAttr):
         element.cy = _translate_attr(element.cy or zero, ty)
 
-    if isinstance(element, regular.XNumberAttr):
+    if isinstance(element, attrdefs.XNumberAttr):
         element.x = _translate_attr(element.x or 0, tx)
-    elif isinstance(element, regular.XCoordinateAttr):
+    elif isinstance(element, attrdefs.XCoordinateAttr):
         element.x = _translate_attr(element.x or zero, tx)
-    elif isinstance(element, regular.XListOfCoordinatesAttr):
+    elif isinstance(element, attrdefs.XListOfCoordinatesAttr):
         element.x = _translate_attr(element.x, tx)
 
-    if isinstance(element, regular.YNumberAttr):
+    if isinstance(element, attrdefs.YNumberAttr):
         element.y = _translate_attr(element.y or 0, ty)
-    elif isinstance(element, regular.YCoordinateAttr):
+    elif isinstance(element, attrdefs.YCoordinateAttr):
         element.y = _translate_attr(element.y or zero, ty)
-    elif isinstance(element, regular.YListOfCoordinatesAttr):
+    elif isinstance(element, attrdefs.YListOfCoordinatesAttr):
         element.y = _translate_attr(element.y, ty)
 
     if (
-        isinstance(element, regular.PointsAttr)
+        isinstance(element, attrdefs.PointsAttr)
         and element.points is not None
     ):
         element.points = [translate @ point for point in element.points]
 
-    if isinstance(element, regular.DAttr) and element.d is not None:
+    if isinstance(element, attrdefs.DAttr) and element.d is not None:
         element.d = translate @ element.d
 
-    if isinstance(element, regular.OffsetNumberPercentageAttr):
+    if isinstance(element, attrdefs.OffsetNumberPercentageAttr):
         element.offset = _translate_attr(element.offset, tx)
 
 
@@ -560,8 +562,8 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
 
 class Element(
     Entity,
-    groups.CoreAttrs,
-    groups.PresentationAttrs,
+    attrgroups.CoreAttrs,
+    attrgroups.PresentationAttrs,
     metaclass=abc.ABCMeta,
 ):
     """An element.
@@ -1567,3 +1569,85 @@ class CharacterData(Entity, metaclass=abc.ABCMeta):
     def __repr__(self) -> str:
         name = type(self).__name__
         return f"{name}({self.content!r})"
+
+
+@final
+class CData(CharacterData):
+    """A `CDATA` section.
+
+    A `CDATA` section is a block of text that is not parsed by the XML parser,
+    but is interpreted verbatim.
+
+    `CDATA` sections are used to include text that contains characters
+    that would otherwise be interpreted as XML markup.
+
+    Example: `<![CDATA[<g id="foo"></g>]]>`
+    """
+
+    def __init__(self, content: str, /) -> None:
+        """Initialize a CDATA section.
+
+        Args:
+            content: The text content of the CDATA section (excluding the
+                `<![CDATA[` and `]]>` markers).
+
+        """
+        super().__init__(content=content)
+
+    @override
+    def to_beautifulsoup_object(self) -> bs4.CData:
+        return bs4.CData(self.content)
+
+
+@final
+class Comment(CharacterData):
+    """A comment.
+
+    A comment is a block of text that is not parsed by the XML parser,
+    but is ignored.
+
+    Comments are used to include notes and other information that is not
+    intended to be displayed to the user.
+
+    Example: `<!-- This is a comment -->`
+    """
+
+    def __init__(self, content: str, /) -> None:
+        """Initialize a comment.
+
+        Args:
+            content: The text content of the comment (excluding the `<!--` and
+                `-->` markers).
+
+        """
+        super().__init__(content=content)
+
+    @override
+    def to_beautifulsoup_object(self) -> bs4.Comment:
+        return bs4.Comment(self.content)
+
+
+@final
+class RawText(CharacterData):
+    """A text node.
+
+    A text node is a block of text that is parsed by the XML parser.
+
+    Text nodes are used to include text that is intended to be displayed
+    to the user.
+
+    Example: `Hello, world!`
+    """
+
+    def __init__(self, content: str, /) -> None:
+        """Initialize a text node.
+
+        Args:
+            content: The text content of the node.
+
+        """
+        super().__init__(content=content)
+
+    @override
+    def to_beautifulsoup_object(self) -> bs4.NavigableString:
+        return bs4.NavigableString(self.content)

@@ -6,7 +6,8 @@ import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
 
 import svglab.protocols
-from svglab.elements import common, names, svg, text_elements
+from svglab import xml
+from svglab.elements import elements, names
 from svglab.utils import miscutils
 
 
@@ -18,24 +19,20 @@ DEFAULT_PARSER: Final[Parser] = "lxml-xml"
 
 
 _ELEMENT_NAME_TO_CLASS: Final = {
-    common.element_name(cls): cls
-    for cls in miscutils.get_all_subclasses(common.Element)
+    xml.element_name(cls): cls
+    for cls in miscutils.get_all_subclasses(xml.Element)
     if cls.__name__ in names.ELEMENT_NAME_TO_NORMALIZED.inverse
 }
 
 _BS_TO_TEXT_ELEMENT: Final[
     dict[
         type[bs4.NavigableString],
-        type[
-            text_elements.CData
-            | text_elements.Comment
-            | text_elements.RawText
-        ],
+        type[xml.CData | xml.Comment | xml.RawText],
     ]
 ] = {
-    bs4.CData: text_elements.CData,
-    bs4.Comment: text_elements.Comment,
-    bs4.NavigableString: text_elements.RawText,
+    bs4.CData: xml.CData,
+    bs4.Comment: xml.Comment,
+    bs4.NavigableString: xml.RawText,
 }
 
 
@@ -83,7 +80,7 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def _convert_element(backend: bs4.PageElement) -> common.Entity | None:
+def _convert_element(backend: bs4.PageElement) -> xml.Entity | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
@@ -136,7 +133,7 @@ def parse_svg(
     /,
     *,
     parser: Parser = DEFAULT_PARSER,
-) -> svg.Svg:
+) -> elements.Svg:
     """Parse an SVG document.
 
     The document must be a valid XML document containing a single SVG
@@ -173,6 +170,6 @@ def parse_svg(
         raise ValueError(msg)
 
     root_svg_fragment = _convert_element(svg_fragments[0])
-    assert isinstance(root_svg_fragment, svg.Svg)
+    assert isinstance(root_svg_fragment, elements.Svg)
 
     return root_svg_fragment

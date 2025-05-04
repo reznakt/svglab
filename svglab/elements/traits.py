@@ -18,14 +18,13 @@ import abc
 
 from typing_extensions import Protocol
 
-from svglab import graphics, models
+from svglab import graphics, models, xml
 from svglab.attrparse import path_data
-from svglab.attrs import groups, regular
-from svglab.elements import common
+from svglab.attrs import attrdefs, attrgroups
 
 
 # common attributes are defined directly on the Element class
-class Element(common.Element):
+class Element(xml.Element):
     """An SVG element."""
 
 
@@ -91,8 +90,8 @@ class _GraphicalOperations(Element):
 
 class GraphicsElement(
     _GraphicalOperations,
-    groups.GraphicalEventsAttrs,
-    common.StrokeWidthScaled,
+    attrgroups.GraphicalEventsAttrs,
+    xml.StrokeWidthScaled,
     Element,
 ):
     """A graphics element.
@@ -103,7 +102,7 @@ class GraphicsElement(
     """
 
 
-class Shape(regular.PathLengthAttr, GraphicsElement):
+class Shape(attrdefs.PathLengthAttr, GraphicsElement):
     """A shape.
 
     From the SVG 1.1 specification:
@@ -140,7 +139,7 @@ class Shape(regular.PathLengthAttr, GraphicsElement):
             raise RuntimeError("Current pathLength must not be None")
 
         ratio = value / self.pathLength
-        common.scale_distance_along_a_path_attrs(self, ratio)
+        xml.scale_distance_along_a_path_attrs(self, ratio)
 
         self.pathLength = value
 
@@ -186,7 +185,9 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
 
 
 class AnimationElement(
-    groups.AnimationEventsAttrs, groups.AnimationTimingAttrs, Element
+    attrgroups.AnimationEventsAttrs,
+    attrgroups.AnimationTimingAttrs,
+    Element,
 ):
     """An animation element.
 
@@ -197,7 +198,7 @@ class AnimationElement(
 
 
 class ContainerElement(
-    _GraphicalOperations, groups.GraphicalEventsAttrs, Element
+    _GraphicalOperations, attrgroups.GraphicalEventsAttrs, Element
 ):
     """A container element.
 
@@ -216,7 +217,7 @@ class DescriptiveElement(Element):
     """
 
 
-class FilterPrimitiveElement(groups.FilterPrimitivesAttrs, Element):
+class FilterPrimitiveElement(attrgroups.FilterPrimitivesAttrs, Element):
     """A filter primitive element.
 
     From the SVG 1.1 specification:

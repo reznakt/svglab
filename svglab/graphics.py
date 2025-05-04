@@ -17,9 +17,8 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import errors, serialize
+from svglab import errors, serialize, xml
 from svglab.attrparse import color, length
-from svglab.elements import common
 from svglab.utils import iterutils
 
 
@@ -28,7 +27,7 @@ BBox: TypeAlias = tuple[int, int, int, int]
 
 _ImageArray: TypeAlias = npt.NDArray[np.uint8]
 
-_ElementT = TypeVar("_ElementT", bound=common.Element)
+_ElementT = TypeVar("_ElementT", bound=xml.Element)
 
 _BLACK: Final = color.Color((0, 0, 0))
 
@@ -63,7 +62,7 @@ def _length_to_user_units(length: length.Length | None) -> float | None:
 
 
 def _compute_render_size(
-    svg: common.Element,
+    svg: xml.Element,
     *,
     width: float | None = None,
     height: float | None = None,
@@ -104,7 +103,7 @@ def _compute_render_size(
 
 
 def render(  # noqa: D103
-    svg: common.Element,
+    svg: xml.Element,
     *,
     width: float | None = None,
     height: float | None = None,
@@ -162,7 +161,7 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
 
 
 def _render_tree(
-    element: common.Element,
+    element: xml.Element,
     *,
     render_this: bool,
     render_other: bool,
@@ -198,7 +197,7 @@ def _render_tree(
         )
 
     element_copy, svg = _copy_tree(element)
-    assert isinstance(svg, common.Element)
+    assert isinstance(svg, xml.Element)
 
     for t in svg.find_all():
         t.visibility = "visible" if render_other else "hidden"
@@ -244,7 +243,7 @@ def _mask_to_image(mask: Mask) -> PIL.Image.Image:
 
 
 def mask(  # noqa: D103
-    element: common.Element,
+    element: xml.Element,
     *,
     width: float | None = None,
     height: float | None = None,
@@ -263,7 +262,7 @@ def mask(  # noqa: D103
 
 
 def visible_mask(  # noqa: D103
-    element: common.Element,
+    element: xml.Element,
     *,
     width: float | None = None,
     height: float | None = None,
@@ -295,7 +294,7 @@ def visible_mask(  # noqa: D103
     return diff
 
 
-def bbox(element: common.Element) -> BBox | None:  # noqa: D103
+def bbox(element: xml.Element) -> BBox | None:  # noqa: D103
     img = _render_tree(
         element,
         render_this=True,
@@ -306,7 +305,7 @@ def bbox(element: common.Element) -> BBox | None:  # noqa: D103
     return img.getbbox()
 
 
-def visible_bbox(element: common.Element) -> BBox | None:  # noqa: D103
+def visible_bbox(element: xml.Element) -> BBox | None:  # noqa: D103
     mask = visible_mask(element)
     img = _mask_to_image(mask)
 

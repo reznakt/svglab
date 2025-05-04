@@ -11,14 +11,20 @@ module and attributes from the `attrs` package.
 
 from __future__ import annotations
 
+import base64
+import contextlib
 import itertools
+import os
+import pathlib
 
-from typing_extensions import final, override
+import PIL.Image
+from typing_extensions import final, overload, override
 
-from svglab import models
-from svglab.attrparse import length, path_data, point
-from svglab.attrs import groups, regular
+from svglab import graphics, models, protocols, serialize
+from svglab.attrparse import length, path_data, point, transform
+from svglab.attrs import attrdefs, attrgroups
 from svglab.elements import traits
+from svglab.utils import mathutils
 
 
 # ! WARNING: `Element` and `ContainerElement` must always go last
@@ -30,11 +36,11 @@ def _length_or_zero(value: length.Length | None, /) -> length.Length:
 
 @final
 class Path(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.DAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.DAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.StyleAttr,
     traits.Shape,
     traits.Element,
 ):
@@ -53,7 +59,7 @@ def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
     return path
 
 
-def _points_to_d(element: regular.PointsAttr) -> path_data.PathData:
+def _points_to_d(element: attrdefs.PointsAttr) -> path_data.PathData:
     """Convert element with a `points` attribute to a `PathData` instance."""
     points = element.points if element.points is not None else []
     d = path_data.PathData()
@@ -114,12 +120,12 @@ def _ellipse_to_d(
 
 @final
 class A(
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.StyleAttr,
-    regular.TargetAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.StyleAttr,
+    attrdefs.TargetAttr,
     traits.ContainerElement,
 ):
     pass
@@ -127,18 +133,18 @@ class A(
 
 @final
 class AltGlyph(
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.DxListOfLengthsAttr,
-    regular.DyListOfLengthsAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.FormatAttr,
-    regular.GlyphRefAttr,
-    regular.RotateListOfNumbersAttr,
-    regular.StyleAttr,
-    regular.XListOfCoordinatesAttr,
-    regular.YListOfCoordinatesAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.DxListOfLengthsAttr,
+    attrdefs.DyListOfLengthsAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.FormatAttr,
+    attrdefs.GlyphRefAttr,
+    attrdefs.RotateListOfNumbersAttr,
+    attrdefs.StyleAttr,
+    attrdefs.XListOfCoordinatesAttr,
+    attrdefs.YListOfCoordinatesAttr,
     traits.TextContentChildElement,
     traits.TextContentElement,
     traits.Element,
@@ -158,11 +164,11 @@ class AltGlyphItem(traits.Element):
 
 @final
 class Animate(
-    groups.AnimationAdditionAttrs,
-    groups.AnimationAttributeTargetAttrs,
-    groups.AnimationValueAttrs,
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
+    attrgroups.AnimationAdditionAttrs,
+    attrgroups.AnimationAttributeTargetAttrs,
+    attrgroups.AnimationValueAttrs,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
     traits.AnimationElement,
     traits.Element,
 ):
@@ -171,12 +177,12 @@ class Animate(
 
 @final
 class AnimateColor(
-    groups.AnimationAdditionAttrs,
-    groups.AnimationAttributeTargetAttrs,
-    groups.AnimationValueAttrs,
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
-    regular.ExternalResourcesRequiredAttr,
+    attrgroups.AnimationAdditionAttrs,
+    attrgroups.AnimationAttributeTargetAttrs,
+    attrgroups.AnimationValueAttrs,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ExternalResourcesRequiredAttr,
     traits.AnimationElement,
     traits.Element,
 ):
@@ -185,15 +191,15 @@ class AnimateColor(
 
 @final
 class AnimateMotion(
-    groups.AnimationAdditionAttrs,
-    groups.AnimationValueAttrs,
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
-    regular.ExternalResourcesRequiredAttr,
-    regular.KeyPointsAttr,
-    regular.OriginAttr,
-    regular.PathAttr,
-    regular.RotateNumberAutoAutoReverseAttr,
+    attrgroups.AnimationAdditionAttrs,
+    attrgroups.AnimationValueAttrs,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.KeyPointsAttr,
+    attrdefs.OriginAttr,
+    attrdefs.PathAttr,
+    attrdefs.RotateNumberAutoAutoReverseAttr,
     traits.AnimationElement,
     traits.Element,
 ):
@@ -202,13 +208,13 @@ class AnimateMotion(
 
 @final
 class AnimateTransform(
-    groups.AnimationAdditionAttrs,
-    groups.AnimationAttributeTargetAttrs,
-    groups.AnimationValueAttrs,
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
-    regular.ExternalResourcesRequiredAttr,
-    regular.TypeAnimateTransformAttr,
+    attrgroups.AnimationAdditionAttrs,
+    attrgroups.AnimationAttributeTargetAttrs,
+    attrgroups.AnimationValueAttrs,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.TypeAnimateTransformAttr,
     traits.AnimationElement,
     traits.Element,
 ):
@@ -217,13 +223,13 @@ class AnimateTransform(
 
 @final
 class Circle(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.CxAttr,
-    regular.CyAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.RAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.CxAttr,
+    attrdefs.CyAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.RAttr,
+    attrdefs.StyleAttr,
     traits.BasicShape,
     traits.Element,
 ):
@@ -242,11 +248,11 @@ class Circle(
 
 @final
 class ClipPath(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.ClipPathUnitsAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ClipPathUnitsAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.StyleAttr,
     traits.Element,
 ):
     pass
@@ -254,10 +260,10 @@ class ClipPath(
 
 @final
 class ColorProfile(
-    groups.XlinkAttrs,
-    regular.LocalAttr,
-    regular.NameNameAttr,
-    regular.RenderingIntentAttr,
+    attrgroups.XlinkAttrs,
+    attrdefs.LocalAttr,
+    attrdefs.NameNameAttr,
+    attrdefs.RenderingIntentAttr,
     traits.Element,
 ):
     pass
@@ -265,11 +271,11 @@ class ColorProfile(
 
 @final
 class Cursor(
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
-    regular.ExternalResourcesRequiredAttr,
-    regular.XCoordinateAttr,
-    regular.YCoordinateAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.XCoordinateAttr,
+    attrdefs.YCoordinateAttr,
     traits.Element,
 ):
     pass
@@ -277,10 +283,10 @@ class Cursor(
 
 @final
 class Defs(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.StyleAttr,
     traits.StructuralElement,
     traits.ContainerElement,
 ):
@@ -289,8 +295,8 @@ class Defs(
 
 @final
 class Desc(
-    regular.ClassAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.StyleAttr,
     traits.DescriptiveElement,
     traits.Element,
 ):
@@ -299,14 +305,14 @@ class Desc(
 
 @final
 class Ellipse(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.CxAttr,
-    regular.CyAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.RxAttr,
-    regular.RyAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.CxAttr,
+    attrdefs.CyAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.RxAttr,
+    attrdefs.RyAttr,
+    attrdefs.StyleAttr,
     traits.BasicShape,
     traits.Element,
 ):
@@ -326,11 +332,11 @@ class Ellipse(
 
 @final
 class FeBlend(
-    regular.ClassAttr,
-    regular.InAttr,
-    regular.In2Attr,
-    regular.ModeAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.InAttr,
+    attrdefs.In2Attr,
+    attrdefs.ModeAttr,
+    attrdefs.StyleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -339,12 +345,12 @@ class FeBlend(
 
 @final
 class FeColorMatrix(
-    regular.ClassAttr,
-    regular.InAttr,
-    regular.In2Attr,
-    regular.StyleAttr,
-    regular.TypeFeColorMatrixAttr,
-    regular.ValuesListOfNumbersAttr,
+    attrdefs.ClassAttr,
+    attrdefs.InAttr,
+    attrdefs.In2Attr,
+    attrdefs.StyleAttr,
+    attrdefs.TypeFeColorMatrixAttr,
+    attrdefs.ValuesListOfNumbersAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -353,9 +359,9 @@ class FeColorMatrix(
 
 @final
 class FeComponentTransfer(
-    regular.ClassAttr,
-    regular.InAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.InAttr,
+    attrdefs.StyleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -364,15 +370,15 @@ class FeComponentTransfer(
 
 @final
 class FeComposite(
-    regular.ClassAttr,
-    regular.InAttr,
-    regular.In2Attr,
-    regular.K1Attr,
-    regular.K2Attr,
-    regular.K3Attr,
-    regular.K4Attr,
-    regular.OperatorFeCompositeAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.InAttr,
+    attrdefs.In2Attr,
+    attrdefs.K1Attr,
+    attrdefs.K2Attr,
+    attrdefs.K3Attr,
+    attrdefs.K4Attr,
+    attrdefs.OperatorFeCompositeAttr,
+    attrdefs.StyleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -381,17 +387,17 @@ class FeComposite(
 
 @final
 class FeConvolveMatrix(
-    regular.BiasAttr,
-    regular.ClassAttr,
-    regular.DivisorAttr,
-    regular.InAttr,
-    regular.KernelMatrixAttr,
-    regular.KernelUnitLengthAttr,
-    regular.OrderAttr,
-    regular.PreserveAlphaAttr,
-    regular.StyleAttr,
-    regular.TargetXAttr,
-    regular.TargetYAttr,
+    attrdefs.BiasAttr,
+    attrdefs.ClassAttr,
+    attrdefs.DivisorAttr,
+    attrdefs.InAttr,
+    attrdefs.KernelMatrixAttr,
+    attrdefs.KernelUnitLengthAttr,
+    attrdefs.OrderAttr,
+    attrdefs.PreserveAlphaAttr,
+    attrdefs.StyleAttr,
+    attrdefs.TargetXAttr,
+    attrdefs.TargetYAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -400,12 +406,12 @@ class FeConvolveMatrix(
 
 @final
 class FeDiffuseLighting(
-    regular.ClassAttr,
-    regular.DiffuseConstantAttr,
-    regular.InAttr,
-    regular.KernelUnitLengthAttr,
-    regular.StyleAttr,
-    regular.SurfaceScaleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.DiffuseConstantAttr,
+    attrdefs.InAttr,
+    attrdefs.KernelUnitLengthAttr,
+    attrdefs.StyleAttr,
+    attrdefs.SurfaceScaleAttr,
     traits.Element,
 ):
     pass
@@ -413,13 +419,13 @@ class FeDiffuseLighting(
 
 @final
 class FeDisplacementMap(
-    regular.ClassAttr,
-    regular.InAttr,
-    regular.In2Attr,
-    regular.ScaleAttr,
-    regular.StyleAttr,
-    regular.XChannelSelectorAttr,
-    regular.YChannelSelectorAttr,
+    attrdefs.ClassAttr,
+    attrdefs.InAttr,
+    attrdefs.In2Attr,
+    attrdefs.ScaleAttr,
+    attrdefs.StyleAttr,
+    attrdefs.XChannelSelectorAttr,
+    attrdefs.YChannelSelectorAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -428,8 +434,8 @@ class FeDisplacementMap(
 
 @final
 class FeDistantLight(
-    regular.AzimuthAttr,
-    regular.ElevationAttr,
+    attrdefs.AzimuthAttr,
+    attrdefs.ElevationAttr,
     traits.LightSourceElement,
     traits.Element,
 ):
@@ -438,8 +444,8 @@ class FeDistantLight(
 
 @final
 class FeFlood(
-    regular.ClassAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.StyleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -447,31 +453,31 @@ class FeFlood(
 
 
 @final
-class FeFuncA(groups.TransferFunctionAttrs, traits.Element):
+class FeFuncA(attrgroups.TransferFunctionAttrs, traits.Element):
     pass
 
 
 @final
-class FeFuncB(groups.TransferFunctionAttrs, traits.Element):
+class FeFuncB(attrgroups.TransferFunctionAttrs, traits.Element):
     pass
 
 
 @final
-class FeFuncG(groups.TransferFunctionAttrs, traits.Element):
+class FeFuncG(attrgroups.TransferFunctionAttrs, traits.Element):
     pass
 
 
 @final
-class FeFuncR(groups.TransferFunctionAttrs, traits.Element):
+class FeFuncR(attrgroups.TransferFunctionAttrs, traits.Element):
     pass
 
 
 @final
 class FeGaussianBlur(
-    regular.ClassAttr,
-    regular.InAttr,
-    regular.StdDeviationAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.InAttr,
+    attrdefs.StdDeviationAttr,
+    attrdefs.StyleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -480,11 +486,11 @@ class FeGaussianBlur(
 
 @final
 class FeImage(
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.PreserveAspectRatioAttr,
-    regular.StyleAttr,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.PreserveAspectRatioAttr,
+    attrdefs.StyleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -493,8 +499,8 @@ class FeImage(
 
 @final
 class FeMerge(
-    regular.ClassAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.StyleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -502,17 +508,17 @@ class FeMerge(
 
 
 @final
-class FeMergeNode(regular.InAttr, traits.Element):
+class FeMergeNode(attrdefs.InAttr, traits.Element):
     pass
 
 
 @final
 class FeMorphology(
-    regular.ClassAttr,
-    regular.InAttr,
-    regular.OperatorFeMorphologyAttr,
-    regular.RadiusAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.InAttr,
+    attrdefs.OperatorFeMorphologyAttr,
+    attrdefs.RadiusAttr,
+    attrdefs.StyleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -521,11 +527,11 @@ class FeMorphology(
 
 @final
 class FeOffset(
-    regular.ClassAttr,
-    regular.DxNumberAttr,
-    regular.DyNumberAttr,
-    regular.InAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.DxNumberAttr,
+    attrdefs.DyNumberAttr,
+    attrdefs.InAttr,
+    attrdefs.StyleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -534,9 +540,9 @@ class FeOffset(
 
 @final
 class FePointLight(
-    regular.XNumberAttr,
-    regular.YNumberAttr,
-    regular.ZAttr,
+    attrdefs.XNumberAttr,
+    attrdefs.YNumberAttr,
+    attrdefs.ZAttr,
     traits.LightSourceElement,
     traits.Element,
 ):
@@ -545,13 +551,13 @@ class FePointLight(
 
 @final
 class FeSpecularLighting(
-    regular.ClassAttr,
-    regular.InAttr,
-    regular.KernelUnitLengthAttr,
-    regular.SpecularConstantAttr,
-    regular.SpecularExponentAttr,
-    regular.StyleAttr,
-    regular.SurfaceScaleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.InAttr,
+    attrdefs.KernelUnitLengthAttr,
+    attrdefs.SpecularConstantAttr,
+    attrdefs.SpecularExponentAttr,
+    attrdefs.StyleAttr,
+    attrdefs.SurfaceScaleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -560,14 +566,14 @@ class FeSpecularLighting(
 
 @final
 class FeSpotLight(
-    regular.LimitingConeAngleAttr,
-    regular.PointsAtXAttr,
-    regular.PointsAtYAttr,
-    regular.PointsAtZAttr,
-    regular.SpecularExponentAttr,
-    regular.XNumberAttr,
-    regular.YNumberAttr,
-    regular.ZAttr,
+    attrdefs.LimitingConeAngleAttr,
+    attrdefs.PointsAtXAttr,
+    attrdefs.PointsAtYAttr,
+    attrdefs.PointsAtZAttr,
+    attrdefs.SpecularExponentAttr,
+    attrdefs.XNumberAttr,
+    attrdefs.YNumberAttr,
+    attrdefs.ZAttr,
     traits.LightSourceElement,
     traits.Element,
 ):
@@ -576,9 +582,9 @@ class FeSpotLight(
 
 @final
 class FeTile(
-    regular.ClassAttr,
-    regular.InAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.InAttr,
+    attrdefs.StyleAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -587,13 +593,13 @@ class FeTile(
 
 @final
 class FeTurbulence(
-    regular.BaseFrequencyAttr,
-    regular.ClassAttr,
-    regular.NumOctavesAttr,
-    regular.SeedAttr,
-    regular.StitchTilesAttr,
-    regular.StyleAttr,
-    regular.TypeFeTurbluenceAttr,
+    attrdefs.BaseFrequencyAttr,
+    attrdefs.ClassAttr,
+    attrdefs.NumOctavesAttr,
+    attrdefs.SeedAttr,
+    attrdefs.StitchTilesAttr,
+    attrdefs.StyleAttr,
+    attrdefs.TypeFeTurbluenceAttr,
     traits.FilterPrimitiveElement,
     traits.Element,
 ):
@@ -602,17 +608,17 @@ class FeTurbulence(
 
 @final
 class Filter(
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.FilterResAttr,
-    regular.FilterUnitsAttr,
-    regular.HeightAttr,
-    regular.PrimitiveUnitsAttr,
-    regular.StyleAttr,
-    regular.WidthAttr,
-    regular.XCoordinateAttr,
-    regular.YCoordinateAttr,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.FilterResAttr,
+    attrdefs.FilterUnitsAttr,
+    attrdefs.HeightAttr,
+    attrdefs.PrimitiveUnitsAttr,
+    attrdefs.StyleAttr,
+    attrdefs.WidthAttr,
+    attrdefs.XCoordinateAttr,
+    attrdefs.YCoordinateAttr,
     traits.Element,
 ):
     pass
@@ -620,15 +626,15 @@ class Filter(
 
 @final
 class Font(
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.HorizAdvXAttr,
-    regular.HorizOriginXAttr,
-    regular.HorizOriginYAttr,
-    regular.StyleAttr,
-    regular.VertAdvYAttr,
-    regular.VertOriginXAttr,
-    regular.VertOriginYAttr,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.HorizAdvXAttr,
+    attrdefs.HorizOriginXAttr,
+    attrdefs.HorizOriginYAttr,
+    attrdefs.StyleAttr,
+    attrdefs.VertAdvYAttr,
+    attrdefs.VertOriginXAttr,
+    attrdefs.VertOriginYAttr,
     traits.Element,
 ):
     pass
@@ -636,45 +642,45 @@ class Font(
 
 @final
 class FontFace(
-    regular.AccentHeightAttr,
-    regular.AlphabeticAttr,
-    regular.AscentAttr,
-    regular.BboxAttr,
-    regular.CapHeightAttr,
-    regular.DescentAttr,
-    regular.HangingAttr,
-    regular.IdeographicAttr,
-    regular.MathematicalAttr,
-    regular.OverlinePositionAttr,
-    regular.OverlineThicknessAttr,
-    regular.Panose1Attr,
-    regular.SlopeAttr,
-    regular.StemhAttr,
-    regular.StemvAttr,
-    regular.StrikethroughPositionAttr,
-    regular.StrikethroughThicknessAttr,
-    regular.UnderlinePositionAttr,
-    regular.UnderlineThicknessAttr,
-    regular.UnicodeRangeAttr,
-    regular.UnitsPerEmAttr,
-    regular.VAlphabeticAttr,
-    regular.VHangingAttr,
-    regular.VIdeographicAttr,
-    regular.VMathematicalAttr,
-    regular.WidthsAttr,
-    regular.XHeightAttr,
+    attrdefs.AccentHeightAttr,
+    attrdefs.AlphabeticAttr,
+    attrdefs.AscentAttr,
+    attrdefs.BboxAttr,
+    attrdefs.CapHeightAttr,
+    attrdefs.DescentAttr,
+    attrdefs.HangingAttr,
+    attrdefs.IdeographicAttr,
+    attrdefs.MathematicalAttr,
+    attrdefs.OverlinePositionAttr,
+    attrdefs.OverlineThicknessAttr,
+    attrdefs.Panose1Attr,
+    attrdefs.SlopeAttr,
+    attrdefs.StemhAttr,
+    attrdefs.StemvAttr,
+    attrdefs.StrikethroughPositionAttr,
+    attrdefs.StrikethroughThicknessAttr,
+    attrdefs.UnderlinePositionAttr,
+    attrdefs.UnderlineThicknessAttr,
+    attrdefs.UnicodeRangeAttr,
+    attrdefs.UnitsPerEmAttr,
+    attrdefs.VAlphabeticAttr,
+    attrdefs.VHangingAttr,
+    attrdefs.VIdeographicAttr,
+    attrdefs.VMathematicalAttr,
+    attrdefs.WidthsAttr,
+    attrdefs.XHeightAttr,
     traits.Element,
 ):
     pass
 
 
 @final
-class FontFaceFormat(regular.StringAttr, traits.Element):
+class FontFaceFormat(attrdefs.StringAttr, traits.Element):
     pass
 
 
 @final
-class FontFaceName(regular.StringAttr, traits.Element):
+class FontFaceName(attrdefs.StringAttr, traits.Element):
     pass
 
 
@@ -684,20 +690,20 @@ class FontFaceSrc(traits.Element):
 
 
 @final
-class FontFaceUri(groups.XlinkAttrs, traits.Element):
+class FontFaceUri(attrgroups.XlinkAttrs, traits.Element):
     pass
 
 
 @final
 class ForeignObject(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.HeightAttr,
-    regular.StyleAttr,
-    regular.WidthAttr,
-    regular.XCoordinateAttr,
-    regular.YCoordinateAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.HeightAttr,
+    attrdefs.StyleAttr,
+    attrdefs.WidthAttr,
+    attrdefs.XCoordinateAttr,
+    attrdefs.YCoordinateAttr,
     traits.Element,
 ):
     pass
@@ -705,10 +711,10 @@ class ForeignObject(
 
 @final
 class G(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.StyleAttr,
     traits.StructuralElement,
     traits.ContainerElement,
 ):
@@ -717,18 +723,18 @@ class G(
 
 @final
 class Glyph(
-    regular.ArabicFormAttr,
-    regular.ClassAttr,
-    regular.DAttr,
-    regular.GlyphNameAttr,
-    regular.HorizAdvXAttr,
-    regular.LangGlyphAttr,
-    regular.OrientationAttr,
-    regular.StyleAttr,
-    regular.UnicodeAttr,
-    regular.VertAdvYAttr,
-    regular.VertOriginXAttr,
-    regular.VertOriginYAttr,
+    attrdefs.ArabicFormAttr,
+    attrdefs.ClassAttr,
+    attrdefs.DAttr,
+    attrdefs.GlyphNameAttr,
+    attrdefs.HorizAdvXAttr,
+    attrdefs.LangGlyphAttr,
+    attrdefs.OrientationAttr,
+    attrdefs.StyleAttr,
+    attrdefs.UnicodeAttr,
+    attrdefs.VertAdvYAttr,
+    attrdefs.VertOriginXAttr,
+    attrdefs.VertOriginYAttr,
     traits.ContainerElement,
 ):
     pass
@@ -736,15 +742,15 @@ class Glyph(
 
 @final
 class GlyphRef(
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.DxNumberAttr,
-    regular.DyNumberAttr,
-    regular.FormatAttr,
-    regular.GlyphRefAttr,
-    regular.StyleAttr,
-    regular.XNumberAttr,
-    regular.YNumberAttr,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.DxNumberAttr,
+    attrdefs.DyNumberAttr,
+    attrdefs.FormatAttr,
+    attrdefs.GlyphRefAttr,
+    attrdefs.StyleAttr,
+    attrdefs.XNumberAttr,
+    attrdefs.YNumberAttr,
     traits.Element,
 ):
     pass
@@ -752,11 +758,11 @@ class GlyphRef(
 
 @final
 class Hkern(
-    regular.G1Attr,
-    regular.G2Attr,
-    regular.KAttr,
-    regular.U1Attr,
-    regular.U2Attr,
+    attrdefs.G1Attr,
+    attrdefs.G2Attr,
+    attrdefs.KAttr,
+    attrdefs.U1Attr,
+    attrdefs.U2Attr,
     traits.Element,
 ):
     pass
@@ -764,16 +770,16 @@ class Hkern(
 
 @final
 class Image(
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.HeightAttr,
-    regular.PreserveAspectRatioAttr,
-    regular.StyleAttr,
-    regular.WidthAttr,
-    regular.XCoordinateAttr,
-    regular.YCoordinateAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.HeightAttr,
+    attrdefs.PreserveAspectRatioAttr,
+    attrdefs.StyleAttr,
+    attrdefs.WidthAttr,
+    attrdefs.XCoordinateAttr,
+    attrdefs.YCoordinateAttr,
     traits.GraphicsElement,
     traits.GraphicsReferencingElement,
     traits.Element,
@@ -783,14 +789,14 @@ class Image(
 
 @final
 class Line(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.StyleAttr,
-    regular.X1Attr,
-    regular.X2Attr,
-    regular.Y1Attr,
-    regular.Y2Attr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.StyleAttr,
+    attrdefs.X1Attr,
+    attrdefs.X2Attr,
+    attrdefs.Y1Attr,
+    attrdefs.Y2Attr,
     traits.BasicShape,
     traits.Element,
 ):
@@ -814,17 +820,17 @@ class Line(
 
 @final
 class LinearGradient(
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.GradientTransformAttr,
-    regular.GradientUnitsAttr,
-    regular.SpreadMethodAttr,
-    regular.StyleAttr,
-    regular.X1Attr,
-    regular.X2Attr,
-    regular.Y1Attr,
-    regular.Y2Attr,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.GradientTransformAttr,
+    attrdefs.GradientUnitsAttr,
+    attrdefs.SpreadMethodAttr,
+    attrdefs.StyleAttr,
+    attrdefs.X1Attr,
+    attrdefs.X2Attr,
+    attrdefs.Y1Attr,
+    attrdefs.Y2Attr,
     traits.GradientElement,
     traits.Element,
 ):
@@ -833,17 +839,17 @@ class LinearGradient(
 
 @final
 class Marker(
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.MarkerHeightAttr,
-    regular.MarkerUnitsAttr,
-    regular.MarkerWidthAttr,
-    regular.OrientAttr,
-    regular.PreserveAspectRatioAttr,
-    regular.RefXAttr,
-    regular.RefYAttr,
-    regular.StyleAttr,
-    regular.ViewBoxAttr,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.MarkerHeightAttr,
+    attrdefs.MarkerUnitsAttr,
+    attrdefs.MarkerWidthAttr,
+    attrdefs.OrientAttr,
+    attrdefs.PreserveAspectRatioAttr,
+    attrdefs.RefXAttr,
+    attrdefs.RefYAttr,
+    attrdefs.StyleAttr,
+    attrdefs.ViewBoxAttr,
     traits.ContainerElement,
 ):
     pass
@@ -851,15 +857,15 @@ class Marker(
 
 @final
 class Mask(
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.HeightAttr,
-    regular.MaskContentUnitsAttr,
-    regular.MaskUnitsAttr,
-    regular.StyleAttr,
-    regular.WidthAttr,
-    regular.XCoordinateAttr,
-    regular.YCoordinateAttr,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.HeightAttr,
+    attrdefs.MaskContentUnitsAttr,
+    attrdefs.MaskUnitsAttr,
+    attrdefs.StyleAttr,
+    attrdefs.WidthAttr,
+    attrdefs.XCoordinateAttr,
+    attrdefs.YCoordinateAttr,
     traits.ContainerElement,
 ):
     pass
@@ -872,13 +878,13 @@ class Metadata(traits.DescriptiveElement, traits.Element):
 
 @final
 class MissingGlyph(
-    regular.ClassAttr,
-    regular.DAttr,
-    regular.HorizAdvXAttr,
-    regular.StyleAttr,
-    regular.VertAdvYAttr,
-    regular.VertOriginXAttr,
-    regular.VertOriginYAttr,
+    attrdefs.ClassAttr,
+    attrdefs.DAttr,
+    attrdefs.HorizAdvXAttr,
+    attrdefs.StyleAttr,
+    attrdefs.VertAdvYAttr,
+    attrdefs.VertOriginXAttr,
+    attrdefs.VertOriginYAttr,
     traits.ContainerElement,
 ):
     pass
@@ -886,8 +892,8 @@ class MissingGlyph(
 
 @final
 class Mpath(
-    groups.XlinkAttrs,
-    regular.ExternalResourcesRequiredAttr,
+    attrgroups.XlinkAttrs,
+    attrdefs.ExternalResourcesRequiredAttr,
     traits.Element,
 ):
     pass
@@ -895,19 +901,19 @@ class Mpath(
 
 @final
 class Pattern(
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.HeightAttr,
-    regular.PatternContentUnitsAttr,
-    regular.PatternTransformAttr,
-    regular.PatternUnitsAttr,
-    regular.PreserveAspectRatioAttr,
-    regular.StyleAttr,
-    regular.ViewBoxAttr,
-    regular.WidthAttr,
-    regular.XCoordinateAttr,
-    regular.YCoordinateAttr,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.HeightAttr,
+    attrdefs.PatternContentUnitsAttr,
+    attrdefs.PatternTransformAttr,
+    attrdefs.PatternUnitsAttr,
+    attrdefs.PreserveAspectRatioAttr,
+    attrdefs.StyleAttr,
+    attrdefs.ViewBoxAttr,
+    attrdefs.WidthAttr,
+    attrdefs.XCoordinateAttr,
+    attrdefs.YCoordinateAttr,
     traits.ContainerElement,
 ):
     pass
@@ -915,11 +921,11 @@ class Pattern(
 
 @final
 class Polygon(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.PointsAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.PointsAttr,
+    attrdefs.StyleAttr,
     traits.BasicShape,
     traits.Element,
 ):
@@ -934,11 +940,11 @@ class Polygon(
 
 @final
 class Polyline(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.PointsAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.PointsAttr,
+    attrdefs.StyleAttr,
     traits.BasicShape,
     traits.Element,
 ):
@@ -953,19 +959,19 @@ class Polyline(
 
 @final
 class RadialGradient(
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.CxAttr,
-    regular.CyAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.FrAttr,
-    regular.FxAttr,
-    regular.FyAttr,
-    regular.GradientTransformAttr,
-    regular.GradientUnitsAttr,
-    regular.RAttr,
-    regular.SpreadMethodAttr,
-    regular.StyleAttr,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.CxAttr,
+    attrdefs.CyAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.FrAttr,
+    attrdefs.FxAttr,
+    attrdefs.FyAttr,
+    attrdefs.GradientTransformAttr,
+    attrdefs.GradientUnitsAttr,
+    attrdefs.RAttr,
+    attrdefs.SpreadMethodAttr,
+    attrdefs.StyleAttr,
     traits.GradientElement,
     traits.Element,
 ):
@@ -974,16 +980,16 @@ class RadialGradient(
 
 @final
 class Rect(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.HeightAttr,
-    regular.RxAttr,
-    regular.RyAttr,
-    regular.StyleAttr,
-    regular.WidthAttr,
-    regular.XCoordinateAttr,
-    regular.YCoordinateAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.HeightAttr,
+    attrdefs.RxAttr,
+    attrdefs.RyAttr,
+    attrdefs.StyleAttr,
+    attrdefs.WidthAttr,
+    attrdefs.XCoordinateAttr,
+    attrdefs.YCoordinateAttr,
     traits.BasicShape,
     traits.Element,
 ):
@@ -1049,9 +1055,9 @@ class Rect(
 
 @final
 class Script(
-    groups.XlinkAttrs,
-    regular.ExternalResourcesRequiredAttr,
-    regular.TypeContentTypeAttr,
+    attrgroups.XlinkAttrs,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.TypeContentTypeAttr,
     traits.Element,
 ):
     pass
@@ -1059,10 +1065,10 @@ class Script(
 
 @final
 class Set(
-    groups.AnimationAttributeTargetAttrs,
-    groups.XlinkAttrs,
-    regular.ExternalResourcesRequiredAttr,
-    regular.ToAttr,
+    attrgroups.AnimationAttributeTargetAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.ToAttr,
     traits.AnimationElement,
     traits.Element,
 ):
@@ -1071,9 +1077,9 @@ class Set(
 
 @final
 class Stop(
-    regular.ClassAttr,
-    regular.OffsetNumberPercentageAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.OffsetNumberPercentageAttr,
+    attrdefs.StyleAttr,
     traits.Element,
 ):
     pass
@@ -1081,20 +1087,235 @@ class Stop(
 
 @final
 class Style(
-    regular.MediaAttr,
-    regular.TitleAttr,
-    regular.TypeContentTypeAttr,
+    attrdefs.MediaAttr,
+    attrdefs.TitleAttr,
+    attrdefs.TypeContentTypeAttr,
     traits.Element,
 ):
     pass
 
 
 @final
+class Svg(
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.DocumentEventsAttrs,
+    attrdefs.BaseProfileAttr,
+    attrdefs.ClassAttr,
+    attrdefs.ContentScriptTypeAttr,
+    attrdefs.ContentStyleTypeAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.HeightAttr,
+    attrdefs.PreserveAspectRatioAttr,
+    attrdefs.StyleAttr,
+    attrdefs.VersionAttr,
+    attrdefs.ViewBoxAttr,
+    attrdefs.WidthAttr,
+    attrdefs.XCoordinateAttr,
+    attrdefs.XmlnsAttr,
+    attrdefs.YCoordinateAttr,
+    attrdefs.ZoomAndPanAttr,
+    traits.StructuralElement,
+    traits.ContainerElement,
+):
+    """The `<svg>` element.
+
+    The `<svg>` element is the root of an SVG document fragment.
+
+    You can either create a new SVG document from scratch by creating an
+    instance of this class, or you can parse an existing SVG document
+    using the `parse_svg` function.
+    """
+
+    @overload
+    def save(
+        self,
+        path: str | os.PathLike[str],
+        /,
+        *,
+        pretty: bool = True,
+        trailing_newline: bool = True,
+        formatter: serialize.Formatter | None = None,
+    ) -> None: ...
+
+    @overload
+    def save(
+        self,
+        file: protocols.SupportsWrite[str],
+        /,
+        *,
+        pretty: bool = True,
+        trailing_newline: bool = True,
+        formatter: serialize.Formatter | None = None,
+    ) -> None: ...
+
+    def save(
+        self,
+        path_or_file: str
+        | os.PathLike[str]
+        | protocols.SupportsWrite[str],
+        /,
+        *,
+        pretty: bool = True,
+        trailing_newline: bool = True,
+        formatter: serialize.Formatter | None = None,
+    ) -> None:
+        """Convert the SVG document fragment to XML and write it to a file.
+
+        Args:
+        path_or_file: The path to the file to save the XML to,
+        or a file-like object.
+        pretty: Whether to produce pretty-printed XML.
+        indent: The number of spaces to indent each level of the document.
+        trailing_newline: Whether to add a trailing newline to the file.
+        formatter: The formatter to use for serialization.
+
+        Examples:
+        >>> import sys
+        >>> from svglab import Rect, Svg
+        >>> svg = Svg(id="foo").add_child(Rect())
+        >>> formatter = serialize.Formatter(indent=4)
+        >>> svg.save(
+        ...     sys.stdout,
+        ...     pretty=True,
+        ...     trailing_newline=False,
+        ...     formatter=formatter,
+        ... )
+        <svg id="foo">
+            <rect/>
+        </svg>
+
+        """
+        with contextlib.ExitStack() as stack:
+            output = self.to_xml(pretty=pretty, formatter=formatter)
+            file: protocols.SupportsWrite[str]
+
+            match path_or_file:
+                case str() | os.PathLike() as path:
+                    file = stack.enter_context(
+                        pathlib.Path(path).open("w")
+                    )
+                case protocols.SupportsWrite() as file:
+                    pass
+
+            file.write(output)
+
+            if trailing_newline:
+                file.write("\n")
+
+    def set_viewbox(
+        self, viewbox: tuple[float, float, float, float]
+    ) -> None:
+        """Set a new value for the `viewBox` attribute.
+
+        This method sets a new value for the `viewBox` attribute and scales and
+        translates the SVG content so that the visual representation of the SVG
+        remains unchanged.
+
+        If the `viewBox` is not set, the method uses the `width` and `height`
+        attributes to calculate the initial viewBox. If the `width`
+        and `height` attributes are not set, the method raises an exception.
+
+        The new `viewBox` must have the same aspect ratio as the old `viewBox`.
+        If the aspect ratios differ, the method raises an exception.
+
+        Any attributes of type `Length` in the SVG must be convertible to
+        user units. If an attribute is not convertible, the method raises an
+        exception.
+
+        Args:
+        viewbox: A tuple of four numbers representing the new viewBox.
+
+        Raises:
+        ValueError: If `viewBox` is not set and `width` and `height` are not
+            set or if the aspect ratios of the old and new viewBox differ.
+        SvgUnitConversionError: If an attribute is not convertible to user
+            units.
+
+        """
+        if self.viewBox is None:
+            if self.width is None or self.height is None:
+                raise ValueError(
+                    "Either viewBox or width and height must be set"
+                )
+            old_viewbox = (0, 0, float(self.width), float(self.height))
+        else:
+            old_viewbox = self.viewBox
+
+        old_min_x, old_min_y, old_width, old_height = old_viewbox
+        min_x, min_y, width, height = viewbox
+
+        tx = min_x - old_min_x
+        ty = min_y - old_min_y
+
+        sx = width / old_width
+        sy = height / old_height
+
+        if not mathutils.is_close(sx, sy):
+            raise ValueError("Aspect ratios of old and new viewBox differ")
+
+        # skip self; this can be done in a single for loop because the
+        # SVG is a tree (probably)
+        for child in self.find_all(recursive=False):
+            # this is normally done in the reify method, but we need to do it
+            # before we prepend the new transformations
+            child.decompose_transform_origin()
+
+            child.transform = [
+                transform.Translate(tx, ty),
+                transform.Scale(sx, sy),
+                *(child.transform or []),
+            ]
+
+            child.reify(limit=2, recursive=False)
+
+        self.viewBox = viewbox
+
+    def render(
+        self, *, width: float | None = None, height: float | None = None
+    ) -> PIL.Image.Image:
+        """Render an SVG document fragment into a Pillow image.
+
+        If the width and height are not specified, the dimensions of the SVG
+        element are used. If only one dimension is specified, the other
+        dimension is calculated in a way that preserves the aspect ratio set
+        in the SVG element. If both dimensions are specified, the SVG is
+        scaled so that the aspect ratio is preserved.
+
+        Args:
+        svg: The SVG document fragment to render.
+        width: The width of the rendered image, in pixels. If `None`, the width
+            attribute of the SVG element is used.
+        height: The height of the rendered image, in pixels. If `None`, the
+            height attribute of the SVG element is used.
+
+        Returns:
+        The rendered image.
+
+        """
+        return graphics.render(self, width=width, height=height)
+
+    def show(self) -> None:
+        """Render this SVG document fragment and display it on the screen.
+
+        See `PIL.Image.Image.show` for more information.
+
+        """
+        self.render().show()
+
+    def to_data_uri(self) -> str:
+        """Convert the SVG document fragment to a base64-encoded data URI."""
+        xml = self.to_xml(formatter=serialize.MINIMAL_FORMATTER)
+        b64 = base64.b64encode(xml.encode()).decode()
+
+        return f"data:image/svg+xml;base64,{b64}"
+
+
+@final
 class Switch(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.StyleAttr,
     traits.ContainerElement,
 ):
     pass
@@ -1102,13 +1323,13 @@ class Switch(
 
 @final
 class Symbol(
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.PreserveAspectRatioAttr,
-    regular.RefXAttr,
-    regular.RefYAttr,
-    regular.StyleAttr,
-    regular.ViewBoxAttr,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.PreserveAspectRatioAttr,
+    attrdefs.RefXAttr,
+    attrdefs.RefYAttr,
+    attrdefs.StyleAttr,
+    attrdefs.ViewBoxAttr,
     traits.StructuralElement,
     traits.ContainerElement,
 ):
@@ -1117,17 +1338,17 @@ class Symbol(
 
 @final
 class Text(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.DxListOfLengthsAttr,
-    regular.DyListOfLengthsAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.LengthAdjustAttr,
-    regular.RotateListOfNumbersAttr,
-    regular.StyleAttr,
-    regular.TextLengthAttr,
-    regular.XListOfCoordinatesAttr,
-    regular.YListOfCoordinatesAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.DxListOfLengthsAttr,
+    attrdefs.DyListOfLengthsAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.LengthAdjustAttr,
+    attrdefs.RotateListOfNumbersAttr,
+    attrdefs.StyleAttr,
+    attrdefs.TextLengthAttr,
+    attrdefs.XListOfCoordinatesAttr,
+    attrdefs.YListOfCoordinatesAttr,
     traits.TextContentElement,
     traits.Element,
 ):
@@ -1136,14 +1357,14 @@ class Text(
 
 @final
 class TextPath(
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.MethodAttr,
-    regular.SpacingAttr,
-    regular.StartOffsetAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.MethodAttr,
+    attrdefs.SpacingAttr,
+    attrdefs.StartOffsetAttr,
+    attrdefs.StyleAttr,
     traits.TextContentChildElement,
     traits.TextContentElement,
     traits.Element,
@@ -1153,8 +1374,8 @@ class TextPath(
 
 @final
 class Title(
-    regular.ClassAttr,
-    regular.StyleAttr,
+    attrdefs.ClassAttr,
+    attrdefs.StyleAttr,
     traits.DescriptiveElement,
     traits.Element,
 ):
@@ -1163,11 +1384,11 @@ class Title(
 
 @final
 class Tref(
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.StyleAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.StyleAttr,
     traits.TextContentChildElement,
     traits.TextContentElement,
     traits.Element,
@@ -1177,17 +1398,17 @@ class Tref(
 
 @final
 class Tspan(
-    groups.ConditionalProcessingAttrs,
-    regular.ClassAttr,
-    regular.DxListOfLengthsAttr,
-    regular.DyListOfLengthsAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.LengthAdjustAttr,
-    regular.RotateListOfNumbersAttr,
-    regular.StyleAttr,
-    regular.TextLengthAttr,
-    regular.XListOfCoordinatesAttr,
-    regular.YListOfCoordinatesAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.DxListOfLengthsAttr,
+    attrdefs.DyListOfLengthsAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.LengthAdjustAttr,
+    attrdefs.RotateListOfNumbersAttr,
+    attrdefs.StyleAttr,
+    attrdefs.TextLengthAttr,
+    attrdefs.XListOfCoordinatesAttr,
+    attrdefs.YListOfCoordinatesAttr,
     traits.TextContentBlockElement,
     traits.TextContentChildElement,
     traits.TextContentElement,
@@ -1198,15 +1419,15 @@ class Tspan(
 
 @final
 class Use(
-    groups.ConditionalProcessingAttrs,
-    groups.XlinkAttrs,
-    regular.ClassAttr,
-    regular.ExternalResourcesRequiredAttr,
-    regular.HeightAttr,
-    regular.StyleAttr,
-    regular.WidthAttr,
-    regular.XCoordinateAttr,
-    regular.YCoordinateAttr,
+    attrgroups.ConditionalProcessingAttrs,
+    attrgroups.XlinkAttrs,
+    attrdefs.ClassAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.HeightAttr,
+    attrdefs.StyleAttr,
+    attrdefs.WidthAttr,
+    attrdefs.XCoordinateAttr,
+    attrdefs.YCoordinateAttr,
     traits.GraphicsElement,
     traits.GraphicsReferencingElement,
     traits.StructuralElement,
@@ -1217,11 +1438,11 @@ class Use(
 
 @final
 class View(
-    regular.ExternalResourcesRequiredAttr,
-    regular.PreserveAspectRatioAttr,
-    regular.ViewBoxAttr,
-    regular.ViewTargetAttr,
-    regular.ZoomAndPanAttr,
+    attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.PreserveAspectRatioAttr,
+    attrdefs.ViewBoxAttr,
+    attrdefs.ViewTargetAttr,
+    attrdefs.ZoomAndPanAttr,
     traits.Element,
 ):
     pass
@@ -1229,11 +1450,11 @@ class View(
 
 @final
 class Vkern(
-    regular.G1Attr,
-    regular.G2Attr,
-    regular.KAttr,
-    regular.U1Attr,
-    regular.U2Attr,
+    attrdefs.G1Attr,
+    attrdefs.G2Attr,
+    attrdefs.KAttr,
+    attrdefs.U1Attr,
+    attrdefs.U2Attr,
     traits.Element,
 ):
     pass
