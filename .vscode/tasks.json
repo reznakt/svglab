@@ -64,6 +64,14 @@
       "args": [
         "versioncheck"
       ]
+    },
+    {
+      "label": "licensecheck",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "licensecheck"
+      ]
     }
   ]
 }

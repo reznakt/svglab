@@ -84,15 +84,17 @@ pre-commit = "^4.0.1"
 pyright = "^1.1.400"
 ruff = ">=0.8.4,<0.12.0"
 vermin = "^1.6.0"
+licensecheck = "^2025.1.0"
 
 [tool.poe.tasks]
-lint = "ruff check"
-lint-fix = "ruff check --fix"
 test = "pytest"
 typecheck = "pyright --warnings"
-versioncheck = "vermin ."
+lint = "ruff check"
+lint-fix = "ruff check --fix"
 format = "ruff format --diff"
 format-fix = "ruff format"
+versioncheck = "vermin ."
+licensecheck = "licensecheck"
 
 [tool.pytest.ini_options]
 filterwarnings = [
@@ -193,3 +195,11 @@ split-on-trailing-comma = false
 [tool.ruff.format]
 docstring-code-format = true
 skip-magic-trailing-comma = true
+
+[tool.licensecheck]
+format = "ansi"
+ignore_packages = [
+  "resvg-py",     # MIT
+  "useful-types", # MIT
+]
+zero = true

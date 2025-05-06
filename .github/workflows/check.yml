@@ -37,6 +37,9 @@ jobs:
       - name: Run version check
         run: poetry run poe versioncheck
 
+      - name: Run license check
+        run: poetry run poe licensecheck
+
       - name: Install test dependencies
         run: poetry install --only main,dev,test
 

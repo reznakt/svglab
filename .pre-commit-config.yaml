@@ -51,6 +51,12 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      - id: licensecheck
+        name: licensecheck
+        entry: poe licensecheck
+        language: system
+        files: ^pyproject\.toml|poetry\.lock$
+        pass_filenames: false
       - id: typecheck
         name: typecheck
         entry: poe typecheck
