@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 
 import pydantic
-import rfc3987
+import rfc3986
 from typing_extensions import Annotated, Self, TypeAlias, final, override
 
 from svglab import protocols
@@ -62,13 +62,15 @@ class Iri(protocols.CustomSerializable):
     @functools.cached_property
     def iri(self) -> str:
         """The full IRI as a string."""
-        return rfc3987.compose(
+        iri = rfc3986.IRIReference(
             scheme=self.scheme,
             authority=self.authority,
             path=self.path,
             query=self.query,
             fragment=self.fragment,
         )
+
+        return iri.unsplit()
 
     def to_func_iri(self) -> FuncIri:
         """Convert this Iri to a FuncIri."""
@@ -99,16 +101,14 @@ class Iri(protocols.CustomSerializable):
 
         """
         try:
-            # sometimes missing parts are not None, but empty strings
-            # so normalize them to None
-            parts = {k: v for k, v in rfc3987.parse(iri).items() if v}
+            parsed = rfc3986.iri_reference(iri)
 
             return cls(
-                scheme=parts.get("scheme"),
-                authority=parts.get("authority"),
-                path=parts.get("path"),
-                query=parts.get("query"),
-                fragment=parts.get("fragment"),
+                scheme=parsed.scheme,
+                authority=parsed.authority,
+                path=parsed.path,
+                query=parsed.query,
+                fragment=parsed.fragment,
             )
 
         except Exception as e:
