@@ -38,7 +38,7 @@ jobs:
         run: poetry run poe versioncheck
 
       - name: Run license check
-        run: poetry run poe licensecheck
+        run: poetry run poe licensecheck --requirements-paths=pyproject.toml
 
       - name: Install test dependencies
         run: poetry install --only main,dev,test
