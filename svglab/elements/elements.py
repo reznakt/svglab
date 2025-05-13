@@ -51,7 +51,7 @@ def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
     """Convert a basic shape to a `Path` element."""
     # try to convert to D first, so we don't call convert() if the shape
     # is not convertible
-    d = basic_shape.to_d()
+    d = basic_shape.to_path_data()
 
     path = models.convert(basic_shape, Path)
     path.d = d
@@ -59,7 +59,9 @@ def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
     return path
 
 
-def _points_to_d(element: attrdefs.PointsAttr) -> path_data.PathData:
+def _points_to_path_data(
+    element: attrdefs.PointsAttr,
+) -> path_data.PathData:
     """Convert element with a `points` attribute to a `PathData` instance."""
     points = element.points if element.points is not None else []
     d = path_data.PathData()
@@ -73,7 +75,7 @@ def _points_to_d(element: attrdefs.PointsAttr) -> path_data.PathData:
     return d
 
 
-def _ellipse_to_d(
+def _ellipse_to_path_data(
     *,
     cx: length.Length,
     cy: length.Length,
@@ -234,12 +236,12 @@ class Circle(
     traits.Element,
 ):
     @override
-    def to_d(self) -> path_data.PathData:
+    def to_path_data(self) -> path_data.PathData:
         cx = _length_or_zero(self.cx)
         cy = _length_or_zero(self.cy)
         r = _length_or_zero(self.r)
 
-        return _ellipse_to_d(cx=cx, cy=cy, rx=r, ry=r)
+        return _ellipse_to_path_data(cx=cx, cy=cy, rx=r, ry=r)
 
     @override
     def to_path(self) -> Path:
@@ -317,13 +319,13 @@ class Ellipse(
     traits.Element,
 ):
     @override
-    def to_d(self) -> path_data.PathData:
+    def to_path_data(self) -> path_data.PathData:
         cx = _length_or_zero(self.cx)
         cy = _length_or_zero(self.cy)
         rx = _length_or_zero(self.rx)
         ry = _length_or_zero(self.ry)
 
-        return _ellipse_to_d(cx=cx, cy=cy, rx=rx, ry=ry)
+        return _ellipse_to_path_data(cx=cx, cy=cy, rx=rx, ry=ry)
 
     @override
     def to_path(self) -> Path:
@@ -801,7 +803,7 @@ class Line(
     traits.Element,
 ):
     @override
-    def to_d(self) -> path_data.PathData:
+    def to_path_data(self) -> path_data.PathData:
         x1 = _length_or_zero(self.x1)
         y1 = _length_or_zero(self.y1)
         x2 = _length_or_zero(self.x2)
@@ -930,8 +932,8 @@ class Polygon(
     traits.Element,
 ):
     @override
-    def to_d(self) -> path_data.PathData:
-        return _points_to_d(self).close()
+    def to_path_data(self) -> path_data.PathData:
+        return _points_to_path_data(self).close()
 
     @override
     def to_path(self) -> Path:
@@ -949,8 +951,8 @@ class Polyline(
     traits.Element,
 ):
     @override
-    def to_d(self) -> path_data.PathData:
-        return _points_to_d(self)
+    def to_path_data(self) -> path_data.PathData:
+        return _points_to_path_data(self)
 
     @override
     def to_path(self) -> Path:
@@ -994,7 +996,7 @@ class Rect(
     traits.Element,
 ):
     @override
-    def to_d(self) -> path_data.PathData:
+    def to_path_data(self) -> path_data.PathData:
         x = _length_or_zero(self.x)
         y = _length_or_zero(self.y)
         width = _length_or_zero(self.width)

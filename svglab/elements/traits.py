@@ -157,7 +157,7 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def to_d(self) -> path_data.PathData:
+    def to_path_data(self) -> path_data.PathData:
         """Convert this basic shape into path data.
 
         The resulting path data produce the same visual result as the original
