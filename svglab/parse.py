@@ -6,20 +6,19 @@ import warnings
 import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
 
-import svglab.protocols
-from svglab import xml
+from svglab import protocols, xml
 from svglab.elements import elements, names
 from svglab.utils import miscutils
 
 
 warnings.filterwarnings("ignore", category=bs4.XMLParsedAsHTMLWarning)
 
-
-Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
-""" Type for parsers supported by BeautifulSoup. """
-
-
-DEFAULT_PARSER: Final[Parser] = "lxml-xml"
+_Markup: TypeAlias = (
+    str
+    | bytes
+    | protocols.SupportsRead[str]
+    | protocols.SupportsRead[bytes]
+)
 
 
 _ELEMENT_NAME_TO_CLASS: Final = {
@@ -129,14 +128,25 @@ def _convert_element(backend: bs4.PageElement) -> xml.Entity | None:
             return None
 
 
+def _get_markup_head(markup: _Markup, limit: int = 30) -> str:
+    match markup:
+        case str():
+            return (
+                markup if len(markup) <= limit else f"{markup[:limit]}..."
+            )
+        case bytes():
+            return _get_markup_head(markup.decode(), limit=limit)
+        case protocols.SupportsRead():
+            return _get_markup_head(markup.read(limit + 1), limit=limit)
+
+
 def parse_svg(
-    markup: str
-    | bytes
-    | svglab.protocols.SupportsRead[str]
-    | svglab.protocols.SupportsRead[bytes],
+    markup: _Markup,
     /,
     *,
-    parser: Parser = DEFAULT_PARSER,
+    parser: Literal[
+        "html.parser", "lxml", "lxml-xml", "html5lib"
+    ] = "lxml-xml",
 ) -> elements.Svg:
     """Parse an SVG document.
 
@@ -162,18 +172,15 @@ def parse_svg(
 
     """
     soup = bs4.BeautifulSoup(markup, features=parser)
-
     svg_fragments = _get_root_svg_fragments(soup)
 
     if len(svg_fragments) != 1:
+        markup_head = _get_markup_head(markup)
         msg = (
-            f"Expected one <svg> element, found {len(svg_fragments)}."
-            " This does not look like a well-formed SVG."
+            f"Expected one <svg> element, found {len(svg_fragments)}; this "
+            f"does not look like a well-formed SVG (markup: {markup_head})."
         )
 
         raise ValueError(msg)
 
-    root_svg_fragment = _convert_element(svg_fragments[0])
-    assert isinstance(root_svg_fragment, elements.Svg)
-
-    return root_svg_fragment
+    return cast(elements.Svg, _convert_element(svg_fragments[0]))
