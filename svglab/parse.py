@@ -1,6 +1,7 @@
 """Logic for parsing SVG documents."""
 
 import collections
+import warnings
 
 import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
@@ -9,6 +10,9 @@ import svglab.protocols
 from svglab import xml
 from svglab.elements import elements, names
 from svglab.utils import miscutils
+
+
+warnings.filterwarnings("ignore", category=bs4.XMLParsedAsHTMLWarning)
 
 
 Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
