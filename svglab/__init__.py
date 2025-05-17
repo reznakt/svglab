@@ -495,6 +495,7 @@ from svglab.xml import (
     Element,
     Entity,
     RawText,
+    UnknownElement,
     swap_transforms,
 )
 
@@ -884,6 +885,7 @@ __all__: __Final = [
     "UnicodeBidiAttr",
     "UnicodeRangeAttr",
     "UnitsPerEmAttr",
+    "UnknownElement",
     "Use",
     "VAlphabeticAttr",
     "VHangingAttr",
