@@ -18,13 +18,13 @@ import abc
 
 from typing_extensions import Protocol
 
-from svglab import graphics, models, xml
+from svglab import entities, graphics, models
 from svglab.attrparse import path_data
 from svglab.attrs import attrdefs, attrgroups
 
 
 # common attributes are defined directly on the Element class
-class Element(xml.Element):
+class Element(entities.Element):
     """An SVG element."""
 
 
@@ -91,7 +91,7 @@ class _GraphicalOperations(Element):
 class GraphicsElement(
     _GraphicalOperations,
     attrgroups.GraphicalEventsAttrs,
-    xml.StrokeWidthScaled,
+    entities.StrokeWidthScaled,
     Element,
 ):
     """A graphics element.
@@ -139,7 +139,7 @@ class Shape(attrdefs.PathLengthAttr, GraphicsElement):
             raise RuntimeError("Current pathLength must not be None")
 
         ratio = value / self.pathLength
-        xml.scale_distance_along_a_path_attrs(self, ratio)
+        entities.scale_distance_along_a_path_attrs(self, ratio)
 
         self.pathLength = value
 

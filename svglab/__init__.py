@@ -469,6 +469,15 @@ from svglab.elements.traits import (
     TextContentChildElement,
     TextContentElement,
 )
+from svglab.entities import (
+    CData,
+    CharacterData,
+    Comment,
+    Element,
+    Entity,
+    RawText,
+    swap_transforms,
+)
 from svglab.errors import (
     SvgElementNotFoundError,
     SvgError,
@@ -488,15 +497,6 @@ from svglab.serialize import (
     set_formatter,
 )
 from svglab.utiltypes import LengthUnit
-from svglab.xml import (
-    CData,
-    CharacterData,
-    Comment,
-    Element,
-    Entity,
-    RawText,
-    swap_transforms,
-)
 
 
 __all__: __Final = [

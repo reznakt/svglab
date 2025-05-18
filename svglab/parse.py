@@ -6,7 +6,7 @@ import warnings
 import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
 
-from svglab import protocols, xml
+from svglab import entities, protocols
 from svglab.elements import elements, names
 from svglab.utils import miscutils
 
@@ -22,20 +22,20 @@ _Markup: TypeAlias = (
 
 
 _ELEMENT_NAME_TO_CLASS: Final = {
-    xml.element_name(cls): cls
-    for cls in miscutils.get_all_subclasses(xml.Element)
+    entities.element_name(cls): cls
+    for cls in miscutils.get_all_subclasses(entities.Element)
     if cls.__name__ in names.ELEMENT_NAME_TO_NORMALIZED.inverse
 }
 
 _BS_TO_TEXT_ELEMENT: Final[
     dict[
         type[bs4.NavigableString],
-        type[xml.CData | xml.Comment | xml.RawText],
+        type[entities.CData | entities.Comment | entities.RawText],
     ]
 ] = {
-    bs4.CData: xml.CData,
-    bs4.Comment: xml.Comment,
-    bs4.NavigableString: xml.RawText,
+    bs4.CData: entities.CData,
+    bs4.Comment: entities.Comment,
+    bs4.NavigableString: entities.RawText,
 }
 
 
@@ -83,7 +83,7 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def _convert_element(backend: bs4.PageElement) -> xml.Entity | None:
+def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
