@@ -812,11 +812,12 @@ class Element(
             ValueError: If the child is not a child of the element.
 
         """
-        for i, elem in enumerate(self.children):
-            if elem is child:
-                return self.pop_child(i)
+        try:
+            index = iterutils.search_by_reference(self.__children, child)
+        except ValueError as e:
+            raise ValueError("Child not found") from e
 
-        raise ValueError("Child not found")
+        return self.pop_child(index)
 
     def pop_child(self, index: SupportsIndex = -1, /) -> Entity:
         """Remove a child from the element based on its index.
