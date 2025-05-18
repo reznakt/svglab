@@ -446,31 +446,6 @@ def _move_transformation_to_end(
         )
 
 
-def _apply_transformation(
-    element: Element, transformation: transform.TransformFunction, /
-) -> None:
-    """Apply a transformation to the attributes of the element.
-
-    Args:
-    element: The element to transform.
-    transformation: The transformation to apply.
-
-    Raises:
-    ValueError: If the transformation is not supported.
-    SvgLengthConversionError: If a length attribute is not convertible
-    to user units.
-
-    """
-    match transformation:
-        case transform.Translate():
-            _translate(element, transformation)
-        case transform.Scale():
-            _scale(element, transformation)
-        case _:
-            msg = f"Unsupported transformation: {transformation}"
-            raise ValueError(msg)
-
-
 def element_name(element: Element | type[Element], /) -> names.ElementName:
     """Get the SVG element name of the given element or element class.
 
@@ -1134,6 +1109,29 @@ class Element(
 
         self.transform_origin = None
 
+    def apply_transformation(
+        self, transformation: transform.TransformFunction, /
+    ) -> None:
+        """Apply a transformation to the attributes of the element.
+
+        Args:
+        transformation: The transformation to apply.
+
+        Raises:
+        ValueError: If the transformation is not supported.
+        SvgLengthConversionError: If a length attribute is not convertible
+        to user units.
+
+        """
+        match transformation:
+            case transform.Translate():
+                _translate(self, transformation)
+            case transform.Scale():
+                _scale(self, transformation)
+            case _:
+                msg = f"Unsupported transformation: {transformation}"
+                raise ValueError(msg)
+
     def __reify_this(self, *, limit: int = sys.maxsize) -> None:
         if limit < 0:
             raise ValueError("Limit must be a positive integer")
@@ -1159,7 +1157,7 @@ class Element(
                 _move_transformation_to_end(self.main_transform, i)
                 transformation = self.main_transform.pop()
 
-                _apply_transformation(self, transformation)
+                self.apply_transformation(transformation)
 
                 for child in self.find_all(recursive=False):
                     if element_name(child) == "stop":
