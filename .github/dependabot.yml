@@ -2,9 +2,8 @@ version: 2
 updates:
   - package-ecosystem: "pip"
     directory: "/"
-    reviewers: ["reznakt"]
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
       all:
         patterns: ["*"]
