@@ -114,10 +114,9 @@ def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
                 entities.UnknownElement,
             )
 
-            attrs = {"prefix": backend.prefix}
-
-            for key, value in backend.attrs.items():
-                attrs[key] = str(value).strip()
+            attrs = {"prefix": backend.prefix} | {
+                k: str(v).strip() for k, v in backend.attrs.items()
+            }
 
             if element_class is entities.UnknownElement:
                 attrs["element_name"] = backend.name
