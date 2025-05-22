@@ -103,9 +103,7 @@ def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
             if cls is None:
                 return None
 
-            text = backend.get_text(strip=True)
-
-            return cls(text) if text else None
+            return None if backend.isspace() else cls(backend)
         case bs4.Tag():
             element_class = _ELEMENT_NAME_TO_CLASS.get(
                 cast(names.ElementName, backend.name),
