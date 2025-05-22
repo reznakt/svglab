@@ -22,7 +22,7 @@ _Markup: TypeAlias = (
 
 
 _ELEMENT_NAME_TO_CLASS: Final = {
-    entities.element_name(cls): cls
+    entities.element_name(cls()): cls
     for cls in miscutils.get_all_subclasses(entities.Element)
     if cls.__name__ in names.ELEMENT_NAME_TO_NORMALIZED.inverse
 }
@@ -107,16 +107,20 @@ def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
 
             return cls(text) if text else None
         case bs4.Tag():
-            element_class = _ELEMENT_NAME_TO_CLASS[
-                cast(names.ElementName, backend.name)
-            ]
+            element_class = _ELEMENT_NAME_TO_CLASS.get(
+                cast(names.ElementName, backend.name),
+                entities.UnknownElement,
+            )
+
+            attrs = {"prefix": backend.prefix}
 
             for key, value in backend.attrs.items():
-                backend.attrs[key] = str(value).strip()
+                attrs[key] = str(value).strip()
 
-            element = element_class.model_validate(
-                {"prefix": backend.prefix, **backend.attrs}, strict=False
-            )
+            if element_class is entities.UnknownElement:
+                attrs["element_name"] = backend.name
+
+            element = element_class.model_validate(attrs, strict=False)
 
             for child in backend.children:
                 grandchild = _convert_element(child)

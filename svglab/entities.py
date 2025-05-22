@@ -52,6 +52,35 @@ class StrokeWidthScaled:
     """The element's `stroke-width` attribute should be scaled."""
 
 
+def _match_element(
+    element: Element, /, *, search: type[Element] | names.ElementName | str
+) -> bool:
+    """Check if an element matches the given search criteria.
+
+    Args:
+    element: The element to check.
+    search: The search criteria. Can be an element name or an element class.
+
+    Returns:
+    `True` if the element matches the search criteria, `False` otherwise.
+
+    Examples:
+    >>> from svglab import Rect
+    >>> rect = Rect()
+    >>> _match_element(rect, search="rect")
+    True
+    >>> _match_element(rect, search=Rect)
+    True
+    >>> _match_element(rect, search="circle")
+    False
+
+    """
+    if isinstance(search, type):
+        return isinstance(element, search)
+
+    return element_name(element) == search
+
+
 def _scale_attr(attr: _T, /, by: float) -> _T:
     """Scale an attribute by the given factor.
 
@@ -446,7 +475,7 @@ def _move_transformation_to_end(
         )
 
 
-def element_name(element: Element | type[Element], /) -> names.ElementName:
+def element_name(element: Element, /) -> str:
     """Get the SVG element name of the given element or element class.
 
     Args:
@@ -457,13 +486,14 @@ def element_name(element: Element | type[Element], /) -> names.ElementName:
 
     Examples:
     >>> from svglab import Rect
-    >>> element_name(Rect)
+    >>> element_name(Rect())
     'rect'
 
     """
-    element_cls = element if isinstance(element, type) else type(element)
+    if isinstance(element, UnknownElement):
+        return element.element_name
 
-    return names.ELEMENT_NAME_TO_NORMALIZED.inverse[element_cls.__name__]
+    return names.ELEMENT_NAME_TO_NORMALIZED.inverse[type(element).__name__]
 
 
 class Entity(models.BaseModel, metaclass=abc.ABCMeta):
@@ -1314,13 +1344,13 @@ class Element(
     @overload
     def find_all(
         self,
-        *elements: type[Element] | names.ElementName,
+        *elements: type[Element] | names.ElementName | str,
         recursive: bool = True,
     ) -> Generator[Element]: ...
 
     def find_all(
         self,
-        *elements: type[Element] | names.ElementName,
+        *elements: type[Element] | names.ElementName | str,
         recursive: bool = True,
     ) -> Generator[Element]:
         """Find all elements that match the given search criteria.
@@ -1366,7 +1396,7 @@ class Element(
     @overload
     def find(
         self,
-        *elements: type[Element] | names.ElementName,
+        *elements: type[Element] | names.ElementName | str,
         recursive: bool = True,
     ) -> Element: ...
 
@@ -1381,14 +1411,14 @@ class Element(
     @overload
     def find(
         self,
-        *elements: type[Element] | names.ElementName,
+        *elements: type[Element] | names.ElementName | str,
         recursive: bool = True,
         default: _T = _EMPTY_PARAM,
     ) -> Element | _T: ...
 
     def find(
         self,
-        *elements: type[Element] | names.ElementName,
+        *elements: type[Element] | names.ElementName | str,
         recursive: bool = True,
         default: _T = _EMPTY_PARAM,
     ) -> Element | _T:
@@ -1472,6 +1502,12 @@ class Element(
         if self.__children:
             attrs["children"] = list(self.children)
 
+        if self.prefix:
+            attrs["prefix"] = self.prefix
+
+        if isinstance(self, UnknownElement):
+            attrs["element_name"] = self.element_name
+
         attr_repr = ", ".join(
             f"{key}={value!r}" for key, value in attrs.items()
         )
@@ -1513,33 +1549,22 @@ class Element(
         return self.get_iri().to_func_iri()
 
 
-def _match_element(
-    element: Element, /, *, search: type[Element] | names.ElementName
-) -> bool:
-    """Check if an element matches the given search criteria.
+@final
+class UnknownElement(Element):
+    """Represents an unknown element that is not part of the SVG specification.
 
-    Args:
-    element: The element to check.
-    search: The search criteria. Can be an element name or an element class.
+    This element has no standard parsed attributes. All attributes are treated
+    as extra attributes.
 
-    Returns:
-    `True` if the element matches the search criteria, `False` otherwise.
-
-    Examples:
-    >>> from svglab import Rect
-    >>> rect = Rect()
-    >>> _match_element(rect, search="rect")
-    True
-    >>> _match_element(rect, search=Rect)
-    True
-    >>> _match_element(rect, search="circle")
-    False
+    If you need to parse custom elements including their attributes, it is
+    recommended to subclass the `Element` class instead; this class is only
+    intended as a last-resort fallback so we don't lose information about
+    elements the library does not know about.
 
     """
-    if isinstance(search, type):
-        return isinstance(element, search)
 
-    return element_name(element) == search
+    element_name: str = pydantic.Field(frozen=True, min_length=1)
+    """The name of the element."""
 
 
 class CharacterData(Entity, metaclass=abc.ABCMeta):

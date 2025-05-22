@@ -476,6 +476,7 @@ from svglab.entities import (
     Element,
     Entity,
     RawText,
+    UnknownElement,
     swap_transforms,
 )
 from svglab.errors import (
@@ -884,6 +885,7 @@ __all__: __Final = [
     "UnicodeBidiAttr",
     "UnicodeRangeAttr",
     "UnitsPerEmAttr",
+    "UnknownElement",
     "Use",
     "VAlphabeticAttr",
     "VHangingAttr",
