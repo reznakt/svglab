@@ -200,7 +200,13 @@ def _render_tree(
     assert isinstance(svg, entities.Element)
 
     for t in svg.find_all():
-        t.visibility = "visible" if render_other else "hidden"
+        # do not hide the parents of our element as that would make it
+        # invisible
+        # TODO: this is quite suboptimal performance-wise; optimize this
+        if render_other or t in element_copy.ancestors:
+            t.visibility = "visible"
+        else:
+            t.visibility = "hidden"
 
     element_copy.visibility = "visible" if render_this else "hidden"
 
