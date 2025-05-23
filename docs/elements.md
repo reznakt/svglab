@@ -1,3 +1,3 @@
 # Elements
 
-::: svglab.elements.tags
+::: svglab.elements.elements
