@@ -1,3 +1,0 @@
-# Elements
-
-::: svglab.elements.elements
