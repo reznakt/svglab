@@ -572,14 +572,11 @@ class Matrix(_TransformFunctionBase):
         [Translate(tx=10.0, ty=20.0), Scale(sx=2.0, sy=2.0)]
 
         """
-        if self == Matrix.identity():
-            return []
+        decompositions = [self.__ldu_decompose(), self.__qr_decompose()]
 
-        ldu = _remove_redundant_transformations(self.__ldu_decompose())
-        qr = _remove_redundant_transformations(self.__qr_decompose())
-
-        return (
-            ldu if _transform_weight(ldu) < _transform_weight(qr) else qr
+        return min(
+            map(_remove_redundant_transformations, decompositions),
+            key=_transform_weight,
         )
 
     def __eq__(self, other: object, /) -> bool:

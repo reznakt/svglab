@@ -18,14 +18,13 @@ import abc
 
 from typing_extensions import Protocol
 
-from svglab import graphics, models
-from svglab.attrparse import d
-from svglab.attrs import groups, regular
-from svglab.elements import common
+from svglab import entities, graphics, models
+from svglab.attrparse import path_data
+from svglab.attrs import attrdefs, attrgroups
 
 
-# common attributes are defined directly on the Tag class
-class Element(common.Tag):
+# common attributes are defined directly on the Element class
+class Element(entities.Element):
     """An SVG element."""
 
 
@@ -65,21 +64,21 @@ class _GraphicalOperations(Element):
     ) -> graphics.Mask:
         """Create a mask of this element.
 
-        A mask is a 2D boolean array with `True` values where the tag is
+        A mask is a 2D boolean array with `True` values where the element is
         located (or visible) in the rendered SVG and `False` values elsewhere.
 
         Args:
-            tag: The tag to create a mask for.
-            visible_only: If `True`, only the visible parts of the tag are
+            element: The element to create a mask for.
+            visible_only: If `True`, only the visible parts of the element are
                 included in the mask. If `False`, the mask includes all parts
-                of the tag (even if they are transparent).
+                of the element (even if they are transparent).
             width: The width of the mask. If `None`, the width of the root
-                SVG tag in the tree is used.
+                SVG element in the tree is used.
             height: The height of the mask. If `None`, the height of the root
-                SVG tag in the tree is used.
+                SVG element in the tree is used.
 
         Returns:
-            A 2D boolean array representing the mask of the tag.
+            A 2D boolean array representing the mask of the element.
 
         """
         return (
@@ -91,8 +90,8 @@ class _GraphicalOperations(Element):
 
 class GraphicsElement(
     _GraphicalOperations,
-    groups.GraphicalEvents,
-    common.StrokeWidthScaled,
+    attrgroups.GraphicalEventsAttrs,
+    entities.StrokeWidthScaled,
     Element,
 ):
     """A graphics element.
@@ -103,7 +102,7 @@ class GraphicsElement(
     """
 
 
-class Shape(regular.PathLength, GraphicsElement):
+class Shape(attrdefs.PathLengthAttr, GraphicsElement):
     """A shape.
 
     From the SVG 1.1 specification:
@@ -140,13 +139,13 @@ class Shape(regular.PathLength, GraphicsElement):
             raise RuntimeError("Current pathLength must not be None")
 
         ratio = value / self.pathLength
-        common.scale_distance_along_a_path_attrs(self, ratio)
+        entities.scale_distance_along_a_path_attrs(self, ratio)
 
         self.pathLength = value
 
 
 class _PathLike(Protocol):
-    d: models.Attr[d.D]
+    d: models.Attr[path_data.PathData]
 
 
 class BasicShape(Shape, metaclass=abc.ABCMeta):
@@ -158,14 +157,14 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def to_d(self) -> d.D:
+    def to_path_data(self) -> path_data.PathData:
         """Convert this basic shape into path data.
 
         The resulting path data produce the same visual result as the original
         basic shape.
 
         Returns:
-            A `D` instance representing the path data.
+            A `PathData` instance representing the path data.
 
         """
         ...
@@ -186,7 +185,9 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
 
 
 class AnimationElement(
-    groups.AnimationEvents, groups.AnimationTiming, Element
+    attrgroups.AnimationEventsAttrs,
+    attrgroups.AnimationTimingAttrs,
+    Element,
 ):
     """An animation element.
 
@@ -197,7 +198,7 @@ class AnimationElement(
 
 
 class ContainerElement(
-    _GraphicalOperations, groups.GraphicalEvents, Element
+    _GraphicalOperations, attrgroups.GraphicalEventsAttrs, Element
 ):
     """A container element.
 
@@ -216,7 +217,7 @@ class DescriptiveElement(Element):
     """
 
 
-class FilterPrimitiveElement(groups.FilterPrimitives, Element):
+class FilterPrimitiveElement(attrgroups.FilterPrimitivesAttrs, Element):
     """A filter primitive element.
 
     From the SVG 1.1 specification:

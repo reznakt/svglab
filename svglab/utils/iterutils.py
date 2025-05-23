@@ -33,6 +33,36 @@ def take_last(iterable: Iterable[_T], /) -> _T | None:
     return functools.reduce(lambda _, s: s, iterable, None)
 
 
+def search_by_reference(sequence: Iterable[_T], item: _T) -> int:
+    """Search for an item in a sequence by reference.
+
+    Args:
+        sequence: The sequence to search.
+        item: The item to find.
+
+    Returns:
+        The index of the item in the sequence.
+
+    Raises:
+        ValueError: If the item is not found in the sequence.
+
+    Examples:
+        >>> search_by_reference([1, 2, 3], 2)
+        1
+        >>> search_by_reference([1, 2, 3], 4)
+        Traceback (most recent call last):
+            ...
+        ValueError: Item not found in sequence: 4
+
+    """
+    for i, x in enumerate(sequence):
+        if x is item:
+            return i
+
+    msg = f"Item not found in sequence: {item!r}"
+    raise ValueError(msg)
+
+
 def prev(sequence: Sequence[_T], item: _T) -> _T:
     """Get the item before a given item in a sequence.
 
@@ -60,17 +90,13 @@ def prev(sequence: Sequence[_T], item: _T) -> _T:
         ValueError: Item not found in sequence: 4
 
     """
-    try:
-        index = sequence.index(item)
-    except ValueError as e:
-        msg = f"Item not found in sequence: {item!r}"
-        raise ValueError(msg) from e
+    idx = search_by_reference(sequence, item)
 
-    if index == 0:
+    if idx == 0:
         msg = f"Item {item!r} has no predecessor."
         raise ValueError(msg)
 
-    return sequence[index - 1]
+    return sequence[idx - 1]
 
 
 def pairwise(

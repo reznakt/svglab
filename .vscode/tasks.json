@@ -10,14 +10,6 @@
       ]
     },
     {
-      "label": "start",
-      "type": "shell",
-      "command": "poe",
-      "args": [
-        "start"
-      ]
-    },
-    {
       "label": "test",
       "type": "shell",
       "command": "poe",
@@ -71,6 +63,14 @@
       "command": "poe",
       "args": [
         "versioncheck"
+      ]
+    },
+    {
+      "label": "licensecheck",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "licensecheck"
       ]
     }
   ]

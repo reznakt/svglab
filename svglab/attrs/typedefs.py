@@ -4,7 +4,15 @@ import pydantic
 from typing_extensions import Annotated, Literal, TypeAlias
 
 from svglab import models
-from svglab.attrparse import angle, color, d, length, points, transform
+from svglab.attrparse import (
+    angle,
+    color,
+    iri,
+    length,
+    path_data,
+    points,
+    transform,
+)
 from svglab.utils import mathutils
 
 
@@ -26,9 +34,8 @@ ContentType: TypeAlias = Unparsed  # MIME type
 EndValueList: TypeAlias = Unparsed
 FamilyName: TypeAlias = Unparsed
 FilterPrimitiveReference: TypeAlias = Unparsed
-FuncIri: TypeAlias = Unparsed
 GenericFamily: TypeAlias = Unparsed
-Iri: TypeAlias = Unparsed
+IccColor: TypeAlias = Unparsed
 LanguageCodes: TypeAlias = Unparsed
 LanguageId: TypeAlias = Unparsed
 LanguageTag: TypeAlias = Unparsed
@@ -37,7 +44,6 @@ Name: TypeAlias = Unparsed
 ProfileName: TypeAlias = Unparsed
 Shape: TypeAlias = Unparsed
 Urange: TypeAlias = Unparsed
-Url: TypeAlias = Unparsed
 XmlName: TypeAlias = Unparsed
 
 # basic types that are parsed
@@ -57,11 +63,13 @@ Character: TypeAlias = Annotated[
     str, pydantic.Field(min_length=1, max_length=1)
 ]
 Color: TypeAlias = color.ColorType
+FuncIri: TypeAlias = iri.FuncIriType
 Integer: TypeAlias = int
+Iri: TypeAlias = iri.IriType
 Length: TypeAlias = length.LengthType
 ListOfPoints: TypeAlias = points.PointsType
 Number: TypeAlias = float
-PathData: TypeAlias = d.DType
+PathData: TypeAlias = path_data.PathDataType
 RelativeSize: TypeAlias = Literal["smaller", "larger"]
 TransformList: TypeAlias = transform.TransformType
 
@@ -110,8 +118,7 @@ Paint: TypeAlias = (
     | Literal["currentColor", "context-fill", "context-stroke"]
     | Inherit
     | Color
-    # <funciri> [ none | currentColor | <color> [<icccolor>] ]
-    | Unparsed
+    | FuncIri
 )
 Percentage: TypeAlias = Length
 

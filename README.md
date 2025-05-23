@@ -3,12 +3,12 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/reznakt/svglab/check.yml)
 ![GitHub License](https://img.shields.io/github/license/reznakt/svglab)
 [![PyPI - Version](https://img.shields.io/pypi/v/svglab)](https://pypi.org/project/svglab/)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/svglab)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/svglab)
 ![Maintenance](https://img.shields.io/maintenance/yes/2025)
 [![Dependency status](https://img.shields.io/librariesio/release/pypi/svglab)](https://libraries.io/pypi/svglab/tree)
 [![Test coverage](https://codecov.io/github/reznakt/svglab/graph/badge.svg)](https://codecov.io/github/reznakt/svglab)
 ![GitHub repo size](https://img.shields.io/github/repo-size/reznakt/svglab)
-![LOC](https://img.shields.io/endpoint?url=https%3A%2F%2Floc-counter.onrender.com%3Frepo%3Dreznakt%2Fsvglab%26branch%3Dmain&label=LOC&color=blue)
 
 <br />
 <div align="center">
@@ -53,7 +53,7 @@
 - SVG parsing, manipulation, and writing
 - Support for all SVG 1.1 elements and attributes
 - Partial support for SVG 2
-- Support for special XML elements (`CDATA`, comments, text)
+- Support for special XML entities (`CDATA`, comments, text)
 - Attributes are parsed into native Python types for easy manipulation
 - Highly configurable formatting options:
   - indentation level
@@ -73,22 +73,22 @@
 
 ```mermaid
 ---
-title: Element hierarchy
+title: Entity hierarchy
 ---
 
 graph TD
-  Element:::abc --> TextElement
-  Element --> Tag
+  Entity:::abc --> CharacterData
+  Entity --> Element
 
-  Tag:::abc --> G
-  Tag --> Svg
-  Tag --> Rect
-  Tag --> Circle
-  Tag --> etc1[...]
+  Element:::abc --> G
+  Element --> Svg
+  Element --> Rect
+  Element --> Circle
+  Element --> etc1[...]
 
-  TextElement:::abc --> RawText
-  TextElement --> Comment
-  TextElement --> CData
+  CharacterData:::abc --> RawText
+  CharacterData --> Comment
+  CharacterData --> CData
 
   etc1:::etc
 
@@ -104,15 +104,18 @@ graph TD
 ### Prerequisites
 
 - [CPython](https://www.python.org/) $\geq$ 3.10
-- [Poetry](https://python-poetry.org/) (development only)
+- [Poetry](https://python-poetry.org/) $\geq$ 2.0 (development only)
 
 ### Installation
 
 **From PyPi**:
+
 ```sh
 pip install svglab
 ```
+
 **From source**:
+
 ```sh
 # Via HTTPS
 pip install git+https://github.com/reznakt/svglab.git
@@ -204,7 +207,7 @@ svg.x = Length(10, "px")
 # Save to a file
 svg.save(sys.stdout)
 
-# Search the element tree
+# Search the entity tree
 print(*svg.find_all(Rect), sep="\n")
 rect = svg.find(G).find(Rect)
 

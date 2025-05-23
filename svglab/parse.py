@@ -1,41 +1,41 @@
 """Logic for parsing SVG documents."""
 
 import collections
+import warnings
 
 import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
 
-import svglab.protocols
-from svglab.elements import common, names, svg, text_elements
+from svglab import entities, protocols
+from svglab.elements import elements, names
 from svglab.utils import miscutils
 
 
-Parser: TypeAlias = Literal["html.parser", "lxml", "lxml-xml", "html5lib"]
-""" Type for parsers supported by BeautifulSoup. """
+warnings.filterwarnings("ignore", category=bs4.XMLParsedAsHTMLWarning)
+
+_Markup: TypeAlias = (
+    str
+    | bytes
+    | protocols.SupportsRead[str]
+    | protocols.SupportsRead[bytes]
+)
 
 
-DEFAULT_PARSER: Final[Parser] = "lxml-xml"
-
-
-_TAG_NAME_TO_CLASS: Final = {
-    common.tag_name(cls): cls
-    for cls in miscutils.get_all_subclasses(common.Tag)
-    if cls.__name__ in names.TAG_NAME_TO_NORMALIZED.inverse
+_ELEMENT_NAME_TO_CLASS: Final = {
+    entities.element_name(cls()): cls
+    for cls in miscutils.get_all_subclasses(entities.Element)
+    if cls.__name__ in names.ELEMENT_NAME_TO_NORMALIZED.inverse
 }
 
 _BS_TO_TEXT_ELEMENT: Final[
     dict[
         type[bs4.NavigableString],
-        type[
-            text_elements.CData
-            | text_elements.Comment
-            | text_elements.RawText
-        ],
+        type[entities.CData | entities.Comment | entities.RawText],
     ]
 ] = {
-    bs4.CData: text_elements.CData,
-    bs4.Comment: text_elements.Comment,
-    bs4.NavigableString: text_elements.RawText,
+    bs4.CData: entities.CData,
+    bs4.Comment: entities.Comment,
+    bs4.NavigableString: entities.RawText,
 }
 
 
@@ -46,10 +46,11 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     SVG fragment. It then returns a list of all SVG fragments found in the same
     depth of the tree. This allows us to consider an SVG fragment as a root
     element when using HTML parsers that implicitly wrap the document in
-    certain HTML tags (e.g., <html>).
+    certain HTML elements (e.g., <html>).
 
     Args:
-        soup: A BeautifulSoup tag object representing the root of the document.
+        soup: A BeautifulSoup `Tag` object representing the root of the
+        document.
 
     Returns:
         A list of SVG fragments found in the document.
@@ -82,7 +83,7 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def _convert_element(backend: bs4.PageElement) -> common.Element | None:
+def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
@@ -100,42 +101,61 @@ def _convert_element(backend: bs4.PageElement) -> common.Element | None:
             cls = _BS_TO_TEXT_ELEMENT.get(type(backend))
 
             if cls is None:
+                warnings.warn(
+                    f"Unsupported NavigableString type: {type(backend)}",
+                    stacklevel=2,
+                )
                 return None
 
-            text = backend.get_text(strip=True)
-
-            return cls(text) if text else None
+            return None if backend.isspace() else cls(backend)
         case bs4.Tag():
-            tag_class = _TAG_NAME_TO_CLASS[
-                cast(names.TagName, backend.name)
-            ]
-
-            for key, value in backend.attrs.items():
-                backend.attrs[key] = str(value).strip()
-
-            tag = tag_class.model_validate(
-                {"prefix": backend.prefix, **backend.attrs}, strict=False
+            element_class = _ELEMENT_NAME_TO_CLASS.get(
+                cast(names.ElementName, backend.name),
+                entities.UnknownElement,
             )
+
+            attrs = {"prefix": backend.prefix} | {
+                k: str(v).strip() for k, v in backend.attrs.items()
+            }
+
+            if element_class is entities.UnknownElement:
+                attrs["element_name"] = backend.name
+
+            element = element_class.model_validate(attrs, strict=False)
 
             for child in backend.children:
                 grandchild = _convert_element(child)
 
                 if grandchild is not None:
-                    tag.add_child(grandchild)
-            return tag
+                    element.add_child(grandchild)
+            return element
         case _:
+            warnings.warn(
+                f"Unsupported entity type: {type(backend)}", stacklevel=2
+            )
             return None
 
 
+def _get_markup_head(markup: _Markup, limit: int = 30) -> str:
+    match markup:
+        case str():
+            return (
+                markup if len(markup) <= limit else f"{markup[:limit]}..."
+            )
+        case bytes():
+            return _get_markup_head(markup.decode(), limit=limit)
+        case protocols.SupportsRead():
+            return _get_markup_head(markup.read(limit + 1), limit=limit)
+
+
 def parse_svg(
-    markup: str
-    | bytes
-    | svglab.protocols.SupportsRead[str]
-    | svglab.protocols.SupportsRead[bytes],
+    markup: _Markup,
     /,
     *,
-    parser: Parser = DEFAULT_PARSER,
-) -> svg.Svg:
+    parser: Literal[
+        "html.parser", "lxml", "lxml-xml", "html5lib"
+    ] = "lxml-xml",
+) -> elements.Svg:
     """Parse an SVG document.
 
     The document must be a valid XML document containing a single SVG
@@ -160,21 +180,15 @@ def parse_svg(
 
     """
     soup = bs4.BeautifulSoup(markup, features=parser)
-
     svg_fragments = _get_root_svg_fragments(soup)
 
     if len(svg_fragments) != 1:
+        markup_head = _get_markup_head(markup)
         msg = (
-            f"Expected 1 <svg> element, found {len(svg_fragments)}."
-            " This does not look like a valid SVG."
+            f"Expected one <svg> element, found {len(svg_fragments)}; this "
+            f"does not look like a well-formed SVG (markup: {markup_head})."
         )
 
         raise ValueError(msg)
 
-    svg_ = _convert_element(svg_fragments[0])
-
-    if not isinstance(svg_, svg.Svg):
-        msg = f"Expected an <svg> element, found {type(svg_).__name__}."
-        raise TypeError(msg)
-
-    return svg_
+    return cast(elements.Svg, _convert_element(svg_fragments[0]))

@@ -1,10 +1,11 @@
 """Abstract base classes for representing common XML entities.
 
 This module defines the following classes:
-- `Element`: The base class for all XML entities.
-- `Tag`: A subclass of `Element` that represents an XML element.
-- `TextElement`: A subclass of `Element` that represents a textual entity
-(e.g., a comment or a CDATA section).
+- `Entity`: The base class for all XML entities.
+- `Element`: A subclass of `Entity` that represents an XML element.
+- `CharacterData`: A subclass of `Entity` that represents a textual entity.
+- `CData`, `Comment`, `RawText`: Subclasses of `CharacterData` that represent
+    specific types of character data in XML.
 """
 
 from __future__ import annotations
@@ -13,31 +14,33 @@ import abc
 import collections
 import reprlib
 import sys
+import warnings
 from collections.abc import Generator, Mapping
 
 import bs4
 import pydantic
 from typing_extensions import (
     Final,
+    Literal,
     Self,
     SupportsIndex,
     TypeVar,
     cast,
+    final,
     overload,
     override,
 )
 
 from svglab import constants, errors, models, serialize
-from svglab.attrparse import length, transform
-from svglab.attrs import common as common_attrs
-from svglab.attrs import groups, presentation, regular
+from svglab.attrparse import iri, length, transform
+from svglab.attrs import attrdefs, attrgroups
 from svglab.attrs import names as attr_names
 from svglab.elements import names
-from svglab.utils import bsutils, mathutils, miscutils
+from svglab.utils import bsutils, iterutils, mathutils, miscutils
 
 
 _T = TypeVar("_T")
-_T_tag = TypeVar("_T_tag", bound="Tag")
+_T_element = TypeVar("_T_element", bound="Element")
 _TransformT1 = TypeVar("_TransformT1", bound=transform.TransformFunction)
 _TransformT2 = TypeVar("_TransformT2", bound=transform.TransformFunction)
 
@@ -47,6 +50,35 @@ _EMPTY_PARAM: Final = object()
 
 class StrokeWidthScaled:
     """The element's `stroke-width` attribute should be scaled."""
+
+
+def _match_element(
+    element: Element, /, *, search: type[Element] | names.ElementName | str
+) -> bool:
+    """Check if an element matches the given search criteria.
+
+    Args:
+    element: The element to check.
+    search: The search criteria. Can be an element name or an element class.
+
+    Returns:
+    `True` if the element matches the search criteria, `False` otherwise.
+
+    Examples:
+    >>> from svglab import Rect
+    >>> rect = Rect()
+    >>> _match_element(rect, search="rect")
+    True
+    >>> _match_element(rect, search=Rect)
+    True
+    >>> _match_element(rect, search="circle")
+    False
+
+    """
+    if isinstance(search, type):
+        return isinstance(element, search)
+
+    return element_name(element) == search
 
 
 def _scale_attr(attr: _T, /, by: float) -> _T:
@@ -85,34 +117,36 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
             return attr
 
 
-def _scale_stroke_width(tag: presentation.StrokeWidth, by: float) -> None:
+def _scale_stroke_width(
+    element: attrdefs.StrokeWidthAttr, by: float
+) -> None:
     if (
-        isinstance(tag, presentation.VectorEffect)
-        and tag.vector_effect == "non-scaling-stroke"
+        isinstance(element, attrdefs.VectorEffectAttr)
+        and element.vector_effect == "non-scaling-stroke"
     ):
         return
 
-    sw_set = tag.stroke_width is not None
+    sw_set = element.stroke_width is not None
 
     if not sw_set:
-        if not isinstance(tag, StrokeWidthScaled):
+        if not isinstance(element, StrokeWidthScaled):
             return
 
-        tag.stroke_width = length.Length(1)
+        element.stroke_width = length.Length(1)
 
-    tag.stroke_width = _scale_attr(tag.stroke_width, by)  # type: ignore[reportAttributeAccessIssue]
+    element.stroke_width = _scale_attr(element.stroke_width, by)  # type: ignore[reportAttributeAccessIssue]
 
     # if stroke-width was not set and the scaled value is 1 (default),
     # remove the attribute
     if (
         not sw_set
-        and isinstance(tag.stroke_width, length.Length)
-        and mathutils.is_close(float(tag.stroke_width), 1)
+        and isinstance(element.stroke_width, length.Length)
+        and mathutils.is_close(float(element.stroke_width), 1)
     ):
-        tag.stroke_width = None
+        element.stroke_width = None
 
 
-def scale_distance_along_a_path_attrs(tag: object, by: float) -> None:
+def scale_distance_along_a_path_attrs(element: object, by: float) -> None:
     """Scale distance-along-a-path attributes of the element.
 
     The attributes are:
@@ -120,21 +154,23 @@ def scale_distance_along_a_path_attrs(tag: object, by: float) -> None:
     - `stroke-dashoffset`
 
     Args:
-        tag: The element to scale.
+        element: The element to scale.
         by: The factor by which to scale the attributes.
 
     """
-    if isinstance(tag, presentation.StrokeDasharray) and isinstance(
-        tag.stroke_dasharray, list
+    if isinstance(element, attrdefs.StrokeDasharrayAttr) and isinstance(
+        element.stroke_dasharray, list
     ):
-        tag.stroke_dasharray = [
-            _scale_attr(dash, by) for dash in tag.stroke_dasharray
+        element.stroke_dasharray = [
+            _scale_attr(dash, by) for dash in element.stroke_dasharray
         ]
-    if isinstance(tag, presentation.StrokeDashoffset):
-        tag.stroke_dashoffset = _scale_attr(tag.stroke_dashoffset, by)
+    if isinstance(element, attrdefs.StrokeDashoffsetAttr):
+        element.stroke_dashoffset = _scale_attr(
+            element.stroke_dashoffset, by
+        )
 
 
-def _scale(tag: object, scale: transform.Scale) -> None:  # noqa: PLR0915
+def _scale(element: object, scale: transform.Scale) -> None:  # noqa: PLR0915
     if not mathutils.is_close(scale.sx, scale.sy):
         raise ValueError("Non-uniform scaling is not supported.")
 
@@ -143,64 +179,70 @@ def _scale(tag: object, scale: transform.Scale) -> None:  # noqa: PLR0915
     if mathutils.is_close(factor, 1):
         return
 
-    if isinstance(tag, regular.Width):
-        tag.width = _scale_attr(tag.width, factor)
-    if isinstance(tag, regular.Height):
-        tag.height = _scale_attr(tag.height, factor)
-    if isinstance(tag, regular.R):
-        tag.r = _scale_attr(tag.r, factor)
-    if isinstance(tag, regular.X1):
-        tag.x1 = _scale_attr(tag.x1, factor)
-    if isinstance(tag, regular.Y1):
-        tag.y1 = _scale_attr(tag.y1, factor)
-    if isinstance(tag, regular.X2):
-        tag.x2 = _scale_attr(tag.x2, factor)
-    if isinstance(tag, regular.Y2):
-        tag.y2 = _scale_attr(tag.y2, factor)
-    if isinstance(tag, regular.Rx):
-        tag.rx = _scale_attr(tag.rx, factor)
-    if isinstance(tag, regular.Ry):
-        tag.ry = _scale_attr(tag.ry, factor)
-    if isinstance(tag, regular.Cx):
-        tag.cx = _scale_attr(tag.cx, factor)
-    if isinstance(tag, regular.Cy):
-        tag.cy = _scale_attr(tag.cy, factor)
-    if isinstance(tag, regular.Fx):
-        tag.fx = _scale_attr(tag.fx, factor)
-    if isinstance(tag, regular.Fy):
-        tag.fy = _scale_attr(tag.fy, factor)
-    if isinstance(tag, common_attrs.FontSize):
-        tag.font_size = _scale_attr(tag.font_size, factor)
-    if isinstance(tag, regular.Points) and tag.points is not None:
-        tag.points = [scale @ point for point in tag.points]
-    if isinstance(tag, regular.D) and tag.d is not None:
-        tag.d = scale @ tag.d
+    if isinstance(element, attrdefs.WidthAttr):
+        element.width = _scale_attr(element.width, factor)
+    if isinstance(element, attrdefs.HeightAttr):
+        element.height = _scale_attr(element.height, factor)
+    if isinstance(element, attrdefs.RAttr):
+        element.r = _scale_attr(element.r, factor)
+    if isinstance(element, attrdefs.X1Attr):
+        element.x1 = _scale_attr(element.x1, factor)
+    if isinstance(element, attrdefs.Y1Attr):
+        element.y1 = _scale_attr(element.y1, factor)
+    if isinstance(element, attrdefs.X2Attr):
+        element.x2 = _scale_attr(element.x2, factor)
+    if isinstance(element, attrdefs.Y2Attr):
+        element.y2 = _scale_attr(element.y2, factor)
+    if isinstance(element, attrdefs.RxAttr):
+        element.rx = _scale_attr(element.rx, factor)
+    if isinstance(element, attrdefs.RyAttr):
+        element.ry = _scale_attr(element.ry, factor)
+    if isinstance(element, attrdefs.CxAttr):
+        element.cx = _scale_attr(element.cx, factor)
+    if isinstance(element, attrdefs.CyAttr):
+        element.cy = _scale_attr(element.cy, factor)
+    if isinstance(element, attrdefs.FxAttr):
+        element.fx = _scale_attr(element.fx, factor)
+    if isinstance(element, attrdefs.FyAttr):
+        element.fy = _scale_attr(element.fy, factor)
+    if isinstance(element, attrdefs.FontSizeAttr):
+        element.font_size = _scale_attr(element.font_size, factor)
+    if (
+        isinstance(element, attrdefs.PointsAttr)
+        and element.points is not None
+    ):
+        element.points = [scale @ point for point in element.points]
+    if isinstance(element, attrdefs.DAttr) and element.d is not None:
+        element.d = scale @ element.d
 
     # these assignments have to be mutually exclusive, because the
     # type checker doesn't know that x being a <number> implies that x is
     # not a <coordinate> and vice versa
-    if isinstance(tag, regular.XNumber):  # noqa: SIM114
-        tag.x = _scale_attr(tag.x, factor)
-    elif isinstance(tag, regular.XCoordinate):  # noqa: SIM114
-        tag.x = _scale_attr(tag.x, factor)
-    elif isinstance(tag, regular.XListOfCoordinates):
-        tag.x = _scale_attr(tag.x, factor)
+    if isinstance(element, attrdefs.XNumberAttr):  # noqa: SIM114
+        element.x = _scale_attr(element.x, factor)
+    elif isinstance(element, attrdefs.XCoordinateAttr):  # noqa: SIM114
+        element.x = _scale_attr(element.x, factor)
+    elif isinstance(element, attrdefs.XListOfCoordinatesAttr):
+        element.x = _scale_attr(element.x, factor)
 
-    if isinstance(tag, regular.YNumber):  # noqa: SIM114
-        tag.y = _scale_attr(tag.y, factor)
-    elif isinstance(tag, regular.YCoordinate):  # noqa: SIM114
-        tag.y = _scale_attr(tag.y, factor)
-    elif isinstance(tag, regular.YListOfCoordinates):
-        tag.y = _scale_attr(tag.y, factor)
+    if isinstance(element, attrdefs.YNumberAttr):  # noqa: SIM114
+        element.y = _scale_attr(element.y, factor)
+    elif isinstance(element, attrdefs.YCoordinateAttr):  # noqa: SIM114
+        element.y = _scale_attr(element.y, factor)
+    elif isinstance(element, attrdefs.YListOfCoordinatesAttr):
+        element.y = _scale_attr(element.y, factor)
 
-    if isinstance(tag, presentation.StrokeWidth):
-        _scale_stroke_width(tag, factor)
+    if isinstance(element, attrdefs.StrokeWidthAttr):
+        _scale_stroke_width(element, factor)
 
     # no need to scale distance-along-a-path attributes if a custom path
     # length is provided because those attributes and pathLength are
     # proportional
-    if not isinstance(tag, regular.PathLength):
-        scale_distance_along_a_path_attrs(tag, factor)
+    if not isinstance(element, attrdefs.PathLengthAttr):
+        scale_distance_along_a_path_attrs(element, factor)
+
+    if isinstance(element, attrdefs.OffsetNumberPercentageAttr):
+        element.offset = _scale_attr(element.offset, factor)
 
 
 def _translate_attr(attr: _T, /, by: float) -> _T:
@@ -241,9 +283,9 @@ def _translate_attr(attr: _T, /, by: float) -> _T:
             return attr
 
 
-# pyright goes nuts if `tag` is annotated as `Element`... seems like a bug
+# pyright goes nuts if `element` is annotated as `Element`... seems like a bug
 # luckily we don't really care
-def _translate(tag: object, translate: transform.Translate) -> None:
+def _translate(element: object, translate: transform.Translate) -> None:
     tx, ty = translate.tx, translate.ty
 
     if mathutils.is_close(tx, 0) and mathutils.is_close(ty, 0):
@@ -252,41 +294,47 @@ def _translate(tag: object, translate: transform.Translate) -> None:
     zero = length.Length.zero()
 
     # these attributes are mandatory for the respective elements
-    if isinstance(tag, regular.X1):
-        tag.x1 = _translate_attr(tag.x1, tx)
-    if isinstance(tag, regular.Y1):
-        tag.y1 = _translate_attr(tag.y1, ty)
-    if isinstance(tag, regular.X2):
-        tag.x2 = _translate_attr(tag.x2, tx)
-    if isinstance(tag, regular.Y2):
-        tag.y2 = _translate_attr(tag.y2, ty)
+    if isinstance(element, attrdefs.X1Attr):
+        element.x1 = _translate_attr(element.x1, tx)
+    if isinstance(element, attrdefs.Y1Attr):
+        element.y1 = _translate_attr(element.y1, ty)
+    if isinstance(element, attrdefs.X2Attr):
+        element.x2 = _translate_attr(element.x2, tx)
+    if isinstance(element, attrdefs.Y2Attr):
+        element.y2 = _translate_attr(element.y2, ty)
 
     # but these are not, so if they are not present, we initialize them
     # to 0
-    if isinstance(tag, regular.Cx):
-        tag.cx = _translate_attr(tag.cx or zero, tx)
-    if isinstance(tag, regular.Cy):
-        tag.cy = _translate_attr(tag.cy or zero, ty)
+    if isinstance(element, attrdefs.CxAttr):
+        element.cx = _translate_attr(element.cx or zero, tx)
+    if isinstance(element, attrdefs.CyAttr):
+        element.cy = _translate_attr(element.cy or zero, ty)
 
-    if isinstance(tag, regular.XNumber):
-        tag.x = _translate_attr(tag.x or 0, tx)
-    elif isinstance(tag, regular.XCoordinate):
-        tag.x = _translate_attr(tag.x or zero, tx)
-    elif isinstance(tag, regular.XListOfCoordinates):
-        tag.x = _translate_attr(tag.x, tx)
+    if isinstance(element, attrdefs.XNumberAttr):
+        element.x = _translate_attr(element.x or 0, tx)
+    elif isinstance(element, attrdefs.XCoordinateAttr):
+        element.x = _translate_attr(element.x or zero, tx)
+    elif isinstance(element, attrdefs.XListOfCoordinatesAttr):
+        element.x = _translate_attr(element.x, tx)
 
-    if isinstance(tag, regular.YNumber):
-        tag.y = _translate_attr(tag.y or 0, ty)
-    elif isinstance(tag, regular.YCoordinate):
-        tag.y = _translate_attr(tag.y or zero, ty)
-    elif isinstance(tag, regular.YListOfCoordinates):
-        tag.y = _translate_attr(tag.y, ty)
+    if isinstance(element, attrdefs.YNumberAttr):
+        element.y = _translate_attr(element.y or 0, ty)
+    elif isinstance(element, attrdefs.YCoordinateAttr):
+        element.y = _translate_attr(element.y or zero, ty)
+    elif isinstance(element, attrdefs.YListOfCoordinatesAttr):
+        element.y = _translate_attr(element.y, ty)
 
-    if isinstance(tag, regular.Points) and tag.points is not None:
-        tag.points = [translate @ point for point in tag.points]
+    if (
+        isinstance(element, attrdefs.PointsAttr)
+        and element.points is not None
+    ):
+        element.points = [translate @ point for point in element.points]
 
-    if isinstance(tag, regular.D) and tag.d is not None:
-        tag.d = translate @ tag.d
+    if isinstance(element, attrdefs.DAttr) and element.d is not None:
+        element.d = translate @ element.d
+
+    if isinstance(element, attrdefs.OffsetNumberPercentageAttr):
+        element.offset = _translate_attr(element.offset, tx)
 
 
 def swap_transforms(
@@ -427,55 +475,31 @@ def _move_transformation_to_end(
         )
 
 
-def _apply_transformation(
-    tag: Tag, transformation: transform.TransformFunction, /
-) -> None:
-    """Apply a transformation to the attributes of the tag.
+def element_name(element: Element, /) -> str:
+    """Get the SVG element name of the given element or element class.
 
     Args:
-    tag: The tag to transform.
-    transformation: The transformation to apply.
-
-    Raises:
-    ValueError: If the transformation is not supported.
-    SvgLengthConversionError: If a length attribute is not convertible
-    to user units.
-
-    """
-    match transformation:
-        case transform.Translate():
-            _translate(tag, transformation)
-        case transform.Scale():
-            _scale(tag, transformation)
-        case _:
-            msg = f"Unsupported transformation: {transformation}"
-            raise ValueError(msg)
-
-
-def tag_name(tag: Tag | type[Tag], /) -> names.TagName:
-    """Get the SVG tag name of the given tag or tag class.
-
-    Args:
-    tag: The tag or tag class.
+    element: The element or element class.
 
     Returns:
-    The SVG tag name.
+    The SVG element name.
 
     Examples:
     >>> from svglab import Rect
-    >>> tag_name(Rect)
+    >>> element_name(Rect())
     'rect'
 
     """
-    tag_cls = tag if isinstance(tag, type) else type(tag)
+    if isinstance(element, UnknownElement):
+        return element.element_name
 
-    return names.TAG_NAME_TO_NORMALIZED.inverse[tag_cls.__name__]
+    return names.ELEMENT_NAME_TO_NORMALIZED.inverse[type(element).__name__]
 
 
-class Element(models.BaseModel, metaclass=abc.ABCMeta):
+class Entity(models.BaseModel, metaclass=abc.ABCMeta):
     """The base class of the SVG element hierarchy."""
 
-    parent: Tag | None = pydantic.Field(default=None, init=False)
+    parent: Element | None = pydantic.Field(default=None, init=False)
 
     def to_xml(
         self,
@@ -509,10 +533,10 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         """Convert the element to a corresponding `BeautifulSoup` object."""
 
     @abc.abstractmethod
-    def _eq(self, other: Element, /) -> bool: ...
+    def _eq(self, other: Entity, /) -> bool: ...
 
     @property
-    def parents(self) -> Generator[Tag]:
+    def ancestors(self) -> Generator[Element]:
         """Iterate over the ancestors of the element.
 
         The ancestors are the element's parent, grandparent, and so on, up to
@@ -541,16 +565,19 @@ class Element(models.BaseModel, metaclass=abc.ABCMeta):
         )
 
 
-class Tag(
-    Element, groups.Core, groups.Presentation, metaclass=abc.ABCMeta
+class Element(
+    Entity,
+    attrgroups.CoreAttrs,
+    attrgroups.PresentationAttrs,
+    metaclass=abc.ABCMeta,
 ):
-    """A tag.
+    """An element.
 
-    A tag is an element that has a name, a set of attributes and (optionally)
-    one or more elements as children.
+    An element is an entity that has a name, a set of attributes,
+    and (optionally) one or more elements as children.
 
-    Tags can have standard attributes (for example, `id`, `class`, `color`) and
-    non-standard user-defined attributes.
+    Elements can have standard attributes (for example, `id`, `class`,
+    `color`) and non-standard user-defined attributes.
 
     Example: `<rect id="foo" class="bar" color="red" />`
     ```
@@ -573,10 +600,10 @@ class Tag(
 
     prefix: str | None = None
 
-    __children: list[Element] = pydantic.PrivateAttr(default_factory=list)
+    __children: list[Entity] = pydantic.PrivateAttr(default_factory=list)
 
     @pydantic.model_validator(mode="after")
-    def __validate_extra(self) -> Tag:  # pyright: ignore[reportUnusedFunction]
+    def __validate_extra(self) -> Element:  # pyright: ignore[reportUnusedFunction]
         # model_extra cannot be None because extra is set to "allow"
         assert self.model_extra is not None, "model_extra is None"
 
@@ -639,9 +666,9 @@ class Tag(
         return {**standard, **extra}
 
     @override
-    def _eq(self, other: Element) -> bool:
+    def _eq(self, other: Entity) -> bool:
         return (
-            isinstance(other, Tag)
+            isinstance(other, Element)
             and self.prefix == other.prefix
             and self.all_attrs() == other.all_attrs()
             and self.num_children == other.num_children
@@ -654,7 +681,7 @@ class Tag(
         )
 
     @property
-    def children(self) -> Generator[Element]:
+    def children(self) -> Generator[Entity]:
         """Iterate over the children of the element.
 
         The children are returned in the order they were added to the
@@ -667,7 +694,7 @@ class Tag(
         yield from self.__children
 
     @property
-    def descendants(self) -> Generator[Element]:
+    def descendants(self) -> Generator[Entity]:
         """Iterate over the descendants of the element.
 
         The descendants of the element are the children and their children,
@@ -683,11 +710,11 @@ class Tag(
             child = queue.popleft()
             yield child
 
-            if isinstance(child, Tag):
+            if isinstance(child, Element):
                 queue.extend(child.children)
 
     @property
-    def next_siblings(self) -> Generator[Element]:
+    def next_siblings(self) -> Generator[Entity]:
         """Iterate over the next siblings of the element.
 
         The next siblings are the siblings that come after the element in
@@ -709,7 +736,7 @@ class Tag(
                 should_yield = True
 
     @property
-    def prev_siblings(self) -> Generator[Element]:
+    def prev_siblings(self) -> Generator[Entity]:
         """Iterate over the previous siblings of the element.
 
         The previous siblings are the siblings that come before the element
@@ -729,7 +756,7 @@ class Tag(
             yield sibling
 
     @property
-    def siblings(self) -> Generator[Element]:
+    def siblings(self) -> Generator[Entity]:
         """Iterate over the siblings of the element.
 
         The siblings are the children of the element's parent, excluding
@@ -745,7 +772,7 @@ class Tag(
         yield from self.next_siblings
 
     def add_child(
-        self, child: Element, /, *, index: int | None = None
+        self, child: Entity, /, *, index: int | None = None
     ) -> Self:
         """Add a child to the element.
 
@@ -763,7 +790,7 @@ class Tag(
 
         """
         if child is self:
-            raise ValueError("Cannot add a tag as a child of itself.")
+            raise ValueError("Cannot add an element as a child of itself.")
 
         if child.parent is not None:
             raise ValueError(
@@ -779,7 +806,7 @@ class Tag(
 
         return self
 
-    def add_children(self, *children: Element) -> Self:
+    def add_children(self, *children: Entity) -> Self:
         """Add multiple children to the element.
 
         Args:
@@ -798,7 +825,7 @@ class Tag(
 
         return self
 
-    def remove_child(self, child: Element, /) -> Element:
+    def remove_child(self, child: Entity, /) -> Entity:
         """Remove a child from the element.
 
         The child is compared with the children of the element based on
@@ -815,13 +842,14 @@ class Tag(
             ValueError: If the child is not a child of the element.
 
         """
-        for i, elem in enumerate(self.children):
-            if elem is child:
-                return self.pop_child(i)
+        try:
+            index = iterutils.search_by_reference(self.__children, child)
+        except ValueError as e:
+            raise ValueError("Child not found") from e
 
-        raise ValueError("Child not found")
+        return self.pop_child(index)
 
-    def pop_child(self, index: SupportsIndex = -1, /) -> Element:
+    def pop_child(self, index: SupportsIndex = -1, /) -> Entity:
         """Remove a child from the element based on its index.
 
         Args:
@@ -847,7 +875,7 @@ class Tag(
 
         self.__children.clear()
 
-    def get_child(self, index: SupportsIndex = -1, /) -> Element:
+    def get_child(self, index: SupportsIndex = -1, /) -> Entity:
         """Get a child of the element based on its index.
 
         Args:
@@ -865,7 +893,7 @@ class Tag(
 
     def get_child_index(
         self,
-        child: Element,
+        child: Entity,
         /,
         start: SupportsIndex = 0,
         stop: SupportsIndex = sys.maxsize,
@@ -893,30 +921,180 @@ class Tag(
 
     @override
     def to_beautifulsoup_object(self) -> bs4.Tag:
-        tag = bs4.Tag(
-            name=tag_name(self),
+        element = bs4.Tag(
+            name=element_name(self),
             can_be_empty_element=True,
             prefix=self.prefix,
             is_xml=True,
         )
 
-        tag.can_be_empty_element = len(self.__children) == 0
+        element.can_be_empty_element = len(self.__children) == 0
 
         for key, value in self.all_attrs().items():
-            tag[key] = serialize.serialize_attr(key, value)
+            element[key] = serialize.serialize_attr(key, value)
 
         for child in self.children:
-            tag.append(child.to_beautifulsoup_object())
+            element.append(child.to_beautifulsoup_object())
 
-        if tag_name(self) == "svg":
+        if element_name(self) == "svg":
             formatter = serialize.get_current_formatter()
 
             if formatter.xmlns == "always":
-                tag["xmlns"] = constants.SVG_XMLNS
+                element["xmlns"] = constants.SVG_XMLNS
             elif formatter.xmlns == "never":
-                del tag["xmlns"]
+                del element["xmlns"]
 
-        return tag
+        return element
+
+    def __get_main_transform_attribute(
+        self,
+    ) -> Literal["transform", "gradientTransform", "patternTransform"]:
+        match element_name(self):
+            case "linearGradient" | "radialGradient":
+                return "gradientTransform"
+            case "pattern":
+                return "patternTransform"
+            case _:
+                return "transform"
+
+    @property
+    def main_transform(self) -> transform.Transform | None:
+        """The main transform attribute of the element.
+
+        For most elements, this is the `transform` attribute. However, certain
+        elements such as `linearGradient` have theis own specialized
+        transform attribute, in which case the `transform` attribute is
+        ignored.
+
+        This attribute is an alias to the "main" or "active" transform
+        attribute of the element.
+
+        The main transform attributes for the elements are:
+        - `gradientTransform` for `linearGradient` and `radialGradient`
+        - `patternTransform` for `pattern`
+        - `transform` for all other elements
+        """
+        transform_attr_name = self.__get_main_transform_attribute()
+
+        return cast(
+            transform.Transform | None,
+            self.__get_attr_or_default(transform_attr_name),
+        )
+
+    def get_root(self) -> Element:
+        """Get the top-level ancestor of the element.
+
+        The root ancestor is the first ancestor that has no parent. If the
+        element has no parent, it is considered the root ancestor.
+
+        Returns:
+            The root ancestor of the element.
+
+        """
+        return iterutils.take_last(self.ancestors) or self
+
+    def resolve_iri(self, iri_: iri.Iri, /) -> Element:
+        """Resolve a local IRI reference to an element in the document.
+
+        This method attempts to resolve an IRI reference to an element in the
+        descendants of this element. The IRI reference must be local.
+
+        Args:
+            iri_: The IRI reference to resolve. Must be local.
+
+        Returns:
+            The element that the IRI reference points to.
+
+        Raises:
+            ValueError: If the IRI reference is not local or if the element
+                cannot be found in the document.
+
+        """
+        if not iri_.is_local:
+            raise ValueError(
+                "Unable to resolve a non-local IRI reference in this document."
+            )
+
+        try:
+            return next(
+                tag for tag in self.find_all() if tag.id == iri_.fragment
+            )
+        except StopIteration as e:
+            msg = (
+                "Unable to find element by IRI "
+                f"{iri_.serialize()} in the document."
+            )
+            raise ValueError(msg) from e
+
+    def references_other_element(self) -> bool:
+        """Check if the element contains IRI reference to another element.
+
+        This method checks if the element contains any attributes that
+        reference another element in the document. The reference must be
+        local and valid, meaning that if the IRI cannot be resolved to an
+        element in the document, the method returns `False`. The entire
+        document is searched (not just the descendants of this element).
+
+        A warning is emitted if a dangling IRI reference is found.
+
+        Returns:
+            `True` if the element contains a local IRI reference to another
+            element in the document, `False` otherwise.
+
+        """
+        reference_attr_names: list[attr_names.AttributeName] = [
+            "xlink:href",
+            "href",
+            "fill",
+            "stroke",
+            "mask",
+            "clip-path",
+        ]
+
+        for attr_name in reference_attr_names:
+            if not hasattr(self, attr_name):
+                continue
+
+            attr = self.__get_attr_or_default(attr_name)
+
+            if not (isinstance(attr, iri.Iri) and attr.is_local):
+                continue
+
+            try:
+                self.get_root().resolve_iri(attr)
+            except ValueError:
+                warnings.warn(
+                    f"Dangling IRI reference {attr_name}={attr.serialize()!r}",
+                    stacklevel=2,
+                )
+            else:
+                return True
+
+        return False
+
+    @main_transform.setter
+    def main_transform(self, value: transform.Transform | None) -> None:
+        transform_attr_name = self.__get_main_transform_attribute()
+
+        setattr(self, transform_attr_name, value)
+
+    def __get_attr_or_default(
+        self, attr_name: attr_names.AttributeName
+    ) -> object:
+        attrs = self.standard_attrs()
+
+        if attr_name in attrs:
+            return attrs[attr_name]
+
+        match attr_name:
+            case "gradientUnits":
+                return "objectBoundingBox"
+            case "patternUnits":
+                return "objectBoundingBox"
+            case "patternContentUnits":
+                return "userSpaceOnUse"
+            case _:
+                return None
 
     def decompose_transform_origin(self) -> None:
         """Decompose the `transform-origin` attribute into `transform`.
@@ -944,23 +1122,46 @@ class Tag(
         if self.transform_origin is None:
             return
 
-        if (
+        if not (
             isinstance(self.transform_origin, tuple)
             and isinstance(self.transform_origin[0], length.Length)
             and isinstance(self.transform_origin[1], length.Length)
         ):
-            tx = float(self.transform_origin[0])
-            ty = float(self.transform_origin[1])
-
-            if not self.transform:
-                self.transform = []
-
-            self.transform.insert(0, transform.Translate(tx, ty))
-            self.transform.append(transform.Translate(-tx, -ty))
-
-            self.transform_origin = None
-        else:
             raise errors.SvgTransformOriginError(self.transform_origin)
+
+        if not self.main_transform:
+            self.main_transform = []
+
+        tx = float(self.transform_origin[0])
+        ty = float(self.transform_origin[1])
+
+        self.main_transform.insert(0, transform.Translate(tx, ty))
+        self.main_transform.append(transform.Translate(-tx, -ty))
+
+        self.transform_origin = None
+
+    def apply_transformation(
+        self, transformation: transform.TransformFunction, /
+    ) -> None:
+        """Apply a transformation to the attributes of the element.
+
+        Args:
+        transformation: The transformation to apply.
+
+        Raises:
+        ValueError: If the transformation is not supported.
+        SvgLengthConversionError: If a length attribute is not convertible
+        to user units.
+
+        """
+        match transformation:
+            case transform.Translate():
+                _translate(self, transformation)
+            case transform.Scale():
+                _scale(self, transformation)
+            case _:
+                msg = f"Unsupported transformation: {transformation}"
+                raise ValueError(msg)
 
     def __reify_this(self, *, limit: int = sys.maxsize) -> None:
         if limit < 0:
@@ -968,34 +1169,37 @@ class Tag(
 
         self.decompose_transform_origin()
 
-        if not self.transform:
+        if not self.main_transform:
             return
 
-        transform.decompose_matrices(transform=self.transform)
+        transform.decompose_matrices(transform=self.main_transform)
 
         reified = 0
         i = 0
 
-        while reified < limit and i < len(self.transform):
-            if not isinstance(self.transform[i], transform.Reifiable):
+        while reified < limit and i < len(self.main_transform):
+            if not isinstance(self.main_transform[i], transform.Reifiable):
                 i += 1
                 continue
 
             try:
                 # move the transformation to the end of the list where it can
                 # be directly applied to the elementf
-                _move_transformation_to_end(self.transform, i)
-                transformation = self.transform.pop()
+                _move_transformation_to_end(self.main_transform, i)
+                transformation = self.main_transform.pop()
 
-                _apply_transformation(self, transformation)
+                self.apply_transformation(transformation)
 
                 for child in self.find_all(recursive=False):
-                    if child.transform is None:
-                        child.transform = []
+                    if element_name(child) == "stop":
+                        continue
+
+                    if child.main_transform is None:
+                        child.main_transform = []
 
                     # decompose transform-origin before we prepend
                     child.decompose_transform_origin()
-                    child.transform.insert(0, transformation)
+                    child.main_transform.insert(0, transformation)
 
                     child.reify(
                         limit=1,
@@ -1006,6 +1210,42 @@ class Tag(
                 raise errors.SvgReifyError from e
 
             reified += 1
+
+    def __can_reify(self) -> bool:
+        # transformations on <use> elements cannot be reified.
+        # reification would only work if all usages of the referenced element
+        # via <use> have equal transform attributes (f.e. if the referenced
+        # element is only used once), in which case we would continue with
+        # reification on the referenced element (probably not worth the hassle)
+        # patternTransforms also cannot be reified (no clue why)
+        if element_name(self) in ["use", "pattern"]:
+            return False
+
+        main_transform_attr_name = self.__get_main_transform_attribute()
+
+        if main_transform_attr_name != "transform" and self.transform:
+            warnings.warn(
+                (
+                    f"Attribute 'transform' on element {type(self)} has "
+                    f"no effect. Use {main_transform_attr_name!r} instead."
+                ),
+                stacklevel=2,
+            )
+
+        if (
+            main_transform_attr_name == "gradientTransform"
+            and self.__get_attr_or_default("gradientUnits")
+            == "objectBoundingBox"
+        ):
+            return False
+
+        # reification of elements that reference other elements (f.e. paint
+        # servers or clipping paths) is problematic. there is a lot of stuff
+        # that can go wrong here, so we just disable this for now
+
+        # TODO: this is overly general; find out in which cases this is
+        # actually needed
+        return not self.references_other_element()
 
     def reify(
         self,
@@ -1075,6 +1315,9 @@ class Tag(
             True
 
         """
+        if not self.__can_reify():
+            return
+
         self.__reify_this(limit=limit)
 
         if remove_transform_list_if_empty and not self.transform:
@@ -1089,31 +1332,38 @@ class Tag(
                 )
 
     @overload
-    def find_all(self, /, *, recursive: bool = True) -> Generator[Tag]: ...
+    def find_all(
+        self, /, *, recursive: bool = True
+    ) -> Generator[Element]: ...
 
     @overload
     def find_all(
-        self, *tags: type[_T_tag], recursive: bool = True
-    ) -> Generator[_T_tag]: ...
+        self, *elements: type[_T_element], recursive: bool = True
+    ) -> Generator[_T_element]: ...
 
     @overload
     def find_all(
-        self, *tags: type[Tag] | names.TagName, recursive: bool = True
-    ) -> Generator[Tag]: ...
+        self,
+        *elements: type[Element] | names.ElementName | str,
+        recursive: bool = True,
+    ) -> Generator[Element]: ...
 
     def find_all(
-        self, *tags: type[Tag] | names.TagName, recursive: bool = True
-    ) -> Generator[Tag]:
-        """Find all tags that match the given search criteria.
+        self,
+        *elements: type[Element] | names.ElementName | str,
+        recursive: bool = True,
+    ) -> Generator[Element]:
+        """Find all elements that match the given search criteria.
 
         Args:
-        tags: The tags to search for. Can be tag names or tag classes.
-            If no search criteria are provided, all tags are returned.
-        recursive: If `False`, only search the direct children of the tag,
+        elements: The elements to search for. Can be element names or element
+        classes.  If no search criteria are provided, all elements are
+        returned.
+        recursive: If `False`, only search the direct children of the element,
         otherwise search all descendants.
 
         Returns:
-        An iterator over all tags that match the search criteria.
+        An iterator over all elements that match the search criteria.
 
         Examples:
         >>> from svglab import G, Rect
@@ -1129,59 +1379,65 @@ class Tag(
 
         """
         for child in self.descendants if recursive else self.children:
-            if isinstance(child, Tag) and (
-                not tags
-                or any(_match_tag(child, search=tag) for tag in tags)
+            if isinstance(child, Element) and (
+                not elements
+                or any(
+                    _match_element(child, search=element)
+                    for element in elements
+                )
             ):
                 yield child
 
     @overload
     def find(
-        self, *tags: type[_T_tag], recursive: bool = True
-    ) -> _T_tag: ...
-
-    @overload
-    def find(
-        self, *tags: type[Tag] | names.TagName, recursive: bool = True
-    ) -> Tag: ...
+        self, *elements: type[_T_element], recursive: bool = True
+    ) -> _T_element: ...
 
     @overload
     def find(
         self,
-        *tags: type[_T_tag],
+        *elements: type[Element] | names.ElementName | str,
         recursive: bool = True,
-        default: _T = _EMPTY_PARAM,
-    ) -> _T_tag | _T: ...
+    ) -> Element: ...
 
     @overload
     def find(
         self,
-        *tags: type[Tag] | names.TagName,
+        *elements: type[_T_element],
         recursive: bool = True,
         default: _T = _EMPTY_PARAM,
-    ) -> Tag | _T: ...
+    ) -> _T_element | _T: ...
+
+    @overload
+    def find(
+        self,
+        *elements: type[Element] | names.ElementName | str,
+        recursive: bool = True,
+        default: _T = _EMPTY_PARAM,
+    ) -> Element | _T: ...
 
     def find(
         self,
-        *tags: type[Tag] | names.TagName,
+        *elements: type[Element] | names.ElementName | str,
         recursive: bool = True,
         default: _T = _EMPTY_PARAM,
-    ) -> Tag | _T:
-        """Find the first tag that matches the given search criteria.
+    ) -> Element | _T:
+        """Find the first element that matches the given search criteria.
 
         Args:
-        tags: The tags to search for. Can be tag names or tag classes.
-        recursive: If `False`, only search the direct children of the tag,
+        elements: The elements to search for. Can be element names or element
+        classes.
+        recursive: If `False`, only search the direct children of the element,
         otherwise search all descendants.
-        default: The default value to return if no tag matches the search
+        default: The default value to return if no element matches the search
         criteria.
 
         Returns:
-        The first tag that matches the search criteria.
+        The first element that matches the search criteria.
 
         Raises:
-        SvgElementNotFoundError: If no tag matches the search criteria and no
-        default value is provided.
+        SvgElementNotFoundError: If no element matches the search criteria and
+        no default value is provided.
 
         Examples:
         >>> from svglab import G, Rect
@@ -1197,12 +1453,12 @@ class Tag(
 
         """
         try:
-            return next(self.find_all(*tags, recursive=recursive))
+            return next(self.find_all(*elements, recursive=recursive))
         except StopIteration as e:
             if default is not _EMPTY_PARAM:
                 return default
 
-            msg = f"Unable to find tag by search criteria: {tags}"
+            msg = f"Unable to find element by search criteria: {elements}"
             raise errors.SvgElementNotFoundError(msg) from e
 
     @property
@@ -1246,41 +1502,72 @@ class Tag(
         if self.__children:
             attrs["children"] = list(self.children)
 
+        if self.prefix:
+            attrs["prefix"] = self.prefix
+
+        if isinstance(self, UnknownElement):
+            attrs["element_name"] = self.element_name
+
         attr_repr = ", ".join(
             f"{key}={value!r}" for key, value in attrs.items()
         )
 
         return f"{name}({attr_repr})"
 
+    def get_iri(self) -> iri.Iri:
+        """Obtain a local IRI reference to this element.
 
-def _match_tag(tag: Tag, /, *, search: type[Tag] | names.TagName) -> bool:
-    """Check if a tag matches the given search criteria.
+        The reference is constructed based on the element's id. If the element
+        has no id, an exception is raised.
 
-    Args:
-    tag: The tag to check.
-    search: The search criteria. Can be a tag name or a tag class.
+        Returns:
+            A local IRI reference to this element.
 
-    Returns:
-    `True` if the tag matches the search criteria, `False` otherwise.
+        Raises:
+            RuntimeError: If the element has no id.
 
-    Examples:
-    >>> from svglab import Rect
-    >>> rect = Rect()
-    >>> _match_tag(rect, search="rect")
-    True
-    >>> _match_tag(rect, search=Rect)
-    True
-    >>> _match_tag(rect, search="circle")
-    False
+        """
+        if self.id is None:
+            msg = "Unable to create local IRI reference to element with no id"
+            raise RuntimeError(msg)
+
+        return iri.Iri(fragment=self.id)
+
+    def get_func_iri(self) -> iri.FuncIri:
+        """Obtain a local FuncIRI reference to this element.
+
+        The reference is constructed based on the element's id. If the element
+        has no id, an exception is raised.
+
+        Returns:
+            A local FuncIRI reference to this element.
+
+        Raises:
+            RuntimeError: If the element has no id.
+
+        """
+        return self.get_iri().to_func_iri()
+
+
+@final
+class UnknownElement(Element):
+    """Represents an unknown element that is not part of the SVG specification.
+
+    This element has no standard parsed attributes. All attributes are treated
+    as extra attributes.
+
+    If you need to parse custom elements including their attributes, it is
+    recommended to subclass the `Element` class instead; this class is only
+    intended as a last-resort fallback so we don't lose information about
+    elements the library does not know about.
 
     """
-    if isinstance(search, type):
-        return isinstance(tag, search)
 
-    return tag_name(tag) == search
+    element_name: str = pydantic.Field(frozen=True, min_length=1)
+    """The name of the element."""
 
 
-class TextElement(Element, metaclass=abc.ABCMeta):
+class CharacterData(Entity, metaclass=abc.ABCMeta):
     """The base class of text-based elements.
 
     Text-based elements are elements that are represented by a single string.
@@ -1296,9 +1583,9 @@ class TextElement(Element, metaclass=abc.ABCMeta):
     content: str = pydantic.Field(frozen=True, min_length=1)
 
     @override
-    def _eq(self, other: Element) -> bool:
+    def _eq(self, other: Entity) -> bool:
         return (
-            isinstance(other, TextElement)
+            isinstance(other, CharacterData)
             and self.content == other.content
         )
 
@@ -1306,3 +1593,85 @@ class TextElement(Element, metaclass=abc.ABCMeta):
     def __repr__(self) -> str:
         name = type(self).__name__
         return f"{name}({self.content!r})"
+
+
+@final
+class CData(CharacterData):
+    """A `CDATA` section.
+
+    A `CDATA` section is a block of text that is not parsed by the XML parser,
+    but is interpreted verbatim.
+
+    `CDATA` sections are used to include text that contains characters
+    that would otherwise be interpreted as XML markup.
+
+    Example: `<![CDATA[<g id="foo"></g>]]>`
+    """
+
+    def __init__(self, content: str, /) -> None:
+        """Initialize a CDATA section.
+
+        Args:
+            content: The text content of the CDATA section (excluding the
+                `<![CDATA[` and `]]>` markers).
+
+        """
+        super().__init__(content=content)
+
+    @override
+    def to_beautifulsoup_object(self) -> bs4.CData:
+        return bs4.CData(self.content)
+
+
+@final
+class Comment(CharacterData):
+    """A comment.
+
+    A comment is a block of text that is not parsed by the XML parser,
+    but is ignored.
+
+    Comments are used to include notes and other information that is not
+    intended to be displayed to the user.
+
+    Example: `<!-- This is a comment -->`
+    """
+
+    def __init__(self, content: str, /) -> None:
+        """Initialize a comment.
+
+        Args:
+            content: The text content of the comment (excluding the `<!--` and
+                `-->` markers).
+
+        """
+        super().__init__(content=content)
+
+    @override
+    def to_beautifulsoup_object(self) -> bs4.Comment:
+        return bs4.Comment(self.content)
+
+
+@final
+class RawText(CharacterData):
+    """A text node.
+
+    A text node is a block of text that is parsed by the XML parser.
+
+    Text nodes are used to include text that is intended to be displayed
+    to the user.
+
+    Example: `Hello, world!`
+    """
+
+    def __init__(self, content: str, /) -> None:
+        """Initialize a text node.
+
+        Args:
+            content: The text content of the node.
+
+        """
+        super().__init__(content=content)
+
+    @override
+    def to_beautifulsoup_object(self) -> bs4.NavigableString:
+        return bs4.NavigableString(self.content)

@@ -1,6 +1,5 @@
 """Miscellaneous utility functions that don't fit anywhere else."""
 
-import collections
 import re
 from collections.abc import Generator
 
@@ -31,15 +30,9 @@ def get_all_subclasses(cls: type[_T], /) -> Generator[type[_T]]:
         ['B', 'C']
 
     """
-    queue = collections.deque([cls])
-
-    while queue:
-        subclass = queue.popleft()
-
-        if subclass is not cls:
-            yield subclass
-
-        queue.extend(subclass.__subclasses__())
+    for subclass in cls.__subclasses__():
+        yield subclass
+        yield from get_all_subclasses(subclass)
 
 
 def basic_compare(other: object, /, *, self: _T) -> TypeIs[_T]:

@@ -9,7 +9,7 @@ import typing_extensions
 from typing_extensions import Final, Literal, TypeAlias
 
 
-TagName: TypeAlias = Literal[
+ElementName: TypeAlias = Literal[
     "a",
     "altGlyph",
     "altGlyphDef",
@@ -91,42 +91,46 @@ TagName: TypeAlias = Literal[
     "view",
     "vkern",
 ]
-"""Type for all SVG tag names."""
+"""Type for all SVG element names."""
 
 
-TAG_NAMES: Final[frozenset[TagName]] = frozenset(
-    typing_extensions.get_args(TagName)
+ELEMENT_NAMES: Final[frozenset[ElementName]] = frozenset(
+    typing_extensions.get_args(ElementName)
 )
-"""A set of all SVG tag names."""
+"""A set of all SVG element names."""
 
 
-def _normalize_tag_name(name: TagName, /) -> str:
-    """Convert an SVG tag name to an appropriate class name.
+def _normalize_element_name(name: ElementName, /) -> str:
+    """Convert an SVG element name to an appropriate class name.
 
     Args:
-        name: The tag name to normalize.
+        name: The element name to normalize.
 
     Returns:
-        The normalized tag name in `PascalCase`.
+        The normalized element name in `PascalCase`.
 
     Raises:
-        ValueError: If the tag name cannot be normalized.
+        ValueError: If the element name cannot be normalized.
 
     Examples:
-    >>> _normalize_tag_name("circle")
+    >>> _normalize_element_name("circle")
     'Circle'
-    >>> _normalize_tag_name("feGaussianBlur")
+    >>> _normalize_element_name("feGaussianBlur")
     'FeGaussianBlur'
-    >>> _normalize_tag_name("font-face-name")
+    >>> _normalize_element_name("font-face-name")
     'FontFaceName'
 
     """
     return "".join(part[0].upper() + part[1:] for part in name.split("-"))
 
 
-TAG_NAME_TO_NORMALIZED: Final = bidict.frozenbidict[TagName, str](
-    {tag: _normalize_tag_name(tag) for tag in TAG_NAMES}
+ELEMENT_NAME_TO_NORMALIZED: Final = bidict.frozenbidict[ElementName, str](
+    {
+        element: _normalize_element_name(element)
+        for element in ELEMENT_NAMES
+    }
 )
 """
-A bidirectional mapping from SVG tag names to normalized Python identifiers.
+A bidirectional mapping from SVG element names to normalized Python
+identifiers.
 """

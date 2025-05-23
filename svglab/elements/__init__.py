@@ -1,1 +1,1 @@
-"""Definitions of XML entities and SVG elements."""
+"""Definitions of SVG elements."""

@@ -33,14 +33,13 @@ dependencies = [
   "affine (>=3.0b1,<4.0)",
   "numpy (>=1.26.4,<3.0.0)",
   "more-itertools (>=10.6.0,<11.0.0)",
+  "rfc3986 (>=2.0.0,<3.0.0)",
+  "uritools (>=5.0.0,<6.0.0)",
 ]
 
 [project.urls]
 "GitHub" = "https://github.com/reznakt/svglab"
 "Issues" = "https://github.com/reznakt/svglab/issues"
-
-[project.scripts]
-svglab = "svglab.__main__:main"
 
 [tool.poetry]
 classifiers = [
@@ -68,10 +67,10 @@ style = "semver"
 affine = { allow-prereleases = true }
 
 [tool.poetry.group.types.dependencies]
-types-beautifulsoup4 = "^4.12.0.20241020"
+types-beautifulsoup4 = "^4.12.0.20250516"
 
 [tool.poetry.group.test.dependencies]
-hypothesis = "^6.123.2"
+hypothesis = "^6.131.20"
 pytest = "^8.3.4"
 pytest-accept = "^0.1.12"
 pytest-clarity = "^1.0.1"
@@ -80,12 +79,12 @@ pytest-randomly = "^3.16.0"
 pytest-sugar = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
-poethepoet = ">=0.32,<0.34"
+poethepoet = ">=0.32,<0.35"
 pre-commit = "^4.0.1"
-pyright = "^1.1.391"
+pyright = "^1.1.400"
 ruff = ">=0.8.4,<0.12.0"
 vermin = "^1.6.0"
-ssort = "^0.14.0"
+licensecheck = "^2025.1.0"
 
 
 [tool.poetry.group.docs.dependencies]
@@ -99,20 +98,14 @@ pillow = "^11.2.1"
 cairosvg = "^2.7.1"
 
 [tool.poe.tasks]
-lint = "ruff check"
-lint-fix = "ruff check --fix"
-start = "poetry run svglab"
 test = "pytest"
 typecheck = "pyright --warnings"
+lint = "ruff check"
+lint-fix = "ruff check --fix"
+format = "ruff format --diff"
+format-fix = "ruff format"
 versioncheck = "vermin ."
-
-_ruff-format = "ruff format --diff"
-_ssort = "ssort --check"
-format = ["_ruff-format", "_ssort"]
-
-_ruff-format-fix = "ruff format"
-_ssort-fix = "ssort"
-format-fix = ["_ruff-format-fix", "_ssort-fix"]
+licensecheck = "licensecheck"
 
 [tool.pytest.ini_options]
 filterwarnings = [
@@ -213,3 +206,11 @@ split-on-trailing-comma = false
 [tool.ruff.format]
 docstring-code-format = true
 skip-magic-trailing-comma = true
+
+[tool.licensecheck]
+format = "ansi"
+ignore_packages = [
+  "resvg-py",     # MIT
+  "useful-types", # MIT
+]
+zero = true
