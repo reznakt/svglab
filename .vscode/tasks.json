@@ -72,6 +72,22 @@
       "args": [
         "licensecheck"
       ]
+    },
+    {
+      "label": "docs",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "docs"
+      ]
+    },
+    {
+      "label": "docs-serve",
+      "type": "shell",
+      "command": "poe",
+      "args": [
+        "docs-serve"
+      ]
     }
   ]
 }

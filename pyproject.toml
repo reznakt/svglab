@@ -98,14 +98,16 @@ pillow = "^11.2.1"
 cairosvg = "^2.7.1"
 
 [tool.poe.tasks]
-test = "pytest"
-typecheck = "pyright --warnings"
-lint = "ruff check"
-lint-fix = "ruff check --fix"
+docs = "mkdocs build"
+docs-serve = "mkdocs serve"
 format = "ruff format --diff"
 format-fix = "ruff format"
-versioncheck = "vermin ."
 licensecheck = "licensecheck"
+lint = "ruff check"
+lint-fix = "ruff check --fix"
+test = "pytest"
+typecheck = "pyright --warnings"
+versioncheck = "vermin ."
 
 [tool.pytest.ini_options]
 filterwarnings = [
