@@ -8,7 +8,7 @@ copyright: Copyright &copy 2024 Tomáš Režňák
 theme:
   name: material
   language: "en"
-  logo: &logo "https://www.reshot.com/download/icons/HSMU75PJ3C/reshot-icon-flask-HSMU75PJ3C.svg"
+  logo: &logo "assets/logo.svg"
   favicon: *logo
   custom_dir: docs/overrides
 
@@ -59,6 +59,8 @@ theme:
 
 plugins:
   - search
+  - privacy
+  - social
 
   - git-revision-date-localized:
       enable_creation_date: true
@@ -104,4 +106,10 @@ markdown_extensions:
 extra_javascript:
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
   - js/keybinds.js
-  - js/readthedocs.js
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/reznakt/svglab
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/svglab/
