@@ -1,4 +1,4 @@
-site_name: "svglab"
+site_name: "Svglab Documentation"
 repo_url: https://github.com/reznakt/svglab
 edit_uri: edit/main/docs/
 site_url: http://127.0.0.1:8000
@@ -54,13 +54,11 @@ theme:
     - search.suggest
     - toc.follow
     - toc.integrate
-    - content.code.annotate 
+    - content.code.annotate
 
 plugins:
   - git-authors
-  - privacy
   - search
-  - social
 
   - git-revision-date-localized:
       enable_creation_date: true

@@ -1,3 +1,3 @@
 # Attributes
 
-::: svglab.elements.svg.Svg.render
+::: svglab.elements.elements.Svg.render
