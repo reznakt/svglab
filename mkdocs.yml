@@ -1,15 +1,16 @@
 site_name: "Svglab Documentation"
 repo_url: https://github.com/reznakt/svglab
 edit_uri: edit/main/docs/
-site_url: http://127.0.0.1:8000
+site_url: !ENV READTHEDOCS_CANONICAL_URL
 
 copyright: Copyright &copy 2024 Tomáš Režňák
 
 theme:
-  name: "material"
+  name: material
   language: "en"
   logo: &logo "https://www.reshot.com/download/icons/HSMU75PJ3C/reshot-icon-flask-HSMU75PJ3C.svg"
   favicon: *logo
+  custom_dir: docs/overrides
 
   icon:
     repo: fontawesome/brands/github
@@ -36,6 +37,7 @@ theme:
   features:
     - content.action.edit
     - content.action.view
+    - content.code.annotate
     - content.code.copy
     - header.autohide
     - navigation.expand
@@ -54,14 +56,16 @@ theme:
     - search.suggest
     - toc.follow
     - toc.integrate
-    - content.code.annotate
 
 plugins:
-  - git-authors
   - search
 
   - git-revision-date-localized:
       enable_creation_date: true
+
+  - git-committers:
+      repository: reznakt/svglab
+      branch: main
 
   - minify:
       minify_html: true
@@ -99,3 +103,5 @@ markdown_extensions:
 
 extra_javascript:
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+  - js/keybinds.js
+  - js/readthedocs.js
