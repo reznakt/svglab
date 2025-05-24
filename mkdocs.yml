@@ -1,14 +1,17 @@
-site_name: "Svglab Documentation"
-repo_url: https://github.com/reznakt/svglab
-edit_uri: edit/main/docs/
+site_name: Svglab Documentation
+site_description: A manipulation and optimization library for Scalable Vector Graphics
+site_author: Tomáš Režňák
 site_url: !ENV READTHEDOCS_CANONICAL_URL
 
 copyright: Copyright &copy 2024 Tomáš Režňák
 
+repo_url: https://github.com/reznakt/svglab
+edit_uri: edit/main/docs/
+
 theme:
   name: material
-  language: "en"
-  logo: &logo "assets/logo.svg"
+  language: en
+  logo: &logo assets/logo.svg
   favicon: *logo
   custom_dir: docs/overrides
 
