@@ -1,0 +1,3 @@
+# Traits
+
+::: svglab.elements.traits
