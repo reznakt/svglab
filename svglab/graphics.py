@@ -2,7 +2,9 @@
 
 import copy
 import io
+import itertools
 import uuid
+from collections.abc import Iterable
 
 import numpy as np
 import numpy.typing as npt
@@ -19,7 +21,6 @@ from typing_extensions import (
 
 from svglab import entities, errors, serialize
 from svglab.attrparse import color, length
-from svglab.utils import iterutils
 
 
 Mask: TypeAlias = npt.NDArray[np.bool_]
@@ -140,7 +141,7 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
         ValueError: If the element is not a part of an SVG tree.
 
     """
-    svg = iterutils.take_last(element.ancestors)
+    svg = element.get_root()
 
     if not isinstance(svg, _SvgElementLike):
         raise ValueError("Element must be part of an SVG tree")  # noqa: TRY004
@@ -150,7 +151,10 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
 
     try:
         svg = copy.deepcopy(svg)
-        candidates = svg.find_all(type(element))
+        candidates = cast(
+            Iterable[_ElementT],
+            itertools.chain([svg], svg.find_all(type(element))),
+        )
         this = next(
             element for element in candidates if element.id == element.id
         )
