@@ -160,6 +160,19 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
     return this, svg
 
 
+def _make_element_visible(element: entities.Element, /) -> None:
+    del element.display
+    element.fill = _BLACK
+    element.fill_opacity = 1
+    element.opacity = 1
+    element.stroke = _BLACK
+    element.stroke_opacity = 1
+    element.visibility = "visible"
+
+    for child in element.find_all(recursive=False):
+        _make_element_visible(child)
+
+
 def _render_tree(
     element: entities.Element,
     *,
@@ -211,13 +224,7 @@ def _render_tree(
     element_copy.visibility = "visible" if render_this else "hidden"
 
     if make_element_visible:
-        del element_copy.display
-        element_copy.fill = _BLACK
-        element_copy.fill_opacity = 1
-        element_copy.opacity = 1
-        element_copy.stroke = _BLACK
-        element_copy.stroke_opacity = 1
-        element_copy.visibility = "visible"
+        _make_element_visible(element_copy)
 
     return svg.render(width=width, height=height)
 
