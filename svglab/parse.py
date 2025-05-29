@@ -101,10 +101,6 @@ def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
             cls = _BS_TO_TEXT_ELEMENT.get(type(backend))
 
             if cls is None:
-                warnings.warn(
-                    f"Unsupported NavigableString type: {type(backend)}",
-                    stacklevel=2,
-                )
                 return None
 
             return None if backend.isspace() else cls(backend)
@@ -130,9 +126,6 @@ def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
                     element.add_child(grandchild)
             return element
         case _:
-            warnings.warn(
-                f"Unsupported entity type: {type(backend)}", stacklevel=2
-            )
             return None
 
 
