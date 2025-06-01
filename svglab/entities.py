@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import contextlib
 import reprlib
 import sys
 import warnings
@@ -1182,32 +1183,30 @@ class Element(
                 i += 1
                 continue
 
-            try:
-                # move the transformation to the end of the list where it can
-                # be directly applied to the elementf
-                _move_transformation_to_end(self.main_transform, i)
-                transformation = self.main_transform.pop()
+            # move the transformation to the end of the list where it can
+            # be directly applied to the elementf
+            _move_transformation_to_end(self.main_transform, i)
+            transformation = self.main_transform.pop()
 
+            with contextlib.suppress(ValueError):
                 self.apply_transformation(transformation)
 
-                for child in self.find_all(recursive=False):
-                    if element_name(child) == "stop":
-                        continue
+            for child in self.find_all(recursive=False):
+                if element_name(child) == "stop":
+                    continue
 
-                    if child.main_transform is None:
-                        child.main_transform = []
+                if child.main_transform is None:
+                    child.main_transform = []
 
-                    # decompose transform-origin before we prepend
-                    child.decompose_transform_origin()
-                    child.main_transform.insert(0, transformation)
+                # decompose transform-origin before we prepend
+                child.decompose_transform_origin()
+                child.main_transform.insert(0, transformation)
 
-                    child.reify(
-                        limit=1,
-                        recursive=False,
-                        remove_transform_list_if_empty=False,
-                    )
-            except (ValueError, errors.SvgTransformSwapError) as e:
-                raise errors.SvgReifyError from e
+                child.reify(
+                    limit=1,
+                    recursive=False,
+                    remove_transform_list_if_empty=False,
+                )
 
             reified += 1
 
@@ -1287,11 +1286,12 @@ class Element(
 
         Raises:
             ValueError: If the limit is not a positive integer.
-            SvgReifyError: If the `transform` attribute cannot be reified.
             SvgUnitConversionError: If a length value cannot be converted to
                 user units.
             SvgTransformOriginError: If the value of the `transform-origin`
                 attribute is unsupported.
+            SvgLengthConversionError: If a length value cannot be
+                converted to user units.
 
         Examples:
             >>> from svglab import Rect, Length, Translate

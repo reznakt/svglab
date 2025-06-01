@@ -35,14 +35,6 @@ class SvgUnitConversionError(SvgError):
         )
 
 
-class SvgReifyError(SvgError):
-    """Exception raised when an element cannot be reified."""
-
-    @override
-    def __init__(self) -> None:
-        super().__init__("Cannot reify transform list")
-
-
 class SvgTransformSwapError(SvgError):
     """Exception raised when two transformations cannot be swapped."""
 
