@@ -1,5 +1,6 @@
 """Functions related to rendering and other graphics operations."""
 
+import concurrent.futures
 import copy
 import io
 import itertools
@@ -103,6 +104,13 @@ def _compute_render_size(
     return width, height
 
 
+def _resvg_render(markup: str) -> bytes:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(resvg_py.svg_to_bytes, markup)
+
+        return cast(bytes, future.result())
+
+
 def render(  # noqa: D103
     svg: entities.Element,
     *,
@@ -119,7 +127,7 @@ def render(  # noqa: D103
     svg.height = length.Length(render_size[1])
 
     xml = svg.to_xml(formatter=serialize.MINIMAL_FORMATTER)
-    raw = cast(bytes, resvg_py.svg_to_bytes(svg_string=xml))
+    raw = _resvg_render(xml)
 
     return PIL.Image.open(io.BytesIO(raw))
 
