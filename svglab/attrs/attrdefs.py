@@ -2,7 +2,8 @@
 
 # ruff: noqa: N815, D101
 
-from typing_extensions import Literal
+import pydantic
+from typing_extensions import Annotated, Literal, TypeAlias
 
 from svglab import models, utiltypes
 from svglab.attrs import typedefs
@@ -434,27 +435,21 @@ class FontVariantAttr(Attr):
     ] = None
 
 
+# a BeforeValidator must be used on non-string literals; pydantic will not
+# coerce literal values
+_FontWeightInt: TypeAlias = Annotated[
+    Literal[100, 200, 300, 400, 500, 600, 700, 800, 900],
+    pydantic.BeforeValidator(int),
+]
+
+
 class FontWeightAttr(Attr):
     font_weight: models.Attr[
         typedefs.All
-        | models.List[
-            Literal[
-                "normal",
-                "bold",
-                "bolder",
-                "lighter",
-                100,
-                200,
-                300,
-                400,
-                500,
-                600,
-                700,
-                800,
-                900,
-            ]
-        ]
         | typedefs.Inherit
+        | models.List[
+            Literal["normal", "bold", "bolder", "lighter"] | _FontWeightInt
+        ]
     ] = None
 
 
