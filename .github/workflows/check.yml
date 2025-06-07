@@ -3,6 +3,7 @@ name: check
 on:
   - push
   - pull_request
+  - workflow_dispatch
 
 permissions:
   contents: read
@@ -62,3 +63,9 @@ jobs:
         uses: codecov/test-results-action@v1.1.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Run benchmarks
+        uses: CodSpeedHQ/action@v3.5.0
+        with:
+          token: ${{ secrets.CODSPEED_TOKEN }}
+          run: poetry run poe test --codspeed

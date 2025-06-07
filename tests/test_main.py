@@ -14,11 +14,12 @@ import svglab
 from tests import conftest
 
 
+pytestmark: Final = pytest.mark.benchmark
+numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
+
+
 class _SupportsSerialize(Protocol):
     def serialize(self) -> str: ...
-
-
-numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
 
 
 @hypothesis.given(numbers)

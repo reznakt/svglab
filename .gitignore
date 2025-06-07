@@ -1,4 +1,5 @@
 __pycache__
+.codspeed
 .coverage
 .hypothesis
 .idea
