@@ -43,6 +43,7 @@ dependencies = [
 
 [tool.poetry]
 classifiers = [
+  "Development Status :: 3 - Alpha",
   "Framework :: Pydantic :: 2",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
