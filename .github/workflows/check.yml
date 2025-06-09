@@ -23,7 +23,7 @@ jobs:
       - name: Set up poetry
         uses: abatilo/actions-poetry@v4.0.0
         with:
-          poetry-version: "2.1.2"
+          poetry-version: "2.1.3"
 
       - name: Install dependencies
         run: poetry install --only main,dev
@@ -53,12 +53,12 @@ jobs:
         run: poetry run poe typecheck
 
       - name: Upload coverage results to Codecov
-        uses: codecov/codecov-action@v5.4.2
+        uses: codecov/codecov-action@v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1.1.0
+        uses: codecov/test-results-action@v1.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
