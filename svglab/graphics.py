@@ -13,6 +13,7 @@ import PIL.Image
 import resvg_py
 from typing_extensions import (
     Final,
+    Literal,
     Protocol,
     TypeAlias,
     TypeVar,
@@ -163,9 +164,7 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
             Iterable[_ElementT],
             itertools.chain([svg], svg.find_all(type(element))),
         )
-        this = next(
-            element for element in candidates if element.id == element.id
-        )
+        this = next(elem for elem in candidates if elem.id == element.id)
     finally:
         element.id = original_id
 
@@ -183,6 +182,15 @@ def _make_element_visible(element: entities.Element, /) -> None:
 
     for child in element.find_all(recursive=False):
         _make_element_visible(child)
+
+
+def _set_element_visibility(
+    element: entities.Element, visibility: Literal["visible", "hidden"]
+) -> None:
+    element.visibility = visibility
+
+    for child in element.find_all(recursive=False):
+        _set_element_visibility(child, visibility)
 
 
 def _render_tree(
@@ -228,12 +236,14 @@ def _render_tree(
         # do not hide the parents of our element as that would make it
         # invisible
         # TODO: this is quite suboptimal performance-wise; optimize this
-        if render_other or t in element_copy.ancestors:
+        if render_other:
             t.visibility = "visible"
         else:
             t.visibility = "hidden"
 
-    element_copy.visibility = "visible" if render_this else "hidden"
+    _set_element_visibility(
+        element_copy, "visible" if render_this else "hidden"
+    )
 
     if make_element_visible:
         _make_element_visible(element_copy)
