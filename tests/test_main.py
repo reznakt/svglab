@@ -987,3 +987,8 @@ def test_invalid_add_child_direct_circular_reference() -> None:
         ValueError, match="Cannot add an element as a child of itself."
     ):
         g.add_child(g)
+
+
+def test_large_float_results_in_error() -> None:
+    with pytest.raises(ValueError, match=".*Value must be finite.*"):
+        svglab.parse_svg("<svg><rect x='1e9999'/></svg>")

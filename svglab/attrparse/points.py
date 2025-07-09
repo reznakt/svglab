@@ -15,7 +15,7 @@ Points: TypeAlias = list[point.Point]
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, Points]):
-    number = float
+    number = parse.FiniteFloat
     point = point.Point
 
     points = parse.v_args_to_list

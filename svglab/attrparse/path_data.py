@@ -1124,7 +1124,7 @@ class PathData(
 @parse.visit_tokens  # there are a few terminals we want to parse
 class _Transformer(lark.Transformer[object, PathData]):
     point = point.Point
-    NUMBER = float
+    NUMBER = parse.FiniteFloat
 
     cubic_bezier = CubicBezierTo
     horizontal_line = HorizontalLineTo

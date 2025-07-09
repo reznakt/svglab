@@ -2,18 +2,34 @@
 
 import functools
 import itertools
+import math
 import os
 import pathlib
+import sys
 
 import lark
 import pydantic
-from typing_extensions import Any, Final, LiteralString, TypeVar, cast
+from typing_extensions import (
+    Any,
+    Final,
+    LiteralString,
+    Self,
+    SupportsFloat,
+    SupportsIndex,
+    TypeAlias,
+    TypeVar,
+    cast,
+)
+from useful_types import ReadableBuffer
 
 
 _T = TypeVar("_T")
 _LeafT = TypeVar("_LeafT")
 _ReturnT = TypeVar("_ReturnT")
 _TransformerT = TypeVar("_TransformerT", bound=lark.Transformer[Any, Any])
+_ConvertibleToFloat: TypeAlias = (
+    str | ReadableBuffer | SupportsFloat | SupportsIndex
+)
 
 
 _CURRENT_DIR: Final = pathlib.Path(__file__).parent
@@ -155,3 +171,20 @@ def visit_tokens(cls: type[_TransformerT]) -> type[_TransformerT]:
 
     cls.__init__ = new_init
     return cls
+
+
+class FiniteFloat(float):
+    """A `float` subclass that ensures the value is finite."""
+
+    def __new__(cls, value: _ConvertibleToFloat, /) -> Self:
+        """Create a new `FiniteFloat` instance."""
+        float_value = float(value)
+
+        if not math.isfinite(float_value):
+            msg = (
+                f"Value must be finite ({value=!r}). Allowed value range is "
+                f"{(-sys.float_info.max, sys.float_info.max)}."
+            )
+            raise ValueError(msg)
+
+        return super().__new__(cls, float_value)

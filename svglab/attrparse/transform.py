@@ -675,7 +675,7 @@ class PointAddSubWithTranslateRMatmul(
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, Transform]):
-    number = float
+    number = parse.FiniteFloat
 
     translate = Translate
     scale = Scale

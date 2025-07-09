@@ -142,7 +142,7 @@ class Length(
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, Length]):
-    number = float
+    number = parse.FiniteFloat
     length = Length
 
 

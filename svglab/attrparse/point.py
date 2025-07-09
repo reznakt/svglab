@@ -156,7 +156,7 @@ class Point(_Point):
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, Point]):
-    number = float
+    number = parse.FiniteFloat
     point = Point
 
 

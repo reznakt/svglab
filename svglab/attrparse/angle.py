@@ -99,7 +99,7 @@ class Angle(
 
 @lark.v_args(inline=True)
 class _Transformer(lark.Transformer[object, Angle]):
-    number = float
+    number = parse.FiniteFloat
     angle = Angle
 
 
