@@ -9,6 +9,7 @@
 [![Dependency status](https://img.shields.io/librariesio/release/pypi/svglab)](https://libraries.io/pypi/svglab/tree)
 [![Test coverage](https://codecov.io/github/reznakt/svglab/graph/badge.svg)](https://codecov.io/github/reznakt/svglab)
 ![GitHub repo size](https://img.shields.io/github/repo-size/reznakt/svglab)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Freznakt%2Fsvglab.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Freznakt%2Fsvglab?ref=badge_shield)
 
 <br />
 <div align="center">
@@ -45,6 +46,9 @@
   </li>
   <li><a href="#license">License</a></li>
 </ul>
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Freznakt%2Fsvglab.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Freznakt%2Fsvglab?ref=badge_large)
 
 ## About The Project
 
