@@ -282,12 +282,50 @@ PathCommand: TypeAlias = (
 )
 
 
+def _get_current_subpath(
+    path_data: PathData, command: PathCommand
+) -> PathData:
+    """Get the subpath that contains the given command.
+
+    The command is searched for by reference, not by value.
+
+    Args:
+        path_data: The path containing the command.
+        command: The command to find the subpath of.
+
+    Returns:
+        The subpath that contains the command.
+
+    Raises:
+        ValueError: If the command is not found in any subpath.
+
+    Examples:
+    >>> pd = PathData.from_str("M 0,0 L 1,1")
+    >>> cmd = pd[0]
+    >>> _get_current_subpath(pd, cmd)
+    PathData(MoveTo(end=Point(x=0.0, y=0.0)), LineTo(end=Point(x=1.0, y=1.0)))
+    >>> pd = PathData()
+    >>> cmd = ClosePath()
+    >>> _get_current_subpath(pd, cmd)
+    Traceback (most recent call last):
+        ...
+    ValueError: Command not found in any subpath
+
+    """
+    for subpath in path_data.subpaths():
+        for cmd in subpath:
+            if cmd is command:
+                return subpath
+
+    raise ValueError("Command not found in any subpath")
+
+
 def _get_end(path_data: PathData, command: PathCommand) -> point.Point:
     """Get the end point of a path command.
 
     For commands that have a set end point, this function returns the end
     point. For commands that do not have a set end point, this function
-    calculates the end point based on the previous command.
+    calculates the end point based on command-specific logic.
 
     Args:
         path_data: The path containing the command.
@@ -306,7 +344,8 @@ def _get_end(path_data: PathData, command: PathCommand) -> point.Point:
     """
     match command:
         case ClosePath():
-            return _get_end(path_data, iterutils.prev(path_data, command))
+            current_subpath = _get_current_subpath(path_data, command)
+            return _get_end(path_data, current_subpath[0])
         case HorizontalLineTo(x=x):
             end = _get_end(path_data, iterutils.prev(path_data, command))
             return point.Point(x, end.y)
