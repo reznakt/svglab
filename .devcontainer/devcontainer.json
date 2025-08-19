@@ -1,0 +1,38 @@
+{
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "charliermarsh.ruff",
+                "dirk-thomas.vscode-lark",
+                "EditorConfig.EditorConfig",
+                "ms-python.debugpy",
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-toolsai.jupyter",
+                "SanaAjani.taskrunnercode",
+                "tamasfe.even-better-toml"
+            ]
+        }
+    },
+    "containerEnv": {
+        "SHELL": "/bin/bash"
+    },
+    "remoteUser": "user",
+    "containerUser": "user",
+    "mounts": [
+        {
+            "source": "${localEnv:HOME}/.gitconfig",
+            "target": "/home/user/.gitconfig",
+            "type": "bind"
+        },
+        {
+            "source": "${localEnv:HOME}/.ssh",
+            "target": "/home/user/.ssh",
+            "type": "bind"
+        }
+    ],
+    "postCreateCommand": "pre-commit install"
+}
