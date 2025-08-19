@@ -992,3 +992,55 @@ def test_invalid_add_child_direct_circular_reference() -> None:
 def test_large_float_results_in_error() -> None:
     with pytest.raises(ValueError, match=".*Value must be finite.*"):
         svglab.parse_svg("<svg><rect x='1e9999'/></svg>")
+
+
+@pytest.mark.parametrize(
+    ("path_data_string", "expected_subpaths"),
+    [
+        ("M0,0 L10,10", ["M0,0 L10,10"]),
+        ("M0,0 L10,10 M20,20 L30,30", ["M0,0 L10,10", "M20,20 L30,30"]),
+        (
+            "M0,0 L10,10 Z M20,20 L30,30 Z",
+            ["M0,0 L10,10 Z", "M20,20 L30,30 Z"],
+        ),
+        ("M0,0 H 10 V 10 H 0 Z", ["M0,0 H 10 V 10 H 0 Z"]),
+        (
+            "M0,0 C 10,10 20,20 30,30 S 40,40 50,50 Z",
+            ["M0,0 C 10,10 20,20 30,30 S 40,40 50,50 Z"],
+        ),
+        ("M0,0 Q 10,10 20,20 T 30,30", ["M0,0 Q 10,10 20,20 T 30,30"]),
+        ("M0,0 A10,10 0 0,1 20,20 Z", ["M0,0 A10,10 0 0,1 20,20 Z"]),
+        (
+            "M0,0 L10,10 M20,20 L30,30 M40,40 L50,50",
+            ["M0,0 L10,10", "M20,20 L30,30", "M40,40 L50,50"],
+        ),
+        ("", []),
+        ("M0,0", ["M0,0"]),
+        ("M0,0 M10,10 M20,20", ["M0,0", "M10,10", "M20,20"]),
+        ("M0,0 Z", ["M0,0 Z"]),
+        ("M0,0 Z M10,10 Z", ["M0,0 Z", "M10,10 Z"]),
+        (
+            "M0,0 M0,0 M0,0 M0,0 M0,0",
+            ["M0,0", "M0,0", "M0,0", "M0,0", "M0,0"],
+        ),
+        (
+            "M0,0 Z M0,0 Z M0,0 Z M0,0 Z M0,0 Z",
+            ["M0,0 Z", "M0,0 Z", "M0,0 Z", "M0,0 Z", "M0,0 Z"],
+        ),
+        ("M10,10 L20,0 V20 Z", ["M10,10 L20,0 V20 Z"]),
+        (
+            "M0,0 L10,10 M20,20 L10,10 Z",
+            ["M0,0 L10,10", "M20,20 L10,10 Z"],
+        ),
+        ("M0,0 L10,10 ZM20,20", ["M0,0 L10,10 Z", "M20,20"]),
+        ("M0,0 Z M10,10 L20,20", ["M0,0 Z", "M10,10 L20,20"]),
+    ],
+)
+def test_path_data_subpaths(
+    path_data_string: str, expected_subpaths: list[str]
+) -> None:
+    path_data = svglab.PathData.from_str(path_data_string)
+    subpaths = path_data.subpaths()
+
+    for subpath, expected in zip(subpaths, expected_subpaths, strict=True):
+        assert subpath == svglab.PathData.from_str(expected)
