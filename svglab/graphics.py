@@ -302,31 +302,34 @@ def visible_mask(  # noqa: D103
     width: float | None = None,
     height: float | None = None,
 ) -> Mask:
-    without_element = _render_tree(
-        element,
-        render_this=False,
-        render_other=True,
-        make_element_visible=False,
-        width=width,
-        height=height,
-    )
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        future_without = executor.submit(
+            _render_tree,
+            element,
+            render_this=False,
+            render_other=True,
+            make_element_visible=False,
+            width=width,
+            height=height,
+        )
 
-    with_element = _render_tree(
-        element,
-        render_this=True,
-        render_other=True,
-        make_element_visible=False,
-        width=width,
-        height=height,
-    )
+        future_with = executor.submit(
+            _render_tree,
+            element,
+            render_this=True,
+            render_other=True,
+            make_element_visible=False,
+            width=width,
+            height=height,
+        )
 
-    without_element_array: _ImageArray = np.array(without_element)
-    with_element_array: _ImageArray = np.array(with_element)
+        without_element: _ImageArray = np.array(future_without.result())
+        with_element: _ImageArray = np.array(future_with.result())
 
-    diff = np.any(without_element_array != with_element_array, axis=2)
-    assert isinstance(diff, np.ndarray)
+        diff = np.any(without_element != with_element, axis=2)
+        assert isinstance(diff, np.ndarray)
 
-    return diff
+        return diff
 
 
 def bbox(element: entities.Element) -> BBox | None:  # noqa: D103
