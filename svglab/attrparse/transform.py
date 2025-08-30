@@ -152,6 +152,7 @@ class _Scale(_TransformFunctionBase):
     def to_affine(self) -> affine.Affine:
         return affine.Affine.scale(self.sx, self.sy or self.sx)
 
+    @override
     def __eq__(self, other: object, /) -> bool:
         if not miscutils.basic_compare(other, self=self):
             return False
@@ -159,6 +160,10 @@ class _Scale(_TransformFunctionBase):
         return mathutils.is_close(
             self.sx, other.sx
         ) and mathutils.is_close(self.sy, other.sy)
+
+    @override
+    def __hash__(self) -> int:
+        return hash((type(self), self.sx, self.sy))
 
 
 @final
@@ -207,6 +212,7 @@ class _Rotate(_TransformFunctionBase):
             self.angle, (self.cx or 0, self.cy or 0)
         )
 
+    @override
     def __eq__(self, other: object, /) -> bool:
         if not miscutils.basic_compare(other, self=self):
             return False
@@ -216,6 +222,10 @@ class _Rotate(_TransformFunctionBase):
             and mathutils.is_close(self.cx, other.cx)
             and mathutils.is_close(self.cy, other.cy)
         )
+
+    @override
+    def __hash__(self) -> int:
+        return hash((type(self), self.angle, self.cx, self.cy))
 
 
 @final
@@ -265,11 +275,16 @@ class SkewY(_TransformFunctionBase):
     def to_affine(self) -> affine.Affine:
         return affine.Affine.shear(y_angle=self.angle)
 
+    @override
     def __eq__(self, other: object, /) -> bool:
         if not miscutils.basic_compare(other, self=self):
             return False
 
         return mathutils.is_close(self.angle, other.angle)
+
+    @override
+    def __hash__(self) -> int:
+        return hash((type(self), self.angle))
 
 
 @final
@@ -292,11 +307,16 @@ class SkewX(_TransformFunctionBase):
     def to_affine(self) -> affine.Affine:
         return affine.Affine.shear(x_angle=self.angle)
 
+    @override
     def __eq__(self, other: object, /) -> bool:
         if not miscutils.basic_compare(other, self=self):
             return False
 
         return mathutils.is_close(self.angle, other.angle)
+
+    @override
+    def __hash__(self) -> int:
+        return hash((type(self), self.angle))
 
 
 def _transform_weight(transform: Iterable[TransformFunction], /) -> int:
@@ -346,6 +366,7 @@ class _Translate(_TransformFunctionBase):
     def to_affine(self) -> affine.Affine:
         return affine.Affine.translation(self.tx, self.ty or 0)
 
+    @override
     def __eq__(self, other: object, /) -> bool:
         if not miscutils.basic_compare(other, self=self):
             return False
@@ -353,6 +374,10 @@ class _Translate(_TransformFunctionBase):
         return mathutils.is_close(
             self.tx, other.tx
         ) and mathutils.is_close(self.ty, other.ty)
+
+    @override
+    def __hash__(self) -> int:
+        return hash((type(self), self.tx, self.ty))
 
 
 @final
@@ -579,6 +604,7 @@ class Matrix(_TransformFunctionBase):
             key=_transform_weight,
         )
 
+    @override
     def __eq__(self, other: object, /) -> bool:
         if not miscutils.basic_compare(other, self=self):
             return False
@@ -589,6 +615,10 @@ class Matrix(_TransformFunctionBase):
                 self.to_tuple(), other.to_tuple(), strict=True
             )
         )
+
+    @override
+    def __hash__(self) -> int:
+        return hash((type(self), self.to_tuple()))
 
 
 TransformFunction: TypeAlias = (

@@ -1198,6 +1198,10 @@ class PathData(
         return all(c1 == c2 for c1, c2 in zip(self, other, strict=True))
 
     @override
+    def __hash__(self) -> int:
+        return hash((type(self), tuple(self.__commands)))
+
+    @override
     def __repr__(self) -> str:
         name = type(self).__name__
         commands = ", ".join(repr(command) for command in self)

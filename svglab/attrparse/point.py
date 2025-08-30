@@ -102,6 +102,10 @@ class _Point(
             self.y, other.y
         )
 
+    @override
+    def __hash__(self) -> int:
+        return hash((type(self), self.x, self.y))
+
     def __bool__(self) -> bool:
         return self != self.zero()
 

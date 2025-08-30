@@ -1044,3 +1044,65 @@ def test_path_data_subpaths(
 
     for subpath, expected in zip(subpaths, expected_subpaths, strict=True):
         assert subpath == svglab.PathData.from_str(expected)
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        (svglab.Rect(), svglab.Rect()),
+        (
+            svglab.Rect(stroke_width=svglab.Length(1)),
+            svglab.Rect(stroke_width=svglab.Length(1)),
+        ),
+        (
+            svglab.G().add_child(svglab.Rect()),
+            svglab.G().add_child(svglab.Rect()),
+        ),
+        (svglab.RawText("test"), svglab.RawText("test")),
+        (svglab.Comment("test"), svglab.Comment("test")),
+        (svglab.CData("test"), svglab.CData("test")),
+        (
+            svglab.Svg(
+                width=svglab.Length(100), height=svglab.Length(100)
+            ).add_children(
+                svglab.Rect(x=svglab.Length(10), y=svglab.Length(10))
+            ),
+            svglab.Svg(
+                width=svglab.Length(100), height=svglab.Length(100)
+            ).add_children(
+                svglab.Rect(x=svglab.Length(10), y=svglab.Length(10))
+            ),
+        ),
+    ],
+)
+def test_hashes_equal(a: svglab.Entity, b: svglab.Entity) -> None:
+    assert hash(a) == hash(b)
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        (svglab.Rect(), svglab.Circle()),
+        (svglab.Rect(stroke_width=svglab.Length(1)), svglab.Rect()),
+        (
+            svglab.Rect(stroke_width=svglab.Length(1)),
+            svglab.Rect(stroke_width=svglab.Length(2)),
+        ),
+        (
+            svglab.Rect(stroke_width=svglab.Length(1)),
+            svglab.Circle(stroke_width=svglab.Length(1)),
+        ),
+        (
+            svglab.G().add_child(svglab.Rect()),
+            svglab.G().add_child(svglab.Circle()),
+        ),
+        (svglab.RawText("test"), svglab.RawText("test2")),
+        (svglab.RawText("test"), svglab.Comment("test")),
+        (svglab.RawText("test"), svglab.CData("test")),
+        (svglab.Comment("test"), svglab.Comment("test2")),
+        (svglab.Comment("test"), svglab.CData("test")),
+        (svglab.CData("test"), svglab.CData("test2")),
+    ],
+)
+def test_hashes_unequal(a: svglab.Entity, b: svglab.Entity) -> None:
+    assert hash(a) != hash(b)

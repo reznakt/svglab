@@ -536,6 +536,9 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def _eq(self, other: Entity, /) -> bool: ...
 
+    @abc.abstractmethod
+    def _hash(self) -> int: ...
+
     @property
     def ancestors(self) -> Generator[Element]:
         """Iterate over the ancestors of the element.
@@ -564,6 +567,10 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
             if miscutils.basic_compare(other, self=self)
             else False
         )
+
+    @override
+    def __hash__(self) -> int:
+        return self._hash()
 
 
 class Element(
@@ -678,6 +685,17 @@ class Element(
                 for c1, c2 in zip(
                     self.children, other.children, strict=True
                 )
+            )
+        )
+
+    @override
+    def _hash(self) -> int:
+        return hash(
+            (
+                type(self),
+                self.prefix,
+                frozenset(self.all_attrs().items()),
+                tuple(hash(child) for child in self.children),
             )
         )
 
@@ -1588,6 +1606,10 @@ class CharacterData(Entity, metaclass=abc.ABCMeta):
             isinstance(other, CharacterData)
             and self.content == other.content
         )
+
+    @override
+    def _hash(self) -> int:
+        return hash((type(self), self.content))
 
     @override
     def __repr__(self) -> str:
