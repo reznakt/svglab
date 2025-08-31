@@ -107,9 +107,7 @@ def _compute_render_size(
 
 def _resvg_render(markup: str) -> bytes:
     with concurrent.futures.ProcessPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(resvg_py.svg_to_bytes, markup)
-
-        return cast(bytes, future.result())
+        return executor.submit(resvg_py.svg_to_bytes, markup).result()
 
 
 def render(  # noqa: D103
