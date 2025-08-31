@@ -156,7 +156,9 @@ class ClipRuleAttr(Attr):
 
 
 class ColorAttr(Attr):
-    color: models.Attr[typedefs.Color | typedefs.Inherit] = None
+    color: models.Attr[
+        Literal["currentColor"] | typedefs.Inherit | typedefs.Color
+    ] = None
 
 
 class ColorInterpolationAttr(Attr):
