@@ -751,51 +751,6 @@ class PathData(
             SmoothQuadraticBezierTo(end=end), relative=relative
         )
 
-    def subpaths(self) -> Generator[Self]:
-        r"""Get all subpaths in the path.
-
-        A subpath is a sequence of path commands that starts with a `MoveTo`
-        command.
-
-        Yields:
-            Subpaths of the path as `PathData` instances. Each subpath is
-            yielded as a separate instance.
-
-        Examples:
-        >>> pd = PathData()
-        >>> list(pd.subpaths())
-        []
-        >>> _ = pd.move_to(point.Point(0, 0))
-        >>> list(pd.subpaths())
-        [PathData(MoveTo(end=Point(x=0.0, y=0.0)))]
-        >>> _ = pd.move_to(point.Point(10, 10))
-        >>> print(*pd.subpaths(), sep="\n")
-        PathData(MoveTo(end=Point(x=0.0, y=0.0)))
-        PathData(MoveTo(end=Point(x=10.0, y=10.0)))
-
-        """
-        subpath = type(self)()
-
-        for command in self:
-            if not subpath:
-                subpath.append(command)
-                continue
-
-            match command:
-                case MoveTo():
-                    yield subpath
-                    subpath = type(self)()
-                    subpath.append(command)
-                case ClosePath():
-                    subpath.append(command)
-                    yield subpath
-                    subpath = type(self)()
-                case _:
-                    subpath.append(command)
-
-        if subpath:
-            yield subpath
-
     def smooth_cubic_bezier_to(
         self,
         control2: point.Point,
