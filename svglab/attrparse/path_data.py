@@ -282,42 +282,15 @@ PathCommand: TypeAlias = (
 )
 
 
-def _get_current_subpath(
-    path_data: PathData, command: PathCommand
-) -> PathData:
-    """Get the subpath that contains the given command.
+def _get_latest_moveto(path_data: PathData, max_idx: int) -> MoveTo:
+    for i in range(max_idx, -1, -1):
+        cmd = path_data[i]
 
-    The command is searched for by reference, not by value.
+        if isinstance(cmd, MoveTo):
+            return cmd
 
-    Args:
-        path_data: The path containing the command.
-        command: The command to find the subpath of.
-
-    Returns:
-        The subpath that contains the command.
-
-    Raises:
-        ValueError: If the command is not found in any subpath.
-
-    Examples:
-    >>> pd = PathData.from_str("M 0,0 L 1,1")
-    >>> cmd = pd[0]
-    >>> _get_current_subpath(pd, cmd)
-    PathData(MoveTo(end=Point(x=0.0, y=0.0)), LineTo(end=Point(x=1.0, y=1.0)))
-    >>> pd = PathData()
-    >>> cmd = ClosePath()
-    >>> _get_current_subpath(pd, cmd)
-    Traceback (most recent call last):
-        ...
-    ValueError: Command not found in any subpath
-
-    """
-    for subpath in path_data.subpaths():
-        for cmd in subpath:
-            if cmd is command:
-                return subpath
-
-    raise ValueError("Command not found in any subpath")
+    msg = f"MoveTo command not found ({max_idx=})"
+    raise ValueError(msg)
 
 
 def _get_end(path_data: PathData, command: PathCommand) -> point.Point:
@@ -342,15 +315,17 @@ def _get_end(path_data: PathData, command: PathCommand) -> point.Point:
     Point(x=100.0, y=10.0)
 
     """
+    idx = iterutils.search_by_reference(path_data, command)
+
     match command:
         case ClosePath():
-            current_subpath = _get_current_subpath(path_data, command)
-            return _get_end(path_data, current_subpath[0])
+            last_moveto = _get_latest_moveto(path_data, idx)
+            return last_moveto.end
         case HorizontalLineTo(x=x):
-            end = _get_end(path_data, iterutils.prev(path_data, command))
+            end = _get_end(path_data, path_data[idx - 1])
             return point.Point(x, end.y)
         case VerticalLineTo(y=y):
-            end = _get_end(path_data, iterutils.prev(path_data, command))
+            end = _get_end(path_data, path_data[idx - 1])
             return point.Point(end.x, y)
         case _:
             return command.end

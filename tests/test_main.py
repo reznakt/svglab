@@ -403,6 +403,13 @@ def test_eq_element_prefix(prefix: str) -> None:
             .line_to(svglab.Point(140, 140))
             .close(),
         ),
+        (
+            "M0,0 Z H100",  # no moveto after closepath
+            svglab.PathData()
+            .move_to(svglab.Point(0, 0))
+            .close()
+            .horizontal_line_to(100),
+        ),
     ],
 )
 def test_path_data_parse(text: str, expected: str) -> None:
@@ -1126,3 +1133,13 @@ def test_path_data_accepts_empty_list() -> None:
     path = svg.find(svglab.Path)
 
     assert path.d == svglab.PathData()
+
+
+def test_closepath_ends_at_start_of_subpath() -> None:
+    svg = svglab.Svg().add_child(
+        svglab.Path(d=svglab.PathData.from_str("M10,10 L20,20 Z H30"))
+    )
+
+    assert "h20" in svg.to_xml(
+        formatter=svglab.Formatter(path_data_coordinates="relative")
+    )
