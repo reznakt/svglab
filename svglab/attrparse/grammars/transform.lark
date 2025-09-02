@@ -6,7 +6,7 @@
 ?start: transform_
 
 // avoid name conflict with lark.Transformer.transform
-transform_: transform_action (","? transform_action)*
+transform_: (transform_action (","? transform_action)*)?
 
 ?transform_action: translate
                  | scale

@@ -5,7 +5,7 @@
 
 ?start: points
 
-points: point (","? point)*
+points: (point (","? point)*)?
 point: number ","? number
 
 number: SIGNED_NUMBER

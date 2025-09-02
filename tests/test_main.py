@@ -132,7 +132,6 @@ def test_valid_transform_sequence() -> None:
 @pytest.mark.parametrize(
     "text",
     [
-        "",
         "foo",
         "scale(1,",
         "scale(1, 2, 3)",
@@ -1106,3 +1105,24 @@ def test_hashes_equal(a: svglab.Entity, b: svglab.Entity) -> None:
 )
 def test_hashes_unequal(a: svglab.Entity, b: svglab.Entity) -> None:
     assert hash(a) != hash(b)
+
+
+def test_points_accepts_empty_list() -> None:
+    svg = svglab.parse_svg("<svg><polyline points=''/></svg>")
+    polyline = svg.find(svglab.Polyline)
+
+    assert polyline.points == []
+
+
+def test_transform_accepts_empty_list() -> None:
+    svg = svglab.parse_svg("<svg><rect transform=''/></svg>")
+    rect = svg.find(svglab.Rect)
+
+    assert rect.transform == []
+
+
+def test_path_data_accepts_empty_list() -> None:
+    svg = svglab.parse_svg("<svg><path d=''/></svg>")
+    path = svg.find(svglab.Path)
+
+    assert path.d == svglab.PathData()
