@@ -1,4 +1,4 @@
-site_name: Svglab Documentation
+site_name: SVGLAB Documentation
 site_description: A manipulation and optimization library for Scalable Vector Graphics
 site_author: Tomáš Režňák
 site_url: !ENV READTHEDOCS_CANONICAL_URL
@@ -7,6 +7,17 @@ copyright: Copyright &copy 2024 Tomáš Režňák
 
 repo_url: https://github.com/reznakt/svglab
 edit_uri: edit/main/docs/
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+  - API Reference:
+      - Elements: api-reference/elements.md
+      - Attributes: api-reference/attributes.md
+      - Attribute Groups: api-reference/attribute-groups.md
+      - Traits: api-reference/traits.md
 
 theme:
   name: material
@@ -66,6 +77,11 @@ plugins:
   - privacy
   - social
 
+  - redirects:
+      redirect_maps:
+        getting-started.md: getting-started/installation.md
+        documentation.md: documentation/overview.md
+
   - git-revision-date-localized:
       enable_creation_date: true
 
@@ -82,6 +98,7 @@ plugins:
       cache_safe: true
 
   - mkdocstrings:
+      enabled: !ENV [CI, false]
       handlers:
         python:
           options:
@@ -110,11 +127,21 @@ markdown_extensions:
   - pymdownx.blocks.caption
   - pymdownx.caret
   - pymdownx.details
+  - pymdownx.inlinehilite
   - pymdownx.mark
   - pymdownx.smartsymbols
   - pymdownx.tilde
   - tables
-
+  - pymdownx.magiclink:
+      repo_url_shortener: true
+      repo_url_shorthand: true
+      user: reznakt
+      repo: svglab
+      normalize_issue_symbols: true
+  - pymdownx.highlight:
+      use_pygments: true
+      anchor_linenums: true
+      linenums: true
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.tasklist:
@@ -125,6 +152,9 @@ markdown_extensions:
           class: mermaid
   - pymdownx.arithmatex:
       generic: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - toc:
       permalink: true
 

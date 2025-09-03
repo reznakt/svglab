@@ -1,3 +1,3 @@
-## Attribute groups
+# Attribute groups
 
 ::: svglab.attrs.attrgroups
