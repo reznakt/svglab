@@ -973,10 +973,10 @@ def test_precision_table(
     formatter = svglab.Formatter(
         general_precision=svglab.FloatPrecisionSettings(
             precision_table={
-                (0, 1): 3,
-                (1, 10): 2,
-                (10, 100): 1,
-                (100, 1000): 0,
+                svglab.PrecisionInterval(0, 1, 3),
+                svglab.PrecisionInterval(1, 10, 2),
+                svglab.PrecisionInterval(10, 100, 1),
+                svglab.PrecisionInterval(100, 1000, 0),
             },
             fallback=15,
         )

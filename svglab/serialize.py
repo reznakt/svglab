@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import functools
 import math
-import operator
 import threading
 from collections.abc import Iterable, Mapping, Sequence
 from types import TracebackType
@@ -48,16 +47,35 @@ _PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
 _LengthUnitMode: TypeAlias = Literal["preserve"] | utiltypes.LengthUnit
 _Separator: TypeAlias = Literal[", ", ",", " "]
 
-
-_Interval: TypeAlias = tuple[float, float]
 _Precision: TypeAlias = Annotated[int, pydantic.Field(le=15)]
 _PrecisionGroup: TypeAlias = Literal[
     "general", "coordinate", "opacity", "angle", "scale"
 ]
-_PrecisionTable: TypeAlias = Mapping[_Interval, _Precision]
-_SortedPrecisionTable: TypeAlias = Iterable[tuple[_Interval, _Precision]]
 
 _FORMATTER_LOCK: Final = threading.RLock()
+
+
+@pydantic.dataclasses.dataclass(
+    frozen=True, config=models.DATACLASS_CONFIG
+)
+class PrecisionInterval:
+    """An object mapping a number interval to a precision setting."""
+
+    start: Annotated[float, pydantic.Field(ge=0)]
+    """The start (inclusive) of this interval."""
+
+    end: Annotated[float, pydantic.Field(ge=0)]
+    """The end (exclusive) of this interval."""
+
+    precision: _Precision
+    """The precision to use for numbers in this interval."""
+
+    @pydantic.model_validator(mode="after")
+    def __validate_interval(self) -> Self:  # pyright: ignore[reportUnusedFunction]
+        if self.end <= self.start:
+            raise ValueError("End must be greater than start")
+
+        return self
 
 
 @pydantic.dataclasses.dataclass(
@@ -73,52 +91,48 @@ class FloatPrecisionSettings:
     more convenient `float_precision()` function.
     """
 
-    precision_table: _PrecisionTable = pydantic.Field(default_factory=dict)
-
-    fallback: _Precision = math.ceil(
-        math.log10(1 / constants.FLOAT_ABSOLUTE_TOLERANCE)
-    )
+    precision_table: Iterable[PrecisionInterval] = ()
     """
-    A dictionary mapping intervals of floating-point
-    numbers to their respective precision settings. The keys are tuples
-    representing the start and end of the interval, and the values are
-    integers representing the precision settings for that interval.
-    The intervals are inclusive on the left and exclusive on the right.
-    For example, it is possible to define a precision table like this:
+    An iterable of `PrecisionInterval` objects mapping intervals of
+    floating-point numbers to their respective precision settings. The
+    intervals are inclusive on the left and exclusive on the right. For
+    example, it is possible to define a precision table like this:
     ```
-    precision_table = {(0, 1): 2, (1, 10): 3}
+    precision_table = {
+        PrecisionInterval(0, 1, 2),
+        PrecisionInterval(1, 10, 3),
+    }
     ```
     This means that numbers in the interval [0, 1) will be serialized with
     a precision of 2 digits, numbers in the interval [1, 10) will be
     serialized with a precision of 3 digits. All other numbers will be
     serialized with the fallback precision.
+
+    The precision table may be of any iterable type; the order of the intervals
+    does not matter. Keep in mind, however, that duplicate or overlapping
+    intervals are not allowed even if a collection type that allows them is
+    used (such as a list or tuple).
     """
+
+    fallback: _Precision = math.ceil(
+        math.log10(1 / constants.FLOAT_ABSOLUTE_TOLERANCE)
+    )
     """The fallback precision setting to use when the value
     does not fall within any of the specified intervals."""
 
     @pydantic.model_validator(mode="after")
     def __validate_precision_table(self) -> Self:  # type: ignore[reportUnusedFunction]
-        for start, end in self.precision_table:
-            if not (0 <= start < end):
-                msg = f"Invalid interval: {(start, end)}"
-                raise ValueError(msg)
-
-        for fst, snd in iterutils.pairwise(
-            sorted(self.precision_table.keys())
-        ):
-            if fst is None:
-                continue
-
-            if fst[1] > snd[0]:
+        for fst, snd in iterutils.pairwise(self.__sorted_precision_table):
+            if fst is not None and fst.end > snd.start:
                 msg = f"Overlapping intervals: {fst} and {snd}"
                 raise ValueError(msg)
 
         return self
 
     @functools.cached_property
-    def __sorted_precision_table(self) -> _SortedPrecisionTable:
+    def __sorted_precision_table(self) -> Iterable[PrecisionInterval]:
         return sorted(
-            self.precision_table.items(), key=operator.itemgetter(0)
+            self.precision_table, key=lambda interval: interval.start
         )
 
     def get_precision(self, value: float) -> int:
@@ -133,12 +147,9 @@ class FloatPrecisionSettings:
         """
         return next(
             (
-                precision
-                for (
-                    start,
-                    end,
-                ), precision in self.__sorted_precision_table
-                if start <= abs(value) < end
+                interval.precision
+                for interval in self.__sorted_precision_table
+                if interval.start <= abs(value) < interval.end
             ),
             self.fallback,
         )

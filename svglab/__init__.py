@@ -493,6 +493,7 @@ from svglab.serialize import (
     MINIMAL_FORMATTER,
     FloatPrecisionSettings,
     Formatter,
+    PrecisionInterval,
     get_current_formatter,
     set_formatter,
 )
@@ -770,6 +771,7 @@ __all__: __Final = [
     "PointsAttr",
     "Polygon",
     "Polyline",
+    "PrecisionInterval",
     "PreserveAlphaAttr",
     "PreserveAspectRatioAttr",
     "PrimitiveUnitsAttr",
