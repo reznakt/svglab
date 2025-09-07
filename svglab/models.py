@@ -7,7 +7,13 @@ import reprlib
 from collections.abc import Callable
 
 import pydantic
-from typing_extensions import Annotated, TypeAlias, TypeVar, override
+from typing_extensions import (
+    Annotated,
+    Final,
+    TypeAlias,
+    TypeVar,
+    override,
+)
 
 
 _T = TypeVar("_T")
@@ -23,6 +29,15 @@ _T4 = TypeVar("_T4")
 
 Attr: TypeAlias = _T_co | None
 """ Pydantic field for an attribute. """
+
+
+DATACLASS_CONFIG: Final = pydantic.ConfigDict(
+    extra="forbid",
+    strict=True,
+    validate_default=True,
+    validate_assignment=True,
+    validate_return=True,
+)
 
 
 def convert(

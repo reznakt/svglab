@@ -23,12 +23,14 @@ from typing_extensions import (
     override,
 )
 
-from svglab import mixins, protocols, serialize
+from svglab import mixins, models, protocols, serialize
 from svglab.attrparse import parse, transform
 from svglab.utils import mathutils, miscutils
 
 
-@pydantic.dataclasses.dataclass(frozen=True)
+@pydantic.dataclasses.dataclass(
+    frozen=True, config=models.DATACLASS_CONFIG
+)
 class _Point(
     SupportsComplex,
     mixins.FloatMulDiv,

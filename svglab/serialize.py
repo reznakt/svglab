@@ -32,7 +32,7 @@ from typing_extensions import (
     overload,
 )
 
-from svglab import constants, protocols, utiltypes
+from svglab import constants, models, protocols, utiltypes
 from svglab.attrs import names as attrs_names
 from svglab.elements import names as elements_names
 from svglab.utils import iterutils, miscutils
@@ -60,7 +60,9 @@ _SortedPrecisionTable: TypeAlias = Iterable[tuple[_Interval, _Precision]]
 _FORMATTER_LOCK: Final = threading.RLock()
 
 
-@pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
+@pydantic.dataclasses.dataclass(
+    frozen=True, kw_only=True, config=models.DATACLASS_CONFIG
+)
 class FloatPrecisionSettings:
     """Settings regarding float precision.
 
@@ -152,58 +154,11 @@ _FloatPrecisionSettingsType: TypeAlias = Annotated[
 ]
 
 
-@pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
-class _Formatter:
-    # colors
-    color_mode: _ColorMode = "auto"
-    alpha_channel: AlphaChannelMode = "float"
-
-    # numbers
-    show_decimal_part_if_int: bool = False
-    small_number_scientific_threshold: float | None = pydantic.Field(
-        default=1e-6, gt=0, le=0.1
-    )
-    large_number_scientific_threshold: int | None = pydantic.Field(
-        default=int(1e6), gt=0
-    )
-    strip_leading_zero: bool = True
-
-    # float precision
-    general_precision: _FloatPrecisionSettingsType = (
-        FloatPrecisionSettings()
-    )
-    coordinate_precision: _FloatPrecisionSettingsType = None
-    opacity_precision: _FloatPrecisionSettingsType = None
-    angle_precision: _FloatPrecisionSettingsType = None
-    scale_precision: _FloatPrecisionSettingsType = None
-
-    # path data
-    path_data_coordinates: Literal["relative", "absolute"] = "absolute"
-    path_data_commands: Literal["explicit", "implicit"] = "implicit"
-    path_data_shorthand_line_commands: _PathDataShorthandMode = "always"
-    path_data_shorthand_curve_commands: _PathDataShorthandMode = "always"
-    path_data_space_before_args: bool = False
-
-    # separators
-    list_separator: _Separator = " "
-    point_separator: _Separator = ","
-
-    # whitespace
-    indent: int = pydantic.Field(default=2, ge=0)
-    spaces_around_attrs: bool = False
-    spaces_around_function_args: bool = False
-
-    # misc
-    xmlns: Literal["always", "never", "original"] = "original"
-    length_unit: _LengthUnitMode | Iterable[_LengthUnitMode] = "preserve"
-    attribute_order: Mapping[
-        elements_names.ElementName | Literal["*"],
-        Sequence[attrs_names.AttributeName | str],
-    ] = pydantic.Field(default_factory=dict)
-
-
 @final
-class Formatter(_Formatter):
+@pydantic.dataclasses.dataclass(
+    frozen=True, kw_only=True, config=models.DATACLASS_CONFIG
+)
+class Formatter:
     """Formatter for serializing SVG elements.
 
     This class, together with `set_formatter()` and `get_current_formatter()`,
@@ -321,6 +276,53 @@ class Formatter(_Formatter):
 
     """
 
+    # colors
+    color_mode: _ColorMode = "auto"
+    alpha_channel: AlphaChannelMode = "float"
+
+    # numbers
+    show_decimal_part_if_int: bool = False
+    small_number_scientific_threshold: float | None = pydantic.Field(
+        default=1e-6, gt=0, le=0.1
+    )
+    large_number_scientific_threshold: int | None = pydantic.Field(
+        default=int(1e6), gt=0
+    )
+    strip_leading_zero: bool = True
+
+    # float precision
+    general_precision: _FloatPrecisionSettingsType = (
+        FloatPrecisionSettings()
+    )
+    coordinate_precision: _FloatPrecisionSettingsType = None
+    opacity_precision: _FloatPrecisionSettingsType = None
+    angle_precision: _FloatPrecisionSettingsType = None
+    scale_precision: _FloatPrecisionSettingsType = None
+
+    # path data
+    path_data_coordinates: Literal["relative", "absolute"] = "absolute"
+    path_data_commands: Literal["explicit", "implicit"] = "implicit"
+    path_data_shorthand_line_commands: _PathDataShorthandMode = "always"
+    path_data_shorthand_curve_commands: _PathDataShorthandMode = "always"
+    path_data_space_before_args: bool = False
+
+    # separators
+    list_separator: _Separator = " "
+    point_separator: _Separator = ","
+
+    # whitespace
+    indent: int = pydantic.Field(default=2, ge=0)
+    spaces_around_attrs: bool = False
+    spaces_around_function_args: bool = False
+
+    # misc
+    xmlns: Literal["always", "never", "original"] = "original"
+    length_unit: _LengthUnitMode | Iterable[_LengthUnitMode] = "preserve"
+    attribute_order: Mapping[
+        elements_names.ElementName | Literal["*"],
+        Sequence[attrs_names.AttributeName | str],
+    ] = pydantic.Field(default_factory=dict)
+
     def get_precision(
         self, value: float, *, precision_group: _PrecisionGroup
     ) -> int:
@@ -364,7 +366,9 @@ class Formatter(_Formatter):
         _FORMATTER_LOCK.acquire()
 
         try:
-            self.__original_formatter = get_current_formatter()
+            object.__setattr__(
+                self, "__original_formatter", get_current_formatter()
+            )
             set_formatter(self)
         except:
             _FORMATTER_LOCK.release()
@@ -379,7 +383,10 @@ class Formatter(_Formatter):
         del exc_type, exc_val, exc_tb
 
         try:
-            set_formatter(self.__original_formatter)
+            original_formatter: Formatter = object.__getattribute__(
+                self, "__original_formatter"
+            )
+            set_formatter(original_formatter)
         finally:
             _FORMATTER_LOCK.release()
 

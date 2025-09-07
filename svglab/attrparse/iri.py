@@ -8,10 +8,12 @@ import pydantic
 import rfc3986
 from typing_extensions import Annotated, Self, TypeAlias, final, override
 
-from svglab import protocols
+from svglab import models, protocols
 
 
-@pydantic.dataclasses.dataclass(frozen=True, kw_only=True)
+@pydantic.dataclasses.dataclass(
+    frozen=True, kw_only=True, config=models.DATACLASS_CONFIG
+)
 class Iri(protocols.CustomSerializable):
     """Represents the SVG `<IRI>` type.
 
@@ -117,7 +119,9 @@ class Iri(protocols.CustomSerializable):
 
 
 @final
-@pydantic.dataclasses.dataclass(frozen=True)
+@pydantic.dataclasses.dataclass(
+    frozen=True, config=models.DATACLASS_CONFIG
+)
 class FuncIri(Iri):
     """Represents the SVG `<FuncIRI>` type.
 

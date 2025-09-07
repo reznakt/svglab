@@ -22,7 +22,15 @@ from typing_extensions import (
     override,
 )
 
-from svglab import errors, mixins, protocols, serialize, units, utiltypes
+from svglab import (
+    errors,
+    mixins,
+    models,
+    protocols,
+    serialize,
+    units,
+    utiltypes,
+)
 from svglab.attrparse import parse
 
 
@@ -41,7 +49,9 @@ _convert: Final[units.Converter[Length, utiltypes.LengthUnit]] = (
 
 
 @final
-@pydantic.dataclasses.dataclass(frozen=True)
+@pydantic.dataclasses.dataclass(
+    frozen=True, config=models.DATACLASS_CONFIG
+)
 class Length(
     mixins.AddSub["Length"],
     mixins.FloatMulDiv,

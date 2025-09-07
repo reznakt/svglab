@@ -20,7 +20,7 @@ from typing_extensions import (
     override,
 )
 
-from svglab import mixins, protocols, serialize, units
+from svglab import mixins, models, protocols, serialize, units
 from svglab.attrparse import parse
 
 
@@ -37,7 +37,9 @@ _convert: Final[units.Converter[Angle, AngleUnit]] = units.make_converter(
 
 
 @final
-@pydantic.dataclasses.dataclass(frozen=True)
+@pydantic.dataclasses.dataclass(
+    frozen=True, config=models.DATACLASS_CONFIG
+)
 class Angle(
     mixins.AddSub["Angle"],
     mixins.FloatMulDiv,
