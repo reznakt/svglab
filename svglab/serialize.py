@@ -422,8 +422,10 @@ class Formatter:
 
 
 DEFAULT_FORMATTER: Final = Formatter()
-"""The default formatter used by the library.
-Use `set_formatter()` to set a custom one."""
+"""
+The default formatter used by the library. Use `set_formatter()` to set
+a custom one.
+"""
 
 MINIMAL_FORMATTER: Final = Formatter(
     color_mode="original",
