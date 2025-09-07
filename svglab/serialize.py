@@ -166,162 +166,192 @@ class Formatter:
 
     The formatter can also be used with a context manager to temporarily
     change the serialization settings.
-
-    Attributes:
-    `color_mode`: The color serialization mode (`hsl`, `rgb`, ...)
-    to use when serializing colors:
-        - `named`: Serialize colors using their named representation,
-                    if possible. Falls back to `hex-short`.
-        - `hex-short`: Serialize colors using the short hex format
-                    (for example, `#fff`).
-        - `hex-long`: Serialize colors using the long hex format
-                    (for example, `#ffffff`).
-        - `rgb`: Serialize colors using the RGB format
-                    (for example, `rgb(255, 255, 255)`).
-        - `hsl`: Serialize colors using the HSL format
-                    (for example, `hsl(0, 0%, 100%)`).
-        - `auto`: Automatically choose the most appropriate serialization mode.
-        - `original`: Serialize colors using their original representation,
-                    if possible. Falls back to `auto`.
-
-    `alpha_channel`: The mode to use when serializing the alpha
-    channel of colors:
-        - `percentage`: Serialize the alpha channel as a percentage
-                    (for example, `rgba(255, 255, 255, 50%)`).
-        - `float`: Serialize the alpha channel as a float
-                    (for example, `hsla(0, 0%, 100%, 0.5)`).
-
-    `show_decimal_part_if_int`: Whether to show the decimal part of a number
-    even if it is an integer. For example, `1.0` instead of `1`.
-    `small_number_scientific_threshold`: The magnitude threshold below which
-    numbers are serialized using scientific notation.
-    For example, `1e-06` instead of `0.000001`. If `None`, scientific notation
-    is not used for small numbers. Must be between 0 (exclusive) and 0.1
-    (inclusive). Scientific notation is never used for 0.
-    `large_number_scientific_threshold`: The magnitude threshold above which
-    numbers are serialized using scientific notation.
-    For example, `1e+06` instead of `1000000`. If `None`, scientific notation
-    is not used for large numbers. Must be greater than 0.
-    `strip_leading_zero`: Whether to strip the leading zero from numbers
-    between -1 and 1. For example, `.5` instead of `0.5`.
-
-    `general_precision`: The precision settings to use when serializing
-    general numbers. This can be an integer that specifies the number of
-    decimal places to use, or a `FloatPrecisionSettings` object.
-    `coordinate_precision`: Settings to use when serializing coordinates.
-    See `general_precision` for more details.
-    `opacity_precision`: Settings to use when serializing opacity values.
-    See `general_precision` for more details.
-    `angle_precision`: Settings to use when serializing angles.
-    See `general_precision` for more details.
-    `scale_precision`: Settings to use when serializing scale values.
-    See `general_precision` for more details.
-
-    `path_data_coordinates`: The coordinate mode to use when serializing
-    path data coordinates:
-        - `relative`: Serialize coordinates as relative values (e.g. use
-                    relative commands, for example, `l 10 10`).
-        - `absolute`: Serialize coordinates as absolute values (e.g., use
-                    absolute commands, for example, `L 10 10`).
-
-    `path_data_shorthand_line_commands`: Whether to use shorthand commands
-    for line segments in path data:
-        - `always`: Always use shorthand commands (e.g., `H` instead of
-                    `L`).
-        - `never`: Never use shorthand commands.
-        - `original`: Use the original commands.
-
-    `path_data_shorthand_curve_commands`: Whether to use shorthand commands
-    for curve segments in path data:
-        - `always`: Always use shorthand commands (e.g., `S` instead of
-                    `C`).
-        - `never`: Never use shorthand commands.
-        - `original`: Use the original commands.
-
-    `path_data_commands`: The command mode to use when serializing path data:
-        - `implicit`: Serialize path data using implicit commands,
-                    if possible. For example, `M 0 0 10 10` instead of
-                    `M 0 0 L 10 10`.
-        - `explicit`: Always list the commands explicitly.
-
-    `path_data_space_before_args`: Whether to add a space before the arguments
-    in path data commands. For example, `M 0 0` instead of `M0 0`.
-
-    `list_separator`: The separator to use when serializing lists of values.
-    `point_separator`: The separator to use when serializing points.
-
-    `indent`: The number of spaces to use for indentation in the resulting
-    SVG document.
-    `spaces_around_attrs`: Whether to add spaces around attribute values.
-    For example, `fill=" red "` instead of `fill="red"`.
-    `spaces_around_function_args`: Whether to add spaces around function
-    arguments. For example, `rotate( 45 )` instead of `rotate(45)`.
-
-    `xmlns`: Whether to add, remove, or keep the `xmlns` attribute in the
-    resulting SVG document:
-        - `always`: Always add the `xmlns` attribute.
-        - `never`: Always remove the `xmlns` attribute.
-        - `original`: Serialize the `xmlns` attribute as-is.
-    `length_unit`: The length unit(s) to use when serializing lengths.
-    If set to `preserve`, the original unit is used. If set to a specific
-    unit, the length is converted to that unit. If set to an iterable of
-    units, each unit is tried in order until one succeeds. If the length cannot
-    be converted to any of the specified units, the original unit is used.
-    `attribute_order`: How to order attributes in the resulting SVG document.
-    The keys are the element names of the elements, and the values are lists of
-    attribute names. The attributes are ordered in the order they appear in
-    the lists. If an element name is `*`, the attribute order applies to all
-    elements. If there is no configuration for a specific element-attribute
-    pair, the default order (alphabetical) is used.
-
     """
 
-    # colors
     color_mode: _ColorMode = "auto"
-    alpha_channel: AlphaChannelMode = "float"
+    """
+    The color serialization mode (`hsl`, `rgb`, ...) to use when serializing
+    colors:
+    - `named`: Serialize colors using their named representation,
+                if possible. Falls back to `hex-short`.
+    - `hex-short`: Serialize colors using the short hex format
+                (for example, `#fff`).
+    - `hex-long`: Serialize colors using the long hex format
+                (for example, `#ffffff`).
+    - `rgb`: Serialize colors using the RGB format
+                (for example, `rgb(255, 255, 255)`).
+    - `hsl`: Serialize colors using the HSL format
+                (for example, `hsl(0, 0%, 100%)`).
+    - `auto`: Automatically choose the most appropriate serialization mode.
+    - `original`: Serialize colors using their original representation,
+                if possible. Falls back to `auto`.
+    """
 
-    # numbers
+    alpha_channel: AlphaChannelMode = "float"
+    """
+    The mode to use when serializing the alpha channel of colors:
+    - `percentage`: Serialize the alpha channel as a percentage
+                (for example, `rgba(255, 255, 255, 50%)`).
+    - `float`: Serialize the alpha channel as a float
+                (for example, `hsla(0, 0%, 100%, 0.5)`).
+    """
+
     show_decimal_part_if_int: bool = False
+    """
+    Whether to show the decimal part of a number even if it is an integer.
+    For example, `1.0` instead of `1`.
+    """
+
     small_number_scientific_threshold: float | None = pydantic.Field(
         default=1e-6, gt=0, le=0.1
     )
+    """The magnitude threshold below which numbers are serialized using
+    scientific notation. For example, `1e-06` instead of `0.000001`. If
+    `None`, scientific notation is not used for small numbers. Must be between
+    0 (exclusive) and 0.1 (inclusive). Scientific notation is never used for 0.
+    """
+
     large_number_scientific_threshold: int | None = pydantic.Field(
         default=int(1e6), gt=0
     )
-    strip_leading_zero: bool = True
+    """
+    The magnitude threshold above which numbers are serialized using
+    scientific notation. For example, `1e+06` instead of `1000000`. If
+    `None`, scientific notation is not used for large numbers. Must be greater
+    than 0.
+    """
 
-    # float precision
+    strip_leading_zero: bool = True
+    """
+    Whether to strip the leading zero from numbers between -1 and 1.
+    For example, `.5` instead of `0.5`.
+    """
+
     general_precision: _FloatPrecisionSettingsType = (
         FloatPrecisionSettings()
     )
+    """
+    The precision settings to use when serializing general numbers. This can be
+    an integer that specifies the number of decimal places to use, or a
+    `FloatPrecisionSettings` object.
+    """
+
     coordinate_precision: _FloatPrecisionSettingsType = None
+    """
+    Settings to use when serializing coordinates. See `general_precision` for
+    more details.
+    """
+
     opacity_precision: _FloatPrecisionSettingsType = None
+    """
+    Settings to use when serializing opacity values. See `general_precision`
+    for more details.
+    """
+
     angle_precision: _FloatPrecisionSettingsType = None
+    """
+    Settings to use when serializing angles. See `general_precision` for more
+    details.
+    """
+
     scale_precision: _FloatPrecisionSettingsType = None
+    """
+    Settings to use when serializing scale values. See `general_precision` for
+    more details.
+    """
 
-    # path data
     path_data_coordinates: Literal["relative", "absolute"] = "absolute"
+    """
+    The coordinate mode to use when serializing path data coordinates:
+    - `relative`: Serialize coordinates as relative values (e.g. use relative
+                commands, for example, `l 10 10`).
+    - `absolute`: Serialize coordinates as absolute values (e.g., use
+                absolute commands, for example, `L 10 10`).
+    """
+
     path_data_commands: Literal["explicit", "implicit"] = "implicit"
+    """
+    The command mode to use when serializing path data:
+    - `implicit`: Serialize path data using implicit commands, if possible. For
+                example, `M 0 0 10 10` instead of `M 0 0 L 10 10`.
+    - `explicit`: Always list the commands explicitly.
+    """
+
     path_data_shorthand_line_commands: _PathDataShorthandMode = "always"
+    """
+    Whether to use shorthand commands for line segments in path data:
+    - `always`: Always use shorthand commands (e.g., `H` instead of `L`).
+    - `never`: Never use shorthand commands.
+    - `original`: Use the original commands.
+    """
+
     path_data_shorthand_curve_commands: _PathDataShorthandMode = "always"
+    """
+    Whether to use shorthand commands for curve segments in path data:
+    - `always`: Always use shorthand commands (e.g., `S` instead of `C`).
+    - `never`: Never use shorthand commands.
+    - `original`: Use the original commands.
+    """
+
     path_data_space_before_args: bool = False
+    """
+    Whether to add a space before the arguments in path data commands. For
+    example, `M 0 0` instead of `M0 0`.
+    """
 
-    # separators
     list_separator: _Separator = " "
+    """The separator to use when serializing lists of values."""
+
     point_separator: _Separator = ","
+    """The separator to use when serializing points."""
 
-    # whitespace
     indent: int = pydantic.Field(default=2, ge=0)
-    spaces_around_attrs: bool = False
-    spaces_around_function_args: bool = False
+    """
+    The number of spaces to use for indentation in the resulting SVG document.
+    """
 
-    # misc
+    spaces_around_attrs: bool = False
+    """
+    Whether to add spaces around attribute values. For example,
+    `fill=" red "` instead of `fill="red"`.
+    """
+
+    spaces_around_function_args: bool = False
+    """
+    Whether to add spaces around function arguments. For example,
+    `rotate( 45 )` instead of `rotate(45)`.
+    """
+
     xmlns: Literal["always", "never", "original"] = "original"
+    """
+    Whether to add, remove, or keep the `xmlns` attribute in the resulting SVG
+    document:
+    - `always`: Always add the `xmlns` attribute.
+    - `never`: Always remove the `xmlns` attribute.
+    - `original`: Serialize the `xmlns` attribute as-is.
+    """
+
     length_unit: _LengthUnitMode | Iterable[_LengthUnitMode] = "preserve"
+    """
+    The length unit(s) to use when serializing lengths. If set to `preserve`,
+    the original unit is used. If set to a specific unit, the length is
+    converted to that unit. If set to an iterable of units, each unit is tried
+    in order until one succeeds. If the length cannot be converted to any of
+    the specified units, the original unit is used.
+    """
+
     attribute_order: Mapping[
         elements_names.ElementName | Literal["*"],
         Sequence[attrs_names.AttributeName | str],
     ] = pydantic.Field(default_factory=dict)
+    """
+    How to order attributes in the resulting SVG document. The keys are the
+    element names of the elements, and the values are lists of attribute names.
+    The attributes are ordered in the order they appear in the lists. If an
+    element name is `*`, the attribute order applies to all elements. If there
+    is no configuration for a specific element-attribute pair, the default
+    order (alphabetical) is used.
+    """
 
     def get_precision(
         self, value: float, *, precision_group: _PrecisionGroup
