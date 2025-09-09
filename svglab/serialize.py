@@ -56,7 +56,8 @@ _FORMATTER_LOCK: Final = threading.RLock()
 
 
 @pydantic.dataclasses.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
+    frozen=True,
+    config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
 )
 class PrecisionInterval:
     """An object mapping a number interval to a precision setting."""
@@ -79,7 +80,9 @@ class PrecisionInterval:
 
 
 @pydantic.dataclasses.dataclass(
-    frozen=True, kw_only=True, config=models.DATACLASS_CONFIG
+    frozen=True,
+    kw_only=True,
+    config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
 )
 class FloatPrecisionSettings:
     """Settings regarding float precision.
@@ -167,7 +170,9 @@ _FloatPrecisionSettingsType: TypeAlias = Annotated[
 
 @final
 @pydantic.dataclasses.dataclass(
-    frozen=True, kw_only=True, config=models.DATACLASS_CONFIG
+    frozen=True,
+    kw_only=True,
+    config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
 )
 class Formatter:
     """Formatter for serializing SVG elements.
