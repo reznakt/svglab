@@ -51,7 +51,8 @@ def test_invalid_length(value: str) -> None:
     xml = f"<svg><rect width='{value}'/></svg>"
 
     with pytest.raises(
-        ValueError, match="Failed to parse text with grammar 'length.lark'"
+        ValueError,
+        match=r"Failed to parse text with grammar 'length.lark'",
     ):
         svglab.parse_svg(xml)
 
@@ -146,7 +147,7 @@ def test_valid_transform_sequence() -> None:
 def test_invalid_transform(text: str) -> None:
     with pytest.raises(
         ValueError,
-        match="Failed to parse text with grammar 'transform.lark'",
+        match=r"Failed to parse text with grammar 'transform.lark'",
     ):
         svglab.parse_svg(f"<svg><rect transform='{text}'/></svg>")
 
@@ -419,7 +420,7 @@ def test_path_data_parse(text: str, expected: str) -> None:
 def test_path_data_parse_moveto_must_be_first() -> None:
     with pytest.raises(
         ValueError,
-        match="Failed to parse text with grammar 'path_data.lark'",
+        match=r"Failed to parse text with grammar 'path_data.lark'",
     ):
         svglab.PathData.from_str("L 10,10")
 
@@ -990,13 +991,13 @@ def test_invalid_add_child_direct_circular_reference() -> None:
     g = svglab.G()
 
     with pytest.raises(
-        ValueError, match="Cannot add an element as a child of itself."
+        ValueError, match=r"Cannot add an element as a child of itself."
     ):
         g.add_child(g)
 
 
 def test_large_float_results_in_error() -> None:
-    with pytest.raises(ValueError, match=".*Value must be finite.*"):
+    with pytest.raises(ValueError, match=r".*Value must be finite.*"):
         svglab.parse_svg("<svg><rect x='1e9999'/></svg>")
 
 
