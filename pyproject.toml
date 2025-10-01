@@ -71,18 +71,18 @@ affine = { allow-prereleases = true }
 types-beautifulsoup4 = "^4.12.0.20250516"
 
 [tool.poetry.group.test.dependencies]
-hypothesis = "^6.138.13"
-pytest = "^8.4.1"
+hypothesis = "^6.140.2"
+pytest = "^8.4.2"
 pytest-accept = "^0.2.2"
 pytest-clarity = "^1.0.1"
-pytest-cov = "^6.2.1"
-pytest-randomly = "^3.16.0"
+pytest-cov = "^7.0.0"
+pytest-randomly = "^4.0.1"
 pytest-sugar = "^1.1.1"
 
 [tool.poetry.group.dev.dependencies]
 poethepoet = "^0.37.0"
-pyright = "^1.1.404"
-ruff = "^0.12.11"
+pyright = "^1.1.405"
+ruff = "^0.13.2"
 vermin = "^1.6.0"
 licensecheck = "^2025.1.0"
 
