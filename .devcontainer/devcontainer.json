@@ -2,6 +2,16 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true,
+      "installOhMyZshConfig": true,
+      "upgradePackages": true
+    }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -24,11 +34,6 @@
   "remoteUser": "user",
   "containerUser": "user",
   "mounts": [
-    {
-      "source": "${localEnv:HOME}/.gitconfig",
-      "target": "/home/user/.gitconfig",
-      "type": "bind"
-    },
     {
       "source": "${localEnv:HOME}/.ssh",
       "target": "/home/user/.ssh",
