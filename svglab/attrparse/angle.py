@@ -36,9 +36,7 @@ _convert: Final[units.Converter[Angle, AngleUnit]] = units.make_converter(
 
 
 @final
-@models.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class Angle(
     mixins.AddSub["Angle"],
     mixins.FloatMulDiv,

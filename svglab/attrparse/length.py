@@ -48,9 +48,7 @@ _convert: Final[units.Converter[Length, utiltypes.LengthUnit]] = (
 
 
 @final
-@models.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class Length(
     mixins.AddSub["Length"],
     mixins.FloatMulDiv,

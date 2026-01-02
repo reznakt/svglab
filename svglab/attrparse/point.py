@@ -27,9 +27,7 @@ from svglab.attrparse import parse, transform
 from svglab.utils import mathutils, miscutils
 
 
-@models.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class _Point(
     SupportsComplex,
     mixins.FloatMulDiv,

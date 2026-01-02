@@ -119,9 +119,7 @@ class Iri(protocols.CustomSerializable):
 
 
 @final
-@models.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class FuncIri(Iri):
     """Represents the SVG `<FuncIRI>` type.
 
