@@ -1,0 +1,186 @@
+{% extends "main.html" %}
+
+{% block styles %}
+{{ super() }}
+<style>
+  @import url("https://fonts.googleapis.com/icon?family=Material+Icons");
+
+  .md-grid {
+    max-width: 1200px;
+  }
+
+  .hero-section {
+    background: linear-gradient(to bottom, var(--md-primary-fg-color) 0%, #009688 100%);
+    padding: 5rem 1rem;
+    text-align: center;
+    color: white;
+  }
+
+  .hero-title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .hero-subtitle {
+    font-size: 1.5rem;
+    font-weight: 300;
+    line-height: 1.6;
+    max-width: 65ch;
+    margin: 0 auto 2.5rem;
+    opacity: 0.9;
+  }
+
+  .hero-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .hero-buttons .md-button {
+    padding: 0.85rem 2rem;
+    font-weight: 700;
+    border-radius: 5px;
+    transition: all 0.25s ease;
+    line-height: 1;
+    border: none;
+    font-size: 1.5em;
+  }
+
+  .hero-buttons .md-button--primary {
+    background-color: #FFFFFF;
+    color: var(--md-primary-fg-color);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  }
+
+  .hero-buttons .md-button--primary:hover {
+    background-color: #f5f5f5;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .hero-buttons .md-button--secondary {
+    background-color: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    color: white;
+  }
+
+  .hero-buttons .md-button--secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: white;
+  }
+
+  .features-section {
+    padding: 4rem 1rem;
+    background-color: var(--md-default-bg-color);
+  }
+
+  .feature-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .feature-card {
+    border: 1px solid var(--md-default-fg-color--lightest);
+    border-radius: 0.5rem;
+    padding: 2rem;
+    transition: all 0.3s cubic-bezier(.25, .8, .25, 1);
+    background-color: var(--md-default-bg-color);
+  }
+
+  .feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+    border-color: var(--md-primary-fg-color);
+  }
+
+  .feature-card .icon {
+    font-family: 'Material Icons';
+    font-size: 48px;
+    line-height: 1;
+    margin-bottom: 1rem;
+    color: var(--md-primary-fg-color);
+    display: block;
+  }
+
+  .feature-card h3 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  .feature-card p {
+    color: var(--md-default-fg-color--light);
+  }
+</style>
+{% endblock %}
+
+{%- block tabs %}
+{% if page.is_homepage %}
+<section class="hero-section">
+  <div class="md-grid">
+    <h1 class="hero-title" style="font-variant: small-caps;">svglab</h1>
+    <p class="hero-subtitle">
+      The Python library for parsing, manipulating, and optimizing SVG files.
+      Everything you need to work with SVG in Python, all in one place.
+    </p>
+    <div class="hero-buttons">
+      <a href="/getting-started" class="md-button md-button--primary">
+        Get Started
+      </a>
+      <a href="{{ config.repo_url }}" class="md-button md-button--secondary" target="_blank">
+        View on GitHub
+      </a>
+    </div>
+  </div>
+</section>
+{% else %}
+{{ super() }}
+{% endif %}
+{% endblock %}
+
+{%- block content %}
+{% if page.is_homepage %}
+
+<section class="features-section">
+  <div class="md-grid">
+    <div class="feature-cards">
+      <div class="feature-card">
+        <span class="material-icons icon">code</span>
+        <h3>Parse &&nbsp;Serialize</h3>
+        <p>Easily parse SVG files into a structured object model and serialize them back to SVG format.</p>
+      </div>
+      <div class="feature-card">
+        <span class="material-icons icon">transform</span>
+        <h3>Manipulate</h3>
+        <p>Create, edit, and delete elements and attributes programmatically.</p>
+      </div>
+      <div class="feature-card">
+        <span class="material-icons icon">speed</span>
+        <h3>Optimize &&nbsp;Minify</h3>
+        <p>Optimize SVG files by removing extraneous whitespace, lowering precision of floating-point numbers, and other
+          techniques to reduce file size while preserving visual fidelity.</p>
+      </div>
+      <div class="feature-card">
+        <span class="material-icons icon">verified_user</span>
+        <h3>Robust Typing &&nbsp;Runtime Validation</h3>
+        <p><span style="font-variant: small-caps;">svglab</span> leverages Python's type hints to provide a rich
+          development experience with static type checking. Runtime type validation with <a
+            href="https://pydantic.com.cn/en/">Pydantic</a> ensures your data is always valid.</p>
+      </div>
+      <div class="feature-card">
+        <span class="material-icons icon">format_paint</span>
+        <h3>Configurable Formatting</h3>
+        <p>Customize the output format of your SVG files with configurable indentation, attribute ordering,
+          floating-point precision and 20+ other options.</p>
+      </div>
+    </div>
+</section>
+{% else %}
+{{ super() }}
+{% endif %}
+{% endblock %}

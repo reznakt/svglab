@@ -1,4 +1,5 @@
 __pycache__
+.cache
 .coverage
 .hypothesis
 .idea
@@ -7,3 +8,4 @@ __pycache__
 *.png
 dist
 notebooks
+site

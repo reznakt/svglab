@@ -86,15 +86,28 @@ ruff = "^0.13.2"
 vermin = "^1.6.0"
 licensecheck = "^2025.1.0"
 
+[tool.poetry.group.docs.dependencies]
+griffe-fieldz = "^0.4.0"
+mkdocstrings-python = "^2.0.1"
+mkdocs-minify-plugin = "^0.8.0"
+mkdocs-material = "^9.7.1"
+mkdocs-git-revision-date-localized-plugin = "^1.5.0"
+mkdocs-git-committers-plugin-2 = "^2.5.0"
+pillow = "^12.0.0"
+cairosvg = "^2.8.2"
+mkdocs-redirects = "^1.2.2"
+
 [tool.poe.tasks]
-test = "pytest"
-typecheck = "pyright --warnings"
-lint = "ruff check"
-lint-fix = "ruff check --fix"
+docs = "mkdocs build"
+docs-serve = "mkdocs serve"
 format = "ruff format --diff"
 format-fix = "ruff format"
-versioncheck = "vermin ."
 licensecheck = "licensecheck"
+lint = "ruff check"
+lint-fix = "ruff check --fix"
+test = "pytest"
+typecheck = "pyright --warnings"
+versioncheck = "vermin ."
 
 [tool.pytest.ini_options]
 filterwarnings = [
