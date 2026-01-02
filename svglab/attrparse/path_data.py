@@ -834,7 +834,7 @@ class PathData(
             case PathData():
                 return value
             case _:
-                msg = f"Expected str or D, got {type(value)}"
+                msg = f"Expected str or {cls.__name__}, got {type(value)}"
                 raise TypeError(msg)
 
     def __apply_shorthand_formatting(self) -> PathData:

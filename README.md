@@ -167,7 +167,7 @@ group = G().add_children(
     CData(".background { fill: blue; }"),
     RawText("Hello SVG!"),
     Path(
-        d=D()
+        d=PathData()
         .move_to(Point(10, 10))
         .line_to(Point(100, 100))
         .quadratic_bezier_to(Point(100, 100), Point(50, 50))

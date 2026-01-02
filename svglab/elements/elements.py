@@ -50,7 +50,7 @@ class Path(
 
 def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
     """Convert a basic shape to a `Path` element."""
-    # try to convert to D first, so we don't call convert() if the shape
+    # try to convert to PathData first, so we don't call convert() if the shape
     # is not convertible
     d = basic_shape.to_path_data()
 
