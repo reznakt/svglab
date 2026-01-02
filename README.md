@@ -11,7 +11,7 @@
 
 <br />
 <div align="center">
-  <img width="150" height="150" src="assets/logo.svg" />
+  <img width="150" height="150" src="https://raw.githubusercontent.com/reznakt/svglab/refs/heads/main/assets/logo.svg" />
 
   <h3 align="center">svglab</h3>
 

@@ -22,7 +22,7 @@ nav:
 theme:
   name: material
   language: en
-  logo: &logo assets/logo.svg
+  logo: &logo https://raw.githubusercontent.com/reznakt/svglab/refs/heads/main/assets/logo.svg
   favicon: *logo
   custom_dir: docs/overrides
 
