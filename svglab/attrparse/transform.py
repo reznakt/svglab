@@ -20,7 +20,6 @@ from types import NotImplementedType
 import affine
 import lark
 import numpy.typing as npt
-import pydantic
 from typing_extensions import (
     Annotated,
     Self,
@@ -132,9 +131,7 @@ class _TransformFunctionBase(
         return Matrix.from_affine(product)
 
 
-@pydantic.dataclasses.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class _Scale(_TransformFunctionBase):
     sx: float
     sy: float
@@ -190,9 +187,7 @@ class Scale(_Scale):
         super().__init__(sx, sy if sy is not None else sx)
 
 
-@pydantic.dataclasses.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class _Rotate(_TransformFunctionBase):
     angle: float
     cx: float
@@ -260,9 +255,7 @@ class Rotate(_Rotate):
 
 
 @final
-@pydantic.dataclasses.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class SkewY(_TransformFunctionBase):
     """A transformation that skews a shape along the y-axis.
 
@@ -294,9 +287,7 @@ class SkewY(_TransformFunctionBase):
 
 
 @final
-@pydantic.dataclasses.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class SkewX(_TransformFunctionBase):
     """A transformation that skews a shape along the x-axis.
 
@@ -356,9 +347,7 @@ def _transform_weight(transform: Iterable[TransformFunction], /) -> int:
     return weight
 
 
-@pydantic.dataclasses.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class _Translate(_TransformFunctionBase):
     tx: float
     ty: float
@@ -438,9 +427,7 @@ def _remove_redundant_transformations(
 
 
 @final
-@pydantic.dataclasses.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class Matrix(_TransformFunctionBase):
     """An arbitrary affine transformation.
 

@@ -10,7 +10,6 @@ from collections.abc import Iterator
 
 import lark
 import more_itertools
-import pydantic
 from typing_extensions import (
     Annotated,
     Final,
@@ -49,9 +48,7 @@ _convert: Final[units.Converter[Length, utiltypes.LengthUnit]] = (
 
 
 @final
-@pydantic.dataclasses.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class Length(
     mixins.AddSub["Length"],
     mixins.FloatMulDiv,

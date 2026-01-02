@@ -24,17 +24,17 @@ dependencies = [
   "html5lib (>=1.1,<2.0)",
   "lark (>=1.2.2,<2.0.0)",
   "lxml (>=6.0.0,<7.0.0)",
-  "pydantic (>=2.0.0,<2.11.0)",
+  "pydantic (>=2.12.5,<3.0.0)",
   "pydantic-extra-types (>=2.10.1,<3.0.0)",
   "useful-types (>=0.2.1,<0.3.0)",
   "typing-extensions (>=4.12.2,<5.0.0)",
   "resvg-py (>=0.1.6,<0.3.0)",
-  "pillow (>=11.1.0,<12.0.0)",
+  "pillow (>=12.0.0,<13.0.0)",
   "affine (>=3.0b1,<4.0)",
   "numpy (>=1.26.4,<3.0.0)",
   "more-itertools (>=10.6.0,<11.0.0)",
   "rfc3986 (>=2.0.0,<3.0.0)",
-  "uritools (>=5.0.0,<6.0.0)",
+  "uritools (>=6.0.0,<7.0.0)",
 ]
 
 [project.urls]
@@ -86,15 +86,28 @@ ruff = "^0.14.9"
 vermin = "^1.8.0"
 licensecheck = "^2025.1.0"
 
+[tool.poetry.group.docs.dependencies]
+griffe-fieldz = "^0.4.0"
+mkdocstrings-python = "^2.0.1"
+mkdocs-minify-plugin = "^0.8.0"
+mkdocs-material = "^9.7.1"
+mkdocs-git-revision-date-localized-plugin = "^1.5.0"
+mkdocs-git-committers-plugin-2 = "^2.5.0"
+pillow = "^12.0.0"
+cairosvg = "^2.8.2"
+mkdocs-redirects = "^1.2.2"
+
 [tool.poe.tasks]
-test = "pytest"
-typecheck = "pyright --warnings"
-lint = "ruff check"
-lint-fix = "ruff check --fix"
+docs = "mkdocs build"
+docs-serve = "mkdocs serve"
 format = "ruff format --diff"
 format-fix = "ruff format"
-versioncheck = "vermin ."
 licensecheck = "licensecheck"
+lint = "ruff check"
+lint-fix = "ruff check --fix"
+test = "pytest"
+typecheck = "pyright --warnings"
+versioncheck = "vermin ."
 
 [tool.pytest.ini_options]
 filterwarnings = [
@@ -111,6 +124,7 @@ deprecateTypingAliases = false        # covered by Ruff + shows false positives
 enableReachabilityAnalysis = true
 pythonPlatform = "All"
 pythonVersion = "3.10"
+reportAbstractUsage = false           # pydantic dataclass decorator returns PydanticDataclass protocol type
 reportInvalidTypeVarUse = true
 reportMissingImports = true
 reportMissingTypeArgument = true

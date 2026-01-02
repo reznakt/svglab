@@ -8,10 +8,13 @@ from collections.abc import Callable
 
 import pydantic
 from typing_extensions import (
+    TYPE_CHECKING,
     Annotated,
     Final,
     TypeAlias,
     TypeVar,
+    dataclass_transform,
+    overload,
     override,
 )
 
@@ -20,6 +23,7 @@ _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _ListOrTupleT = TypeVar("_ListOrTupleT", list[str], tuple[str])
 _BaseModelT = TypeVar("_BaseModelT", bound=pydantic.BaseModel)
+_ClsT = TypeVar("_ClsT", bound=type)
 
 _T1 = TypeVar("_T1")
 _T2 = TypeVar("_T2")
@@ -38,6 +42,38 @@ DATACLASS_CONFIG: Final = pydantic.ConfigDict(
     validate_assignment=True,
     validate_return=True,
 )
+
+
+# Wrapper around pydantic.dataclasses.dataclass with correct type preservation.
+# This is needed because pyright doesn't correctly infer the return type of
+# pydantic's dataclass decorator - it returns PydanticDataclass protocol
+# instead of the actual class type.
+# TODO: Remove this once pyright stops acting up.
+if TYPE_CHECKING:
+    # At type-checking time, use a properly typed decorator that preserves
+    # the class type
+    @overload
+    def dataclass(cls: _ClsT) -> _ClsT: ...
+
+    @overload
+    def dataclass(
+        *,
+        frozen: bool = False,
+        kw_only: bool = False,
+        config: pydantic.ConfigDict | None = None,
+    ) -> Callable[[_ClsT], _ClsT]: ...
+
+    @dataclass_transform(frozen_default=False, kw_only_default=False)
+    def dataclass(  # noqa: D103
+        cls: _ClsT | None = None,
+        *,
+        frozen: bool = False,
+        kw_only: bool = False,
+        config: pydantic.ConfigDict | None = None,
+    ) -> _ClsT | Callable[[_ClsT], _ClsT]: ...
+
+else:
+    dataclass = pydantic.dataclasses.dataclass
 
 
 def convert(
@@ -69,7 +105,7 @@ def convert(
 
     """
     common_fields = (
-        source.model_fields.keys() & target_type.model_fields.keys()
+        type(source).model_fields.keys() & target_type.model_fields.keys()
     )
 
     data = {field: getattr(source, field) for field in common_fields}

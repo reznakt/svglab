@@ -8,7 +8,6 @@ from __future__ import annotations
 import math
 
 import lark
-import pydantic
 from typing_extensions import (
     Annotated,
     Final,
@@ -37,9 +36,7 @@ _convert: Final[units.Converter[Angle, AngleUnit]] = units.make_converter(
 
 
 @final
-@pydantic.dataclasses.dataclass(
-    frozen=True, config=models.DATACLASS_CONFIG
-)
+@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
 class Angle(
     mixins.AddSub["Angle"],
     mixins.FloatMulDiv,

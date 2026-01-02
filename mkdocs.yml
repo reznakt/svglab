@@ -1,0 +1,174 @@
+site_name: SVGLAB Documentation
+site_description: A manipulation and optimization library for Scalable Vector Graphics
+site_author: Tomáš Režňák
+site_url: !ENV READTHEDOCS_CANONICAL_URL
+
+copyright: Copyright &copy 2024 Tomáš Režňák
+
+repo_url: https://github.com/reznakt/svglab
+edit_uri: edit/main/docs/
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+  - API Reference:
+      - Elements: api-reference/elements.md
+      - Attributes: api-reference/attributes.md
+      - Attribute Groups: api-reference/attribute-groups.md
+      - Traits: api-reference/traits.md
+
+theme:
+  name: material
+  language: en
+  logo: &logo assets/logo.svg
+  favicon: *logo
+  custom_dir: docs/overrides
+
+  icon:
+    repo: fontawesome/brands/github
+
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+  features:
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.tooltips
+    - header.autohide
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - toc.integrate
+
+plugins:
+  - search
+  - privacy
+  - social
+
+  - redirects:
+      redirect_maps:
+        getting-started.md: getting-started/installation.md
+        documentation.md: documentation/overview.md
+
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+  - git-committers:
+      repository: reznakt/svglab
+      branch: main
+
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+        remove_comments: true
+      cache_safe: true
+
+  - mkdocstrings:
+      enabled: !ENV [CI, false]
+      handlers:
+        python:
+          options:
+            extensions:
+              - griffe_fieldz:
+                  include_inherited: true
+            allow_inspection: true
+            show_bases: true
+            docstring_style: google
+            docstring_section_style: list
+            show_if_no_docstring: true
+            show_submodules: true
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            unwrap_annotated: true
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - pymdownx.betterem
+  - pymdownx.blocks.caption
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.tilde
+  - tables
+  - pymdownx.magiclink:
+      repo_url_shortener: true
+      repo_url_shorthand: true
+      user: reznakt
+      repo: svglab
+      normalize_issue_symbols: true
+  - pymdownx.highlight:
+      use_pygments: true
+      anchor_linenums: true
+      linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+  - js/keybinds.js
+  - js/mathjax.js
+
+extra_css:
+  - css/mathjax.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/reznakt/svglab
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/svglab/

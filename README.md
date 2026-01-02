@@ -11,7 +11,7 @@
 
 <br />
 <div align="center">
-  <img width="150" height="150" src="https://www.reshot.com/download/icons/HSMU75PJ3C/reshot-icon-flask-HSMU75PJ3C.svg" />
+  <img width="150" height="150" src="assets/logo.svg" />
 
   <h3 align="center">svglab</h3>
 
@@ -167,7 +167,7 @@ group = G().add_children(
     CData(".background { fill: blue; }"),
     RawText("Hello SVG!"),
     Path(
-        d=D()
+        d=PathData()
         .move_to(Point(10, 10))
         .line_to(Point(100, 100))
         .quadratic_bezier_to(Point(100, 100), Point(50, 50))
