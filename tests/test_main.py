@@ -1092,3 +1092,9 @@ def test_closepath_ends_at_start_of_subpath() -> None:
     assert "h20" in svg.to_xml(
         formatter=svglab.Formatter(path_data_coordinates="relative")
     )
+
+
+def test_parse_svg_with_path() -> None:
+    path = conftest.ASSETS_DIR / "dummy.svg"
+
+    svglab.parse_svg(path)

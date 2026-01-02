@@ -1,10 +1,17 @@
 """Pytest configuration and utilities for testing."""
 
+import pathlib
+
 import numpy as np
 import PIL.Image
 import PIL.ImageChops
+from typing_extensions import Final
 
 import svglab
+
+
+THIS_DIR: Final = pathlib.Path(__file__).parent
+ASSETS_DIR: Final = THIS_DIR / "assets"
 
 
 def mean_squared_error(a: PIL.Image.Image, b: PIL.Image.Image) -> float:

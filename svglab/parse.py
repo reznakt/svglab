@@ -1,6 +1,8 @@
 """Logic for parsing SVG documents."""
 
 import collections
+import contextlib
+import pathlib
 import warnings
 
 import bs4
@@ -18,6 +20,7 @@ _Markup: TypeAlias = (
     | bytes
     | protocols.SupportsRead[str]
     | protocols.SupportsRead[bytes]
+    | pathlib.Path
 )
 
 
@@ -139,6 +142,9 @@ def _get_markup_head(markup: _Markup, limit: int = 30) -> str:
             return _get_markup_head(markup.decode(), limit=limit)
         case protocols.SupportsRead():
             return _get_markup_head(markup.read(limit + 1), limit=limit)
+        case pathlib.Path():
+            with markup.open() as file:
+                return _get_markup_head(file, limit=limit)
 
 
 def parse_svg(
@@ -155,8 +161,13 @@ def parse_svg(
     document fragment.
 
     Args:
-        markup: A string or a file-like object representing markup
-        to be parsed.
+        markup: Representation of the SVG document to parse. Can be a
+            - `str` - SVG markup as a string.
+            - `bytes` - SVG markup as bytes.
+            - `SupportsRead[str]` - A file-like object that returns strings.
+            - `SupportsRead[bytes]` - A file-like object that returns bytes.
+            - `pathlib.Path` - A path to a file containing the SVG markup.
+
         parser: The name of the parser to use. Defaults to 'lxml-xml'.
 
     Returns:
@@ -172,7 +183,12 @@ def parse_svg(
         'Svg'
 
     """
-    soup = bs4.BeautifulSoup(markup, features=parser)
+    with contextlib.ExitStack() as stack:
+        if isinstance(markup, pathlib.Path):
+            markup = stack.push(markup.open())
+
+        soup = bs4.BeautifulSoup(markup, features=parser)
+
     svg_fragments = _get_root_svg_fragments(soup)
 
     if len(svg_fragments) != 1:
