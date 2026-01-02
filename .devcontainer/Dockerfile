@@ -9,7 +9,8 @@ RUN apk update && apk add --no-cache \
     g++ \
     bash \
     bash-completion \
-    openssh
+    openssh \
+    python3-dev
 
 RUN pip install --no-cache-dir poetry==2.1.4
 
