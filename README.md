@@ -11,7 +11,7 @@
 
 <br />
 <div align="center">
-  <img width="150" height="150" src="https://www.reshot.com/download/icons/HSMU75PJ3C/reshot-icon-flask-HSMU75PJ3C.svg" />
+  <img width="150" height="150" src="assets/logo.svg" />
 
   <h3 align="center">svglab</h3>
 
