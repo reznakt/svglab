@@ -55,7 +55,7 @@ _PrecisionGroup: TypeAlias = Literal[
 _FORMATTER_LOCK: Final = threading.RLock()
 
 
-@pydantic.dataclasses.dataclass(
+@models.dataclass(
     frozen=True,
     config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
 )
@@ -79,7 +79,7 @@ class PrecisionInterval:
         return self
 
 
-@pydantic.dataclasses.dataclass(
+@models.dataclass(
     frozen=True,
     kw_only=True,
     config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
@@ -169,7 +169,7 @@ _FloatPrecisionSettingsType: TypeAlias = Annotated[
 
 
 @final
-@pydantic.dataclasses.dataclass(
+@models.dataclass(
     frozen=True,
     kw_only=True,
     config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),

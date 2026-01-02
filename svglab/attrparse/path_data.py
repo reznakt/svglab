@@ -11,7 +11,6 @@ import contextlib
 from collections.abc import Generator, Iterable, MutableSequence
 
 import lark
-import pydantic
 import pydantic_core
 from typing_extensions import (
     Annotated,
@@ -35,7 +34,7 @@ from svglab.utils import iterutils, miscutils
 _Flag: TypeAlias = Literal["0", "1"]
 
 
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class _PathCommandBase:
     pass
 
@@ -54,7 +53,7 @@ class _PhysicalPathCommand(
 
 
 @final
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class ClosePath(_PathCommandBase):
     """Close the current subpath (Z).
 
@@ -64,7 +63,7 @@ class ClosePath(_PathCommandBase):
     """
 
 
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class LineTo(_HasEnd, _PhysicalPathCommand):
     """Draw a line from the current point to the given end point (L)."""
 
@@ -75,7 +74,7 @@ class LineTo(_HasEnd, _PhysicalPathCommand):
 
 
 @final
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class HorizontalLineTo(_PhysicalPathCommand):
     """Draw a horizontal line from the current point (H)."""
 
@@ -106,7 +105,7 @@ class HorizontalLineTo(_PhysicalPathCommand):
 
 
 @final
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class VerticalLineTo(_PhysicalPathCommand):
     """Draw a vertical line from the current point (V)."""
 
@@ -137,7 +136,7 @@ class VerticalLineTo(_PhysicalPathCommand):
 
 
 @final
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class SmoothQuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     """Draw a smooth/shorthand quadratic Bézier curve (T).
 
@@ -153,7 +152,7 @@ class SmoothQuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
 
 
 @final
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
     """Draw a smooth/shorthand cubic Bézier curve (S).
 
@@ -173,7 +172,7 @@ class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
 
 
 @final
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class MoveTo(_HasEnd, _PhysicalPathCommand):
     """Move the current point to the end point and start a new subpath (M)."""
 
@@ -184,7 +183,7 @@ class MoveTo(_HasEnd, _PhysicalPathCommand):
 
 
 @final
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class QuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     """Draw a quadratic Bézier curve (Q).
 
@@ -202,7 +201,7 @@ class QuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
 
 
 @final
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
     """Draw a cubic Bézier curve (C).
 
@@ -223,7 +222,7 @@ class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
 
 
 @final
-@pydantic.dataclasses.dataclass(config=models.DATACLASS_CONFIG)
+@models.dataclass(config=models.DATACLASS_CONFIG)
 class ArcTo(_HasEnd, _PhysicalPathCommand):
     """Draw an elliptical arc (A).
 

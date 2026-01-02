@@ -13,7 +13,6 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import lark
-import pydantic
 from typing_extensions import (
     Annotated,
     Self,
@@ -28,7 +27,7 @@ from svglab.attrparse import parse, transform
 from svglab.utils import mathutils, miscutils
 
 
-@pydantic.dataclasses.dataclass(
+@models.dataclass(
     frozen=True, config=models.DATACLASS_CONFIG
 )
 class _Point(
