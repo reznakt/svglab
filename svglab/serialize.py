@@ -13,9 +13,9 @@ The main components of this module are:
 
 from __future__ import annotations
 
+import contextvars
 import functools
 import math
-import threading
 from collections.abc import Iterable, Mapping, Sequence
 from types import TracebackType
 
@@ -51,8 +51,6 @@ _Precision: TypeAlias = Annotated[int, pydantic.Field(le=15)]
 _PrecisionGroup: TypeAlias = Literal[
     "general", "coordinate", "opacity", "angle", "scale"
 ]
-
-_FORMATTER_LOCK: Final = threading.RLock()
 
 
 @models.dataclass(
@@ -409,16 +407,10 @@ class Formatter:
         return cast(FloatPrecisionSettings, settings).get_precision(value)
 
     def __enter__(self) -> None:
-        _FORMATTER_LOCK.acquire()
-
-        try:
-            object.__setattr__(
-                self, "__original_formatter", get_current_formatter()
-            )
-            set_formatter(self)
-        except:
-            _FORMATTER_LOCK.release()
-            raise
+        object.__setattr__(
+            self, "__original_formatter", get_current_formatter()
+        )
+        set_formatter(self)
 
     def __exit__(
         self,
@@ -428,13 +420,10 @@ class Formatter:
     ) -> None:
         del exc_type, exc_val, exc_tb
 
-        try:
-            original_formatter: Formatter = object.__getattribute__(
-                self, "__original_formatter"
-            )
-            set_formatter(original_formatter)
-        finally:
-            _FORMATTER_LOCK.release()
+        original_formatter: Formatter = object.__getattribute__(
+            self, "__original_formatter"
+        )
+        set_formatter(original_formatter)
 
 
 DEFAULT_FORMATTER: Final = Formatter()
@@ -459,20 +448,19 @@ MINIMAL_FORMATTER: Final = Formatter(
 """Formatter aimed at compatibility and performance."""
 
 
-_formatter = DEFAULT_FORMATTER
+_formatter: Final = contextvars.ContextVar(
+    "formatter", default=DEFAULT_FORMATTER
+)
 
 
 def get_current_formatter() -> Formatter:
     """Obtain a reference to the current formatter."""
-    with _FORMATTER_LOCK:
-        return _formatter
+    return _formatter.get()
 
 
 def set_formatter(formatter: Formatter, /) -> None:
     """Set the current formatter."""
-    with _FORMATTER_LOCK:
-        global _formatter  # noqa: PLW0603
-        _formatter = formatter
+    _formatter.set(formatter)
 
 
 def _serialize_number(
