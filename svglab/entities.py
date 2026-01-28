@@ -41,7 +41,7 @@ from svglab.utils import bsutils, iterutils, mathutils, miscutils
 
 
 _T = TypeVar("_T")
-_T_element = TypeVar("_T_element", bound="Element")
+_ElementT = TypeVar("_ElementT", bound="Element")
 _TransformT1 = TypeVar("_TransformT1", bound=transform.TransformFunction)
 _TransformT2 = TypeVar("_TransformT2", bound=transform.TransformFunction)
 
@@ -1356,8 +1356,8 @@ class Element(
 
     @overload
     def find_all(
-        self, *elements: type[_T_element], recursive: bool = True
-    ) -> Generator[_T_element]: ...
+        self, *elements: type[_ElementT], recursive: bool = True
+    ) -> Generator[_ElementT]: ...
 
     @overload
     def find_all(
@@ -1408,8 +1408,8 @@ class Element(
 
     @overload
     def find(
-        self, *elements: type[_T_element], recursive: bool = True
-    ) -> _T_element: ...
+        self, *elements: type[_ElementT], recursive: bool = True
+    ) -> _ElementT: ...
 
     @overload
     def find(
@@ -1421,10 +1421,10 @@ class Element(
     @overload
     def find(
         self,
-        *elements: type[_T_element],
+        *elements: type[_ElementT],
         recursive: bool = True,
         default: _T = _EMPTY_PARAM,
-    ) -> _T_element | _T: ...
+    ) -> _ElementT | _T: ...
 
     @overload
     def find(
