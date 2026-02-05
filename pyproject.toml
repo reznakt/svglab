@@ -71,8 +71,8 @@ affine = { allow-prereleases = true }
 types-beautifulsoup4 = "^4.12.0.20250516"
 
 [tool.poetry.group.test.dependencies]
-hypothesis = "^6.140.2"
-pytest = "^8.4.2"
+hypothesis = "^6.151.4"
+pytest = "^9.0.2"
 pytest-accept = "^0.2.2"
 pytest-clarity = "^1.0.1"
 pytest-cov = "^7.0.0"
@@ -80,9 +80,9 @@ pytest-randomly = "^4.0.1"
 pytest-sugar = "^1.1.1"
 
 [tool.poetry.group.dev.dependencies]
-poethepoet = "^0.37.0"
-pyright = "^1.1.405"
-ruff = "^0.13.2"
+poethepoet = "^0.40.0"
+pyright = "^1.1.408"
+ruff = "^0.14.14"
 vermin = "^1.6.0"
 licensecheck = "^2025.1.0"
 
@@ -91,9 +91,9 @@ griffe-fieldz = "^0.4.0"
 mkdocstrings-python = "^2.0.1"
 mkdocs-minify-plugin = "^0.8.0"
 mkdocs-material = "^9.7.1"
-mkdocs-git-revision-date-localized-plugin = "^1.5.0"
+mkdocs-git-revision-date-localized-plugin = "^1.5.1"
 mkdocs-git-committers-plugin-2 = "^2.5.0"
-pillow = "^12.0.0"
+pillow = "^12.1.0"
 cairosvg = "^2.8.2"
 mkdocs-redirects = "^1.2.2"
 
