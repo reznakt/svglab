@@ -80,7 +80,6 @@ plugins:
   - redirects:
       redirect_maps:
         getting-started.md: getting-started/installation.md
-        documentation.md: documentation/overview.md
 
   - git-revision-date-localized:
       enable_creation_date: true
