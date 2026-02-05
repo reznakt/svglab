@@ -1,15 +1,20 @@
 {
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "image": "mcr.microsoft.com/devcontainers/base:debian",
   "features": {
-    "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/common-utils:2": {
-      "installZsh": true,
-      "configureZshAsDefaultShell": true,
-      "installOhMyZsh": true,
-      "installOhMyZshConfig": true,
-      "upgradePackages": true
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.14",
+      "toolsToInstall": [
+        "poetry",
+        "pre-commit"
+      ]
+    },
+    "ghcr.io/nikobockerman/devcontainer-features/poetry-persistent-cache:1": {},
+    "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
+      "packages": [
+        "g++",
+        "gcc",
+        "libcairo2-dev"
+      ]
     }
   },
   "customizations": {
@@ -28,15 +33,10 @@
       ]
     }
   },
-  "containerEnv": {
-    "SHELL": "/bin/bash"
-  },
-  "remoteUser": "user",
-  "containerUser": "user",
   "mounts": [
     {
       "source": "${localEnv:HOME}/.ssh",
-      "target": "/home/user/.ssh",
+      "target": "/home/vscode/.ssh",
       "type": "bind"
     }
   ],
