@@ -47,3 +47,13 @@ Alternatively, the latest development version can be installed directly from the
     ```bash
     uv add git+https://github.com/reznakt/svglab.git
     ```
+
+## Verify installation
+
+Confirm everything is working:
+
+```bash
+python -c "import svglab; print(svglab.__version__)"
+```
+
+If this prints a version number, you're all set. Head to the [Quickstart](quickstart.md) to start using the library.

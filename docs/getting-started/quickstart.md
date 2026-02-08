@@ -1,102 +1,116 @@
 # Quickstart
 
-This guide will help you get started with <span style="font-variant: small-caps;">svglab</span> by demonstrating simple usage examples.
+This guide walks through the basics of <span style="font-variant: small-caps;">svglab</span> in a few minutes. By the end, you'll know how to parse, modify, and serialize an SVG document.
 
 ## Importing the library
 
-Start by verifying that the library is installed correctly by importing it in a Python shell or script:
+<span style="font-variant: small-caps;">svglab</span> has a **flat import structure** &mdash; everything is available directly from the top-level package:
 
 ```python
-import svglab
+from svglab import Svg, Circle, Rect, parse_svg, Color, Length
 ```
 
-<span style="font-variant: small-caps;">svglab</span> has a flat import structure &mdash; this means that all symbols are available directly from the top-level package:
+## Parsing an SVG
 
-```python
-from svglab import Svg, Circle, Rect, Line
-```
+Use `parse_svg()` to read SVG content from a string, file, or path:
 
-## Parsing an SVG file
+=== "From a string"
 
-To parse an existing SVG file, use the `#!python parse_svg()` function. The function returns an `#!python Svg` object representing the root `#!xml <svg>` element of the document.
-
-!!! tip
-    The `#!python parse_svg()` function can directly read from a file-like object. See the examples below.
-
-=== "From string"
-
-    ```python hl_lines="9"
+    ```python
     from svglab import parse_svg
 
-    svg_content = """
+    svg = parse_svg("""
     <svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
         <circle cx="50" cy="50" r="40" stroke="black" stroke-width="2" fill="red"/>
     </svg>
-    """
-
-    svg = parse_svg(svg_content)
-    print(svg)
+    """)
     ```
 
-=== "From file"
+=== "From a file"
 
-    ```python hl_lines="4"
+    ```python
+    from pathlib import Path
     from svglab import parse_svg
 
-    with open("example.svg", "r") as file:
-        svg = parse_svg(file)
-        print(svg)
+    svg = parse_svg(Path("example.svg"))
     ```
 
-## Searching for elements
+The result is a fully typed `Svg` object. See [Parsing](../user-guide/parsing.md) for all supported input types.
 
-Once we have an `#!python Svg` object, we can obtain a reference to the `#!python Circle` element by using the `#!python find()` method.
+## Finding elements
+
+Use `find()` to locate an element in the tree:
 
 ```python
-circle = svg.find("circle")
-print(circle)
+from svglab import Circle
+
+circle = svg.find(Circle)
 ```
+
+!!! tip
+    Searching by **class** (like `Circle`) rather than by string (`"circle"`) gives you better autocompletion and type checking in your editor. See [Elements: Searching](../user-guide/elements.md#searching-for-elements) for details.
 
 ## Modifying attributes
 
-Element attributes are represented as properties on the element object. We can modify them directly:
-
-!!! note
-    Attribute names that are not valid Python identifiers (e.g. `stroke-width`) are converted to valid identifiers by replacing hyphens with underscores (e.g. `stroke_width`). Reserved words are also suffixed with an underscore (e.g. `class` becomes `class_`).
+Attributes are regular Python properties &mdash; read, set, or delete them:
 
 ```python
 from svglab import Color
 
-circle.fill = Color("blue")  # change fill color to blue
-del circle.stroke_width  # remove the stroke-width attribute
+circle.fill = Color("blue")    # change fill color
+del circle.stroke_width         # remove stroke-width
 ```
 
-## Adding new elements
+Attribute names follow a simple mapping: hyphens become underscores (`stroke-width` → `stroke_width`), and reserved words get a trailing underscore (`class` → `class_`). See [Attributes](../user-guide/attributes.md) for the full type system.
 
-New elements can be created by instantiating the corresponding class. The constructor accepts attribute values as keyword arguments. Child elements can be added using the `#!python add_child()` or `#!python add_children()` methods.
+## Adding elements
+
+Create new elements and add them to the tree:
 
 ```python
-from svglab import Rect
+from svglab import Rect, Length, Color
 
-rect = Rect(x=10, y=10, width=30, height=30, fill=Color("green"))
+rect = Rect(
+    x=Length(10), y=Length(10),
+    width=Length(30), height=Length(30),
+    fill=Color("green"),
+)
 svg.add_child(rect)
 ```
 
-## Serializing the SVG
+See [Elements: Building a tree](../user-guide/elements.md#building-a-tree) for grouping, chaining, and more.
 
-Finally, we can serialize the modified SVG back to a string using the `#!python to_xml()` method. The resulting string can be saved to a file or used as needed.
+## Serializing to XML
+
+Convert the tree back to an XML string with `to_xml()`, or write directly to a file with `save()`:
+
+=== "To string"
+
+    ```python
+    xml = svg.to_xml()
+    print(xml)
+    ```
+
+=== "To file"
+
+    ```python
+    svg.save("modified.svg")
+    ```
 
 !!! warning
-    Calling the `#!python __str__()` method (for example, via `print(svg)`) will produce a human-readable representation of the object, but it is not valid XML. Always use `#!python to_xml()` for serialization.
+    `print(svg)` produces a human-readable debug representation, **not** valid XML. Always use `to_xml()` or `save()` for serialization.
 
-```python
-svg_xml = svg.to_xml()
-print(svg_xml)
-```
+For fine-grained control over formatting (indentation, color format, precision, and more), see [Serialization](../user-guide/serialization.md).
 
-If you want to save the SVG to a file, you can do so as follows:
+## What's next?
 
-```python
-with open("modified_example.svg", "w") as file:
-    svg.save(file)
-```
+Now that you have the basics, explore the **User Guide** for deeper coverage:
+
+- [Elements](../user-guide/elements.md) &mdash; creating, searching, and navigating the SVG tree
+- [Attributes](../user-guide/attributes.md) &mdash; typed values, validation, and the full attribute catalogue
+- [Traits](../user-guide/traits.md) &mdash; what operations are available on which elements
+- [Parsing](../user-guide/parsing.md) &mdash; input sources and parser options
+- [Serialization](../user-guide/serialization.md) &mdash; the `Formatter` and output customization
+- [Path Data](../user-guide/path-data.md) &mdash; working with SVG path commands
+- [Transforms](../user-guide/transforms.md) &mdash; affine transformations and composition
+- [Graphical Operations](../user-guide/graphics.md) &mdash; rendering, bounding boxes, and masks
