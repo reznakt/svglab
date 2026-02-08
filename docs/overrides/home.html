@@ -8,28 +8,41 @@
     max-width: 1200px;
   }
 
+  /* ── Hero ─────────────────────────────────────────────────── */
   .hero-section {
-    background: linear-gradient(to bottom, var(--md-primary-fg-color) 0%, #009688 100%);
-    padding: 5rem 1rem;
+    background: linear-gradient(135deg, var(--md-primary-fg-color) 0%, #00796b 100%);
+    padding: 5rem 1rem 4rem;
     text-align: center;
     color: white;
+  }
+
+  .hero-logo {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1.5rem;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25)) brightness(0) invert(1);
+  }
+
+  .hero-logo img {
+    width: 100%;
+    height: 100%;
   }
 
   .hero-title {
     font-size: 3.5rem;
     font-weight: 700;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     color: white;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
   .hero-subtitle {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     font-weight: 300;
     line-height: 1.6;
-    max-width: 65ch;
-    margin: 0 auto 2.5rem;
-    opacity: 0.9;
+    max-width: 58ch;
+    margin: 0 auto 1.5rem;
+    opacity: 0.92;
   }
 
   .hero-buttons {
@@ -46,7 +59,7 @@
     transition: all 0.25s ease;
     line-height: 1;
     border: none;
-    font-size: 1.5em;
+    font-size: 1.4em;
   }
 
   .hero-buttons .md-button--primary {
@@ -72,14 +85,47 @@
     border-color: white;
   }
 
+  /* ── Install snippet ──────────────────────────────────────── */
+  .install-snippet {
+    margin: 2.5rem auto 0;
+    max-width: 400px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 8px;
+    padding: 0.7rem 1.2rem;
+    font-family: "Roboto Mono", monospace;
+    font-size: 0.95rem;
+    user-select: all;
+    letter-spacing: 0.01em;
+  }
+
+  .install-snippet span {
+    opacity: 0.5;
+  }
+
+  /* ── Features ─────────────────────────────────────────────── */
   .features-section {
-    padding: 4rem 1rem;
+    padding: 4rem 1rem 2rem;
     background-color: var(--md-default-bg-color);
+  }
+
+  .features-section .section-title {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .features-section .section-subtitle {
+    text-align: center;
+    color: var(--md-default-fg-color--light);
+    max-width: 55ch;
+    margin: 0 auto 2.5rem;
+    font-size: 1.05rem;
   }
 
   .feature-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
   }
 
@@ -92,28 +138,98 @@
   }
 
   .feature-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
     border-color: var(--md-primary-fg-color);
   }
 
   .feature-card .icon {
     font-family: 'Material Icons';
-    font-size: 48px;
+    font-size: 40px;
     line-height: 1;
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
     color: var(--md-primary-fg-color);
     display: block;
   }
 
   .feature-card h3 {
     margin-top: 0;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 600;
   }
 
   .feature-card p {
     color: var(--md-default-fg-color--light);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  /* ── Quick example ────────────────────────────────────────── */
+  .example-section {
+    padding: 2rem 1rem 4rem;
+    background-color: var(--md-default-bg-color);
+  }
+
+  .example-section .section-title {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .example-section .section-subtitle {
+    text-align: center;
+    color: var(--md-default-fg-color--light);
+    max-width: 55ch;
+    margin: 0 auto 2rem;
+    font-size: 1.05rem;
+  }
+
+  .example-code {
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--md-code-bg-color);
+    border-radius: 8px;
+    padding: 1.5rem 2rem;
+    overflow-x: auto;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    border: 1px solid var(--md-default-fg-color--lightest);
+  }
+
+  .example-code pre {
+    margin: 0;
+    white-space: pre;
+    font-family: "Roboto Mono", monospace;
+  }
+
+  /* ── CTA ──────────────────────────────────────────────────── */
+  .cta-section {
+    padding: 3.5rem 1rem;
+    text-align: center;
+    background: var(--md-default-bg-color--light);
+    border-top: 1px solid var(--md-default-fg-color--lightest);
+  }
+
+  .cta-section h2 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .cta-section p {
+    color: var(--md-default-fg-color--light);
+    max-width: 50ch;
+    margin: 0 auto 1.5rem;
+    font-size: 1rem;
+  }
+
+  .cta-section .md-button {
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    border-radius: 5px;
+    font-size: 1.1em;
+    transition: all 0.25s ease;
   }
 </style>
 {% endblock %}
@@ -124,8 +240,7 @@
   <div class="md-grid">
     <h1 class="hero-title" style="font-variant: small-caps;">svglab</h1>
     <p class="hero-subtitle">
-      The Python library for parsing, manipulating, and optimizing SVG files.
-      Everything you need to work with SVG in Python, all in one place.
+      A Python library for parsing, manipulating, and optimizing Scalable Vector Graphics.
     </p>
     <div class="hero-buttons">
       <a href="getting-started/" class="md-button md-button--primary">
@@ -145,40 +260,83 @@
 {%- block content %}
 {% if page.is_homepage %}
 
+<!-- Feature cards -->
 <section class="features-section">
   <div class="md-grid">
+    <h2 class="section-title">Everything you need for SVG in Python</h2>
+    <p class="section-subtitle">
+      From parsing to pixel-perfect rendering, <span style="font-variant: small-caps;">svglab</span> covers the entire
+      SVG workflow.
+    </p>
     <div class="feature-cards">
       <div class="feature-card">
         <span class="material-icons icon">code</span>
-        <h3>Parse &&nbsp;Serialize</h3>
-        <p>Easily parse SVG files into a structured object model and serialize them back to SVG format.</p>
+        <h3>Parse &amp;&nbsp;Serialize</h3>
+        <p>Read SVGs from strings, files, or byte streams. Write them back with full control over formatting &mdash; or
+          just call <code>.save()</code>.</p>
+      </div>
+      <div class="feature-card">
+        <span class="material-icons icon">account_tree</span>
+        <h3>Full Element Model</h3>
+        <p>All <strong>80 elements</strong> and <strong>295 attributes</strong> from the SVG 1.1 spec, each with a
+          dedicated Python class and typed properties.</p>
       </div>
       <div class="feature-card">
         <span class="material-icons icon">transform</span>
-        <h3>Manipulate</h3>
-        <p>Create, edit, and delete elements and attributes programmatically.</p>
+        <h3>Transforms &amp;&nbsp;Path Data</h3>
+        <p>First-class support for affine transforms, path commands, and "reification" &mdash; baking transforms
+          directly into geometry.</p>
       </div>
       <div class="feature-card">
         <span class="material-icons icon">speed</span>
-        <h3>Optimize &&nbsp;Minify</h3>
-        <p>Optimize SVG files by removing extraneous whitespace, lowering precision of floating-point numbers, and other
-          techniques to reduce file size while preserving visual fidelity.</p>
+        <h3>Optimize &amp;&nbsp;Minify</h3>
+        <p>Reduce file size by lowering precision, converting coordinates, shortening color values, and removing
+          redundant data.</p>
       </div>
       <div class="feature-card">
         <span class="material-icons icon">verified_user</span>
-        <h3>Robust Typing &&nbsp;Runtime Validation</h3>
-        <p><span style="font-variant: small-caps;">svglab</span> leverages Python's type hints to provide a rich
-          development experience with static type checking. Runtime type validation with <a
-            href="https://pydantic.com.cn/en/">Pydantic</a> ensures your data is always valid.</p>
+        <h3>Typed &amp;&nbsp;Validated</h3>
+        <p>Every attribute is a real Python type. <a href="https://docs.pydantic.dev/">Pydantic</a> validates at
+          runtime; your IDE catches the rest at edit time.</p>
       </div>
       <div class="feature-card">
-        <span class="material-icons icon">format_paint</span>
-        <h3>Configurable Formatting</h3>
-        <p>Customize the output format of your SVG files with configurable indentation, attribute ordering,
-          floating-point precision and 20+ other options.</p>
+        <span class="material-icons icon">image</span>
+        <h3>Render &amp;&nbsp;Analyze</h3>
+        <p>Rasterize to PNG via <a href="https://github.com/niclaswehrworst/resvg-py">resvg</a>, compute bounding
+          boxes, and extract pixel masks &mdash; all from Python.</p>
       </div>
     </div>
+  </div>
 </section>
+
+<!-- Quick example -->
+<section class="example-section">
+  <div class="md-grid">
+    <h2 class="section-title">See it in action</h2>
+    <p class="section-subtitle">
+      Parse an SVG, tweak it, and save &mdash; in four lines.
+    </p>
+    <div class="example-code">
+<pre><span style="color:var(--md-code-hl-keyword-color)">from</span> svglab <span style="color:var(--md-code-hl-keyword-color)">import</span> parse_svg, Color, Formatter
+
+svg = parse_svg(<span style="color:var(--md-code-hl-string-color)">"drawing.svg"</span>)
+svg.find(<span style="color:var(--md-code-hl-string-color)">"rect"</span>).fill = Color(<span style="color:var(--md-code-hl-string-color)">"coral"</span>)
+svg.save(<span style="color:var(--md-code-hl-string-color)">"output.svg"</span>, formatter=Formatter.optimized())</pre>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="md-grid">
+    <h2>Ready to dive in?</h2>
+    <p>Install the library, follow the quickstart, and explore the full user guide.</p>
+    <a href="getting-started/installation/" class="md-button md-button--primary">
+      Installation &rarr;
+    </a>
+  </div>
+</section>
+
 {% else %}
 {{ super() }}
 {% endif %}

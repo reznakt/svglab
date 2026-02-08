@@ -10,9 +10,19 @@ edit_uri: edit/main/docs/
 
 nav:
   - Home: index.md
+  - Overview: overview.md
   - Getting Started:
       - Installation: getting-started/installation.md
       - Quickstart: getting-started/quickstart.md
+  - User Guide:
+      - Elements: user-guide/elements.md
+      - Attributes: user-guide/attributes.md
+      - Traits: user-guide/traits.md
+      - Parsing: user-guide/parsing.md
+      - Serialization: user-guide/serialization.md
+      - Path Data: user-guide/path-data.md
+      - Transforms: user-guide/transforms.md
+      - Graphical Operations: user-guide/graphics.md
   - API Reference:
       - Elements: api-reference/elements.md
       - Attributes: api-reference/attributes.md
