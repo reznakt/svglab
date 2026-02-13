@@ -117,15 +117,7 @@ Both methods are available on all `BasicShape` elements: `Rect`, `Circle`, `Elli
 
 ## Serialization options
 
-The [Formatter](serialization.md) provides several options specifically for path data output:
-
-| Option | Effect |
-|--------|--------|
-| `path_data_coordinates` | Force all coordinates to `"absolute"` or `"relative"` |
-| `path_data_commands` | `"implicit"` omits repeated command letters; `"explicit"` always writes them |
-| `path_data_shorthand_line_commands` | Use shorthand line commands (`H`, `V`): `"always"`, `"never"`, or `"original"` |
-| `path_data_shorthand_curve_commands` | Use shorthand curve commands (`S`, `T`): `"always"`, `"never"`, or `"original"` |
-| `coordinate_precision` | Control the number of decimal places for coordinates |
+The [Formatter](serialization.md) provides several options specifically for path data output, including coordinate mode (absolute/relative), implicit vs. explicit command letters, shorthand commands, and coordinate precision. See [Serialization: Path data](serialization.md#path-data) for the full list of options.
 
 ```python
 from svglab import Formatter

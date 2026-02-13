@@ -119,14 +119,7 @@ Under the hood, reification:
 
 ## Shape-to-path conversion
 
-As described in [Traits](traits.md#shapes-and-basic-shapes), basic shapes can be converted to `Path` elements. This is often a preprocessing step before other graphical operations, since paths are the most general geometry representation:
-
-```python
-from svglab import Rect, Length
-
-rect = Rect(x=Length(10), y=Length(20), width=Length(100), height=Length(50))
-path = rect.to_path()
-```
+Basic shapes can be converted to `Path` elements via `.to_path()` and `.to_path_data()`. This is often a preprocessing step before other graphical operations, since paths are the most general geometry representation. See [Traits: Shapes and basic shapes](traits.md#shapes-and-basic-shapes) for details and examples.
 
 ## Next steps
 
