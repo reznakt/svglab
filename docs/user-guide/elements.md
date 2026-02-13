@@ -52,15 +52,7 @@ del rect.fill               # remove it
 ```
 
 !!! note "Attribute name mapping"
-    SVG attribute names that aren't valid Python identifiers are mapped to valid ones:
-
-    | SVG | Python |
-    |-----|--------|
-    | `stroke-width` | `stroke_width` |
-    | `font-size` | `font_size` |
-    | `class` | `class_` |
-    | `in` | `in_` |
-
+    SVG attribute names that aren't valid Python identifiers are mapped: hyphens become underscores (`stroke-width` → `stroke_width`) and reserved words get a trailing underscore (`class` → `class_`). See [Attributes: How attributes map to Python names](attributes.md#how-attributes-map-to-python-names) for the full rules.
 For a deep dive into types, validation, and all available attributes, see [Attributes](attributes.md).
 
 ## Building a tree

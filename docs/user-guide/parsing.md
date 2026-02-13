@@ -70,18 +70,7 @@ The default (`lxml-xml`) is recommended for most use cases. It's fast, handles n
 
 ## Unknown elements
 
-If the SVG contains elements that aren't part of the SVG 1.1 specification, they're preserved as `UnknownElement` instances. This ensures nothing is lost during round-tripping:
-
-```python
-svg = parse_svg('<svg><my-widget data-v="3"/></svg>')
-widget = svg.find("my-widget")
-
-type(widget)          # UnknownElement
-widget.element_name   # "my-widget"
-widget.extra_attrs    # {"data-v": "3"}
-```
-
-See also [Elements: Unknown elements](elements.md#unknown-elements).
+If the SVG contains elements that aren't part of the SVG 1.1 specification, they're preserved as `UnknownElement` instances so nothing is lost during round-tripping. See [Elements: Unknown elements](elements.md#unknown-elements) for details and examples.
 
 ## Error handling
 

@@ -46,26 +46,14 @@
 
 ### Features
 
-- SVG parsing, manipulation, and writing
-- Support for all SVG 1.1 elements and attributes
-- Partial support for SVG 2
-- Support for special XML entities (`CDATA`, comments, text)
-- Attributes are parsed into native Python types for easy manipulation
-- Highly configurable formatting options:
-  - indentation level
-  - maximum precision for floating-point numbers
-  - color mode (`rgb`, `rgba`, `hsl`, `hex`, `named`)
-  - relative/absolute path commands
-  - scientific notation for small/large numbers
-  - and many more...
-- Strong type safety:
-  - one class per distinct SVG element
-  - typed attributes
-  - runtime validation thanks to [pydantic](https://pypi.org/project/pydantic/)
-- Support for all [beautifulsoup4](https://pypi.org/project/beautifulsoup4/) parsers (e.g., `html.parser`, `lxml`, `html5lib`)
-- SVG can be rendered into a raster image using [resvg](https://lib.rs/crates/resvg)
-- Support for calculating the bounding box and mask of an element
-- Support for applying transformations in the `transform` attribute ("reification")
+- Full SVG 1.1 coverage &mdash; all 80 elements and 295 attributes
+- Typed, validated attributes via [Pydantic](https://pypi.org/project/pydantic/)
+- 20+ configurable formatting and optimization options
+- Raster rendering via [resvg](https://lib.rs/crates/resvg)
+- Bounding box and mask computation
+- Transform reification (baking transforms into geometry)
+
+See the [Overview](https://reznakt.github.io/svglab/overview/) for a detailed description of each capability.
 
 ```mermaid
 ---
@@ -104,125 +92,34 @@ graph TD
 
 ### Installation
 
-**From PyPi**:
-
 ```sh
 pip install svglab
 ```
 
-**From source**:
-
-```sh
-# Via HTTPS
-pip install git+https://github.com/reznakt/svglab.git
-
-# Via SSH
-pip install git+ssh://git@github.com/reznakt/svglab.git
-```
+For alternative package managers (Poetry, uv) and installing from source, see the [Installation guide](https://reznakt.github.io/svglab/getting-started/installation/).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Usage
 
 ```python
-# Parse an existing SVG file
-svg = parse_svg(
-    """
-    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
-      <g>
-          <rect
-            id="background"
-            width="100cm"
-            height="100%"
-            transform="rotate(45)"
-            stroke="red"
-          />
-          <rect color="hsl(0, 100%, 100%)"/>
-          <!-- This is a comment -->
-          <![CDATA[.background { fill: blue; }]]>
-          Hello SVG!
-          <path d="M 10,10 H 10 L 100,100 Q 100,100 50,50 v 100 Z"/>
-          <path d="M0,0 10,10 20,20 S 100,100 50,50 t 100,100 M 50,50 z"/>
-          <path d="M0,0A50,50 90 1 0 100,100v100h-10z"/>
-          <polygon points="0,0 100,0 100,100 0,100"/>
-      </g>
-    </svg>
-"""
-)
+from svglab import parse_svg, Rect, Circle, Length, Color
 
-print(svg)
+# Parse an SVG
+svg = parse_svg('<svg width="200" height="200"><circle cx="50" cy="50" r="40"/></svg>')
 
-# Create an element programmatically
-group = G().add_children(
-    Rect(
-        width=Length(15, "px"),
-        height=Length(20),
-        transform=[SkewX(45.123), Translate(10, 20)],
-        color=Color("#ff0000"),
-    ),
-    Comment("This is a comment"),
-    CData(".background { fill: blue; }"),
-    RawText("Hello SVG!"),
-    Path(
-        d=PathData()
-        .move_to(Point(10, 10))
-        .line_to(Point(100, 100))
-        .quadratic_bezier_to(Point(100, 100), Point(50, 50))
-        .smooth_quadratic_bezier_to(Point(100, 100))
-        .move_to(Point(50, 50))
-        .cubic_bezier_to(
-            Point(100, 100), Point(100, 100), Point(10, 10)
-        )
-        .smooth_cubic_bezier_to(Point(100, 100), Point(50, 50))
-        .arc_to(
-            Point(50, 50), 90, Point(100, 100), large=True, sweep=False
-        )
-        .vertical_line_to(100)
-        .horizontal_line_to(-10, relative=True)
-        .close()
-    ),
-    Polyline(
-        points=[
-            Point(0, 0),
-            Point(100, 0),
-            Point(100, 100),
-            Point(0, 100),
-        ],
-        stroke_linecap="square",
-        opacity=0.5,
-    ),
-)
+# Find and modify elements
+circle = svg.find(Circle)
+circle.fill = Color("red")
 
-# Add the element to the SVG
-svg.add_child(group)
+# Add new elements
+svg.add_child(Rect(x=Length(10), y=Length(10), width=Length(30), height=Length(30)))
 
-# Manipulate attributes
-print(svg.xmlns)  # http://www.w3.org/2000/svg
-svg.x = Length(10, "px")
-
-# Save to a file
-svg.save(sys.stdout)
-
-# Search the entity tree
-print(*svg.find_all(Rect), sep="\n")
-rect = svg.find(G).find(Rect)
-
-# Compute the bounding box and mask of an element
-print(rect.get_bbox())
-print(rect.get_mask())
-
-# Render the SVG to an image
-image = svg.render()
-print(image)
-
-# Apply transformations in the transform attribute
-svg.reify()
-print(svg.to_xml())
-
-# Change the view box
-svg.set_viewbox((0, 0, 50, 50))
-print(svg.to_xml())
+# Serialize
+svg.save("output.svg")
 ```
+
+For a complete walkthrough, see the [Quickstart](https://reznakt.github.io/svglab/getting-started/quickstart/).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
