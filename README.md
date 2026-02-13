@@ -5,7 +5,6 @@
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/svglab)
 [![Dependency status](https://img.shields.io/librariesio/github/reznakt/svglab)](https://libraries.io/pypi/svglab/tree)
 [![Test coverage](https://codecov.io/github/reznakt/svglab/graph/badge.svg)](https://codecov.io/github/reznakt/svglab)
-![GitHub repo size](https://img.shields.io/github/repo-size/reznakt/svglab)
 
 <br />
 <div align="center">
