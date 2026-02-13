@@ -159,9 +159,11 @@ class FloatPrecisionSettings:
 _FloatPrecisionSettingsType: TypeAlias = Annotated[
     FloatPrecisionSettings | _Precision | None,
     pydantic.AfterValidator(
-        lambda v: v
-        if v is None or isinstance(v, FloatPrecisionSettings)
-        else FloatPrecisionSettings(fallback=v)
+        lambda v: (
+            v
+            if v is None or isinstance(v, FloatPrecisionSettings)
+            else FloatPrecisionSettings(fallback=v)
+        )
     ),
 ]
 

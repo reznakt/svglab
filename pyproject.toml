@@ -80,22 +80,23 @@ pytest-randomly = "^4.0.1"
 pytest-sugar = "^1.1.1"
 
 [tool.poetry.group.dev.dependencies]
+licensecheck = "^2025.1.0"
 poethepoet = "^0.40.0"
 pyright = "^1.1.408"
-ruff = "^0.14.14"
+ruff = "^0.15.1"
 vermin = "^1.6.0"
-licensecheck = "^2025.1.0"
 
 [tool.poetry.group.docs.dependencies]
-griffe-fieldz = "^0.4.0"
-mkdocstrings-python = "^2.0.1"
-mkdocs-minify-plugin = "^0.8.0"
-mkdocs-material = "^9.7.1"
-mkdocs-git-revision-date-localized-plugin = "^1.5.1"
-mkdocs-git-committers-plugin-2 = "^2.5.0"
-pillow = "^12.1.1"
 cairosvg = "^2.8.2"
+griffe-fieldz = "^0.4.0"
+mkdocs-git-committers-plugin-2 = "^2.5.0"
+mkdocs-git-revision-date-localized-plugin = "^1.5.1"
+mkdocs-material = "^9.7.1"
+mkdocs-minify-plugin = "^0.8.0"
 mkdocs-redirects = "^1.2.2"
+mkdocstrings-python = "^2.0.1"
+pillow = "^12.1.1"
+ruff = "^0.15.1"
 
 [tool.poe.tasks]
 docs = "mkdocs build"

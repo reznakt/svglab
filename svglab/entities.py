@@ -599,8 +599,10 @@ class Element(
                 attr_names.ATTR_NAME_TO_NORMALIZED.inverse.get(name, name),
             ),
             serialization_alias=(
-                lambda name: attr_names.ATTR_NAME_TO_NORMALIZED.inverse.get(
-                    name, name
+                lambda name: (
+                    attr_names.ATTR_NAME_TO_NORMALIZED.inverse.get(
+                        name, name
+                    )
                 )
             ),
         ),
