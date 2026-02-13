@@ -85,20 +85,7 @@ Transforms on an element are normally stored as an attribute and interpreted by 
 svg.reify()
 ```
 
-This is useful for optimization and for ensuring consistent rendering across viewers. Under the hood, reification:
-
-1. Converts the transform into a `Matrix`
-2. Applies it to geometric attributes (positions, sizes, path data)
-3. Adjusts stroke widths to compensate for scaling
-4. Removes the `transform` attribute
-
-!!! warning
-    Reification is a **lossy** operation &mdash; it modifies the element's attributes in place and cannot be undone. It works best on [basic shapes](traits.md#shapes-and-basic-shapes) and paths.
-
-!!! warning "Non-uniform scaling"
-    Only **translate** and **scale** transforms can be reified directly. For rotations and skews, the element is first [converted to a path](path-data.md#converting-shapes-to-paths) (if possible) so the transform can be applied to the coordinates. Non-uniform scaling (different `sx` and `sy`) on elements with attributes like `r` (radius) that don't distinguish between axes will raise an error &mdash; convert to a path first.
-
-For more on reification and related operations, see [Graphical Operations](graphics.md).
+This is useful for optimization and for ensuring consistent rendering across viewers. See [Graphical Operations: Reification](graphics.md#reification) for the full explanation, including the internal steps, caveats, and limitations.
 
 ## The `Matrix` type
 
