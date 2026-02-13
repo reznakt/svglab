@@ -1,7 +1,7 @@
 site_name: SVGLAB Documentation
 site_description: A manipulation and optimization library for Scalable Vector Graphics
 site_author: Tomáš Režňák
-site_url: !ENV READTHEDOCS_CANONICAL_URL
+site_url: https://reznakt.github.io/svglab/
 
 copyright: Copyright &copy 2024 Tomáš Režňák
 
