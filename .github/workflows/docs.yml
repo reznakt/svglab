@@ -29,6 +29,16 @@ jobs:
         with:
           python-version: "3.14"
 
+      - name: Install apt packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y $(jq -r '
+            .features
+            | to_entries
+            | map(select(.key | contains("devcontainer-features/apt-packages:")))
+            | .[].value.packages[]
+          ' .devcontainer/devcontainer.json)
+
       - name: Set up poetry
         uses: abatilo/actions-poetry@v4.0.0
         with:
