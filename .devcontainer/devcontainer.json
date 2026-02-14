@@ -13,7 +13,13 @@
       "packages": [
         "g++",
         "gcc",
-        "libcairo2-dev"
+        "libcairo2-dev",
+        "libffi-dev",
+        "libfreetype6-dev",
+        "libjpeg-dev",
+        "libpng-dev",
+        "libz-dev",
+        "pngquant"
       ]
     }
   },
