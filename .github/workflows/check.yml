@@ -15,42 +15,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6.0.2
 
-      - name: Set up Python
-        uses: actions/setup-python@v6.2.0
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
         with:
-          python-version: "3.10"
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
 
-      - name: Set up poetry
-        uses: abatilo/actions-poetry@v4.0.0
-        with:
-          poetry-version: "2.1.3"
+      - name: Cache Nix store
+        uses: DeterminateSystems/magic-nix-cache-action@v9
 
       - name: Install dependencies
-        run: poetry install --only main,dev
+        run: nix develop --command uv sync --all-groups
 
       - name: Run linter
-        run: poetry run poe lint
+        run: nix develop --command just lint
 
       - name: Run formatter
-        run: poetry run poe format
-
-      - name: Run version check
-        run: poetry run poe versioncheck
-
-      - name: Run license check
-        run: poetry run poe licensecheck --requirements-paths=pyproject.toml
-
-      - name: Install test dependencies
-        run: poetry install --only main,dev,test
+        run: nix develop --command just format
 
       - name: Run tests
-        run: poetry run poe test --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
-
-      - name: Install types
-        run: poetry install --only main,dev,test,types
+        run: nix develop --command just test --cov-branch --cov-report=xml --junitxml=junit.xml
 
       - name: Run type checking
-        run: poetry run poe typecheck
+        run: nix develop --command just typecheck
 
       - name: Upload coverage results to Codecov
         uses: codecov/codecov-action@v5.5.2

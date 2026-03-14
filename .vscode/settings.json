@@ -11,5 +11,7 @@
     "!ENV sequence",
     "tag:yaml.org,2002:python/name:material.extensions.emoji.twemoji scalar",
     "tag:yaml.org,2002:python/name:material.extensions.emoji.to_svg scalar"
-  ]
+  ],
+  "nixEnvSelector.nixFile": "${workspaceFolder}/flake.nix",
+  "nixEnvSelector.useFlakes": true
 }
