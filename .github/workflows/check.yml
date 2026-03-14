@@ -40,6 +40,12 @@ jobs:
       - name: Run type checking
         run: nix develop --command just typecheck
 
+      - name: Run version check
+        run: nix develop --command just versioncheck
+
+      - name: Run license check
+        run: nix develop --command just licensecheck
+
       - name: Upload coverage results to Codecov
         uses: codecov/codecov-action@v5.5.2
         with:

@@ -54,7 +54,7 @@ repos:
         name: licensecheck
         entry: uv run licensecheck
         language: system
-        files: ^pyproject\.toml|uv\.lock$
+        files: ^(pyproject\.toml|uv\.lock)$
         pass_filenames: false
       - id: typecheck
         name: typecheck
