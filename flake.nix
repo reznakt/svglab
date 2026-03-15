@@ -23,7 +23,12 @@
           packages =
             with pkgs;
             [
+              cairo
+              freetype
               just
+              libjpeg
+              libpng
+              pngquant
               pre-commit
               uv
             ]
@@ -36,6 +41,11 @@
             LD_LIBRARY_PATH = lib.makeLibraryPath (
               with pkgs;
               [
+                cairo
+                freetype
+                libffi
+                libjpeg
+                libpng
                 stdenv.cc.cc.lib
                 zlib
               ]
