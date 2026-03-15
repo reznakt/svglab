@@ -83,7 +83,7 @@ docs = [
 ]
 
 [tool.uv]
-default-groups = ["dev", "test", "types"]
+default-groups = ["dev", "test", "types", "docs"]
 
 [tool.hatch.version]
 source = "vcs"
