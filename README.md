@@ -100,7 +100,8 @@ graph TD
 ### Prerequisites
 
 - [CPython](https://www.python.org/) $\geq$ 3.10
-- [Poetry](https://python-poetry.org/) $\geq$ 2.0 (development only)
+- [uv](https://docs.astral.sh/uv/) (development only)
+- [just](https://just.systems/) (development only; optional)
 
 ### Installation
 
@@ -232,10 +233,10 @@ print(svg.to_xml())
 
 ```sh
 # Install dependencies
-poetry install
+uv sync
 
 # Activate the virtual environment
-poetry shell
+source .venv/bin/activate
 
 # Optional: Install pre-commit hooks
 pre-commit install
@@ -245,22 +246,22 @@ pre-commit install
 
 ```sh
 # Run tests
-poe test
+just test
 
 # Run type checker
-poe typecheck
+just typecheck
 
 # Run linter
-poe lint
+just lint
 
 # Fix linting errors
-poe lint-fix
+just lint-fix
 
 # Run formatter
-poe format
+just format
 
 # Fix formatting errors
-poe format-fix
+just format-fix
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

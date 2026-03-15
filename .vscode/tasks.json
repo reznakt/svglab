@@ -4,15 +4,15 @@
     {
       "label": "install",
       "type": "shell",
-      "command": "poetry",
+      "command": "uv",
       "args": [
-        "install"
+        "sync"
       ]
     },
     {
       "label": "test",
       "type": "shell",
-      "command": "poe",
+      "command": "just",
       "args": [
         "test"
       ]
@@ -20,7 +20,7 @@
     {
       "label": "typecheck",
       "type": "shell",
-      "command": "poe",
+      "command": "just",
       "args": [
         "typecheck"
       ]
@@ -28,7 +28,7 @@
     {
       "label": "lint",
       "type": "shell",
-      "command": "poe",
+      "command": "just",
       "args": [
         "lint"
       ]
@@ -36,7 +36,7 @@
     {
       "label": "lint-fix",
       "type": "shell",
-      "command": "poe",
+      "command": "just",
       "args": [
         "lint-fix"
       ]
@@ -44,7 +44,7 @@
     {
       "label": "format",
       "type": "shell",
-      "command": "poe",
+      "command": "just",
       "args": [
         "format"
       ]
@@ -52,7 +52,7 @@
     {
       "label": "format-fix",
       "type": "shell",
-      "command": "poe",
+      "command": "just",
       "args": [
         "format-fix"
       ]
@@ -60,7 +60,7 @@
     {
       "label": "versioncheck",
       "type": "shell",
-      "command": "poe",
+      "command": "just",
       "args": [
         "versioncheck"
       ]
@@ -68,7 +68,7 @@
     {
       "label": "licensecheck",
       "type": "shell",
-      "command": "poe",
+      "command": "just",
       "args": [
         "licensecheck"
       ]
@@ -76,7 +76,7 @@
     {
       "label": "docs",
       "type": "shell",
-      "command": "poe",
+      "command": "just",
       "args": [
         "docs"
       ]
@@ -84,7 +84,7 @@
     {
       "label": "docs-serve",
       "type": "shell",
-      "command": "poe",
+      "command": "just",
       "args": [
         "docs-serve"
       ]

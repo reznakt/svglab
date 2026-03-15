@@ -109,7 +109,10 @@ class _TransformFunctionBase(
         return Matrix.from_affine(self.to_affine())
 
     def __array__(
-        self, dtype: npt.DTypeLike = None, *, copy: bool | None = None
+        self,
+        dtype: npt.DTypeLike | None = None,
+        *,
+        copy: bool | None = None,
     ) -> utiltypes.NpFloatArray:
         return self.to_affine().__array__(dtype=dtype, copy=copy)
 
