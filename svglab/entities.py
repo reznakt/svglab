@@ -612,6 +612,8 @@ class Element(
 
     __children: list[Entity] = pydantic.PrivateAttr(default_factory=list)
 
+    # region Attribute Handling
+
     @pydantic.model_validator(mode="after")
     def __validate_extra(self) -> Element:  # pyright: ignore[reportUnusedFunction]
         # model_extra cannot be None because extra is set to "allow"
@@ -675,6 +677,40 @@ class Element(
 
         return {**standard, **extra}
 
+    def __get_attr_or_default(
+        self, attr_name: attr_names.AttributeName
+    ) -> object:
+        attrs = self.standard_attrs()
+
+        if attr_name in attrs:
+            return attrs[attr_name]
+
+        match attr_name:
+            case "gradientUnits":
+                return "objectBoundingBox"
+            case "patternUnits":
+                return "objectBoundingBox"
+            case "patternContentUnits":
+                return "userSpaceOnUse"
+            case _:
+                return None
+
+    def __getitem__(self, key: str) -> str:
+        assert self.model_extra is not None, "model_extra is None"
+        value: str = self.model_extra[key]
+        return value
+
+    def __setitem__(self, key: str, value: str) -> None:
+        assert self.model_extra is not None, "model_extra is None"
+        self.model_extra[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        assert self.model_extra is not None, "model_extra is None"
+        del self.model_extra[key]
+
+    # endregion
+    # region Equality and Representation
+
     @override
     def _eq(self, other: Entity) -> bool:
         return (
@@ -701,6 +737,30 @@ class Element(
             )
         )
 
+    @reprlib.recursive_repr()
+    @override
+    def __repr__(self) -> str:
+        name = type(self).__name__
+        attrs = dict(self.all_attrs())
+
+        if self.__children:
+            attrs["children"] = list(self.children)
+
+        if self.prefix:
+            attrs["prefix"] = self.prefix
+
+        if isinstance(self, UnknownElement):
+            attrs["element_name"] = self.element_name
+
+        attr_repr = ", ".join(
+            f"{key}={value!r}" for key, value in attrs.items()
+        )
+
+        return f"{name}({attr_repr})"
+
+    # endregion
+    # region Tree Access and Traversal
+
     @property
     def children(self) -> Generator[Entity]:
         """Iterate over the children of the element.
@@ -713,6 +773,25 @@ class Element(
 
         """
         yield from self.__children
+
+    @property
+    def num_children(self) -> int:
+        """Get the number of children of the element.
+
+        Returns:
+        The number of children of the element.
+
+        """
+        return len(self.__children)
+
+    def has_children(self) -> bool:
+        """Check if the element has any children.
+
+        Returns:
+        `True` if the element has children, `False` otherwise.
+
+        """
+        return self.num_children > 0
 
     @property
     def descendants(self) -> Generator[Entity]:
@@ -791,6 +870,21 @@ class Element(
         """
         yield from self.prev_siblings
         yield from self.next_siblings
+
+    def get_root(self) -> Element:
+        """Get the top-level ancestor of the element.
+
+        The root ancestor is the first ancestor that has no parent. If the
+        element has no parent, it is considered the root ancestor.
+
+        Returns:
+            The root ancestor of the element.
+
+        """
+        return iterutils.take_last(self.ancestors) or self
+
+    # endregion
+    # region Tree Mutation
 
     def add_child(
         self, child: Entity, /, *, index: int | None = None
@@ -940,79 +1034,138 @@ class Element(
         """
         return self.__children.index(child, start, stop)
 
-    @override
-    def to_beautifulsoup_object(self) -> bs4.Tag:
-        element = bs4.Tag(
-            name=element_name(self),
-            can_be_empty_element=True,
-            prefix=self.prefix,
-            is_xml=True,
-        )
+    # endregion
+    # region Search and References
 
-        element.can_be_empty_element = len(self.__children) == 0
+    @overload
+    def find_all(
+        self, /, *, recursive: bool = True
+    ) -> Generator[Element]: ...
 
-        for key, value in self.all_attrs().items():
-            element[key] = serialize.serialize_attr(key, value)
+    @overload
+    def find_all(
+        self, *elements: type[_ElementT], recursive: bool = True
+    ) -> Generator[_ElementT]: ...
 
-        for child in self.children:
-            element.append(child.to_beautifulsoup_object())
-
-        if element_name(self) == "svg":
-            formatter = serialize.get_current_formatter()
-
-            if formatter.xmlns == "always":
-                element["xmlns"] = constants.SVG_XMLNS
-            elif formatter.xmlns == "never":
-                del element["xmlns"]
-
-        return element
-
-    def __get_main_transform_attribute(
+    @overload
+    def find_all(
         self,
-    ) -> Literal["transform", "gradientTransform", "patternTransform"]:
-        match element_name(self):
-            case "linearGradient" | "radialGradient":
-                return "gradientTransform"
-            case "pattern":
-                return "patternTransform"
-            case _:
-                return "transform"
+        *elements: type[Element] | names.ElementName | str,
+        recursive: bool = True,
+    ) -> Generator[Element]: ...
 
-    @property
-    def main_transform(self) -> transform.Transform | None:
-        """The main transform attribute of the element.
+    def find_all(
+        self,
+        *elements: type[Element] | names.ElementName | str,
+        recursive: bool = True,
+    ) -> Generator[Element]:
+        """Find all elements that match the given search criteria.
 
-        For most elements, this is the `transform` attribute. However, certain
-        elements such as `linearGradient` have theis own specialized
-        transform attribute, in which case the `transform` attribute is
-        ignored.
-
-        This attribute is an alias to the "main" or "active" transform
-        attribute of the element.
-
-        The main transform attributes for the elements are:
-        - `gradientTransform` for `linearGradient` and `radialGradient`
-        - `patternTransform` for `pattern`
-        - `transform` for all other elements
-        """
-        transform_attr_name = self.__get_main_transform_attribute()
-
-        return cast(
-            transform.Transform | None,
-            self.__get_attr_or_default(transform_attr_name),
-        )
-
-    def get_root(self) -> Element:
-        """Get the top-level ancestor of the element.
-
-        The root ancestor is the first ancestor that has no parent. If the
-        element has no parent, it is considered the root ancestor.
+        Args:
+        elements: The elements to search for. Can be element names or element
+        classes.  If no search criteria are provided, all elements are
+        returned.
+        recursive: If `False`, only search the direct children of the element,
+        otherwise search all descendants.
 
         Returns:
-            The root ancestor of the element.
+        An iterator over all elements that match the search criteria.
+
+        Examples:
+        >>> from svglab import G, Rect
+        >>> g = G().add_children(Rect(), G().add_child(Rect()))
+        >>> list(g.find_all("rect"))
+        [Rect(), Rect()]
+        >>> list(g.find_all(G))
+        [G(children=[Rect()])]
+        >>> list(g.find_all(Rect, recursive=False))
+        [Rect()]
+        >>> list(g.find_all(G, "rect"))
+        [Rect(), G(children=[Rect()]), Rect()]
 
         """
-        return iterutils.take_last(self.ancestors) or self
+        for child in self.descendants if recursive else self.children:
+            if isinstance(child, Element) and (
+                not elements
+                or any(
+                    _match_element(child, search=element)
+                    for element in elements
+                )
+            ):
+                yield child
+
+    @overload
+    def find(
+        self, *elements: type[_ElementT], recursive: bool = True
+    ) -> _ElementT: ...
+
+    @overload
+    def find(
+        self,
+        *elements: type[Element] | names.ElementName | str,
+        recursive: bool = True,
+    ) -> Element: ...
+
+    @overload
+    def find(
+        self,
+        *elements: type[_ElementT],
+        recursive: bool = True,
+        default: _T = _EMPTY_PARAM,
+    ) -> _ElementT | _T: ...
+
+    @overload
+    def find(
+        self,
+        *elements: type[Element] | names.ElementName | str,
+        recursive: bool = True,
+        default: _T = _EMPTY_PARAM,
+    ) -> Element | _T: ...
+
+    def find(
+        self,
+        *elements: type[Element] | names.ElementName | str,
+        recursive: bool = True,
+        default: _T = _EMPTY_PARAM,
+    ) -> Element | _T:
+        """Find the first element that matches the given search criteria.
+
+        Args:
+        elements: The elements to search for. Can be element names or element
+        classes.
+        recursive: If `False`, only search the direct children of the element,
+        otherwise search all descendants.
+        default: The default value to return if no element matches the search
+        criteria.
+
+        Returns:
+        The first element that matches the search criteria.
+
+        Raises:
+        SvgElementNotFoundError: If no element matches the search criteria and
+        no default value is provided.
+
+        Examples:
+        >>> from svglab import G, Rect
+        >>> g = G().add_children(
+        ...     Rect(id="foo"), G().add_child(Rect(id="bar"))
+        ... )
+        >>> g.find("rect")
+        Rect(id='foo')
+        >>> g.find(G)
+        G(children=[Rect(id='bar')])
+        >>> g.find("circle", default=None) is None
+        True
+
+        """
+        try:
+            return next(self.find_all(*elements, recursive=recursive))
+        except StopIteration as e:
+            if default is not _EMPTY_PARAM:
+                return default
+
+            msg = f"Unable to find element by search criteria: {elements}"
+            raise errors.SvgElementNotFoundError(msg) from e
 
     def resolve_iri(self, iri_: iri.Iri, /) -> Element:
         """Resolve a local IRI reference to an element in the document.
@@ -1093,29 +1246,113 @@ class Element(
 
         return False
 
+    def get_iri(self) -> iri.Iri:
+        """Obtain a local IRI reference to this element.
+
+        The reference is constructed based on the element's id. If the element
+        has no id, an exception is raised.
+
+        Returns:
+            A local IRI reference to this element.
+
+        Raises:
+            RuntimeError: If the element has no id.
+
+        """
+        if self.id is None:
+            msg = "Unable to create local IRI reference to element with no id"
+            raise RuntimeError(msg)
+
+        return iri.Iri(fragment=self.id)
+
+    def get_func_iri(self) -> iri.FuncIri:
+        """Obtain a local FuncIRI reference to this element.
+
+        The reference is constructed based on the element's id. If the element
+        has no id, an exception is raised.
+
+        Returns:
+            A local FuncIRI reference to this element.
+
+        Raises:
+            RuntimeError: If the element has no id.
+
+        """
+        return self.get_iri().to_func_iri()
+
+    # endregion
+    # region Serialization
+
+    @override
+    def to_beautifulsoup_object(self) -> bs4.Tag:
+        element = bs4.Tag(
+            name=element_name(self),
+            can_be_empty_element=True,
+            prefix=self.prefix,
+            is_xml=True,
+        )
+
+        element.can_be_empty_element = len(self.__children) == 0
+
+        for key, value in self.all_attrs().items():
+            element[key] = serialize.serialize_attr(key, value)
+
+        for child in self.children:
+            element.append(child.to_beautifulsoup_object())
+
+        if element_name(self) == "svg":
+            formatter = serialize.get_current_formatter()
+
+            if formatter.xmlns == "always":
+                element["xmlns"] = constants.SVG_XMLNS
+            elif formatter.xmlns == "never":
+                del element["xmlns"]
+
+        return element
+
+    # endregion
+    # region Transforms and Reification
+
+    def __get_main_transform_attribute(
+        self,
+    ) -> Literal["transform", "gradientTransform", "patternTransform"]:
+        match element_name(self):
+            case "linearGradient" | "radialGradient":
+                return "gradientTransform"
+            case "pattern":
+                return "patternTransform"
+            case _:
+                return "transform"
+
+    @property
+    def main_transform(self) -> transform.Transform | None:
+        """The main transform attribute of the element.
+
+        For most elements, this is the `transform` attribute. However, certain
+        elements such as `linearGradient` have theis own specialized
+        transform attribute, in which case the `transform` attribute is
+        ignored.
+
+        This attribute is an alias to the "main" or "active" transform
+        attribute of the element.
+
+        The main transform attributes for the elements are:
+        - `gradientTransform` for `linearGradient` and `radialGradient`
+        - `patternTransform` for `pattern`
+        - `transform` for all other elements
+        """
+        transform_attr_name = self.__get_main_transform_attribute()
+
+        return cast(
+            transform.Transform | None,
+            self.__get_attr_or_default(transform_attr_name),
+        )
+
     @main_transform.setter
     def main_transform(self, value: transform.Transform | None) -> None:
         transform_attr_name = self.__get_main_transform_attribute()
 
         setattr(self, transform_attr_name, value)
-
-    def __get_attr_or_default(
-        self, attr_name: attr_names.AttributeName
-    ) -> object:
-        attrs = self.standard_attrs()
-
-        if attr_name in attrs:
-            return attrs[attr_name]
-
-        match attr_name:
-            case "gradientUnits":
-                return "objectBoundingBox"
-            case "patternUnits":
-                return "objectBoundingBox"
-            case "patternContentUnits":
-                return "userSpaceOnUse"
-            case _:
-                return None
 
     def decompose_transform_origin(self) -> None:
         """Decompose the `transform-origin` attribute into `transform`.
@@ -1351,222 +1588,7 @@ class Element(
                     remove_transform_list_if_empty=remove_transform_list_if_empty,
                 )
 
-    @overload
-    def find_all(
-        self, /, *, recursive: bool = True
-    ) -> Generator[Element]: ...
-
-    @overload
-    def find_all(
-        self, *elements: type[_ElementT], recursive: bool = True
-    ) -> Generator[_ElementT]: ...
-
-    @overload
-    def find_all(
-        self,
-        *elements: type[Element] | names.ElementName | str,
-        recursive: bool = True,
-    ) -> Generator[Element]: ...
-
-    def find_all(
-        self,
-        *elements: type[Element] | names.ElementName | str,
-        recursive: bool = True,
-    ) -> Generator[Element]:
-        """Find all elements that match the given search criteria.
-
-        Args:
-        elements: The elements to search for. Can be element names or element
-        classes.  If no search criteria are provided, all elements are
-        returned.
-        recursive: If `False`, only search the direct children of the element,
-        otherwise search all descendants.
-
-        Returns:
-        An iterator over all elements that match the search criteria.
-
-        Examples:
-        >>> from svglab import G, Rect
-        >>> g = G().add_children(Rect(), G().add_child(Rect()))
-        >>> list(g.find_all("rect"))
-        [Rect(), Rect()]
-        >>> list(g.find_all(G))
-        [G(children=[Rect()])]
-        >>> list(g.find_all(Rect, recursive=False))
-        [Rect()]
-        >>> list(g.find_all(G, "rect"))
-        [Rect(), G(children=[Rect()]), Rect()]
-
-        """
-        for child in self.descendants if recursive else self.children:
-            if isinstance(child, Element) and (
-                not elements
-                or any(
-                    _match_element(child, search=element)
-                    for element in elements
-                )
-            ):
-                yield child
-
-    @overload
-    def find(
-        self, *elements: type[_ElementT], recursive: bool = True
-    ) -> _ElementT: ...
-
-    @overload
-    def find(
-        self,
-        *elements: type[Element] | names.ElementName | str,
-        recursive: bool = True,
-    ) -> Element: ...
-
-    @overload
-    def find(
-        self,
-        *elements: type[_ElementT],
-        recursive: bool = True,
-        default: _T = _EMPTY_PARAM,
-    ) -> _ElementT | _T: ...
-
-    @overload
-    def find(
-        self,
-        *elements: type[Element] | names.ElementName | str,
-        recursive: bool = True,
-        default: _T = _EMPTY_PARAM,
-    ) -> Element | _T: ...
-
-    def find(
-        self,
-        *elements: type[Element] | names.ElementName | str,
-        recursive: bool = True,
-        default: _T = _EMPTY_PARAM,
-    ) -> Element | _T:
-        """Find the first element that matches the given search criteria.
-
-        Args:
-        elements: The elements to search for. Can be element names or element
-        classes.
-        recursive: If `False`, only search the direct children of the element,
-        otherwise search all descendants.
-        default: The default value to return if no element matches the search
-        criteria.
-
-        Returns:
-        The first element that matches the search criteria.
-
-        Raises:
-        SvgElementNotFoundError: If no element matches the search criteria and
-        no default value is provided.
-
-        Examples:
-        >>> from svglab import G, Rect
-        >>> g = G().add_children(
-        ...     Rect(id="foo"), G().add_child(Rect(id="bar"))
-        ... )
-        >>> g.find("rect")
-        Rect(id='foo')
-        >>> g.find(G)
-        G(children=[Rect(id='bar')])
-        >>> g.find("circle", default=None) is None
-        True
-
-        """
-        try:
-            return next(self.find_all(*elements, recursive=recursive))
-        except StopIteration as e:
-            if default is not _EMPTY_PARAM:
-                return default
-
-            msg = f"Unable to find element by search criteria: {elements}"
-            raise errors.SvgElementNotFoundError(msg) from e
-
-    @property
-    def num_children(self) -> int:
-        """Get the number of children of the element.
-
-        Returns:
-        The number of children of the element.
-
-        """
-        return len(self.__children)
-
-    def has_children(self) -> bool:
-        """Check if the element has any children.
-
-        Returns:
-        `True` if the element has children, `False` otherwise.
-
-        """
-        return self.num_children > 0
-
-    def __getitem__(self, key: str) -> str:
-        assert self.model_extra is not None, "model_extra is None"
-        value: str = self.model_extra[key]
-        return value
-
-    def __setitem__(self, key: str, value: str) -> None:
-        assert self.model_extra is not None, "model_extra is None"
-        self.model_extra[key] = value
-
-    def __delitem__(self, key: str) -> None:
-        assert self.model_extra is not None, "model_extra is None"
-        del self.model_extra[key]
-
-    @reprlib.recursive_repr()
-    @override
-    def __repr__(self) -> str:
-        name = type(self).__name__
-        attrs = dict(self.all_attrs())
-
-        if self.__children:
-            attrs["children"] = list(self.children)
-
-        if self.prefix:
-            attrs["prefix"] = self.prefix
-
-        if isinstance(self, UnknownElement):
-            attrs["element_name"] = self.element_name
-
-        attr_repr = ", ".join(
-            f"{key}={value!r}" for key, value in attrs.items()
-        )
-
-        return f"{name}({attr_repr})"
-
-    def get_iri(self) -> iri.Iri:
-        """Obtain a local IRI reference to this element.
-
-        The reference is constructed based on the element's id. If the element
-        has no id, an exception is raised.
-
-        Returns:
-            A local IRI reference to this element.
-
-        Raises:
-            RuntimeError: If the element has no id.
-
-        """
-        if self.id is None:
-            msg = "Unable to create local IRI reference to element with no id"
-            raise RuntimeError(msg)
-
-        return iri.Iri(fragment=self.id)
-
-    def get_func_iri(self) -> iri.FuncIri:
-        """Obtain a local FuncIRI reference to this element.
-
-        The reference is constructed based on the element's id. If the element
-        has no id, an exception is raised.
-
-        Returns:
-            A local FuncIRI reference to this element.
-
-        Raises:
-            RuntimeError: If the element has no id.
-
-        """
-        return self.get_iri().to_func_iri()
+    # endregion
 
 
 @final
