@@ -1329,7 +1329,7 @@ class Element(
         """The main transform attribute of the element.
 
         For most elements, this is the `transform` attribute. However, certain
-        elements such as `linearGradient` have theis own specialized
+        elements such as `linearGradient` have their own specialized
         transform attribute, in which case the `transform` attribute is
         ignored.
 

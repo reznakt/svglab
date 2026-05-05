@@ -512,7 +512,7 @@ class Matrix(_TransformFunctionBase):
 
         The determinant shows how the matrix scales the area of a shape.
         For example, a determinant of 1 means the area is unchanged.
-        The determinant of 0 means the transformation is degenrate.
+        The determinant of 0 means the transformation is degenerate.
 
         Returns:
             The determinant of the matrix.
@@ -559,7 +559,7 @@ class Matrix(_TransformFunctionBase):
             angle = mathutils.arctan(col_dot / s**2)
             result.append(SkewY(angle))
 
-        # degenrate transformation
+        # degenerate transformation
         else:
             result.append(Scale(0))
 

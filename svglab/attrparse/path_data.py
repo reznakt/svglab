@@ -409,7 +409,7 @@ def _relativize(path_data: PathData) -> PathData:
 
     This function takes a path and recomputes the coordinates of the path
     commands as if they were relative. This is done by subtracting the
-    current position from the coordinates of each command. The resuting path
+    current position from the coordinates of each command. The resulting path
     may be used for serialization with relative coordinates.
 
     Args:
