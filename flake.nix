@@ -17,39 +17,36 @@
         inherit (pkgs) lib;
 
         python = pkgs.python314;
+
+        systemLibs = with pkgs; [
+          cairo # pycairo
+          freetype # matplotlib
+          libffi # cffi
+          libjpeg # Pillow
+          libpng # Pillow
+          libxml2 # lxml
+          libxslt # lxml
+          zlib # Pillow
+        ];
       in
       {
-        devShells.default = pkgs.mkShellNoCC {
+        devShells.default = pkgs.mkShell {
           packages =
             with pkgs;
             [
-              cairo
-              freetype
               just
-              libjpeg
-              libpng
               pngquant
               pre-commit
               uv
+              python
             ]
-            ++ [ python ];
+            ++ systemLibs;
 
           env = {
             UV_PYTHON_DOWNLOADS = "never";
             UV_PYTHON = lib.getExe python;
-
-            LD_LIBRARY_PATH = lib.makeLibraryPath (
-              with pkgs;
-              [
-                cairo
-                freetype
-                libffi
-                libjpeg
-                libpng
-                stdenv.cc.cc.lib
-                zlib
-              ]
-            );
+            C_INCLUDE_PATH = lib.makeSearchPathOutput "dev" "include" systemLibs;
+            LD_LIBRARY_PATH = lib.makeLibraryPath (systemLibs ++ [ pkgs.stdenv.cc.cc.lib ]);
           };
 
           shellHook = ''
