@@ -22,7 +22,7 @@
           cairo # pycairo
           freetype # matplotlib
           libffi # cffi
-          libjpeg # Pillow
+          libjpeg_turbo # Pillow
           libpng # Pillow
           libxml2 # lxml
           libxslt # lxml
@@ -42,10 +42,12 @@
             ]
             ++ systemLibs;
 
-          env = {
+          env = rec {
             UV_PYTHON_DOWNLOADS = "never";
             UV_PYTHON = lib.getExe python;
-            C_INCLUDE_PATH = lib.makeSearchPathOutput "dev" "include" systemLibs;
+            CPATH = lib.makeSearchPathOutput "dev" "include" systemLibs;
+            C_INCLUDE_PATH = CPATH;
+            LIBRARY_PATH = lib.makeLibraryPath systemLibs;
             LD_LIBRARY_PATH = lib.makeLibraryPath (systemLibs ++ [ pkgs.stdenv.cc.cc.lib ]);
           };
 
