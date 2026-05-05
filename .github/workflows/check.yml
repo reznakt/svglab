@@ -11,6 +11,16 @@ jobs:
   check:
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        resolution: ["locked", "lowest-direct"]
+
+    defaults:
+      run:
+        shell: nix develop --command env -u UV_PYTHON -u UV_PYTHON_DOWNLOADS bash -e {0}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -20,26 +30,30 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
-      - name: Install dependencies
-        run: nix develop --command uv sync --all-groups
+      - name: Install tools
+        run: uv sync --all-groups --python ${{ matrix.python }}
+
+      - name: Apply dependency resolution to runtime dependencies
+        if: matrix.resolution != 'locked'
+        run: uv pip install --python .venv --reinstall --resolution ${{ matrix.resolution }} -e .
 
       - name: Run linter
-        run: nix develop --command just lint
+        run: just lint
 
       - name: Run formatter
-        run: nix develop --command just format
+        run: just format
 
       - name: Run tests
-        run: nix develop --command just test --cov-branch --cov-report=xml --junitxml=junit.xml
+        run: just test --cov-branch --cov-report=xml --junitxml=junit.xml
 
       - name: Run type checking
-        run: nix develop --command just typecheck
+        run: just typecheck
 
       - name: Run version check
-        run: nix develop --command just versioncheck
+        run: just versioncheck
 
       - name: Run license check
-        run: nix develop --command just licensecheck
+        run: just licensecheck
 
       - name: Upload coverage results to Codecov
         uses: codecov/codecov-action@v6.0.0
