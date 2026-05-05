@@ -53,13 +53,6 @@
           };
 
           shellHook = ''
-            export VIRTUAL_ENV="$PWD/.venv"
-            export PATH="$VIRTUAL_ENV/bin:$PATH"
-
-            if [ ! -d "$VIRTUAL_ENV" ]; then
-              uv venv "$VIRTUAL_ENV"
-            fi
-
             if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
               pre-commit install
             fi
