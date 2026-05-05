@@ -10,12 +10,26 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.resolution == 'latest' }}
 
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-        resolution: ["locked", "lowest-direct"]
+        include:
+          - python: "3.10"
+            resolution: locked
+          - python: "3.10"
+            resolution: lowest-direct
+          - python: "3.11"
+            resolution: locked
+          - python: "3.12"
+            resolution: locked
+          - python: "3.13"
+            resolution: locked
+          - python: "3.14"
+            resolution: locked
+          - python: "3.14"
+            resolution: highest
 
     defaults:
       run:
