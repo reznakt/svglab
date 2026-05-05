@@ -78,6 +78,7 @@ docs = [
   "mkdocs-redirects>=1.2.2",
   "mkdocstrings-python>=2.0.3",
   "pillow>=12.1.1",
+  "properdocs>=1.6.7",
   "ruff>=0.15.4",
 ]
 

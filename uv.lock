@@ -2087,6 +2087,7 @@ docs = [
     { name = "mkdocs-redirects" },
     { name = "mkdocstrings-python" },
     { name = "pillow" },
+    { name = "properdocs" },
     { name = "ruff" },
 ]
 test = [
@@ -2138,6 +2139,7 @@ docs = [
     { name = "mkdocs-redirects", specifier = ">=1.2.2" },
     { name = "mkdocstrings-python", specifier = ">=2.0.3" },
     { name = "pillow", specifier = ">=12.1.1" },
+    { name = "properdocs", specifier = ">=1.6.7" },
     { name = "ruff", specifier = ">=0.15.4" },
 ]
 test = [

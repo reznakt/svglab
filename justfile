@@ -2,10 +2,10 @@ default:
     @just --list
 
 docs *args:
-    uv run mkdocs build {{args}}
+    uv run properdocs build {{args}}
 
 docs-serve *args:
-    uv run mkdocs serve {{args}}
+    uv run properdocs serve {{args}}
 
 format *args:
     uv run ruff format --diff {{args}}
