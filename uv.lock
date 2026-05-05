@@ -7,18 +7,6 @@ resolution-markers = [
 ]
 
 [[package]]
-name = "affine"
-version = "3.0rc3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "attrs" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/9f/2c1d576e6d4644f6739a4fe3e81170c884339a4c7cf4fc2efb05c435597c/affine-3.0rc3.tar.gz", hash = "sha256:86f97d64e21671b6c8ebd453f0090707c30c734962f21655e15d9aaa3569a187", size = 20930, upload-time = "2026-01-30T17:19:50.95Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5e/13/9aacac5b4554859c979ef3f15810a3fe40125d0b33f67849e5be95b27d71/affine-3.0rc3-py3-none-any.whl", hash = "sha256:a491d8f23bfa5efc27a57e07a6acb30f51479b0114e5e416e3a9bd4eaa5aa77a", size = 10626, upload-time = "2026-01-30T17:19:49.986Z" },
-]
-
-[[package]]
 name = "annotated-types"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2064,7 +2052,6 @@ wheels = [
 name = "svglab"
 source = { editable = "." }
 dependencies = [
-    { name = "affine" },
     { name = "beautifulsoup4" },
     { name = "bidict" },
     { name = "html5lib" },
@@ -2117,7 +2104,6 @@ types = [
 
 [package.metadata]
 requires-dist = [
-    { name = "affine", specifier = ">=3.0b1,<4.0" },
     { name = "beautifulsoup4", specifier = ">=4.12.3,<5.0.0" },
     { name = "bidict", specifier = ">=0.23.1,<0.24.0" },
     { name = "html5lib", specifier = ">=1.1,<2.0" },

@@ -17,8 +17,8 @@ import operator
 from collections.abc import Iterable
 from types import NotImplementedType
 
-import affine
 import lark
+import numpy as np
 import numpy.typing as npt
 from typing_extensions import (
     Annotated,
@@ -88,10 +88,6 @@ class _TransformFunctionBase(
     protocols.CustomSerializable, metaclass=abc.ABCMeta
 ):
     @abc.abstractmethod
-    def to_affine(self) -> affine.Affine:
-        """Convert the transformation to an `affine.Affine` instance."""
-        ...
-
     def to_matrix(self) -> Matrix:
         """Convert the transformation to a `Matrix` instance.
 
@@ -106,7 +102,7 @@ class _TransformFunctionBase(
             Matrix(a=1.0, b=2.0, c=3.0, d=4.0, e=5.0, f=6.0)
 
         """
-        return Matrix.from_affine(self.to_affine())
+        ...
 
     def __array__(
         self,
@@ -114,7 +110,23 @@ class _TransformFunctionBase(
         *,
         copy: bool | None = None,
     ) -> utiltypes.NpFloatArray:
-        return self.to_affine().__array__(dtype=dtype, copy=copy)
+        if copy is False:
+            raise ValueError(
+                "copy=False is not supported since the array is dynamically"
+                " generated."
+            )
+
+        a, b, c, d, e, f = self.to_matrix().to_tuple()
+
+        # fmt: off
+        layout = [
+            [a, c, e],
+            [b, d, f],
+            [0, 0, 1]
+        ]
+        # fmt: on
+
+        return np.array(layout, dtype=dtype, copy=copy)
 
     @overload
     def __matmul__(  # type: ignore[reportOverlappingOverload]
@@ -128,10 +140,16 @@ class _TransformFunctionBase(
         if not isinstance(other, _TransformFunctionBase):
             return NotImplemented
 
-        product = self.to_affine() @ other.to_affine()
-        assert isinstance(product, affine.Affine)
+        prod = np.array(self) @ np.array(other)
 
-        return Matrix.from_affine(product)
+        return Matrix(
+            a=prod[0, 0],
+            b=prod[1, 0],
+            c=prod[0, 1],
+            d=prod[1, 1],
+            e=prod[0, 2],
+            f=prod[1, 2],
+        )
 
 
 @models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
@@ -151,8 +169,8 @@ class _Scale(_TransformFunctionBase):
         )
 
     @override
-    def to_affine(self) -> affine.Affine:
-        return affine.Affine.scale(self.sx, self.sy or self.sx)
+    def to_matrix(self) -> Matrix:
+        return Matrix(a=self.sx, b=0, c=0, d=self.sy or self.sx, e=0, f=0)
 
     @override
     def __eq__(self, other: object, /) -> bool:
@@ -209,10 +227,20 @@ class _Rotate(_TransformFunctionBase):
         return serialize.serialize_function_call("rotate", angle, *origin)
 
     @override
-    def to_affine(self) -> affine.Affine:
-        return affine.Affine.rotation(
-            self.angle, (self.cx or 0, self.cy or 0)
-        )
+    def to_matrix(self) -> Matrix:
+        sin_a = mathutils.sin(self.angle)
+        cos_a = mathutils.cos(self.angle)
+
+        rot = Matrix(a=cos_a, b=sin_a, c=-sin_a, d=cos_a, e=0, f=0)
+
+        cx = self.cx or 0
+        cy = self.cy or 0
+
+        if mathutils.is_close(cx, 0) and mathutils.is_close(cy, 0):
+            return rot
+
+        # translate to origin, rotate, translate back
+        return Translate(cx, cy) @ rot @ Translate(-cx, -cy)
 
     @override
     def __eq__(self, other: object, /) -> bool:
@@ -274,8 +302,8 @@ class SkewY(_TransformFunctionBase):
         )
 
     @override
-    def to_affine(self) -> affine.Affine:
-        return affine.Affine.shear(y_angle=self.angle)
+    def to_matrix(self) -> Matrix:
+        return Matrix(a=1, b=mathutils.tan(self.angle), c=0, d=1, e=0, f=0)
 
     @override
     def __eq__(self, other: object, /) -> bool:
@@ -306,8 +334,8 @@ class SkewX(_TransformFunctionBase):
         )
 
     @override
-    def to_affine(self) -> affine.Affine:
-        return affine.Affine.shear(x_angle=self.angle)
+    def to_matrix(self) -> Matrix:
+        return Matrix(a=1, b=0, c=mathutils.tan(self.angle), d=1, e=0, f=0)
 
     @override
     def __eq__(self, other: object, /) -> bool:
@@ -365,8 +393,8 @@ class _Translate(_TransformFunctionBase):
         return serialize.serialize_function_call("translate", *args)
 
     @override
-    def to_affine(self) -> affine.Affine:
-        return affine.Affine.translation(self.tx, self.ty or 0)
+    def to_matrix(self) -> Matrix:
+        return Matrix(a=1, b=0, c=0, d=1, e=self.tx, f=self.ty or 0)
 
     @override
     def __eq__(self, other: object, /) -> bool:
@@ -462,21 +490,8 @@ class Matrix(_TransformFunctionBase):
         )
 
     @override
-    def to_affine(self) -> affine.Affine:
-        # ! affine uses different labels for the matrix elements
-
-        return affine.Affine(
-            self.a, self.c, self.e, self.b, self.d, self.f
-        )
-
-    @classmethod
-    def from_affine(cls, matrix: affine.Affine, /) -> Self:
-        """Create a `Matrix` instance from an `affine.Affine` instance."""
-        # ! affine uses different labels for the matrix elements
-
-        return cls(
-            matrix.a, matrix.d, matrix.b, matrix.e, matrix.c, matrix.f
-        )
+    def to_matrix(self) -> Matrix:
+        return self
 
     def to_tuple(self) -> tuple[float, float, float, float, float, float]:
         """Convert the matrix to a tuple.
@@ -508,7 +523,7 @@ class Matrix(_TransformFunctionBase):
             -2.0
 
         """
-        return self.to_affine().determinant
+        return self.a * self.d - self.b * self.c
 
     def __qr_decompose(self) -> Transform:
         result: Transform = []

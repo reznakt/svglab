@@ -213,3 +213,71 @@ def tan(degrees: float) -> float:
             return -1
         case _:
             return math.tan(math.radians(degrees))
+
+
+def sin(degrees: float) -> float:
+    """Compute the sine of an angle in degrees.
+
+    This function is a wrapper around `math.sin` that takes an angle in degrees
+    and returns "nice" zero values for common angles.
+
+    Args:
+        degrees: The angle in degrees.
+
+    Returns:
+        The sine of the angle.
+
+    Examples:
+        >>> sin(0)
+        0.0
+        >>> sin(90)
+        1.0
+        >>> sin(180)
+        0.0
+
+    """
+    degrees %= 360
+
+    match degrees:
+        case 0 | 180:
+            return 0.0
+        case 90:
+            return 1.0
+        case 270:
+            return -1.0
+        case _:
+            return math.sin(math.radians(degrees))
+
+
+def cos(degrees: float) -> float:
+    """Compute the cosine of an angle in degrees.
+
+    This function is a wrapper around `math.cos` that takes an angle in degrees
+    and returns "nice" zero values for common angles.
+
+    Args:
+        degrees: The angle in degrees.
+
+    Returns:
+        The cosine of the angle.
+
+    Examples:
+        >>> cos(0)
+        1.0
+        >>> cos(90)
+        0.0
+        >>> cos(180)
+        -1.0
+
+    """
+    degrees %= 360
+
+    match degrees:
+        case 90 | 270:
+            return 0.0
+        case 0:
+            return 1.0
+        case 180:
+            return -1.0
+        case _:
+            return math.cos(math.radians(degrees))

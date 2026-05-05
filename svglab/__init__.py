@@ -40,10 +40,8 @@ Length(value=50.0, unit=None)
 
 from importlib import metadata as __metadata
 
-import affine as __affine
 from typing_extensions import Final as __Final
 
-from svglab import constants as __constants
 from svglab.attrparse.angle import Angle, AngleUnit
 from svglab.attrparse.color import Color
 from svglab.attrparse.iri import FuncIri, Iri
@@ -942,8 +940,5 @@ __all__: __Final = [
     "set_formatter",
     "swap_transforms",
 ]
-
-
-__affine.set_epsilon(__constants.FLOAT_ABSOLUTE_TOLERANCE)
 
 __version__: __Final = __metadata.version(__name__)

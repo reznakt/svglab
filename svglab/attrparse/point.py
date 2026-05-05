@@ -87,10 +87,12 @@ class _Point(
         return type(self)(self.x * scalar, self.y * scalar)
 
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
-        as_tuple = tuple(self)
-        transformed = other.to_affine() @ as_tuple
+        a, b, c, d, e, f = other.to_matrix().to_tuple()
 
-        return type(self)(*transformed)
+        x = a * self.x + c * self.y + e
+        y = b * self.x + d * self.y + f
+
+        return type(self)(x, y)
 
     @override
     def __eq__(self, other: object) -> bool:
