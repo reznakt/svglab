@@ -499,10 +499,10 @@ class PathData(
 
     Args:
         iterable: An iterable of `PathCommand` instances (for example,
-        another `PathData` instance).
+            another `PathData` instance).
         start: The starting point of the path. If `start` is not `None`, a
-        `MoveTo` command is automatically added to the path, moving the "pen"
-        to the starting point.
+            `MoveTo` command is automatically added to the path, moving the
+            "pen" to the starting point.
 
     Examples:
     >>> path_data = (
