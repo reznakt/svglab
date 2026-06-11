@@ -187,6 +187,9 @@ def parse_svg(
         if isinstance(markup, pathlib.Path):
             markup = stack.push(markup.open())
 
+        if isinstance(markup, protocols.SupportsRead):
+            markup = markup.read()
+
         soup = bs4.BeautifulSoup(markup, features=parser)
 
     svg_fragments = _get_root_svg_fragments(soup)
