@@ -2,7 +2,11 @@
 
 # ruff: noqa: D103
 
+import base64
 import copy
+import io
+import pathlib
+from collections.abc import Callable
 
 import hypothesis
 import hypothesis.strategies as st
@@ -19,6 +23,19 @@ class _SupportsSerialize(Protocol):
 
 
 numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
+MarkupInput = str | bytes | io.StringIO | io.BytesIO
+ShapeWithPath = (
+    svglab.Circle
+    | svglab.Ellipse
+    | svglab.Line
+    | svglab.Polygon
+    | svglab.Polyline
+    | svglab.Rect
+)
+
+
+def _to_bytes_buffer(xml: str) -> io.BytesIO:
+    return io.BytesIO(xml.encode())
 
 
 @hypothesis.given(numbers)
@@ -55,6 +72,90 @@ def test_invalid_length(value: str) -> None:
         match=r"Failed to parse text with grammar 'length.lark'",
     ):
         svglab.parse_svg(xml)
+
+
+@pytest.mark.parametrize(
+    "factory", [str, str.encode, io.StringIO, _to_bytes_buffer]
+)
+def test_parse_svg_accepts_multiple_input_types(
+    factory: Callable[[str], MarkupInput], tmp_path: pathlib.Path
+) -> None:
+    svg = conftest.complex_svg()
+    xml = svg.to_xml(pretty=False)
+    baseline = svglab.parse_svg(xml)
+
+    path = tmp_path / "input.svg"
+    path.write_text(xml)
+
+    assert svglab.parse_svg(factory(xml)) == baseline
+    assert svglab.parse_svg(path) == baseline
+
+
+def test_parse_svg_html_parser_finds_wrapped_fragment() -> None:
+    svg = svglab.parse_svg(
+        "<html><body><svg><rect width='10'/></svg></body></html>",
+        parser="html.parser",
+    )
+
+    assert isinstance(svg.find(svglab.Rect), svglab.Rect)
+
+
+@pytest.mark.parametrize(
+    ("markup", "count"),
+    [
+        ("<html><body><p>no svg here</p></body></html>", 0),
+        ("<div><svg/><svg/></div>", 2),
+    ],
+)
+def test_parse_svg_requires_exactly_one_svg(
+    markup: str, count: int
+) -> None:
+    with pytest.raises(
+        ValueError, match=rf"Expected one <svg> element, found {count}"
+    ):
+        svglab.parse_svg(markup, parser="html.parser")
+
+
+def test_parse_svg_unknown_element_roundtrip() -> None:
+    xml = "<svg><custom-element data-extra='value'/></svg>"
+
+    svg = svglab.parse_svg(xml)
+    unknown = svg.find(svglab.UnknownElement)
+
+    assert unknown.element_name == "custom-element"
+    assert unknown.extra_attrs() == {"data-extra": "value"}
+    assert svglab.parse_svg(svg.to_xml(pretty=False)) == svg
+
+
+@pytest.mark.parametrize(
+    "markup",
+    [
+        "<not-svg>abcdefghijklmnopqrstuvwxyz0123456789</not-svg>",
+        b"<not-svg>abcdefghijklmnopqrstuvwxyz0123456789</not-svg>",
+        io.StringIO(
+            "<not-svg>abcdefghijklmnopqrstuvwxyz0123456789</not-svg>"
+        ),
+        io.BytesIO(
+            b"<not-svg>abcdefghijklmnopqrstuvwxyz0123456789</not-svg>"
+        ),
+    ],
+)
+def test_parse_svg_error_message_truncates_markup_head(
+    markup: str | bytes | io.StringIO | io.BytesIO,
+) -> None:
+    with pytest.raises(ValueError, match=r"markup: .+\.\.\."):
+        svglab.parse_svg(markup, parser="html.parser")
+
+
+def test_parse_svg_path_error_message_truncates_markup_head(
+    tmp_path: pathlib.Path,
+) -> None:
+    markup = "<not-svg>abcdefghijklmnopqrstuvwxyz0123456789</not-svg>"
+    path = tmp_path / "markup.txt"
+    path.write_text(markup)
+
+    with pytest.raises(ValueError, match=r"markup: .+\.\.\."):
+        svglab.parse_svg(path, parser="html.parser")
 
 
 def util_test_transform(text: str, parsed: svglab.Transform) -> None:
@@ -260,6 +361,202 @@ def test_attribute_normalization_serialize() -> None:
     assert dump == attrs
 
 
+def test_svg_save_roundtrip_path_and_file(tmp_path: pathlib.Path) -> None:
+    svg = conftest.nested_svg()
+    path = tmp_path / "saved.svg"
+
+    svg.save(path, pretty=False)
+    assert path.read_text().endswith("\n")
+
+    buffer = io.StringIO()
+    svg.save(buffer, pretty=False, trailing_newline=False)
+
+    assert not buffer.getvalue().endswith("\n")
+    assert svglab.parse_svg(path) == svglab.parse_svg(buffer.getvalue())
+
+
+def test_svg_to_data_uri_roundtrip() -> None:
+    svg = conftest.complex_svg()
+
+    data_uri = svg.to_data_uri()
+    prefix = "data:image/svg+xml;base64,"
+
+    assert data_uri.startswith(prefix)
+
+    decoded = base64.b64decode(data_uri.removeprefix(prefix)).decode()
+
+    assert svglab.parse_svg(decoded).to_data_uri() == data_uri
+
+
+@pytest.mark.parametrize(
+    ("shape", "expected_num_commands", "last_command_type"),
+    [
+        pytest.param(
+            svglab.Circle(
+                cx=svglab.Length(40),
+                cy=svglab.Length(50),
+                r=svglab.Length(20),
+                fill=svglab.Color("red"),
+                stroke=svglab.Color("black"),
+            ),
+            3,
+            svglab.ArcTo,
+            id="circle",
+        ),
+        pytest.param(
+            svglab.Ellipse(
+                cx=svglab.Length(60),
+                cy=svglab.Length(45),
+                rx=svglab.Length(30),
+                ry=svglab.Length(10),
+                fill=svglab.Color("green"),
+                stroke=svglab.Color("black"),
+            ),
+            3,
+            svglab.ArcTo,
+            id="ellipse",
+        ),
+        pytest.param(
+            svglab.Line(
+                x1=svglab.Length(10),
+                y1=svglab.Length(15),
+                x2=svglab.Length(90),
+                y2=svglab.Length(70),
+                stroke=svglab.Color("blue"),
+                stroke_width=svglab.Length(4),
+            ),
+            2,
+            svglab.LineTo,
+            id="line",
+        ),
+        pytest.param(
+            svglab.Polygon(
+                points=[
+                    svglab.Point(10, 10),
+                    svglab.Point(90, 10),
+                    svglab.Point(75, 70),
+                    svglab.Point(25, 70),
+                ],
+                fill=svglab.Color("yellow"),
+                stroke=svglab.Color("black"),
+            ),
+            5,
+            svglab.ClosePath,
+            id="polygon",
+        ),
+        pytest.param(
+            svglab.Polyline(
+                points=[
+                    svglab.Point(10, 50),
+                    svglab.Point(30, 20),
+                    svglab.Point(60, 60),
+                    svglab.Point(90, 25),
+                ],
+                fill="none",
+                stroke=svglab.Color("purple"),
+                stroke_width=svglab.Length(3),
+            ),
+            4,
+            svglab.LineTo,
+            id="polyline",
+        ),
+        pytest.param(
+            svglab.Rect(
+                x=svglab.Length(20),
+                y=svglab.Length(15),
+                width=svglab.Length(60),
+                height=svglab.Length(40),
+                rx=svglab.Length(8),
+                fill=svglab.Color("orange"),
+                stroke=svglab.Color("black"),
+            ),
+            9,
+            svglab.ArcTo,
+            id="rect-rx-only",
+        ),
+        pytest.param(
+            svglab.Rect(
+                x=svglab.Length(15),
+                y=svglab.Length(20),
+                width=svglab.Length(70),
+                height=svglab.Length(35),
+                ry=svglab.Length(6),
+                fill=svglab.Color("cyan"),
+                stroke=svglab.Color("black"),
+            ),
+            9,
+            svglab.ArcTo,
+            id="rect-ry-only",
+        ),
+        pytest.param(
+            svglab.Rect(
+                x=svglab.Length(10),
+                y=svglab.Length(10),
+                width=svglab.Length(80),
+                height=svglab.Length(50),
+                rx=svglab.Length(12),
+                ry=svglab.Length(4),
+                fill=svglab.Color("pink"),
+                stroke=svglab.Color("black"),
+            ),
+            9,
+            svglab.ArcTo,
+            id="rect-rx-ry",
+        ),
+    ],
+)
+def test_basic_shape_to_path_is_visually_equivalent(
+    shape: ShapeWithPath,
+    expected_num_commands: int,
+    last_command_type: type[svglab.PathCommand],
+) -> None:
+    original = svglab.Svg(
+        width=svglab.Length(100), height=svglab.Length(100)
+    ).add_child(copy.deepcopy(shape))
+    path = copy.deepcopy(shape).to_path()
+    converted = svglab.Svg(
+        width=svglab.Length(100), height=svglab.Length(100)
+    ).add_child(path)
+
+    assert path.d is not None
+    assert len(path.d) == expected_num_commands
+    assert isinstance(path.d[-1], last_command_type)
+    conftest.assert_svg_visually_equal(original, converted)
+
+
+def test_shape_set_path_length_scales_non_percentage_attrs() -> None:
+    path = svglab.Path(
+        pathLength=100,
+        stroke_dasharray=[svglab.Length(10), svglab.Length(5, "%")],
+        stroke_dashoffset=svglab.Length(4),
+    )
+
+    path.set_path_length(250)
+
+    assert path.pathLength == 250
+    assert path.stroke_dasharray == [
+        svglab.Length(25),
+        svglab.Length(5, "%"),
+    ]
+    assert path.stroke_dashoffset == svglab.Length(10)
+
+
+def test_shape_set_path_length_requires_positive_value() -> None:
+    path = svglab.Path(pathLength=100)
+
+    with pytest.raises(ValueError, match="Path length must be positive"):
+        path.set_path_length(0)
+
+
+def test_shape_set_path_length_requires_existing_path_length() -> None:
+    path = svglab.Path()
+
+    with pytest.raises(
+        RuntimeError, match="Current pathLength must not be None"
+    ):
+        path.set_path_length(100)
+
+
 @pytest.mark.parametrize(
     "element", [svglab.RawText, svglab.Comment, svglab.CData]
 )
@@ -319,6 +616,69 @@ def test_eq_element_group() -> None:
 @hypothesis.given(st.text())
 def test_eq_element_prefix(prefix: str) -> None:
     assert svglab.Rect(prefix=prefix) == svglab.Rect(prefix=prefix)
+
+
+def test_tree_navigation_search_and_mutation() -> None:
+    root = svglab.Svg()
+    group = svglab.G(id="group")
+    rect = svglab.Rect(id="rect")
+    circle = svglab.Circle(id="circle")
+    line = svglab.Line(id="line")
+
+    root.add_child(group)
+    group.add_children(rect, circle, line)
+
+    assert list(circle.ancestors) == [group, root]
+    assert list(circle.prev_siblings) == [rect]
+    assert list(circle.next_siblings) == [line]
+    assert list(circle.siblings) == [rect, line]
+    assert circle.get_root() is root
+
+    assert group.find("circle", recursive=False) is circle
+    assert list(group.find_all(svglab.Circle, recursive=False)) == [circle]
+    assert group.find("ellipse", default=None) is None
+
+    with pytest.raises(svglab.SvgElementNotFoundError):
+        group.find("ellipse")
+
+    assert group.get_child_index(circle) == 1
+
+    removed = group.remove_child(circle)
+
+    assert removed is circle
+    assert circle.parent is None
+
+    with pytest.raises(ValueError, match="Child not found"):
+        group.remove_child(circle)
+
+    popped = group.pop_child(0)
+
+    assert popped is rect
+    assert rect.parent is None
+
+    group.clear_children()
+
+    assert not group.has_children()
+    assert line.parent is None
+
+
+def test_resolve_iri_and_reference_detection() -> None:
+    gradient = svglab.LinearGradient(id="paint")
+    rect = svglab.Rect(fill=gradient.get_func_iri())
+    svg = svglab.Svg().add_children(gradient, rect)
+
+    assert svg.resolve_iri(svglab.Iri(fragment="paint")) is gradient
+    assert rect.references_other_element() is True
+
+    rect.fill = svglab.Iri(fragment="missing").to_func_iri()
+
+    with pytest.warns(UserWarning, match=r"Dangling IRI reference"):
+        assert rect.references_other_element() is False
+
+    with pytest.raises(ValueError, match="non-local IRI reference"):
+        svg.resolve_iri(
+            svglab.Iri(scheme="https", authority="example.com")
+        )
 
 
 @pytest.mark.parametrize(
@@ -586,6 +946,102 @@ def test_matrix_multiplication(
     transformed = svglab.compose(transforms) @ before
 
     assert transformed == after
+
+
+def test_render_preserves_aspect_ratio_for_single_dimension() -> None:
+    svg = svglab.Svg(
+        width=svglab.Length(100), height=svglab.Length(200)
+    ).add_child(
+        svglab.Rect(
+            width=svglab.Length(100),
+            height=svglab.Length(200),
+            fill=svglab.Color("red"),
+        )
+    )
+
+    assert svg.render(width=50).size == (50, 100)
+    assert svg.render(height=50).size == (25, 50)
+
+
+def test_render_requires_resolvable_dimensions() -> None:
+    svg = svglab.Svg(
+        width=svglab.Length(100, "%"), height=svglab.Length(100, "%")
+    ).add_child(
+        svglab.Rect(
+            width=svglab.Length(100),
+            height=svglab.Length(100),
+            fill=svglab.Color("red"),
+        )
+    )
+
+    with pytest.raises(
+        ValueError, match="Unable to determine image dimensions"
+    ):
+        svg.render()
+
+
+def test_render_preserves_aspect_ratio_with_both_dimensions() -> None:
+    svg = svglab.Svg(
+        width=svglab.Length(100), height=svglab.Length(200)
+    ).add_child(
+        svglab.Rect(
+            width=svglab.Length(100),
+            height=svglab.Length(200),
+            fill=svglab.Color("red"),
+        )
+    )
+
+    assert svg.render(width=100, height=100).size == (200, 100)
+
+
+def test_bbox_matches_mask_bounds() -> None:
+    svg = svglab.Svg(
+        width=svglab.Length(40), height=svglab.Length(30)
+    ).add_child(
+        svglab.Rect(
+            x=svglab.Length(5),
+            y=svglab.Length(6),
+            width=svglab.Length(10),
+            height=svglab.Length(8),
+            fill=svglab.Color("black"),
+        )
+    )
+    rect = svg.find(svglab.Rect)
+    mask = rect.get_mask()
+    rows, cols = mask.nonzero()
+
+    expected = (
+        int(cols.min()),
+        int(rows.min()),
+        int(cols.max()) + 1,
+        int(rows.max()) + 1,
+    )
+
+    assert rect.get_bbox() == expected
+
+
+def test_visible_only_mask_and_bbox_ignore_fully_transparent_geometry() -> (
+    None
+):
+    svg = svglab.Svg(
+        width=svglab.Length(40), height=svglab.Length(30)
+    ).add_child(
+        svglab.Rect(
+            x=svglab.Length(5),
+            y=svglab.Length(6),
+            width=svglab.Length(10),
+            height=svglab.Length(8),
+            fill=svglab.Color("black"),
+            fill_opacity=0,
+            stroke="none",
+        )
+    )
+    rect = svg.find(svglab.Rect)
+
+    assert rect.get_bbox() is not None
+    assert rect.get_bbox(visible_only=True) is None
+    assert rect.get_mask().any()
+    assert not rect.get_mask(visible_only=True).any()
 
 
 _TRANSFORMS: Final[list[svglab.Transform]] = [
