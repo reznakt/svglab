@@ -105,7 +105,7 @@ graph TD
 
 ### Installation
 
-**From PyPi**:
+**From PyPI**:
 
 ```sh
 pip install svglab
