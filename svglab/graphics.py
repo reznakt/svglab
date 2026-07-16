@@ -75,6 +75,47 @@ def _compute_render_size(
     width: float | None = None,
     height: float | None = None,
 ) -> tuple[float, float]:
+    """Compute the render size of an SVG element.
+
+    The function takes into account the width and height attributes of the
+    SVG element, as well as the specified width and height parameters. If
+    only one of the width or height parameters is provided, the other
+    dimension is computed to preserve the aspect ratio of the SVG element.
+
+    Args:
+    svg: The SVG element to compute the render size for.
+    width: The desired width of the rendered image, in pixels. If `None`,
+        the width attribute of the SVG element is used.
+    height: The desired height of the rendered image, in pixels. If `None`,
+        the height attribute of the SVG element is used.
+
+    Returns:
+    A tuple containing the computed width and height of the rendered image,
+    in pixels.
+
+    Raises:
+    TypeError: If the provided `svg` is not an instance of
+        `_SvgElementLike`.
+    ValueError: If the width and height cannot be determined from the SVG
+        element or the provided parameters.
+
+    Examples:
+        >>> from svglab import Svg, Length
+        >>> svg = Svg(width=Length(100), height=Length(200))
+        >>> _compute_render_size(svg, width=50)
+        (50, 100.0)
+        >>> _compute_render_size(svg, height=100)
+        (50.0, 100)
+        >>> _compute_render_size(svg, width=50, height=100)
+        (50, 100)
+        >>> _compute_render_size(svg)
+        (100.0, 200.0)
+        >>> _compute_render_size(Svg())  # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+            ...
+        ValueError: Unable to determine image dimensions: ...
+
+    """
     if not isinstance(svg, _SvgElementLike):
         msg = "Svg must be an instance of _SvgElementLike"
         raise TypeError(msg)
