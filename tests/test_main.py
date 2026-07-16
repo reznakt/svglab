@@ -980,18 +980,33 @@ def test_render_requires_resolvable_dimensions() -> None:
         svg.render()
 
 
-def test_render_preserves_aspect_ratio_with_both_dimensions() -> None:
+@hypothesis.given(
+    st.integers(min_value=1, max_value=1000),
+    st.integers(min_value=1, max_value=1000),
+    st.integers(min_value=1, max_value=1000),
+)
+def test_render_preserves_aspect_ratio_with_both_dimensions(
+    width: int, height: int, target_size: int
+) -> None:
     svg = svglab.Svg(
-        width=svglab.Length(100), height=svglab.Length(200)
+        width=svglab.Length(width), height=svglab.Length(height)
     ).add_child(
         svglab.Rect(
-            width=svglab.Length(100),
-            height=svglab.Length(200),
+            width=svglab.Length(width),
+            height=svglab.Length(height),
             fill=svglab.Color("red"),
         )
     )
 
-    assert svg.render(width=100, height=100).size == (200, 100)
+    (img_width, img_height) = svg.render(
+        width=target_size, height=target_size
+    ).size
+
+    scale = target_size / max(width, height)
+
+    # allow one pixel of rounding error on each axis
+    assert img_width == pytest.approx(width * scale, abs=1)
+    assert img_height == pytest.approx(height * scale, abs=1)
 
 
 def test_bbox_matches_mask_bounds() -> None:

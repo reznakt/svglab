@@ -95,7 +95,7 @@ def _compute_render_size(
             if ratio > 1:
                 height = height / ratio
             elif ratio < 1:
-                width = width / ratio
+                width = width * ratio
 
     width = width if width is not None else svg_width
     height = height if height is not None else svg_height
