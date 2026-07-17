@@ -1294,6 +1294,19 @@ def test_set_viewbox_sets_viewbox_attr() -> None:
                 ],
             )
         ),
+        svglab.Svg(
+            width=svglab.Length(100),
+            height=svglab.Length(100),
+            viewBox=(50, 50, 200, 200),
+        ).add_child(
+            svglab.Rect(
+                x=svglab.Length(100),
+                y=svglab.Length(100),
+                width=svglab.Length(50),
+                height=svglab.Length(50),
+                fill=svglab.Color("blue"),
+            )
+        ),
     ],
 )
 def test_set_viewbox_produces_visually_equal_svg(svg: svglab.Svg) -> None:

@@ -1247,14 +1247,14 @@ class Svg(
         old_min_x, old_min_y, old_width, old_height = old_viewbox
         min_x, min_y, width, height = viewbox
 
-        tx = min_x - old_min_x
-        ty = min_y - old_min_y
-
         sx = width / old_width
         sy = height / old_height
 
         if not mathutils.is_close(sx, sy):
             raise ValueError("Aspect ratios of old and new viewBox differ")
+
+        tx = min_x - sx * old_min_x
+        ty = min_y - sy * old_min_y
 
         # skip self; this can be done in a single for loop because the
         # SVG is a tree (probably)
