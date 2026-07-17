@@ -1,5 +1,3 @@
-"""Pytest configuration and utilities for testing."""
-
 import pathlib
 
 import numpy as np

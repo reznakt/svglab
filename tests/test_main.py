@@ -1,7 +1,3 @@
-"""Tests for the svglab package."""
-
-# ruff: noqa: D103
-
 import base64
 import copy
 import io
