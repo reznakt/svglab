@@ -657,8 +657,9 @@ class Element(
 
         return {
             attr: getattr(self, attr_names.ATTR_NAME_TO_NORMALIZED[attr])
-            for key, _ in dump.items()
-            if (attr := cast(attr_names.AttributeName, key))
+            for key in dump
+            if key not in (self.model_extra or {})
+            and (attr := cast(attr_names.AttributeName, key))
             in attr_names.ATTR_NAME_TO_NORMALIZED
         }
 
