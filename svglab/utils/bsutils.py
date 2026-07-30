@@ -75,7 +75,7 @@ def beautifulsoup_to_str(
 
             result = soup.prettify(formatter=_BsFormatter())
         case bs4.Tag(), False:
-            result = str(element)
+            result = element.decode(formatter=_BsFormatter())
         case _:
             msg = f"Unsupported type: {type(element)}"
             raise TypeError(msg)
