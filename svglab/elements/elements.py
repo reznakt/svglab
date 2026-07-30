@@ -1168,7 +1168,6 @@ class Svg(
         path_or_file: The path to the file to save the XML to,
         or a file-like object.
         pretty: Whether to produce pretty-printed XML.
-        indent: The number of spaces to indent each level of the document.
         trailing_newline: Whether to add a trailing newline to the file.
         formatter: The formatter to use for serialization.
 

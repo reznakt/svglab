@@ -512,7 +512,6 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
 
         Args:
         pretty: Whether to produce pretty-printed XML.
-        indent: The number of spaces to indent each level of the document.
         formatter: The formatter to use for serialization.
 
         Returns:
