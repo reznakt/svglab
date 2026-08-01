@@ -1159,11 +1159,19 @@ class PathData(
 
     @override
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+        # a shorthand line command takes the other coordinate from the current
+        # point, which only translations and scalings preserve
+        path_data = (
+            self
+            if isinstance(other, transform.Translate | transform.Scale)
+            else self.resolve_shorthands(lines=True, curves=False)
+        )
+
         return type(self)(
             other @ command
             if isinstance(command, _PhysicalPathCommand)
             else command
-            for command in self
+            for command in path_data
         )
 
     @override
