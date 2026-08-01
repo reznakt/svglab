@@ -1537,6 +1537,18 @@ class Element(
                 if element_name(child) == "stop":
                     continue
 
+                # bounding box paint servers are relative to the referencing
+                # element, so they are transformed along with it
+                if isinstance(
+                    child, attrdefs.GradientUnitsAttr
+                ) and child.gradientUnits in (None, "objectBoundingBox"):
+                    continue
+
+                if isinstance(
+                    child, attrdefs.PatternUnitsAttr
+                ) and child.patternUnits in (None, "objectBoundingBox"):
+                    continue
+
                 if child.main_transform is None:
                     child.main_transform = []
 
