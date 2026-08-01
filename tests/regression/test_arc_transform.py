@@ -10,8 +10,12 @@ _D: Final = "M 40,100 A 40 20 30 1 0 160,100"
 
 
 def _svg(path: svglab.Path) -> svglab.Svg:
+    # the viewBox is centered on the origin so that mirrored and rotated
+    # arcs stay inside the viewport
     return svglab.Svg(
-        width=svglab.Length(200), height=svglab.Length(200)
+        width=svglab.Length(400),
+        height=svglab.Length(400),
+        viewBox=(-200, -200, 400, 400),
     ).add_child(path)
 
 
@@ -23,6 +27,11 @@ def _svg(path: svglab.Path) -> svglab.Svg:
         svglab.Rotate(30, 100, 100),
         svglab.Rotate(90, 100, 100),
         svglab.Rotate(-45, 100, 100),
+        svglab.Scale(-1, 1),
+        svglab.Scale(1, -1),
+        svglab.Scale(-1, -1),
+        svglab.Scale(-0.5),
+        svglab.Scale(0.5),
     ],
 )
 def test_transformed_arc_is_visually_equal(

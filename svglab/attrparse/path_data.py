@@ -28,7 +28,7 @@ from typing_extensions import (
 
 from svglab import errors, mixins, models, protocols, serialize
 from svglab.attrparse import parse, point, transform
-from svglab.utils import iterutils, miscutils
+from svglab.utils import iterutils, mathutils, miscutils
 
 
 _Flag: TypeAlias = Literal["0", "1"]
@@ -244,14 +244,38 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         radii = self.radii
         angle = self.angle
+        sweep = self.sweep
         end = self.end
 
         match other:
             case transform.Translate():
                 end = other @ end
-            case transform.Scale():
-                radii = other @ radii
+            case transform.Scale(sx, sy):
+                # an ellipse that is not axis-aligned changes shape (and not
+                # just size) under a scale with differing magnitudes; the new
+                # radii and x-axis rotation cannot be expressed in terms of
+                # the original ones
+                if not mathutils.is_close(
+                    abs(sx), abs(sy)
+                ) and not mathutils.is_close(mathutils.sin(angle), 0):
+                    msg = (
+                        "Unable to scale an arc with a non-zero x-axis"
+                        f" rotation by differing factors: {other}"
+                    )
+                    raise NotImplementedError(msg)
+
+                # radii are always non-negative; a mirroring scale flips the
+                # ellipse over and reverses the direction in which the arc
+                # is drawn
+                scaled_radii = other @ radii
+                radii = point.Point(
+                    abs(scaled_radii.x), abs(scaled_radii.y)
+                )
                 end = other @ end
+
+                if sx * sy < 0:
+                    angle = -angle
+                    sweep = not sweep
             case transform.Rotate(a):
                 # rotating the arc rotates both its end point and the
                 # x-axis of the ellipse it is a part of
@@ -265,7 +289,7 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
             radii=radii,
             angle=angle,
             large=self.large,
-            sweep=self.sweep,
+            sweep=sweep,
             end=end,
         )
 
