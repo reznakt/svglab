@@ -492,6 +492,10 @@ def _serialize_number(
     '.123456789'
     >>> _serialize_number(1e-7)
     '1e-07'
+    >>> _serialize_number(-1e9)
+    '-1e+09'
+    >>> _serialize_number(-1e-7)
+    '-1e-07'
 
     """
     formatter = get_current_formatter()
@@ -518,6 +522,9 @@ def _serialize_number(
     )
 
     exponent = 0
+    # the sign has to be remembered before the mantissa (which is always
+    # positive) replaces the original number
+    sign = "-" if number < 0 else ""
 
     # the mantissa gets formatted just like a regular number, at the end we add
     # the sign and the exponent
@@ -529,8 +536,6 @@ def _serialize_number(
 
     if not formatter.show_decimal_part_if_int:
         result = result.removesuffix(".0")
-
-    sign = "-" if number < 0 else ""
 
     if formatter.strip_leading_zero and result.startswith(("0.", "-0.")):
         no_sign = result.removeprefix("-")
