@@ -1014,6 +1014,10 @@ class Rect(
                 rx = self.rx
                 ry = self.ry
 
+        # the specification requires clamping the radii to half the side
+        rx = min(rx, width / 2, key=float)
+        ry = min(ry, height / 2, key=float)
+
         return (
             path_data.PathData()
             .move_to(point.Point(x + rx, y))
