@@ -207,6 +207,12 @@ def _scale(element: object, scale: transform.Scale) -> None:  # noqa: PLR0915
         element.fy = _scale_attr(element.fy, factor)
     if isinstance(element, attrdefs.FontSizeAttr):
         element.font_size = _scale_attr(element.font_size, factor)
+    if isinstance(element, attrdefs.DxListOfLengthsAttr):
+        element.dx = _scale_attr(element.dx, factor)
+    if isinstance(element, attrdefs.DyListOfLengthsAttr):
+        element.dy = _scale_attr(element.dy, factor)
+    if isinstance(element, attrdefs.TextLengthAttr):
+        element.textLength = _scale_attr(element.textLength, factor)
     if (
         isinstance(element, attrdefs.PointsAttr)
         and element.points is not None
