@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import abc
 import collections
-import contextlib
 import reprlib
 import sys
 import warnings
@@ -1460,10 +1459,17 @@ class Element(
             # move the transformation to the end of the list where it can
             # be directly applied to the elementf
             _move_transformation_to_end(self.main_transform, i)
-            transformation = self.main_transform.pop()
+            transformation = self.main_transform[-1]
 
-            with contextlib.suppress(ValueError):
+            try:
                 self.apply_transformation(transformation)
+            except ValueError:
+                # the transformation cannot be applied to this element; it
+                # has to stay in the transform list, otherwise the element
+                # would change visually
+                break
+
+            self.main_transform.pop()
 
             for child in self.find_all(recursive=False):
                 if element_name(child) == "stop":
