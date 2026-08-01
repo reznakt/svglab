@@ -1014,6 +1014,11 @@ class Rect(
                 rx = self.rx
                 ry = self.ry
 
+        # the specification requires the radii to be clamped to half of the
+        # width and height of the rectangle
+        rx = min(rx, width / 2, key=float)
+        ry = min(ry, height / 2, key=float)
+
         return (
             path_data.PathData()
             .move_to(point.Point(x + rx, y))
