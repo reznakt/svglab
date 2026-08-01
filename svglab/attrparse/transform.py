@@ -544,7 +544,7 @@ class Matrix(_TransformFunctionBase):
             result.append(Translate(e, f))
 
             r = _magnitude((a, b))
-            angle = mathutils.signum(b) * mathutils.arccos(a / r)
+            angle = mathutils.degrees(math.atan2(b, a))
             result.append(Rotate(angle))
 
             det = self.determinant()
@@ -559,7 +559,7 @@ class Matrix(_TransformFunctionBase):
             result.append(Translate(e, f))
 
             s = _magnitude((c, d))
-            angle = 90 - mathutils.signum(d) * mathutils.arccos(-c / s)
+            angle = mathutils.degrees(math.atan2(-c, d))
             result.append(Rotate(angle))
 
             det = self.determinant()
