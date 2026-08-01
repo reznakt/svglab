@@ -254,6 +254,7 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
                 end = other @ end
             case transform.Rotate(a):
                 angle += a
+                end = other @ end
             case _:
                 msg = f"Unsupported transform: {other}"
                 raise NotImplementedError(msg)
