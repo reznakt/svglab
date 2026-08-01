@@ -1613,8 +1613,8 @@ class Element(
 
         self.__reify_this(limit=limit)
 
-        if remove_transform_list_if_empty and not self.transform:
-            self.transform = None
+        if remove_transform_list_if_empty and not self.main_transform:
+            self.main_transform = None
 
         if recursive:
             for child in self.find_all(recursive=False):
