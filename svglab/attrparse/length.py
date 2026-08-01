@@ -36,7 +36,7 @@ from svglab.attrparse import parse
 _convert: Final[units.Converter[Length, utiltypes.LengthUnit]] = (
     units.make_converter(
         conversion_table={
-            ("cm", "in"): 2.54,
+            ("in", "cm"): 2.54,
             ("cm", "mm"): 10,
             ("pc", "px"): 15,
             ("pt", "px"): 1.25,
@@ -98,6 +98,10 @@ class Length(
             >>> length = Length(10, "cm")
             >>> length.to("mm")
             Length(value=100.0, unit='mm')
+            >>> Length(1, "in").to("cm")
+            Length(value=2.54, unit='cm')
+            >>> Length(1, "in").to("mm")
+            Length(value=25.4, unit='mm')
 
         """
         return _convert(self, unit)
