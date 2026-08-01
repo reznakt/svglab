@@ -170,7 +170,7 @@ class _Scale(_TransformFunctionBase):
 
     @override
     def to_matrix(self) -> Matrix:
-        return Matrix(a=self.sx, b=0, c=0, d=self.sy or self.sx, e=0, f=0)
+        return Matrix(a=self.sx, b=0, c=0, d=self.sy, e=0, f=0)
 
     @override
     def __eq__(self, other: object, /) -> bool:
@@ -188,7 +188,17 @@ class _Scale(_TransformFunctionBase):
 
 @final
 class Scale(_Scale):
-    """A transformation that scales a shape by a given factor."""
+    """A transformation that scales a shape by a given factor.
+
+    Examples:
+        >>> Scale(2).to_matrix()
+        Matrix(a=2.0, b=0.0, c=0.0, d=2.0, e=0.0, f=0.0)
+        >>> Scale(2, 3).to_matrix()
+        Matrix(a=2.0, b=0.0, c=0.0, d=3.0, e=0.0, f=0.0)
+        >>> Scale(2, 0).to_matrix()
+        Matrix(a=2.0, b=0.0, c=0.0, d=0.0, e=0.0, f=0.0)
+
+    """
 
     @overload
     def __init__(self, sx: float, /) -> None: ...
