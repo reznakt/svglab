@@ -253,7 +253,10 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
                 radii = other @ radii
                 end = other @ end
             case transform.Rotate(a):
+                # rotating the arc rotates both its end point and the
+                # x-axis of the ellipse it is a part of
                 angle += a
+                end = other @ end
             case _:
                 msg = f"Unsupported transform: {other}"
                 raise NotImplementedError(msg)
