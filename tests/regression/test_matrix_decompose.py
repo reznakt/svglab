@@ -13,6 +13,10 @@ import svglab
         svglab.Matrix(-2, 0, 0, -2, 0, 0),
         # horizontal flip (b == 0 and a < 0, d > 0)
         svglab.Matrix(-1, 0, 0, 1, 0, 0),
+        # a == 0 and d != 0, which is handled by the LDU decomposition
+        svglab.Matrix(0, 1, -1, 1, 0, 0),
+        svglab.Matrix(0, 2, 3, 4, 5, 6),
+        svglab.Matrix(0, 1.65, -2.65, -0.86, -0.23, 0.39),
         # transformations that were already decomposed correctly
         svglab.Matrix(1, 0, 0, 1, 10, 20),
         svglab.Matrix(0, 1, -1, 0, 0, 0),

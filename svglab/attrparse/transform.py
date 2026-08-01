@@ -588,7 +588,7 @@ class Matrix(_TransformFunctionBase):
         elif not mathutils.is_close(b, 0):
             result.append(Rotate(90))
             result.append(Scale(b, self.determinant() / b))
-            result.append(SkewY(mathutils.arctan(d / b)))
+            result.append(SkewX(mathutils.arctan(d / b)))
         else:
             result.append(Scale(c, d))
             result.append(SkewX(45))
