@@ -458,6 +458,10 @@ def _can_use_implicit_command(
     same type as the current command, or if the previous command is a `MoveTo`
     command and the current command is a `LineTo` command.
 
+    Commands following a `MoveTo` command are an exception: a coordinate pair
+    following a moveto is interpreted as an implicit lineto, so a `MoveTo`
+    command that follows another `MoveTo` command must always be explicit.
+
     Args:
         prev: The previous command.
         current: The current command.
@@ -476,11 +480,16 @@ def _can_use_implicit_command(
     ...     LineTo(point.Point(100, 100)), prev=LineTo(point.Point(10, 10))
     ... )
     True
+    >>> _can_use_implicit_command(
+    ...     MoveTo(point.Point(100, 100)), prev=MoveTo(point.Point(10, 10))
+    ... )
+    False
 
     """
-    return type(prev) is type(current) or (
-        isinstance(prev, MoveTo) and isinstance(current, LineTo)
-    )
+    if isinstance(prev, MoveTo):
+        return isinstance(current, LineTo)
+
+    return type(prev) is type(current)
 
 
 def _add_command(
