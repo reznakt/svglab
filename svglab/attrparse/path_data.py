@@ -1159,11 +1159,20 @@ class PathData(
 
     @override
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+        # the end point of a shorthand line command is only partly given by
+        # the command itself; the rest comes from the current point, which
+        # is not preserved by anything but translations and scalings
+        path_data = (
+            self
+            if isinstance(other, transform.Translate | transform.Scale)
+            else self.resolve_shorthands(lines=True, curves=False)
+        )
+
         return type(self)(
             other @ command
             if isinstance(command, _PhysicalPathCommand)
             else command
-            for command in self
+            for command in path_data
         )
 
     @override
