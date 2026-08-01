@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import abc
 import collections
-import contextlib
 import reprlib
 import sys
 import warnings
@@ -1513,10 +1512,14 @@ class Element(
             # move the transformation to the end of the list where it can
             # be directly applied to the elementf
             _move_transformation_to_end(self.main_transform, i)
-            transformation = self.main_transform.pop()
+            transformation = self.main_transform[-1]
 
-            with contextlib.suppress(ValueError):
+            try:
                 self.apply_transformation(transformation)
+            except ValueError:
+                break
+
+            self.main_transform.pop()
 
             for child in self.find_all(recursive=False):
                 if element_name(child) == "stop":
@@ -1589,10 +1592,14 @@ class Element(
         should be a visually identical element with the `transform` attribute
         reduced or removed (depending on the `limit` parameter).
 
-        Only `Translate` and `Scale` transformations are can be reified. If
+        Only `Translate` and `Scale` transformations can be reified. If
         the `transform` attribute contains other transformations, their
         parameters are adjusted so that `Translate` and `Scale` transformations
         can be applied. Unsupported transformations are ignored.
+
+        Reification stops at the first transformation that cannot be applied
+        to the element, such as a non-uniform `Scale`. That transformation and
+        everything preceding it are left in the `transform` attribute.
 
         If all transformations are successfully applied, the `transform`
         attribute is removed from the element.
@@ -1621,7 +1628,7 @@ class Element(
                 converted to user units.
 
         Examples:
-            >>> from svglab import Rect, Length, Translate
+            >>> from svglab import Rect, Length, Scale, Translate
             >>> rect = Rect(
             ...     x=Length(10),
             ...     y=Length(20),
@@ -1640,6 +1647,15 @@ class Element(
             Length(value=40.0, unit=None)
             >>> rect.transform is None
             True
+
+            A transformation that cannot be applied is left in place:
+
+            >>> rect = Rect(width=Length(20), transform=[Scale(2, 3)])
+            >>> rect.reify()
+            >>> rect.transform
+            [Scale(sx=2.0, sy=3.0)]
+            >>> rect.width
+            Length(value=20.0, unit=None)
 
         """
         if not self.__can_reify():
