@@ -363,6 +363,12 @@ def _translate(element: object, translate: transform.Translate) -> None:
     if isinstance(element, attrdefs.CyAttr):
         element.cy = _translate_attr(element.cy or zero, ty)
 
+    # an unset focal point follows the already translated center
+    if isinstance(element, attrdefs.FxAttr):
+        element.fx = _translate_attr(element.fx, tx)
+    if isinstance(element, attrdefs.FyAttr):
+        element.fy = _translate_attr(element.fy, ty)
+
     if isinstance(element, attrdefs.XNumberAttr):
         element.x = _translate_attr(element.x or 0, tx)
     elif isinstance(element, attrdefs.XCoordinateAttr):
