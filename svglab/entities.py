@@ -1488,6 +1488,14 @@ class Element(
                 if element_name(child) == "stop":
                     continue
 
+                # gradients defined in the object bounding box coordinate
+                # system are relative to the element that references them,
+                # so they are transformed along with it
+                if isinstance(
+                    child, attrdefs.GradientUnitsAttr
+                ) and child.gradientUnits in (None, "objectBoundingBox"):
+                    continue
+
                 if child.main_transform is None:
                     child.main_transform = []
 
