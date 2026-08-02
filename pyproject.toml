@@ -165,10 +165,12 @@ ignore = [
   "TC003",   # Move standard library import into a type-checking block
   "E741",    # Ambiguous variable name
   "PLR0913", # Too many arguments in function definition
+  "PLR0917", # Too many positional arguments
   "C901",    # Function is too complex
   "PLR0911", # Too many return statements
   "PLR0912", # Too many branches
   "TC006",   # Add quotes to type expression in `typing.cast()`
+  "CPY001",  # Missing copyright notice at top of file
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]

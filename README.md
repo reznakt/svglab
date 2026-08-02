@@ -171,9 +171,7 @@ group = G().add_children(
         .quadratic_bezier_to(Point(100, 100), Point(50, 50))
         .smooth_quadratic_bezier_to(Point(100, 100))
         .move_to(Point(50, 50))
-        .cubic_bezier_to(
-            Point(100, 100), Point(100, 100), Point(10, 10)
-        )
+        .cubic_bezier_to(Point(100, 100), Point(100, 100), Point(10, 10))
         .smooth_cubic_bezier_to(Point(100, 100), Point(50, 50))
         .arc_to(
             Point(50, 50), 90, Point(100, 100), large=True, sweep=False

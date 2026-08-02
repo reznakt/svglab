@@ -965,8 +965,7 @@ class PreserveAlphaAttr(Attr):
 
 class PreserveAspectRatioAttr(Attr):
     preserveAspectRatio: models.Attr[
-        None
-        | Literal[
+        Literal[
             "xMinYMin",
             "xMidYMin",
             "xMaxYMin",

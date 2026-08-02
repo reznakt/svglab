@@ -730,8 +730,10 @@ def test_resolve_iri_and_reference_detection() -> None:
             .line_to(svglab.Point(4, 4)),
         ),
         (
-            "M0,0C 10,10 20,20 30,30S 40,40 50,50Q 60,60 70,70T 80,80A 90,90 0"
-            " 1 0 100,100T 110,110ZH 120V 130L 140,140Z",
+            (
+                "M0,0C 10,10 20,20 30,30S 40,40 50,50Q 60,60 70,70T 80,80"
+                "A 90,90 0 1 0 100,100T 110,110ZH 120V 130L 140,140Z"
+            ),
             svglab.PathData()
             .move_to(svglab.Point(0, 0))
             .cubic_bezier_to(
