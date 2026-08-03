@@ -530,8 +530,10 @@ def _add_command(
     path_data.append(command)
 
 
+# `PathData` is a mutable collection, so - like `list` - it is intentionally
+# unhashable; defining `__eq__` sets `__hash__` to `None` for us
 @final
-class PathData(
+class PathData(  # noqa: PLW1641
     MutableSequence[PathCommand],
     mixins.CustomModel,
     transform.PointAddSubWithTranslateRMatmul,
@@ -1184,10 +1186,6 @@ class PathData(
             return False
 
         return all(c1 == c2 for c1, c2 in zip(self, other, strict=True))
-
-    @override
-    def __hash__(self) -> int:
-        return hash((type(self), tuple(self.__commands)))
 
     @override
     def __repr__(self) -> str:

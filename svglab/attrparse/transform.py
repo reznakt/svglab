@@ -63,27 +63,6 @@ def _dot_product(u: _Vector, v: _Vector, /) -> float:
     return u1 * v1 + u2 * v2
 
 
-def _magnitude(u: _Vector, /) -> float:
-    """Calculate the magnitude of a vector.
-
-    Args:
-        u: The vector.
-
-    Returns:
-        The magnitude of the vector.
-
-    Examples:
-        >>> _magnitude((3, 4))
-        5.0
-        >>> _magnitude((0, 0))
-        0.0
-        >>> _magnitude((1, 2))
-        2.23606797749979
-
-    """
-    return math.sqrt(_dot_product(u, u))
-
-
 class _TransformFunctionBase(
     protocols.CustomSerializable, metaclass=abc.ABCMeta
 ):
@@ -243,14 +222,17 @@ class _Rotate(_TransformFunctionBase):
 
         rot = Matrix(a=cos_a, b=sin_a, c=-sin_a, d=cos_a, e=0, f=0)
 
-        cx = self.cx or 0
-        cy = self.cy or 0
-
-        if mathutils.is_close(cx, 0) and mathutils.is_close(cy, 0):
+        if mathutils.is_close(self.cx, 0) and mathutils.is_close(
+            self.cy, 0
+        ):
             return rot
 
         # translate to origin, rotate, translate back
-        return Translate(cx, cy) @ rot @ Translate(-cx, -cy)
+        return (
+            Translate(self.cx, self.cy)
+            @ rot
+            @ Translate(-self.cx, -self.cy)
+        )
 
     @override
     def __eq__(self, other: object, /) -> bool:
@@ -404,7 +386,7 @@ class _Translate(_TransformFunctionBase):
 
     @override
     def to_matrix(self) -> Matrix:
-        return Matrix(a=1, b=0, c=0, d=1, e=self.tx, f=self.ty or 0)
+        return Matrix(a=1, b=0, c=0, d=1, e=self.tx, f=self.ty)
 
     @override
     def __eq__(self, other: object, /) -> bool:
@@ -543,7 +525,7 @@ class Matrix(_TransformFunctionBase):
         if not mathutils.is_close(a, 0) or not mathutils.is_close(b, 0):
             result.append(Translate(e, f))
 
-            r = _magnitude((a, b))
+            r = math.hypot(a, b)
             angle = mathutils.degrees(math.atan2(b, a))
             result.append(Rotate(angle))
 
@@ -558,7 +540,7 @@ class Matrix(_TransformFunctionBase):
         elif not mathutils.is_close(c, 0) or not mathutils.is_close(d, 0):
             result.append(Translate(e, f))
 
-            s = _magnitude((c, d))
+            s = math.hypot(c, d)
             angle = mathutils.degrees(math.atan2(-c, d))
             result.append(Rotate(angle))
 
