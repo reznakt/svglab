@@ -333,6 +333,10 @@ def _get_end_at(path_data: PathData, idx: int) -> point.Point:
     Returns:
         The end point of the command.
 
+    Raises:
+        IndexError: If the index is out of range, or if resolving the
+            coordinates would require looking before the start of the path.
+
     Examples:
     >>> path_data = PathData.from_str("M 10,10 H 100 V 100 Z")
     >>> _get_end_at(path_data, 0)
@@ -341,20 +345,73 @@ def _get_end_at(path_data: PathData, idx: int) -> point.Point:
     Point(x=100.0, y=10.0)
 
     """
-    command = path_data[idx]
+    # shorthand line commands only set one coordinate and inherit the other
+    # from the preceding command, so walk backwards until both are known
+    x: float | None = None
+    y: float | None = None
 
-    match command:
-        case ClosePath():
-            last_moveto = _get_latest_moveto(path_data, idx)
-            return last_moveto.end
-        case HorizontalLineTo(x=x):
-            end = _get_end_at(path_data, idx - 1)
-            return point.Point(x, end.y)
-        case VerticalLineTo(y=y):
-            end = _get_end_at(path_data, idx - 1)
-            return point.Point(end.x, y)
-        case _:
-            return command.end
+    while x is None or y is None:
+        # a negative index would wrap around to the end of the path
+        if idx < 0:
+            msg = f"Path command index out of range ({idx=})"
+            raise IndexError(msg)
+
+        end: point.Point | None = None
+
+        match path_data[idx]:
+            case HorizontalLineTo(x=command_x):
+                x = command_x if x is None else x
+            case VerticalLineTo(y=command_y):
+                y = command_y if y is None else y
+            case ClosePath():
+                end = _get_latest_moveto(path_data, idx).end
+            case command:
+                end = command.end
+
+        if end is not None:
+            x = end.x if x is None else x
+            y = end.y if y is None else y
+
+        idx -= 1
+
+    return point.Point(x, y)
+
+
+def _iter_end_points(path_data: PathData, /) -> Generator[point.Point]:
+    """Iterate over the end points of all commands in a path.
+
+    This is equivalent to calling `_get_end_at()` for every index, but folds
+    the current point forward instead of resolving each index independently,
+    which makes walking the whole path linear rather than quadratic.
+
+    Args:
+        path_data: The path to iterate over.
+
+    Yields:
+        The end point of each command, in order.
+
+    Examples:
+    >>> path_data = PathData.from_str("M 10,10 H 100 V 100 Z")
+    >>> [tuple(end) for end in _iter_end_points(path_data)]
+    [(10.0, 10.0), (100.0, 10.0), (100.0, 100.0), (10.0, 10.0)]
+
+    """
+    end = subpath_start = point.Point.zero()
+
+    for command in path_data:
+        match command:
+            case MoveTo(end=command_end):
+                end = subpath_start = command_end
+            case ClosePath():
+                end = subpath_start
+            case HorizontalLineTo(x=x):
+                end = point.Point(x, end.y)
+            case VerticalLineTo(y=y):
+                end = point.Point(end.x, y)
+            case _:
+                end = command.end
+
+        yield end
 
 
 def _quadratic_control_at(path_data: PathData, idx: int) -> point.Point:
@@ -465,13 +522,15 @@ def _relativize(path_data: PathData) -> PathData:
     result = PathData()
     pos = point.Point.zero()
 
-    for i, command in enumerate(path_data):
+    for command, end in zip(
+        path_data, _iter_end_points(path_data), strict=True
+    ):
         if isinstance(command, _PhysicalPathCommand):
             result.append(command - pos)
         else:
             result.append(command)
 
-        pos = _get_end_at(path_data, i)
+        pos = end
 
     return result
 
