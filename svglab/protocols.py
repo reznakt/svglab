@@ -59,37 +59,30 @@ class SupportsWrite(Protocol[_AnyStr_contra]):
     def write(self, data: _AnyStr_contra, /) -> int: ...
 
 
-@runtime_checkable
 class SupportsAdd(Protocol[_T_contra]):
     def __add__(self, other: _T_contra, /) -> Self: ...
 
 
-@runtime_checkable
 class SupportsRAdd(Protocol[_T_contra]):
     def __radd__(self, other: _T_contra, /) -> Self: ...
 
 
-@runtime_checkable
 class SupportsSub(Protocol[_T_contra]):
     def __sub__(self, other: _T_contra, /) -> Self: ...
 
 
-@runtime_checkable
 class SupportsRSub(Protocol[_T_contra]):
     def __rsub__(self, other: _T_contra, /) -> Self: ...
 
 
-@runtime_checkable
 class SupportsMul(Protocol[_T_contra]):
     def __mul__(self, other: _T_contra, /) -> Self: ...
 
 
-@runtime_checkable
 class SupportsRMul(Protocol[_T_contra]):
     def __rmul__(self, other: _T_contra, /) -> Self: ...
 
 
-@runtime_checkable
 class SupportsTrueDiv(Protocol[_T_contra]):
     def __truediv__(self, other: _T_contra, /) -> Self: ...
 
@@ -98,17 +91,14 @@ class SupportsRTrueDiv(Protocol[_T_contra]):
     def __rtruediv__(self, other: _T_contra, /) -> Self: ...
 
 
-@runtime_checkable
 class SupportsRMatmul(Protocol[_T_contra]):
     def __rmatmul__(self, other: _T_contra, /) -> Self: ...
 
 
-@runtime_checkable
 class SupportsNeg(Protocol):
     def __neg__(self) -> Self: ...
 
 
-@runtime_checkable
 class PointLike(SupportsNeg, Protocol):
     x: float
     y: float

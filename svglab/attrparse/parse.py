@@ -1,7 +1,6 @@
 """Utilities for parsing with Lark."""
 
 import functools
-import itertools
 import math
 import os
 import pathlib
@@ -140,7 +139,7 @@ def v_args_to_list(*values: _T) -> list[_T]:
 
     """
     # drop the first value, which is the transformer instance (self)
-    return list(itertools.islice(values, 1, None))
+    return list(values[1:])
 
 
 def visit_tokens(cls: type[_TransformerT]) -> type[_TransformerT]:

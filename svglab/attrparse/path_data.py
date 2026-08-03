@@ -23,7 +23,6 @@ from typing_extensions import (
     final,
     overload,
     override,
-    runtime_checkable,
 )
 
 from svglab import errors, mixins, models, protocols, serialize
@@ -39,7 +38,6 @@ class _PathCommandBase:
     pass
 
 
-@runtime_checkable
 class _HasEnd(Protocol):
     end: point.Point
 
@@ -1114,9 +1112,6 @@ class PathData(  # noqa: PLW1641
                 case QuadraticBezierTo(control=control, end=end) if curves:
                     path_data.smooth_quadratic_bezier_to(end)
 
-                    shorthand = path_data[-1]
-                    assert isinstance(shorthand, SmoothQuadraticBezierTo)
-
                     # try to replace the command with a shorthand
                     auto_control = _quadratic_control_at(
                         path_data, len(path_data) - 1
@@ -1131,9 +1126,6 @@ class PathData(  # noqa: PLW1641
                     control1=control1, control2=control2, end=end
                 ) if curves:
                     path_data.smooth_cubic_bezier_to(control2, end)
-
-                    shorthand = path_data[-1]
-                    assert isinstance(shorthand, SmoothCubicBezierTo)
 
                     auto_control = _cubic_control_at(
                         path_data, len(path_data) - 1
@@ -1241,10 +1233,9 @@ class PathData(  # noqa: PLW1641
         if not miscutils.basic_compare(other, self=self):
             return False
 
-        if len(self) != len(other):
-            return False
-
-        return all(c1 == c2 for c1, c2 in zip(self, other, strict=True))
+        return len(self) == len(other) and all(
+            c1 == c2 for c1, c2 in zip(self, other, strict=True)
+        )
 
     def __copy__(self) -> Self:
         # the default implementation would share the underlying command list

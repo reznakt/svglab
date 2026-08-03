@@ -603,7 +603,6 @@ def _serialize(
         # `isinstance()` on a runtime-checkable Protocol is slow
         case _ if callable(getattr(value, "serialize", None)):
             result = cast(protocols.CustomSerializable, value).serialize()
-            formatter = get_current_formatter()
 
             if (
                 formatter.spaces_around_function_args
@@ -629,7 +628,6 @@ def _serialize(
             result = value.decode()
         # this should go last to avoid classifying strings as iterables, etc.
         case Iterable():
-            formatter = get_current_formatter()
             result = formatter.list_separator.join(
                 _serialize(
                     v, bool_mode=bool_mode, precision_group=precision_group

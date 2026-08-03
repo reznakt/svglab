@@ -1292,7 +1292,7 @@ class Svg(
         image_rendering: Literal[
             "optimize_quality", "optimize_speed"
         ] = "optimize_quality",
-        languages: Iterable[str] = ["en"],
+        languages: Iterable[str] = ("en",),
         monospace_family: str | None = None,
         resources_dir: pathlib.Path | None = None,
         sans_serif_family: str | None = None,

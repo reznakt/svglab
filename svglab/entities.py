@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import itertools
 import reprlib
 import sys
 import warnings
@@ -46,6 +47,16 @@ _TransformT2 = TypeVar("_TransformT2", bound=transform.TransformFunction)
 
 _EMPTY_PARAM: Final = object()
 """A sentinel value for an empty parameter."""
+
+_REFERENCE_ATTR_NAMES: Final[tuple[attr_names.AttributeName, ...]] = (
+    "xlink:href",
+    "href",
+    "fill",
+    "stroke",
+    "mask",
+    "clip-path",
+)
+"""Attributes that may hold an IRI reference to another element."""
 
 
 class StrokeWidthScaled:
@@ -453,7 +464,7 @@ def swap_transforms(
 
 
 def _move_transformation_to_end(
-    transform: transform.Transform, index: int
+    transformations: transform.Transform, index: int
 ) -> None:
     """Move a transformation to the end of the transform list.
 
@@ -463,7 +474,7 @@ def _move_transformation_to_end(
     same. The transformation itself may have its parameters adjusted as well.
 
     Args:
-        transform: A list of transformations.
+        transformations: A list of transformations.
         index: The index of the transformation to move.
 
     Raises:
@@ -478,21 +489,21 @@ def _move_transformation_to_end(
         [Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667)]
 
     """
-    if not (0 <= index < len(transform)):
+    if not (0 <= index < len(transformations)):
         msg = f"Index {index=} out of range"
         raise ValueError(msg)
 
-    for i in range(index, len(transform) - 1):
-        transform[i], transform[i + 1] = swap_transforms(
-            transform[i], transform[i + 1]
+    for i in range(index, len(transformations) - 1):
+        transformations[i], transformations[i + 1] = swap_transforms(
+            transformations[i], transformations[i + 1]
         )
 
 
 def element_name(element: Element, /) -> str:
-    """Get the SVG element name of the given element or element class.
+    """Get the SVG element name of the given element.
 
     Args:
-    element: The element or element class.
+    element: The element.
 
     Returns:
     The SVG element name.
@@ -573,10 +584,8 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
 
     @override
     def __eq__(self, other: object) -> bool:
-        return (
-            self._eq(other)
-            if miscutils.basic_compare(other, self=self)
-            else False
+        return miscutils.basic_compare(other, self=self) and self._eq(
+            other
         )
 
     @override
@@ -715,9 +724,7 @@ class Element(
             return attrs[attr_name]
 
         match attr_name:
-            case "gradientUnits":
-                return "objectBoundingBox"
-            case "patternUnits":
+            case "gradientUnits" | "patternUnits":
                 return "objectBoundingBox"
             case "patternContentUnits":
                 return "userSpaceOnUse"
@@ -856,13 +863,12 @@ class Element(
         if self.parent is None:
             return
 
-        should_yield = False
+        siblings = iter(self.parent.children)
 
-        for sibling in self.parent.children:
-            if should_yield:
-                yield sibling
-            elif sibling is self:
-                should_yield = True
+        for sibling in siblings:
+            if sibling is self:
+                yield from siblings
+                return
 
     @property
     def prev_siblings(self) -> Generator[Entity]:
@@ -878,11 +884,9 @@ class Element(
         if self.parent is None:
             return
 
-        for sibling in self.parent.children:
-            if sibling is self:
-                return
-
-            yield sibling
+        yield from itertools.takewhile(
+            lambda sibling: sibling is not self, self.parent.children
+        )
 
     @property
     def siblings(self) -> Generator[Entity]:
@@ -1252,16 +1256,7 @@ class Element(
             element in the document, `False` otherwise.
 
         """
-        reference_attr_names: list[attr_names.AttributeName] = [
-            "xlink:href",
-            "href",
-            "fill",
-            "stroke",
-            "mask",
-            "clip-path",
-        ]
-
-        for attr_name in reference_attr_names:
+        for attr_name in _REFERENCE_ATTR_NAMES:
             if not hasattr(self, attr_name):
                 continue
 
@@ -1477,7 +1472,7 @@ class Element(
                 continue
 
             # move the transformation to the end of the list where it can
-            # be directly applied to the elementf
+            # be directly applied to the element
             _move_transformation_to_end(self.main_transform, i)
             transformation = self.main_transform[-1]
 

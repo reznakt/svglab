@@ -6,7 +6,7 @@ import io
 import itertools
 import pathlib
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 
 import numpy as np
 import numpy.typing as npt
@@ -50,21 +50,21 @@ class _SvgElementLike(Protocol):
     ) -> PIL.Image.Image: ...
 
 
-def _length_to_user_units(length: length.Length | None) -> float | None:
+def _length_to_user_units(value: length.Length | None, /) -> float | None:
     """Convert a length to user units, if possible.
 
     Args:
-        length: The length to convert, or `None`.
+        value: The length to convert, or `None`.
 
     Returns:
         The length in user units, or `None` if the length cannot be converted.
 
     """
-    if length is None:
+    if value is None:
         return None
 
     try:
-        return float(length)
+        return float(value)
     except errors.SvgUnitConversionError:
         return None
 
@@ -337,26 +337,27 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
     return this, svg
 
 
-def _make_element_visible(element: entities.Element, /) -> None:
-    del element.display
-    element.fill = _BLACK
-    element.fill_opacity = 1
-    element.opacity = 1
-    element.stroke = _BLACK
-    element.stroke_opacity = 1
-    element.visibility = "visible"
+def _iter_tree(element: entities.Element, /) -> Iterator[entities.Element]:
+    """Iterate over an element and all of its descendant elements."""
+    return itertools.chain([element], element.find_all())
 
-    for child in element.find_all(recursive=False):
-        _make_element_visible(child)
+
+def _make_element_visible(element: entities.Element, /) -> None:
+    for elem in _iter_tree(element):
+        del elem.display
+        elem.fill = _BLACK
+        elem.fill_opacity = 1
+        elem.opacity = 1
+        elem.stroke = _BLACK
+        elem.stroke_opacity = 1
+        elem.visibility = "visible"
 
 
 def _set_element_visibility(
     element: entities.Element, visibility: Literal["visible", "hidden"]
 ) -> None:
-    element.visibility = visibility
-
-    for child in element.find_all(recursive=False):
-        _set_element_visibility(child, visibility)
+    for elem in _iter_tree(element):
+        elem.visibility = visibility
 
 
 def _render_tree(
@@ -457,7 +458,7 @@ def mask(  # noqa: D103
         width=width,
         height=height,
     )
-    array: Mask = np.array(img)
+    array: _ImageArray = np.array(img)
 
     return array[:, :, 3] > 0  # alpha channel > 0
 

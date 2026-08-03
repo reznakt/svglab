@@ -321,12 +321,7 @@ def _normalize_attr_name(name: AttributeName) -> str:
         'class_'
 
     """
-    normalized: str = name
-
-    substitutions = {"-": "_", ":": "_"}
-
-    for old, new in substitutions.items():
-        normalized = normalized.replace(old, new)
+    normalized = name.translate(str.maketrans("-:", "__"))
 
     if not _is_valid_identifier(normalized):
         normalized = f"{normalized}_"
