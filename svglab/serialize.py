@@ -408,11 +408,19 @@ class Formatter:
 
         return cast(FloatPrecisionSettings, settings).get_precision(value)
 
+    @property
+    def __tokens(self) -> list[contextvars.Token[Formatter]]:
+        """The stack of context variable tokens for active `with` blocks.
+
+        A stack (rather than a single token) is required because the same
+        formatter instance may be entered more than once at a time; this
+        happens whenever `to_xml()` is called inside a `with` block, as it
+        enters the current formatter itself.
+        """
+        return self.__dict__.setdefault("_Formatter__tokens", [])
+
     def __enter__(self) -> None:
-        object.__setattr__(
-            self, "__original_formatter", get_current_formatter()
-        )
-        set_formatter(self)
+        self.__tokens.append(_formatter.set(self))
 
     def __exit__(
         self,
@@ -422,10 +430,7 @@ class Formatter:
     ) -> None:
         del exc_type, exc_val, exc_tb
 
-        original_formatter: Formatter = object.__getattribute__(
-            self, "__original_formatter"
-        )
-        set_formatter(original_formatter)
+        _formatter.reset(self.__tokens.pop())
 
 
 DEFAULT_FORMATTER: Final = Formatter()
