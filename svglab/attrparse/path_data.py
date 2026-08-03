@@ -1046,10 +1046,10 @@ class PathData(
     def __getitem__(
         self, index: SupportsIndex | slice
     ) -> PathCommand | Self:
-        if isinstance(index, SupportsIndex):
-            return self.__commands[index]
+        if isinstance(index, slice):
+            return type(self)(self.__commands[index])
 
-        return type(self)(self.__commands[index])
+        return self.__commands[index]
 
     @overload
     def __setitem__(

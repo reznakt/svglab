@@ -590,8 +590,9 @@ def _serialize(
     result: str
 
     match value:
-        case protocols.CustomSerializable():
-            result = value.serialize()
+        # `isinstance()` on a runtime-checkable Protocol is slow
+        case _ if callable(getattr(value, "serialize", None)):
+            result = cast(protocols.CustomSerializable, value).serialize()
             formatter = get_current_formatter()
 
             if (
