@@ -55,13 +55,17 @@ Converter: TypeAlias = Callable[[_HasUnitT, _UnitT_co], _HasUnitT]
 def _table_to_graph(
     conversion_table: ConversionTable[_UnitT_co],
 ) -> _ConversionGraph[_UnitT_co]:
-    graph = collections.defaultdict(dict)
+    graph: collections.defaultdict[_UnitT_co, dict[_UnitT_co, float]] = (
+        collections.defaultdict(dict)
+    )
 
     for (source, target), rate in conversion_table.items():
         graph[source][target] = rate
         graph[target][source] = 1 / rate
 
-    return graph
+    # a plain dict, so that looking up an unknown unit cannot silently
+    # insert it into the graph
+    return dict(graph)
 
 
 def _get_conversion_rate(
@@ -79,7 +83,7 @@ def _get_conversion_rate(
     while queue:
         u, u_rate = queue.popleft()
 
-        for v, v_rate in graph[u].items():
+        for v, v_rate in graph.get(u, {}).items():
             if v in visited:
                 continue
 
