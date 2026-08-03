@@ -409,10 +409,7 @@ class Formatter:
         return cast(FloatPrecisionSettings, settings).get_precision(value)
 
     def __enter__(self) -> None:
-        object.__setattr__(
-            self, "__original_formatter", get_current_formatter()
-        )
-        set_formatter(self)
+        _formatters.set((*_formatters.get(), self))
 
     def __exit__(
         self,
@@ -422,10 +419,7 @@ class Formatter:
     ) -> None:
         del exc_type, exc_val, exc_tb
 
-        original_formatter: Formatter = object.__getattribute__(
-            self, "__original_formatter"
-        )
-        set_formatter(original_formatter)
+        _formatters.set(_formatters.get()[:-1])
 
 
 DEFAULT_FORMATTER: Final = Formatter()
@@ -450,19 +444,22 @@ MINIMAL_FORMATTER: Final = Formatter(
 """Formatter aimed at compatibility and performance."""
 
 
-_formatter: Final = contextvars.ContextVar(
-    "formatter", default=DEFAULT_FORMATTER
+# a stack, because `with` blocks nest; the same formatter may even be entered
+# twice at once, which is what `to_xml()` does inside a `with` block.
+# the innermost formatter is the current one
+_formatters: Final[contextvars.ContextVar[tuple[Formatter, ...]]] = (
+    contextvars.ContextVar("formatters", default=(DEFAULT_FORMATTER,))
 )
 
 
 def get_current_formatter() -> Formatter:
     """Obtain a reference to the current formatter."""
-    return _formatter.get()
+    return _formatters.get()[-1]
 
 
 def set_formatter(formatter: Formatter, /) -> None:
     """Set the current formatter."""
-    _formatter.set(formatter)
+    _formatters.set((*_formatters.get()[:-1], formatter))
 
 
 def _serialize_number(
