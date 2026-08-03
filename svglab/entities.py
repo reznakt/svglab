@@ -609,7 +609,10 @@ class Element(
 
     prefix: str | None = None
 
-    __children: list[Entity] = pydantic.PrivateAttr(default_factory=list)
+    # a lambda is faster with pydantic than `list`
+    __children: list[Entity] = pydantic.PrivateAttr(
+        default_factory=lambda: []  # noqa: PIE807
+    )
 
     # region Attribute Handling
 
