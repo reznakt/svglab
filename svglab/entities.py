@@ -1061,7 +1061,14 @@ class Element(
             ValueError: If the child is not found in the list.
 
         """
-        return self.__children.index(child, start, stop)
+        # `list.index()` would compare by equality, which is structural for
+        # elements and would therefore match the wrong child
+        for i in range(*slice(start, stop).indices(len(self.__children))):
+            if self.__children[i] is child:
+                return i
+
+        msg = f"Item not found in sequence: {child!r}"
+        raise ValueError(msg)
 
     # endregion
     # region Search and References
