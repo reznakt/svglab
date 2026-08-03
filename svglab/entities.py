@@ -655,15 +655,29 @@ class Element(
             should be considered immutable.
 
         """
-        dump = self.model_dump(by_alias=True, exclude_none=True)
+        # `model_dump()` would walk the ancestor chain via `parent`
+        extra = self.model_extra or {}
+        fields = type(self).model_fields
+        normalized = attr_names.ATTR_NAME_TO_NORMALIZED
+        result: dict[attr_names.AttributeName, object] = {}
 
-        return {
-            attr: getattr(self, attr_names.ATTR_NAME_TO_NORMALIZED[attr])
-            for key in dump
-            if key not in (self.model_extra or {})
-            and (attr := cast(attr_names.AttributeName, key))
-            in attr_names.ATTR_NAME_TO_NORMALIZED
-        }
+        # only fields that were set can hold a non-`None` value
+        for name in sorted(self.__pydantic_fields_set__):
+            if name in extra or name not in fields:
+                continue
+
+            attr = normalized.inverse.get(name, name)
+
+            if attr not in normalized:
+                continue
+
+            # the attribute may have been deleted
+            value = getattr(self, name, None)
+
+            if value is not None:
+                result[cast(attr_names.AttributeName, attr)] = value
+
+        return result
 
     def all_attrs(self) -> Mapping[str, object]:
         """Get all attributes of the element.
