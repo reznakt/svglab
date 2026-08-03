@@ -292,8 +292,8 @@ def _get_latest_moveto(path_data: PathData, max_idx: int) -> MoveTo:
     raise ValueError(msg)
 
 
-def _get_end(path_data: PathData, command: PathCommand) -> point.Point:
-    """Get the end point of a path command.
+def _get_end_at(path_data: PathData, idx: int) -> point.Point:
+    """Get the end point of the path command at the given index.
 
     For commands that have a set end point, this function returns the end
     point. For commands that do not have a set end point, this function
@@ -301,25 +301,19 @@ def _get_end(path_data: PathData, command: PathCommand) -> point.Point:
 
     Args:
         path_data: The path containing the command.
-        command: The command to get the end point of.
+        idx: The index of the command to get the end point of.
 
     Returns:
         The end point of the command.
 
     Examples:
     >>> path_data = PathData.from_str("M 10,10 H 100 V 100 Z")
-    >>> _get_end(path_data, path_data[0])
+    >>> _get_end_at(path_data, 0)
     Point(x=10.0, y=10.0)
-    >>> _get_end(path_data, path_data[1])
+    >>> _get_end_at(path_data, 1)
     Point(x=100.0, y=10.0)
 
     """
-    idx = iterutils.search_by_reference(path_data, command)
-    return _get_end_at(path_data, idx)
-
-
-def _get_end_at(path_data: PathData, idx: int) -> point.Point:
-    """Get the end point of the command at the given index."""
     command = path_data[idx]
 
     match command:
@@ -336,9 +330,7 @@ def _get_end_at(path_data: PathData, idx: int) -> point.Point:
             return command.end
 
 
-def _quadratic_control(
-    path_data: PathData, command: SmoothQuadraticBezierTo
-) -> point.Point:
+def _quadratic_control_at(path_data: PathData, idx: int) -> point.Point:
     """Compute the control point for a smooth quadratic Bézier command (`T`).
 
     The control point is calculated based on the previous command. If the
@@ -349,34 +341,39 @@ def _quadratic_control(
 
     Args:
         path_data: The path containing the command.
-        command: The smooth quadratic Bézier command.
+        idx: The index of the smooth quadratic Bézier command.
 
     Returns:
         The control point for the command.
 
+    Raises:
+        ValueError: If the command has no predecessor.
+
     Examples:
     >>> path_data = PathData.from_str("M 0,0 Q 20,0 20,20 T 40,40")
-    >>> _quadratic_control(path_data, path_data[2])
+    >>> _quadratic_control_at(path_data, 2)
     Point(x=20.0, y=40.0)
 
     """
-    prev = iterutils.prev(path_data, command)
-    end = _get_end(path_data, prev)
+    if idx == 0:
+        msg = f"Item {path_data[idx]!r} has no predecessor."
+        raise ValueError(msg)
+
+    prev = path_data[idx - 1]
+    end = _get_end_at(path_data, idx - 1)
 
     match prev:
         case QuadraticBezierTo(control=control):
             pass
         case SmoothQuadraticBezierTo():
-            control = _quadratic_control(path_data, prev)
+            control = _quadratic_control_at(path_data, idx - 1)
         case _:
             return end
 
     return control.line_reflect(end)
 
 
-def _cubic_control(
-    path_data: PathData, command: SmoothCubicBezierTo
-) -> point.Point:
+def _cubic_control_at(path_data: PathData, idx: int) -> point.Point:
     """Compute the first control point for a smooth cubic Bézier command (`S`).
 
     The control point is calculated based on the previous command. If the
@@ -388,21 +385,28 @@ def _cubic_control(
 
     Args:
         path_data: The path containing the command.
-        command: The smooth cubic Bézier command.
+        idx: The index of the smooth cubic Bézier command.
 
     Returns:
         The first control point for the command.
+
+    Raises:
+        ValueError: If the command has no predecessor.
 
     Examples:
     >>> path_data = PathData.from_str(
     ...     "M 0,0 C 20,0 20,20 40,40 S 100,100 50,50"
     ... )
-    >>> _cubic_control(path_data, path_data[2])
+    >>> _cubic_control_at(path_data, 2)
     Point(x=60.0, y=60.0)
 
     """
-    prev = iterutils.prev(path_data, command)
-    end = _get_end(path_data, prev)
+    if idx == 0:
+        msg = f"Item {path_data[idx]!r} has no predecessor."
+        raise ValueError(msg)
+
+    prev = path_data[idx - 1]
+    end = _get_end_at(path_data, idx - 1)
 
     if isinstance(prev, CubicBezierTo | SmoothCubicBezierTo):
         return prev.control2.line_reflect(end)
@@ -956,15 +960,15 @@ class PathData(
         """
         path_data = type(self)()
 
-        for command in self:
+        for i, command in enumerate(self):
             match command:
                 case SmoothQuadraticBezierTo(end=end) if curves:
-                    control = _quadratic_control(self, command)
+                    control = _quadratic_control_at(self, i)
                     path_data.quadratic_bezier_to(control, end)
                 case SmoothCubicBezierTo(control2=control2, end=end) if (
                     curves
                 ):
-                    control1 = _cubic_control(self, command)
+                    control1 = _cubic_control_at(self, i)
                     path_data.cubic_bezier_to(control1, control2, end)
                 case HorizontalLineTo(x=x) if lines:
                     end = _get_end_at(path_data, len(path_data) - 1)
@@ -1017,7 +1021,9 @@ class PathData(
                     assert isinstance(shorthand, SmoothQuadraticBezierTo)
 
                     # try to replace the command with a shorthand
-                    auto_control = _quadratic_control(path_data, shorthand)
+                    auto_control = _quadratic_control_at(
+                        path_data, len(path_data) - 1
+                    )
 
                     # if the shorthand turns out not to be compatible, revert
                     # to the original command
@@ -1032,7 +1038,9 @@ class PathData(
                     shorthand = path_data[-1]
                     assert isinstance(shorthand, SmoothCubicBezierTo)
 
-                    auto_control = _cubic_control(path_data, shorthand)
+                    auto_control = _cubic_control_at(
+                        path_data, len(path_data) - 1
+                    )
 
                     if control1 != auto_control:
                         path_data[-1] = command
