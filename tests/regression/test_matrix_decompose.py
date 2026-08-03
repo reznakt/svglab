@@ -17,6 +17,10 @@ import svglab
         svglab.Matrix(0, 1, -1, 1, 0, 0),
         svglab.Matrix(0, 2, 3, 4, 5, 6),
         svglab.Matrix(0, 1.65, -2.65, -0.86, -0.23, 0.39),
+        # degenerate linear part; the translation must still be preserved
+        svglab.Matrix(0, 0, 0, 0, 10, 20),
+        svglab.Matrix(0, 0, 0, 0, -3, 7),
+        svglab.Matrix(0, 0, 0, 0, 0, 0),
         # transformations that were already decomposed correctly
         svglab.Matrix(1, 0, 0, 1, 10, 20),
         svglab.Matrix(0, 1, -1, 0, 0, 0),

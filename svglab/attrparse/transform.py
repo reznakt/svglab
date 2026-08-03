@@ -551,8 +551,10 @@ class Matrix(_TransformFunctionBase):
             angle = mathutils.arctan(col_dot / s**2)
             result.append(SkewY(angle))
 
-        # degenerate transformation
+        # degenerate transformation; the linear part collapses everything to
+        # a single point, but the translation still has to be preserved
         else:
+            result.append(Translate(e, f))
             result.append(Scale(0))
 
         return result
