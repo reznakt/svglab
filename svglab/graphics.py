@@ -69,6 +69,11 @@ def _length_to_user_units(length: length.Length | None) -> float | None:
         return None
 
 
+def _positive_or_none(value: float | None, /) -> float | None:
+    """Return `value` if it is a positive number, `None` otherwise."""
+    return value if value is not None and value > 0 else None
+
+
 def _compute_render_size(
     svg: entities.Element,
     *,
@@ -103,40 +108,60 @@ def _compute_render_size(
         >>> from svglab import Svg, Length
         >>> svg = Svg(width=Length(100), height=Length(200))
         >>> _compute_render_size(svg, width=50)
-        (50, 100.0)
+        (50.0, 100.0)
         >>> _compute_render_size(svg, height=100)
-        (50.0, 100)
+        (50.0, 100.0)
         >>> _compute_render_size(svg, width=50, height=100)
-        (50, 100)
+        (50.0, 100.0)
+        >>> _compute_render_size(svg, width=50, height=1000)
+        (50.0, 100.0)
         >>> _compute_render_size(svg)
         (100.0, 200.0)
         >>> _compute_render_size(Svg())  # doctest: +ELLIPSIS
         Traceback (most recent call last):
             ...
         ValueError: Unable to determine image dimensions: ...
+        >>> _compute_render_size(Svg(width=Length(0), height=Length(0)))
+        Traceback (most recent call last):
+            ...
+        ValueError: Unable to determine image dimensions: ...
+        >>> _compute_render_size(svg, width=0)
+        Traceback (most recent call last):
+            ...
+        ValueError: Image dimensions must be positive: width=0, height=None
 
     """
     if not isinstance(svg, _SvgElementLike):
         msg = "Svg must be an instance of _SvgElementLike"
         raise TypeError(msg)
 
-    svg_width = _length_to_user_units(length=svg.width)
-    svg_height = _length_to_user_units(svg.height)
+    if (width is not None and width <= 0) or (
+        height is not None and height <= 0
+    ):
+        msg = f"Image dimensions must be positive: {width=}, {height=}"
+        raise ValueError(msg)
+
+    # a non-positive dimension carries no usable aspect ratio, so it is
+    # treated the same way as a missing one
+    svg_width = _positive_or_none(_length_to_user_units(svg.width))
+    svg_height = _positive_or_none(_length_to_user_units(svg.height))
 
     if svg_width is not None and svg_height is not None:
-        if width is not None and height is None:
-            ratio = width / svg_width
-            height = svg_height * ratio
-        elif width is None and height is not None:
-            ratio = height / svg_height
-            width = svg_width * ratio
-        elif width is not None and height is not None:
-            ratio = (svg_width / svg_height) / (width / height)
+        # scale the SVG to fit the requested dimensions, preserving the
+        # aspect ratio; an unspecified dimension does not constrain the fit
+        scales = [
+            requested / available
+            for requested, available in (
+                (width, svg_width),
+                (height, svg_height),
+            )
+            if requested is not None
+        ]
 
-            if ratio > 1:
-                height = height / ratio
-            elif ratio < 1:
-                width = width * ratio
+        if scales:
+            scale = min(scales)
+            width = svg_width * scale
+            height = svg_height * scale
 
     width = width if width is not None else svg_width
     height = height if height is not None else svg_height
