@@ -315,16 +315,22 @@ def _get_end(path_data: PathData, command: PathCommand) -> point.Point:
 
     """
     idx = iterutils.search_by_reference(path_data, command)
+    return _get_end_at(path_data, idx)
+
+
+def _get_end_at(path_data: PathData, idx: int) -> point.Point:
+    """Get the end point of the command at the given index."""
+    command = path_data[idx]
 
     match command:
         case ClosePath():
             last_moveto = _get_latest_moveto(path_data, idx)
             return last_moveto.end
         case HorizontalLineTo(x=x):
-            end = _get_end(path_data, path_data[idx - 1])
+            end = _get_end_at(path_data, idx - 1)
             return point.Point(x, end.y)
         case VerticalLineTo(y=y):
-            end = _get_end(path_data, path_data[idx - 1])
+            end = _get_end_at(path_data, idx - 1)
             return point.Point(end.x, y)
         case _:
             return command.end
@@ -428,13 +434,13 @@ def _relativize(path_data: PathData) -> PathData:
     result = PathData()
     pos = point.Point.zero()
 
-    for command in path_data:
+    for i, command in enumerate(path_data):
         if isinstance(command, _PhysicalPathCommand):
             result.append(command - pos)
         else:
             result.append(command)
 
-        pos = _get_end(path_data, command)
+        pos = _get_end_at(path_data, i)
 
     return result
 
@@ -479,7 +485,7 @@ def _add_command(
     if relative and isinstance(command, _PhysicalPathCommand):
         # if there is no previous command, just do nothing
         with contextlib.suppress(IndexError):
-            command += _get_end(path_data, path_data[-1])
+            command += _get_end_at(path_data, len(path_data) - 1)
 
     path_data.append(command)
 
@@ -961,10 +967,10 @@ class PathData(
                     control1 = _cubic_control(self, command)
                     path_data.cubic_bezier_to(control1, control2, end)
                 case HorizontalLineTo(x=x) if lines:
-                    end = _get_end(path_data, path_data[-1])
+                    end = _get_end_at(path_data, len(path_data) - 1)
                     path_data.line_to(point.Point(x, end.y))
                 case VerticalLineTo(y=y) if lines:
-                    end = _get_end(path_data, path_data[-1])
+                    end = _get_end_at(path_data, len(path_data) - 1)
                     path_data.line_to(point.Point(end.x, y))
                 case _:
                     path_data.append(command)
@@ -997,11 +1003,11 @@ class PathData(
         for command in self:
             match command:
                 case LineTo(end=end) if lines and end.x == (
-                    _get_end(path_data, path_data[-1]).x
+                    _get_end_at(path_data, len(path_data) - 1).x
                 ):
                     path_data.vertical_line_to(end.y)
                 case LineTo(end=end) if lines and end.y == (
-                    _get_end(path_data, path_data[-1]).y
+                    _get_end_at(path_data, len(path_data) - 1).y
                 ):
                     path_data.horizontal_line_to(end.x)
                 case QuadraticBezierTo(control=control, end=end) if curves:
