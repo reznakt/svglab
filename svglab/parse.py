@@ -24,8 +24,10 @@ _Markup: TypeAlias = (
 )
 
 
+# the class name is looked up directly instead of going through
+# `element_name()`, which would require instantiating every element class
 _ELEMENT_NAME_TO_CLASS: Final = {
-    entities.element_name(cls()): cls
+    names.ELEMENT_NAME_TO_NORMALIZED.inverse[cls.__name__]: cls
     for cls in miscutils.get_all_subclasses(entities.Element)
     if cls.__name__ in names.ELEMENT_NAME_TO_NORMALIZED.inverse
 }
