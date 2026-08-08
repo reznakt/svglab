@@ -20,9 +20,9 @@ import pathlib
 from collections.abc import Iterable
 
 import PIL.Image
-from typing_extensions import Literal, final, overload, override
+from typing_extensions import Literal, NoReturn, final, overload, override
 
-from svglab import graphics, models, protocols, serialize
+from svglab import errors, graphics, models, protocols, serialize
 from svglab.attrparse import color, length, path_data, point, transform
 from svglab.attrs import attrdefs, attrgroups
 from svglab.elements import traits
@@ -36,6 +36,92 @@ def _length_or_zero(value: length.Length | None, /) -> length.Length:
     return value if value is not None else length.Length(0)
 
 
+def _user_units(value: length.Length | None, /) -> float:
+    """Convert a length to user units, treating `None` as zero.
+
+    Raises:
+        ValueError: If the length is not convertible to user units. A rotation
+            mixes the x-axis and the y-axis, so a length whose value depends
+            on the viewport (a percentage, for example) cannot be carried
+            through. `ValueError` is what signals an inapplicable
+            transformation to the reification loop.
+
+    """
+    try:
+        return float(_length_or_zero(value))
+    except errors.SvgUnitConversionError as e:
+        msg = f"Length {value!r} is not convertible to user units"
+        raise ValueError(msg) from e
+
+
+def _rotate_lengths(
+    rotation: transform.Rotate,
+    /,
+    x: length.Length | None,
+    y: length.Length | None,
+) -> tuple[length.Length, length.Length]:
+    """Rotate a point given by a pair of lengths, treating `None` as zero.
+
+    The resulting lengths are in user units.
+
+    Raises:
+        ValueError: If a length is not convertible to user units.
+
+    """
+    rotated = rotation @ point.Point(_user_units(x), _user_units(y))
+
+    return length.Length(rotated.x), length.Length(rotated.y)
+
+
+def _unsupported_rotation(rotation: transform.Rotate, /) -> NoReturn:
+    msg = f"Unsupported transformation: {rotation}"
+    raise ValueError(msg)
+
+
+def _quarter_turns(rotation: transform.Rotate, /) -> int | None:
+    """Express a rotation as a number of quarter turns.
+
+    Returns:
+        The number of quarter turns (0-3), or `None` if the angle is not a
+        multiple of 90 degrees.
+
+    Examples:
+        >>> _quarter_turns(transform.Rotate(90))
+        1
+        >>> _quarter_turns(transform.Rotate(-90))
+        3
+        >>> _quarter_turns(transform.Rotate(45)) is None
+        True
+
+    """
+    turns = round(rotation.angle / 90)
+
+    if not mathutils.is_close(rotation.angle, 90 * turns):
+        return None
+
+    return turns % 4
+
+
+def _rotate_path_data(
+    element: attrdefs.DAttr, rotation: transform.Rotate, /
+) -> None:
+    """Rotate the path data of an element.
+
+    This is a free function so that the assignment does not widen the inferred
+    type of the `d` attribute.
+    """
+    if element.d is not None:
+        element.d = rotation @ element.d
+
+
+def _rotate_points(
+    element: attrdefs.PointsAttr, rotation: transform.Rotate, /
+) -> None:
+    """Rotate the points of an element."""
+    if element.points is not None:
+        element.points = [rotation @ p for p in element.points]
+
+
 @final
 class Path(
     attrgroups.ConditionalProcessingAttrs,
@@ -46,7 +132,9 @@ class Path(
     traits.Shape,
     traits.Element,
 ):
-    pass
+    @override
+    def _reify_rotation(self, rotation: transform.Rotate, /) -> None:
+        _rotate_path_data(self, rotation)
 
 
 def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
@@ -258,6 +346,11 @@ class Circle(
     def to_path(self) -> Path:
         return _basic_shape_to_path(self)
 
+    @override
+    def _reify_rotation(self, rotation: transform.Rotate, /) -> None:
+        # a circle is invariant under rotation, so only the center moves
+        self.cx, self.cy = _rotate_lengths(rotation, self.cx, self.cy)
+
 
 @final
 class ClipPath(
@@ -341,6 +434,21 @@ class Ellipse(
     @override
     def to_path(self) -> Path:
         return _basic_shape_to_path(self)
+
+    @override
+    def _reify_rotation(self, rotation: transform.Rotate, /) -> None:
+        # an ellipse whose axes are equal is a circle and is therefore
+        # invariant under rotation; otherwise only quarter turns keep its axes
+        # aligned with the axes of the coordinate system
+        if mathutils.is_close(_user_units(self.rx), _user_units(self.ry)):
+            turns = 0
+        elif (turns := _quarter_turns(rotation)) is None:
+            _unsupported_rotation(rotation)
+
+        self.cx, self.cy = _rotate_lengths(rotation, self.cx, self.cy)
+
+        if turns % 2:
+            self.rx, self.ry = self.ry, self.rx
 
 
 @final
@@ -830,6 +938,11 @@ class Line(
     def to_path(self) -> Path:
         return _basic_shape_to_path(self)
 
+    @override
+    def _reify_rotation(self, rotation: transform.Rotate, /) -> None:
+        self.x1, self.y1 = _rotate_lengths(rotation, self.x1, self.y1)
+        self.x2, self.y2 = _rotate_lengths(rotation, self.x2, self.y2)
+
 
 @final
 class LinearGradient(
@@ -952,6 +1065,10 @@ class Polygon(
     def to_path(self) -> Path:
         return _basic_shape_to_path(self)
 
+    @override
+    def _reify_rotation(self, rotation: transform.Rotate, /) -> None:
+        _rotate_points(self, rotation)
+
 
 @final
 class Polyline(
@@ -970,6 +1087,10 @@ class Polyline(
     @override
     def to_path(self) -> Path:
         return _basic_shape_to_path(self)
+
+    @override
+    def _reify_rotation(self, rotation: transform.Rotate, /) -> None:
+        _rotate_points(self, rotation)
 
 
 @final
@@ -1083,6 +1204,32 @@ class Rect(
             # rather than a pair of line caps
             .close()
         )
+
+    @override
+    def _reify_rotation(self, rotation: transform.Rotate, /) -> None:
+        # only quarter turns map an axis-aligned box onto an axis-aligned box
+        turns = _quarter_turns(rotation)
+
+        if turns is None:
+            _unsupported_rotation(rotation)
+
+        x = _user_units(self.x)
+        y = _user_units(self.y)
+        width = _user_units(self.width)
+        height = _user_units(self.height)
+
+        # rotating two opposite corners is enough to recover the new box; the
+        # center of the rotation, if any, is already folded into the matrix
+        corner1 = rotation @ point.Point(x, y)
+        corner2 = rotation @ point.Point(x + width, y + height)
+
+        self.x = length.Length(min(corner1.x, corner2.x))
+        self.y = length.Length(min(corner1.y, corner2.y))
+        self.width = length.Length(abs(corner2.x - corner1.x))
+        self.height = length.Length(abs(corner2.y - corner1.y))
+
+        if turns % 2:
+            self.rx, self.ry = self.ry, self.rx
 
     @override
     def to_path(self) -> Path:
@@ -1300,7 +1447,9 @@ class Svg(
 
         # skip self; this can be done in a single for loop because the
         # SVG is a tree (probably)
-        for child in self.find_all(recursive=False):
+        # the list of children is materialized because reifying a child may
+        # replace it with a different element
+        for child in list(self.find_all(recursive=False)):
             # this is normally done in the reify method, but we need to do it
             # before we prepend the new transformations
             child.decompose_transform_origin()
