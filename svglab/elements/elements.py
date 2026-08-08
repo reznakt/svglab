@@ -1030,6 +1030,20 @@ class Rect(
         rx = min(rx, width / 2, key=float)
         ry = min(ry, height / 2, key=float)
 
+        # a rectangle with square corners is a plain closed polygon; emitting
+        # the arcs anyway would produce degenerate `A0,0` commands
+        if mathutils.is_close(float(rx), 0) and mathutils.is_close(
+            float(ry), 0
+        ):
+            return (
+                path_data.PathData()
+                .move_to(point.Point(x, y))
+                .horizontal_line_to(x + width)
+                .vertical_line_to(y + height)
+                .horizontal_line_to(x)
+                .close()
+            )
+
         return (
             path_data.PathData()
             .move_to(point.Point(x + rx, y))
@@ -1065,6 +1079,9 @@ class Rect(
                 large=False,
                 sweep=True,
             )
+            # closing the subpath makes the corner at the start point a join
+            # rather than a pair of line caps
+            .close()
         )
 
     @override
