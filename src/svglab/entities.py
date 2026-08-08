@@ -33,7 +33,7 @@ from typing_extensions import (
 )
 
 from svglab import constants, errors, models, serialize
-from svglab.attrparse import iri, length, transform
+from svglab.attrparse import iri, length, point, transform
 from svglab.attrs import attrdefs, attrgroups
 from svglab.attrs import names as attr_names
 from svglab.elements import names
@@ -414,6 +414,39 @@ def _translate(element: object, translate: transform.Translate) -> None:
         element.offset = _translate_attr(element.offset, tx)
 
 
+def _rotate_scale_commute(
+    rotate: transform.Rotate, scale: transform.Scale, /
+) -> bool:
+    """Check whether a rotation and a scale can be swapped.
+
+    A rotation matrix `R` and a scale matrix `S` satisfy `SR = RS` if and only
+    if the scale is isotropic or `R` is the identity or a point reflection.
+    Otherwise `S R S^-1` is an elliptical rotation, which cannot be expressed
+    as a `rotate()`, so no adjustment of the parameters makes the swap
+    possible.
+
+    Args:
+        rotate: The rotation.
+        scale: The scale.
+
+    Returns:
+        `True` if the two transformations can be swapped, `False` otherwise.
+
+    Examples:
+        >>> from svglab.attrparse.transform import Rotate, Scale
+        >>> _rotate_scale_commute(Rotate(30), Scale(2))
+        True
+        >>> _rotate_scale_commute(Rotate(30), Scale(2, 3))
+        False
+        >>> _rotate_scale_commute(Rotate(180), Scale(2, 3))
+        True
+
+    """
+    return mathutils.is_close(scale.sx, scale.sy) or mathutils.is_close(
+        mathutils.sin(rotate.angle), 0
+    )
+
+
 def swap_transforms(
     a: _TransformT1, b: _TransformT2, /
 ) -> tuple[_TransformT2, _TransformT1]:
@@ -460,14 +493,21 @@ def swap_transforms(
         case transform.Translate(tx, ty), transform.Rotate(angle, cx, cy):
             return type(b)(angle, cx + tx, cy + ty), type(a)(tx, ty)
 
+        # rotate <-> rotate; rotating the center of the second rotation by
+        # the first one makes the two commute: R1 R2(a, c) = R2(a, R1 c) R1
+        case transform.Rotate() as rotate, transform.Rotate(angle, cx, cy):
+            return type(b)(angle, *(rotate @ point.Point(cx, cy))), a
+
         # scale <-> rotate
-        case transform.Rotate(angle, cx, cy), transform.Scale(
-            sx, sy
-        ) as scale:
+        case (
+            transform.Rotate(angle, cx, cy) as rotate,
+            transform.Scale(sx, sy) as scale,
+        ) if _rotate_scale_commute(rotate, scale):
             return scale, type(a)(angle, cx / sx, cy / sy)
-        case transform.Scale(sx, sy) as scale, transform.Rotate(
-            angle, cx, cy
-        ):
+        case (
+            transform.Scale(sx, sy) as scale,
+            transform.Rotate(angle, cx, cy) as rotate,
+        ) if _rotate_scale_commute(rotate, scale):
             return type(b)(angle, cx * sx, cy * sy), scale
 
         # translate <-> skew
@@ -533,6 +573,7 @@ def _move_transformation_to_end(
     Raises:
         ValueError: If the index is out of range.
         SvgTransformSwapError: If two transformations cannot be swapped.
+            The list is left unchanged in that case.
 
     Examples:
         >>> from svglab.attrparse.transform import Translate, Scale
@@ -546,10 +587,42 @@ def _move_transformation_to_end(
         msg = f"Index {index=} out of range"
         raise ValueError(msg)
 
-    for i in range(index, len(transformations) - 1):
-        transformations[i], transformations[i + 1] = swap_transforms(
-            transformations[i], transformations[i + 1]
-        )
+    # the swaps are performed on a copy so that a failure part-way through
+    # does not leave the caller with a reordered list
+    moved = list(transformations)
+
+    for i in range(index, len(moved) - 1):
+        moved[i], moved[i + 1] = swap_transforms(moved[i], moved[i + 1])
+
+    transformations[:] = moved
+
+
+def _to_path(element: Element, /) -> Element | None:
+    """Convert an element to an equivalent, detached `path` element.
+
+    The result is not attached to the element tree; use
+    `Element.replace_with()` to put it in the place of the original element.
+
+    Args:
+        element: The element to convert.
+
+    Returns:
+        The `path` element, or `None` if the element has no path equivalent.
+
+    """
+    # a runtime-checkable `Protocol` would be slower and would require
+    # importing the element traits, which would be a circular import
+    to_path = getattr(element, "to_path", None)
+
+    if not callable(to_path):
+        return None
+
+    try:
+        return cast(Element, to_path())
+    except (ValueError, errors.SvgError):
+        # the geometry of the element cannot be expressed as path data; this
+        # happens for lengths that depend on the viewport, for example
+        return None
 
 
 def element_name(element: Element, /) -> str:
@@ -1007,6 +1080,57 @@ class Element(
         child.parent = self
 
         return self
+
+    def replace_with(self, new: Element, /) -> Element:
+        """Replace this element with another element in the element tree.
+
+        The new element takes the place of this element in the parent's list
+        of children. This element is detached from the tree. The children of
+        this element are not transferred to the new element.
+
+        Args:
+            new: The element to replace this element with.
+
+        Returns:
+            The new element.
+
+        Raises:
+            ValueError: If this element has no parent or if `new` already has
+                a parent.
+
+        Examples:
+            >>> from svglab import Circle, G, Rect
+            >>> rect = Rect()
+            >>> g = G().add_child(rect)
+            >>> circle = rect.replace_with(Circle())
+            >>> g
+            G(children=[Circle()])
+            >>> rect.parent is None
+            True
+
+        """
+        if new is self:
+            return self
+
+        parent = self.parent
+
+        if parent is None:
+            raise ValueError(
+                "Cannot replace an element that has no parent."
+            )
+
+        if new.parent is not None:
+            raise ValueError(
+                "Cannot replace an element with one that already has"
+                " a parent."
+            )
+
+        index = parent.get_child_index(self)
+
+        parent.pop_child(index)
+        parent.add_child(new, index=index)
+
+        return new
 
     def add_children(self, *children: Entity) -> Self:
         """Add multiple children to the element.
@@ -1500,42 +1624,110 @@ class Element(
                 _translate(self, transformation)
             case transform.Scale():
                 _scale(self, transformation)
+            # a rotation by zero degrees is the identity regardless of its
+            # center; applying it would only materialize attributes that the
+            # element does not have
+            case transform.Rotate(angle) if mathutils.is_close(angle, 0):
+                pass
+            case transform.Rotate():
+                self._reify_rotation(transformation)
             case _:
                 msg = f"Unsupported transformation: {transformation}"
                 raise ValueError(msg)
 
-    def __reify_this(self, *, limit: int = sys.maxsize) -> None:
+    def _reify_rotation(self, rotation: transform.Rotate, /) -> None:
+        """Apply a rotation to the geometry attributes of the element.
+
+        Unlike translation and scaling, whether a rotation can be expressed
+        using the attributes of an element depends on the element itself, not
+        just on the attributes it happens to have. The `x` and `y` attributes
+        of a `rect`, for example, describe a corner of a box that rotates
+        along with the element, whereas the very same attributes on an `image`
+        describe the corner of a box whose content cannot be rotated at all.
+
+        Subclasses that can express a rotation override this method. The
+        default implementation rejects all rotations, which leaves them in the
+        transform list.
+
+        Args:
+            rotation: The rotation to apply.
+
+        Raises:
+            ValueError: If the rotation cannot be applied to the element.
+
+        """
+        msg = f"Unsupported transformation: {rotation}"
+        raise ValueError(msg)
+
+    def __reify_this(self, *, limit: int = sys.maxsize) -> Element:
         if limit < 0:
             raise ValueError("Limit must be a positive integer")
 
         self.decompose_transform_origin()
 
         if not self.main_transform:
-            return
+            return self
 
-        transform.decompose_matrices(transform=self.main_transform)
+        # the property returns the list itself, so mutating it in place
+        # updates the attribute
+        transformations = self.main_transform
+        element = self
+
+        transform.decompose_matrices(transform=transformations)
 
         reified = 0
         i = 0
 
-        while reified < limit and i < len(self.main_transform):
-            if not isinstance(self.main_transform[i], transform.Reifiable):
+        while reified < limit and i < len(transformations):
+            if not isinstance(transformations[i], transform.Reifiable):
                 i += 1
                 continue
 
             # move the transformation to the end of the list where it can
             # be directly applied to the element
-            _move_transformation_to_end(self.main_transform, i)
-            transformation = self.main_transform[-1]
+            try:
+                _move_transformation_to_end(transformations, i)
+            except errors.SvgTransformSwapError:
+                # the transformation cannot be brought to the end of the
+                # list; the list is left unchanged, and the transformations
+                # that follow may still be reifiable
+                i += 1
+                continue
+
+            transformation = transformations[-1]
 
             try:
-                self.apply_transformation(transformation)
+                element.apply_transformation(transformation)
             except ValueError:
-                break
+                # the element cannot express the transformation using its own
+                # attributes, but a path may be able to
+                converted = _to_path(element)
 
-            self.main_transform.pop()
+                if converted is None:
+                    # the transformation has to stay in the transform list,
+                    # otherwise the element would change visually
+                    break
 
-            for child in self.find_all(recursive=False):
+                # the conversion is applied to the detached copy first, so
+                # that a transformation that a path cannot express either
+                # does not leave a pointlessly converted element behind
+                try:
+                    converted.apply_transformation(transformation)
+                except ValueError:
+                    break
+
+                if element.parent is not None:
+                    element.replace_with(converted)
+
+                element = converted
+                transformations = element.main_transform
+                assert transformations, "the transform list is copied over"
+
+            transformations.pop()
+
+            # the list of children is materialized because reifying a child
+            # may replace it with a different element
+            for child in list(element.find_all(recursive=False)):
                 if element_name(child) == "stop":
                     continue
 
@@ -1565,6 +1757,8 @@ class Element(
                 )
 
             reified += 1
+
+        return element
 
     def __can_reify(self) -> bool:
         # transformations on <use> elements cannot be reified.
@@ -1608,7 +1802,7 @@ class Element(
         limit: int = sys.maxsize,
         recursive: bool = True,
         remove_transform_list_if_empty: bool = True,
-    ) -> None:
+    ) -> Element:
         """Apply transformations defined by the `transform` attribute.
 
         This method takes the transformations defined by the `transform`
@@ -1618,19 +1812,34 @@ class Element(
         should be a visually identical element with the `transform` attribute
         reduced or removed (depending on the `limit` parameter).
 
-        Only `Translate` and `Scale` transformations can be reified. If
-        the `transform` attribute contains other transformations, their
-        parameters are adjusted so that `Translate` and `Scale` transformations
-        can be applied. Unsupported transformations are ignored.
+        `Translate` and `Scale` transformations can be reified on any element
+        that has the corresponding attributes. Whether a `Rotate` can be
+        reified depends on the element: `circle`, `line`, `polyline`,
+        `polygon` and `path` can express any rotation, `rect` and `ellipse`
+        only rotations by a multiple of 90 degrees, containers reify it by
+        pushing it down to their children, and elements such as `text` cannot
+        express it at all.
 
-        Reification stops at the first transformation that cannot be applied
-        to the element, such as a non-uniform `Scale`. That transformation and
-        everything preceding it are left in the `transform` attribute.
+        An element that cannot express a transformation is converted to an
+        equivalent `path` element if that makes the transformation reifiable.
+        Because this replaces the element, the element occupying its place in
+        the tree is returned. If the `transform` attribute contains other
+        transformations, their parameters are adjusted so that reifiable
+        transformations can be applied. Transformations that cannot be reified
+        at all are left in the `transform` attribute, which leaves the element
+        visually unchanged.
+
+        Reification stops at the first transformation that neither the
+        element nor an equivalent `path` can apply, such as a non-uniform
+        `Scale`. That transformation and everything preceding it are left in
+        the `transform` attribute.
 
         If all transformations are successfully applied, the `transform`
         attribute is removed from the element.
 
         All length values in the element must be convertible to user units.
+        Reifying a rotation additionally requires the affected lengths not to
+        be percentages, because a rotation mixes the x-axis and the y-axis.
 
         Args:
             limit: The maximum number of transformations to apply. If the
@@ -1643,6 +1852,13 @@ class Element(
             remove_transform_list_if_empty: If `True`, the `transform`
                 attribute is set to `None` if the list is empty after
                 reification.
+
+        Returns:
+            The element occupying the place of this element in the element
+            tree. This is the element itself, unless it was converted to a
+            `path`, in which case the new element is returned. An element with
+            no parent cannot be replaced in a tree, so the caller has to use
+            the returned element in that case.
 
         Raises:
             ValueError: If the limit is not a positive integer.
@@ -1662,7 +1878,7 @@ class Element(
             ...     height=Length(40),
             ...     transform=[Translate(5, 5)],
             ... )
-            >>> rect.reify()
+            >>> _ = rect.reify()
             >>> rect.x
             Length(value=15.0, unit=None)
             >>> rect.y
@@ -1677,7 +1893,7 @@ class Element(
             A transformation that cannot be applied is left in place:
 
             >>> rect = Rect(width=Length(20), transform=[Scale(2, 3)])
-            >>> rect.reify()
+            >>> _ = rect.reify()
             >>> rect.transform
             [Scale(sx=2.0, sy=3.0)]
             >>> rect.width
@@ -1685,20 +1901,24 @@ class Element(
 
         """
         if not self.__can_reify():
-            return
+            return self
 
-        self.__reify_this(limit=limit)
+        element = self.__reify_this(limit=limit)
 
-        if remove_transform_list_if_empty and not self.main_transform:
-            self.main_transform = None
+        if remove_transform_list_if_empty and not element.main_transform:
+            element.main_transform = None
 
         if recursive:
-            for child in self.find_all(recursive=False):
+            # the list of children is materialized because reifying a child
+            # may replace it with a different element
+            for child in list(element.find_all(recursive=False)):
                 child.reify(
                     limit=limit,
                     recursive=True,
                     remove_transform_list_if_empty=remove_transform_list_if_empty,
                 )
+
+        return element
 
     # endregion
 
