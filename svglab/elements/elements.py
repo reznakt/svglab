@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import copy
 import itertools
 import os
 import pathlib
@@ -56,6 +57,15 @@ def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
 
     path = models.convert(basic_shape, Path)
     path.d = d
+
+    # the resulting path is detached from the tree, so the children have to be
+    # copied; otherwise they would end up with two parents. mapping the shape
+    # to `None` up front detaches the copies and keeps the copy from reaching
+    # the rest of the document through the parent links
+    memo: dict[int, object] = {id(basic_shape): None}
+    path.add_children(
+        *(copy.deepcopy(child, memo) for child in basic_shape.children)
+    )
 
     return path
 
