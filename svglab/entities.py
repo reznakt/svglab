@@ -239,7 +239,10 @@ def _scale(element: object, scale: transform.Scale) -> None:  # noqa: PLR0915
     # no need to scale distance-along-a-path attributes if a custom path
     # length is provided because those attributes and pathLength are
     # proportional
-    if not isinstance(element, attrdefs.PathLengthAttr):
+    if (
+        not isinstance(element, attrdefs.PathLengthAttr)
+        or element.pathLength is None
+    ):
         scale_distance_along_a_path_attrs(element, factor)
 
     if isinstance(element, attrdefs.OffsetNumberPercentageAttr):
