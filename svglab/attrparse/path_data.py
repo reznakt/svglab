@@ -244,6 +244,7 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         radii = self.radii
         angle = self.angle
+        sweep = self.sweep
         end = self.end
 
         match other:
@@ -263,12 +264,20 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
 
                 # a quarter turn swaps the axes of the ellipse, and with
                 # them the factors that apply to each radius
-                radii = (
+                scaled_radii = (
                     point.Point(radii.x * sy, radii.y * sx)
                     if mathutils.is_close(mathutils.cos(angle), 0)
                     else other @ radii
                 )
+                radii = point.Point(
+                    abs(scaled_radii.x), abs(scaled_radii.y)
+                )
                 end = other @ end
+
+                # a mirroring scale flips the ellipse over
+                if sx * sy < 0:
+                    angle = -angle
+                    sweep = not sweep
             case transform.Rotate(a):
                 angle += a
                 end = other @ end
@@ -280,7 +289,7 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
             radii=radii,
             angle=angle,
             large=self.large,
-            sweep=self.sweep,
+            sweep=sweep,
             end=end,
         )
 
