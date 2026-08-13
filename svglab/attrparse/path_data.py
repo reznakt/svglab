@@ -28,7 +28,7 @@ from typing_extensions import (
 
 from svglab import errors, mixins, models, protocols, serialize
 from svglab.attrparse import parse, point, transform
-from svglab.utils import iterutils, miscutils
+from svglab.utils import iterutils, mathutils, miscutils
 
 
 _Flag: TypeAlias = Literal["0", "1"]
@@ -249,7 +249,18 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
         match other:
             case transform.Translate():
                 end = other @ end
-            case transform.Scale():
+            case transform.Scale(sx, sy):
+                # a tilted ellipse changes shape, not just size, so the new
+                # radii and rotation cannot be expressed in terms of the old
+                if not mathutils.is_close(
+                    abs(sx), abs(sy)
+                ) and not mathutils.is_close(mathutils.sin(angle), 0):
+                    msg = (
+                        "Unable to scale an arc with a non-zero x-axis"
+                        f" rotation by differing factors: {other}"
+                    )
+                    raise NotImplementedError(msg)
+
                 radii = other @ radii
                 end = other @ end
             case transform.Rotate(a):
