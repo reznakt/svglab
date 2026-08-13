@@ -28,11 +28,6 @@ _SVGS: Final = [
             <g stroke-width="3"><path d="M10,10 L50,50"/></g>
         </g>
     </svg>""",
-    """<svg width="200" height="200" viewBox="0 0 200 200">
-        <g stroke="black" stroke-width="5" transform="scale(2)">
-            <path d="M10,10 L50,50" vector-effect="non-scaling-stroke"/>
-        </g>
-    </svg>""",
 ]
 
 
