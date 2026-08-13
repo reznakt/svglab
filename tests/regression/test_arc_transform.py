@@ -40,11 +40,11 @@ def test_transformed_arc_is_visually_equal(
 
 
 def test_tilted_arc_rejects_a_non_uniform_scale() -> None:
-    with pytest.raises(NotImplementedError, match="x-axis rotation"):
+    with pytest.raises(NotImplementedError, match="tilted arc"):
         _ = svglab.Scale(2, 3) @ svglab.PathData.from_str(_D)
 
 
-@pytest.mark.parametrize("arc_angle", [0, 180])
+@pytest.mark.parametrize("arc_angle", [0, 90, 180, 270])
 def test_axis_aligned_arc_accepts_a_non_uniform_scale(
     arc_angle: int,
 ) -> None:

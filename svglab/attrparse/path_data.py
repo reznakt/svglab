@@ -254,14 +254,20 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
                 # radii and rotation cannot be expressed in terms of the old
                 if not mathutils.is_close(
                     abs(sx), abs(sy)
-                ) and not mathutils.is_close(mathutils.sin(angle), 0):
+                ) and not mathutils.is_close(mathutils.sin(2 * angle), 0):
                     msg = (
-                        "Unable to scale an arc with a non-zero x-axis"
-                        f" rotation by differing factors: {other}"
+                        "Unable to scale a tilted arc by differing"
+                        f" factors: {other}"
                     )
                     raise NotImplementedError(msg)
 
-                radii = other @ radii
+                # a quarter turn swaps the axes of the ellipse, and with
+                # them the factors that apply to each radius
+                radii = (
+                    point.Point(radii.x * sy, radii.y * sx)
+                    if mathutils.is_close(mathutils.cos(angle), 0)
+                    else other @ radii
+                )
                 end = other @ end
             case transform.Rotate(a):
                 angle += a
