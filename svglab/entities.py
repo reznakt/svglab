@@ -118,6 +118,48 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
             return attr
 
 
+def _inherited_stroke_width(
+    element: attrdefs.StrokeWidthAttr, /
+) -> length.Length:
+    """Resolve the `stroke-width` that the element inherits.
+
+    `stroke-width` is an inherited property. An element that does not
+    specify its own `stroke-width` uses the value of the nearest ancestor
+    that specifies one. If no ancestor specifies one, the initial value
+    (`1`) is used.
+
+    Args:
+    element: The element whose inherited `stroke-width` to resolve.
+
+    Returns:
+    The inherited `stroke-width`.
+
+    Examples:
+    >>> from svglab import G, Length, Path
+    >>> path = Path()
+    >>> g = G(stroke_width=Length(5)).add_child(path)
+    >>> _inherited_stroke_width(path)
+    Length(value=5.0, unit=None)
+    >>> nested = Path()
+    >>> g = G(stroke_width=Length(5)).add_child(
+    ...     G(stroke_width=Length(3)).add_child(nested)
+    ... )
+    >>> _inherited_stroke_width(nested)
+    Length(value=3.0, unit=None)
+    >>> _inherited_stroke_width(Path())
+    Length(value=1.0, unit=None)
+
+    """
+    if isinstance(element, Element):
+        for ancestor in element.ancestors:
+            stroke_width = ancestor.stroke_width
+
+            if stroke_width is not None and stroke_width != "inherit":
+                return stroke_width
+
+    return length.Length(1)
+
+
 def _scale_stroke_width(
     element: attrdefs.StrokeWidthAttr, by: float
 ) -> None:
@@ -127,22 +169,30 @@ def _scale_stroke_width(
     ):
         return
 
+    # only elements that actually stroke something scale their stroke-width.
+    # on a container, the transformation is pushed down to the children, each
+    # of which scales its own (possibly inherited) stroke-width, so scaling
+    # the container's value as well would apply the factor twice
+    if not isinstance(element, StrokeWidthScaled):
+        return
+
     sw_set = element.stroke_width is not None
+    inherited = None if sw_set else _inherited_stroke_width(element)
 
-    if not sw_set:
-        if not isinstance(element, StrokeWidthScaled):
-            return
-
-        element.stroke_width = length.Length(1)
+    if inherited is not None:
+        element.stroke_width = inherited
 
     element.stroke_width = _scale_attr(element.stroke_width, by)  # type: ignore[reportAttributeAccessIssue]
 
-    # if stroke-width was not set and the scaled value is 1 (default),
-    # remove the attribute
+    # if stroke-width was not set and the scaled value is equal to the value
+    # the element inherits anyway, remove the attribute
     if (
-        not sw_set
+        isinstance(inherited, length.Length)
         and isinstance(element.stroke_width, length.Length)
-        and mathutils.is_close(float(element.stroke_width), 1)
+        and element.stroke_width.unit == inherited.unit
+        and mathutils.is_close(
+            float(element.stroke_width), float(inherited)
+        )
     ):
         element.stroke_width = None
 
@@ -239,7 +289,10 @@ def _scale(element: object, scale: transform.Scale) -> None:  # noqa: PLR0915
     # no need to scale distance-along-a-path attributes if a custom path
     # length is provided because those attributes and pathLength are
     # proportional
-    if not isinstance(element, attrdefs.PathLengthAttr):
+    if (
+        not isinstance(element, attrdefs.PathLengthAttr)
+        or element.pathLength is None
+    ):
         scale_distance_along_a_path_attrs(element, factor)
 
     if isinstance(element, attrdefs.OffsetNumberPercentageAttr):

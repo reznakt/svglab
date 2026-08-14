@@ -236,7 +236,7 @@ AttributeName: TypeAlias = Literal[
     "v-ideographic",
     "v-mathematical",
     "values",
-    "vector-offset",
+    "vector-effect",
     "version",
     "vert-adv-y",
     "vert-origin-x",
