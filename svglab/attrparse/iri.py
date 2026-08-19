@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import functools
 
 import pydantic
@@ -48,18 +49,23 @@ class Iri(protocols.CustomSerializable):
         This is useful for identifying references to elements within the same
         document, for example, when using `url(#id)` in `fill` or `stroke`
         attributes.
+
+        Examples:
+            >>> Iri(fragment="section1").is_local
+            True
+            >>> Iri(path="/a", fragment="section1").is_local
+            False
+            >>> Iri(path="/a").is_local
+            False
+
         """
-        match self:
-            case Iri(
-                scheme=None,
-                authority=None,
-                path=None,
-                query=None,
-                fragment=fragment,
-            ) if fragment is not None:
-                return True
-            case _:
-                return False
+        return (
+            self.scheme is None
+            and self.authority is None
+            and self.path is None
+            and self.query is None
+            and self.fragment is not None
+        )
 
     @functools.cached_property
     def iri(self) -> str:
@@ -76,13 +82,7 @@ class Iri(protocols.CustomSerializable):
 
     def to_func_iri(self) -> FuncIri:
         """Convert this Iri to a FuncIri."""
-        return FuncIri(
-            scheme=self.scheme,
-            authority=self.authority,
-            path=self.path,
-            query=self.query,
-            fragment=self.fragment,
-        )
+        return FuncIri(**dataclasses.asdict(self))
 
     @override
     def serialize(self) -> str:
@@ -134,13 +134,7 @@ class FuncIri(Iri):
 
     def to_iri(self) -> Iri:
         """Convert this FuncIri to an Iri."""
-        return Iri(
-            scheme=self.scheme,
-            authority=self.authority,
-            path=self.path,
-            query=self.query,
-            fragment=self.fragment,
-        )
+        return Iri(**dataclasses.asdict(self))
 
     @override
     def serialize(self) -> str:
