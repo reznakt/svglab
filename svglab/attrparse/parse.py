@@ -98,7 +98,6 @@ def get_validator(
     *,
     grammar: LiteralString,
     transformer: lark.Transformer[_LeafT, _ReturnT],
-    **kwargs: object,
 ) -> pydantic.BeforeValidator:
     """Get a Pydantic BeforeValidator for parsing with Lark.
 
@@ -106,7 +105,6 @@ def get_validator(
         grammar: The name of the grammar file.
         transformer: A Lark transformer to use for transforming the parse tree.
             The transformer must be a subclass of `lark.Transformer`.
-        **kwargs: Additional keyword arguments to pass to the parser.
 
     Returns:
         A Pydantic BeforeValidator that can be used to parse strings with the
@@ -124,9 +122,7 @@ def get_validator(
 
     def validator(value: object) -> object:
         if isinstance(value, str):
-            return parse(
-                value, grammar=grammar, transformer=transformer, **kwargs
-            )
+            return parse(value, grammar=grammar, transformer=transformer)
 
         return value
 
