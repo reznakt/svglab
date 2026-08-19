@@ -63,27 +63,6 @@ def _dot_product(u: _Vector, v: _Vector, /) -> float:
     return u1 * v1 + u2 * v2
 
 
-def _magnitude(u: _Vector, /) -> float:
-    """Calculate the magnitude of a vector.
-
-    Args:
-        u: The vector.
-
-    Returns:
-        The magnitude of the vector.
-
-    Examples:
-        >>> _magnitude((3, 4))
-        5.0
-        >>> _magnitude((0, 0))
-        0.0
-        >>> _magnitude((1, 2))
-        2.23606797749979
-
-    """
-    return math.sqrt(_dot_product(u, u))
-
-
 class _TransformFunctionBase(
     protocols.CustomSerializable, metaclass=abc.ABCMeta
 ):
@@ -543,7 +522,7 @@ class Matrix(_TransformFunctionBase):
         if not mathutils.is_close(a, 0) or not mathutils.is_close(b, 0):
             result.append(Translate(e, f))
 
-            r = _magnitude((a, b))
+            r = math.hypot(a, b)
             # `atan2` is the closed form of the paper's sign(b) * arccos(a/r),
             # without the singularity at b == 0
             angle = mathutils.degrees(math.atan2(b, a))
@@ -560,7 +539,7 @@ class Matrix(_TransformFunctionBase):
         elif not mathutils.is_close(c, 0) or not mathutils.is_close(d, 0):
             result.append(Translate(e, f))
 
-            s = _magnitude((c, d))
+            s = math.hypot(c, d)
             angle = mathutils.degrees(math.atan2(-c, d))
             result.append(Rotate(angle))
 
