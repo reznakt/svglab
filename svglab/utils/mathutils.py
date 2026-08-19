@@ -2,7 +2,7 @@
 
 import math
 
-from typing_extensions import Literal, SupportsFloat, SupportsIndex
+from typing_extensions import SupportsFloat, SupportsIndex
 from useful_types import SupportsRichComparisonT
 
 from svglab import constants
@@ -69,59 +69,6 @@ def clamp(
 
     """
     return max(min(value, max_value), min_value)
-
-
-def signum(x: float) -> Literal[-1, 0, 1]:
-    """Compute the signum function `sgn(x)`.
-
-    Args:
-        x: The value to compute the signum of.
-
-    Returns:
-        -1 if the value is negative, 0 if the value is zero, and 1 if the value
-        is positive.
-
-    Examples:
-        >>> signum(-5)
-        -1
-        >>> signum(0)
-        0
-        >>> signum(0.5)
-        1
-
-    """
-    if x < 0:
-        return -1
-
-    return 1 if x > 0 else 0
-
-
-def arccos(value: float) -> float:
-    """Compute the arccosine of a value in degrees.
-
-    This function is a wrapper around `math.acos` that returns "nice" values
-    for common inputs. The output is in degrees.
-
-    Args:
-        value: The value to compute the arccosine of.
-
-    Returns:
-        The arccosine of the value in degrees.
-
-    Examples:
-        >>> arccos(1)
-        0
-        >>> arccos(0)
-        90
-
-    """
-    match value:
-        case 1:
-            return 0
-        case 0:
-            return 90
-        case _:
-            return math.degrees(math.acos(value))
 
 
 def degrees(radians: float) -> float:
