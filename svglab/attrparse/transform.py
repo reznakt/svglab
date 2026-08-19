@@ -222,14 +222,17 @@ class _Rotate(_TransformFunctionBase):
 
         rot = Matrix(a=cos_a, b=sin_a, c=-sin_a, d=cos_a, e=0, f=0)
 
-        cx = self.cx or 0
-        cy = self.cy or 0
-
-        if mathutils.is_close(cx, 0) and mathutils.is_close(cy, 0):
+        if mathutils.is_close(self.cx, 0) and mathutils.is_close(
+            self.cy, 0
+        ):
             return rot
 
         # translate to origin, rotate, translate back
-        return Translate(cx, cy) @ rot @ Translate(-cx, -cy)
+        return (
+            Translate(self.cx, self.cy)
+            @ rot
+            @ Translate(-self.cx, -self.cy)
+        )
 
     @override
     def __eq__(self, other: object, /) -> bool:
@@ -383,7 +386,7 @@ class _Translate(_TransformFunctionBase):
 
     @override
     def to_matrix(self) -> Matrix:
-        return Matrix(a=1, b=0, c=0, d=1, e=self.tx, f=self.ty or 0)
+        return Matrix(a=1, b=0, c=0, d=1, e=self.tx, f=self.ty)
 
     @override
     def __eq__(self, other: object, /) -> bool:
