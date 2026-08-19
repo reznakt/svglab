@@ -1113,7 +1113,12 @@ class Element(
             ValueError: If the child is not found in the list.
 
         """
-        return self.__children.index(child, start, stop)
+        for i in range(*slice(start, stop).indices(len(self.__children))):
+            if self.__children[i] is child:
+                return i
+
+        msg = f"Item not found in sequence: {child!r}"
+        raise ValueError(msg)
 
     # endregion
     # region Search and References
