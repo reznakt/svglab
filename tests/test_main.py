@@ -208,7 +208,7 @@ def test_valid_matrix(
 
 
 def test_valid_transform_sequence() -> None:
-    transforms: dict[str, svglab.TransformFunction] = {
+    transforms = {
         "scale(1.5, 2)": svglab.Scale(1.5, 2),
         "scale(1.5)": svglab.Scale(1.5),
         "translate(1, 2)": svglab.Translate(1, 2),
@@ -783,7 +783,7 @@ def test_path_data_parse_moveto_must_be_first() -> None:
         svglab.PathData.from_str("L 10,10")
 
 
-SHORTHAND_TESTS: Final[list[tuple[svglab.PathData, svglab.PathData]]] = [
+SHORTHAND_TESTS: Final = [
     (svglab.PathData(), svglab.PathData()),
     (
         svglab.PathData().move_to(svglab.Point(10, 10)),
@@ -1057,7 +1057,7 @@ def test_visible_only_mask_and_bbox_ignore_fully_transparent_geometry() -> (
     assert not rect.get_mask(visible_only=True).any()
 
 
-_TRANSFORMS: Final[list[svglab.Transform]] = [
+_TRANSFORMS: Final = [
     [svglab.Translate(10, 20)],
     [svglab.Translate(1, 5), svglab.Scale(0.5)],
     [svglab.Translate(2, 1)] * 10,
@@ -1073,7 +1073,7 @@ _TRANSFORMS: Final[list[svglab.Transform]] = [
     [svglab.Scale(1), svglab.Translate(0)],
 ]
 
-_REIFY_SVGS: Final[list[svglab.Svg]] = [
+_REIFY_SVGS: Final = [
     conftest.complex_svg(),
     conftest.nested_svg(),
     svglab.Svg(
