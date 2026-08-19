@@ -531,7 +531,7 @@ def _add_command(
 
 
 @final
-class PathData(
+class PathData(  # noqa: PLW1641
     MutableSequence[PathCommand],
     mixins.CustomModel,
     transform.PointAddSubWithTranslateRMatmul,
@@ -1183,10 +1183,6 @@ class PathData(
             return False
 
         return all(c1 == c2 for c1, c2 in zip(self, other, strict=True))
-
-    @override
-    def __hash__(self) -> int:
-        return hash((type(self), tuple(self.__commands)))
 
     @override
     def __repr__(self) -> str:
