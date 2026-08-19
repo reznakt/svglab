@@ -505,7 +505,7 @@ def swap_transforms(
 
 
 def _move_transformation_to_end(
-    transform: transform.Transform, index: int
+    transformations: transform.Transform, index: int
 ) -> None:
     """Move a transformation to the end of the transform list.
 
@@ -515,7 +515,7 @@ def _move_transformation_to_end(
     same. The transformation itself may have its parameters adjusted as well.
 
     Args:
-        transform: A list of transformations.
+        transformations: A list of transformations.
         index: The index of the transformation to move.
 
     Raises:
@@ -530,13 +530,13 @@ def _move_transformation_to_end(
         [Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667)]
 
     """
-    if not (0 <= index < len(transform)):
+    if not (0 <= index < len(transformations)):
         msg = f"Index {index=} out of range"
         raise ValueError(msg)
 
-    for i in range(index, len(transform) - 1):
-        transform[i], transform[i + 1] = swap_transforms(
-            transform[i], transform[i + 1]
+    for i in range(index, len(transformations) - 1):
+        transformations[i], transformations[i + 1] = swap_transforms(
+            transformations[i], transformations[i + 1]
         )
 
 
