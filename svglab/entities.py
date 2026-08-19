@@ -48,6 +48,16 @@ _TransformT2 = TypeVar("_TransformT2", bound=transform.TransformFunction)
 _EMPTY_PARAM: Final = object()
 """A sentinel value for an empty parameter."""
 
+_REFERENCE_ATTR_NAMES: Final[tuple[attr_names.AttributeName, ...]] = (
+    "xlink:href",
+    "href",
+    "fill",
+    "stroke",
+    "mask",
+    "clip-path",
+)
+"""Attributes that may hold an IRI reference to another element."""
+
 
 class StrokeWidthScaled:
     """The element's `stroke-width` attribute should be scaled."""
@@ -542,10 +552,10 @@ def _move_transformation_to_end(
 
 
 def element_name(element: Element, /) -> str:
-    """Get the SVG element name of the given element or element class.
+    """Get the SVG element name of the given element.
 
     Args:
-    element: The element or element class.
+    element: The element.
 
     Returns:
     The SVG element name.
@@ -626,11 +636,10 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
 
     @override
     def __eq__(self, other: object) -> bool:
-        return (
-            self._eq(other)
-            if miscutils.basic_compare(other, self=self)
-            else False
-        )
+        if not miscutils.basic_compare(other, self=self):
+            return False
+
+        return self._eq(other)
 
     @override
     def __hash__(self) -> int:
@@ -768,9 +777,7 @@ class Element(
             return attrs[attr_name]
 
         match attr_name:
-            case "gradientUnits":
-                return "objectBoundingBox"
-            case "patternUnits":
+            case "gradientUnits" | "patternUnits":
                 return "objectBoundingBox"
             case "patternContentUnits":
                 return "userSpaceOnUse"
@@ -1300,16 +1307,7 @@ class Element(
             element in the document, `False` otherwise.
 
         """
-        reference_attr_names: list[attr_names.AttributeName] = [
-            "xlink:href",
-            "href",
-            "fill",
-            "stroke",
-            "mask",
-            "clip-path",
-        ]
-
-        for attr_name in reference_attr_names:
+        for attr_name in _REFERENCE_ATTR_NAMES:
             if not hasattr(self, attr_name):
                 continue
 
@@ -1525,7 +1523,7 @@ class Element(
                 continue
 
             # move the transformation to the end of the list where it can
-            # be directly applied to the elementf
+            # be directly applied to the element
             _move_transformation_to_end(self.main_transform, i)
             transformation = self.main_transform[-1]
 

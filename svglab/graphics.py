@@ -462,7 +462,7 @@ def mask(  # noqa: D103
         width=width,
         height=height,
     )
-    array: Mask = np.array(img)
+    array: _ImageArray = np.array(img)
 
     return array[:, :, 3] > 0  # alpha channel > 0
 
