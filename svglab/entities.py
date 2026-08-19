@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import abc
 import collections
+import itertools
 import reprlib
 import sys
 import warnings
@@ -908,13 +909,12 @@ class Element(
         if self.parent is None:
             return
 
-        should_yield = False
+        siblings = iter(self.parent.children)
 
-        for sibling in self.parent.children:
-            if should_yield:
-                yield sibling
-            elif sibling is self:
-                should_yield = True
+        for sibling in siblings:
+            if sibling is self:
+                yield from siblings
+                return
 
     @property
     def prev_siblings(self) -> Generator[Entity]:
@@ -930,11 +930,9 @@ class Element(
         if self.parent is None:
             return
 
-        for sibling in self.parent.children:
-            if sibling is self:
-                return
-
-            yield sibling
+        yield from itertools.takewhile(
+            lambda sibling: sibling is not self, self.parent.children
+        )
 
     @property
     def siblings(self) -> Generator[Entity]:
