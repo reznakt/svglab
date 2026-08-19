@@ -1184,6 +1184,10 @@ class PathData(  # noqa: PLW1641
 
         return all(c1 == c2 for c1, c2 in zip(self, other, strict=True))
 
+    def __copy__(self) -> Self:
+        # the default implementation would share the command list
+        return type(self)(self)
+
     @override
     def __repr__(self) -> str:
         name = type(self).__name__
