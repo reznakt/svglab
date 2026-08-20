@@ -934,7 +934,9 @@ class Polygon(
 ):
     @override
     def to_path_data(self) -> path_data.PathData:
-        return _points_to_path_data(self).close()
+        d = _points_to_path_data(self)
+
+        return d.close() if d else d
 
     @override
     def to_path(self) -> Path:
