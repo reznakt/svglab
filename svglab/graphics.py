@@ -44,6 +44,7 @@ _BLACK: Final = color.Color((0, 0, 0))
 class _SvgElementLike(Protocol):
     width: length.Length | None
     height: length.Length | None
+    viewBox: tuple[float, float, float, float] | None  # noqa: N815
 
     def render(
         self, width: float | None = None, height: float | None = None
@@ -79,6 +80,36 @@ def _positive_user_units(value: length.Length | None, /) -> float | None:
     return user_units if user_units > 0 else None
 
 
+def _viewbox_size(
+    viewbox: tuple[float, float, float, float] | None, /
+) -> tuple[float, float] | None:
+    """Extract the width and height of a viewBox, if they are positive.
+
+    Args:
+        viewbox: The viewBox to extract the dimensions from, or `None`.
+
+    Returns:
+        The width and height of the viewBox, or `None` if the viewBox is
+        `None` or does not define a positive area.
+
+    Examples:
+        >>> _viewbox_size((-10, 0, 930, 1000))
+        (930.0, 1000.0)
+        >>> _viewbox_size((0, 0, 0, 100))
+        >>> _viewbox_size(None)
+
+    """
+    if viewbox is None:
+        return None
+
+    _, _, width, height = viewbox
+
+    if width <= 0 or height <= 0:
+        return None
+
+    return float(width), float(height)
+
+
 def _compute_render_size(
     svg: entities.Element,
     *,
@@ -91,6 +122,11 @@ def _compute_render_size(
     SVG element, as well as the specified width and height parameters. If
     only one of the width or height parameters is provided, the other
     dimension is computed to preserve the aspect ratio of the SVG element.
+
+    A missing width or height attribute defaults to `100%`, which is
+    resolved against the viewBox, if there is one. The viewBox therefore
+    provides both the fallback size and the fallback aspect ratio of the
+    SVG element.
 
     Args:
     svg: The SVG element to compute the render size for.
@@ -130,6 +166,16 @@ def _compute_render_size(
         Traceback (most recent call last):
             ...
         ValueError: Unable to determine image dimensions: ...
+        >>> _compute_render_size(Svg(viewBox=(-10, 0, 930, 1000)))
+        (930.0, 1000.0)
+        >>> _compute_render_size(
+        ...     Svg(viewBox=(-10, 0, 930, 1000)), width=930
+        ... )
+        (930.0, 1000.0)
+        >>> _compute_render_size(
+        ...     Svg(height=Length(500), viewBox=(0, 0, 100, 200))
+        ... )
+        (250.0, 500.0)
         >>> _compute_render_size(svg, width=0)
         Traceback (most recent call last):
             ...
@@ -149,6 +195,17 @@ def _compute_render_size(
     # a non-positive dimension carries no aspect ratio; treat it as missing
     svg_width = _positive_user_units(svg.width)
     svg_height = _positive_user_units(svg.height)
+    viewbox = _viewbox_size(svg.viewBox)
+
+    if (svg_width is None or svg_height is None) and viewbox is not None:
+        vb_width, vb_height = viewbox
+
+        if svg_height is not None:
+            svg_width = svg_height * vb_width / vb_height
+        elif svg_width is not None:
+            svg_height = svg_width * vb_height / vb_width
+        else:
+            svg_width, svg_height = vb_width, vb_height
 
     if svg_width is not None and svg_height is not None:
         # fit the SVG into the requested dimensions, preserving the aspect
@@ -173,7 +230,8 @@ def _compute_render_size(
     if width is None or height is None:
         msg = (
             "Unable to determine image dimensions: "
-            f"{svg.width=}, {svg.height=}, {width=}, {height=}"
+            f"{svg.width=}, {svg.height=}, {svg.viewBox=}, "
+            f"{width=}, {height=}"
         )
         raise ValueError(msg)
 

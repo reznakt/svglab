@@ -1316,6 +1316,12 @@ class Svg(
         in the SVG element. If both dimensions are specified, the SVG is
         scaled so that the aspect ratio is preserved.
 
+        If the SVG element does not have a `width` or a `height` attribute,
+        the missing dimension defaults to `100%` and is resolved against the
+        `viewBox`, if there is one. A `viewBox` only defines an aspect ratio,
+        not a size, so when neither dimension is known, one user unit is
+        rendered as one pixel.
+
         Args:
         background: The background color of the rendered image. If `None`,
             the background is transparent.
