@@ -1226,6 +1226,9 @@ class Svg(
         The new `viewBox` must have the same aspect ratio as the old `viewBox`.
         If the aspect ratios differ, the method raises an exception.
 
+        If the new `viewBox` is equal to the current one, the content is left
+        untouched.
+
         Any attributes of type `Length` in the SVG must be convertible to
         user units. If an attribute is not convertible, the method raises an
         exception.
@@ -1248,6 +1251,13 @@ class Svg(
             old_viewbox = (0, 0, float(self.width), float(self.height))
         else:
             old_viewbox = self.viewBox
+
+        if all(
+            mathutils.is_close(old, new)
+            for old, new in zip(old_viewbox, viewbox, strict=True)
+        ):
+            self.viewBox = viewbox
+            return
 
         old_min_x, old_min_y, old_width, old_height = old_viewbox
         min_x, min_y, width, height = viewbox
