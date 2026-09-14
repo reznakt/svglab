@@ -1,7 +1,9 @@
 import base64
 import copy
+import inspect
 import io
 import pathlib
+import types
 from collections.abc import Callable
 
 import hypothesis
@@ -11,6 +13,8 @@ import pytest
 from typing_extensions import Final, Protocol
 
 import svglab
+from svglab import entities
+from svglab.elements import elements, names, traits
 from tests import conftest
 
 
@@ -1580,3 +1584,45 @@ def test_parse_svg_with_path() -> None:
     path = conftest.ASSETS_DIR / "dummy.svg"
 
     svglab.parse_svg(path)
+
+
+def _public_classes(module: types.ModuleType) -> set[str]:
+    return {
+        name
+        for name, obj in vars(module).items()
+        if inspect.isclass(obj)
+        and not name.startswith("_")
+        and obj.__module__ == module.__name__
+    }
+
+
+@pytest.mark.parametrize(
+    "module", [elements, traits], ids=lambda module: module.__name__
+)
+def test_public_classes_are_exported(module: types.ModuleType) -> None:
+    assert _public_classes(module) <= set(svglab.__all__)
+
+
+def test_element_classes_match_element_names() -> None:
+    assert _public_classes(elements) == set(
+        names.ELEMENT_NAME_TO_NORMALIZED.values()
+    )
+
+
+@pytest.mark.parametrize(
+    ("element_name", "class_name"),
+    sorted(names.ELEMENT_NAME_TO_NORMALIZED.items()),
+)
+def test_every_element_is_exported(
+    element_name: str, class_name: str
+) -> None:
+    assert class_name in svglab.__all__, element_name
+
+    cls = getattr(svglab, class_name)
+
+    assert issubclass(cls, svglab.Element)
+    assert entities.element_name(cls.model_construct()) == element_name
+
+
+def test_all_is_importable() -> None:
+    assert all(hasattr(svglab, name) for name in svglab.__all__)
