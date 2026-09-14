@@ -453,6 +453,7 @@ from svglab.elements.elements import (
     Vkern,
 )
 from svglab.elements.traits import (
+    AnimationElement,
     BasicShape,
     ContainerElement,
     DescriptiveElement,
@@ -517,6 +518,7 @@ __all__: __Final = [
     "AnimateColor",
     "AnimateMotion",
     "AnimateTransform",
+    "AnimationElement",
     "ArabicFormAttr",
     "ArcTo",
     "AscentAttr",
