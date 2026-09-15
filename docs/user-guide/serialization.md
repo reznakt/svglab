@@ -1,6 +1,6 @@
 # Serialization
 
-Once you've built or modified an SVG tree, you'll want to turn it back into XML. <span style="font-variant: small-caps;">svglab</span> gives you two levels of control: a simple one-liner for quick output, and a powerful `Formatter` class for fine-grained customization.
+Once you've built or modified an SVG tree, you'll want to turn it back into XML. <span class="svglab">svglab</span> gives you two levels of control: a simple one-liner for quick output, and a powerful `Formatter` class for fine-grained customization.
 
 ## Basic output
 
@@ -40,7 +40,7 @@ There are three equivalent ways to apply a formatter:
     ```python
     from svglab import Formatter
 
-    fmt = Formatter(indent=4, precision=2)
+    fmt = Formatter(indent=4, general_precision=2)
     xml = svg.to_xml(formatter=fmt)
     ```
 
@@ -54,20 +54,21 @@ There are three equivalent ways to apply a formatter:
 
     Apply a formatter to **all** serialization within a block:
 
-    ```python
+    ```python { .annotate }
     with fmt:
-        xml = svg.to_xml()     # uses fmt
-        svg.save("output.svg") # also uses fmt
+        xml = svg.to_xml()  # (1)!
+        svg.save("output.svg")  # (2)!
     ```
 
-    !!! tip
-        The context manager approach is especially handy in scripts that serialize multiple elements &mdash; set it once and forget about it.
+    1.  No `formatter=` argument, but `fmt` applies anyway.
+    2.  And to every other serialization call in the block, at any depth of the call stack.
 
-!!! warning "Formatter context affects all serialization"
-    When a `Formatter` context manager is active, **all** calls to `.to_xml()` and `.save()` within that block will use it &mdash; even if they don't explicitly pass a formatter. If you call `.to_xml()` without arguments and get unexpected output, check whether a `Formatter` context manager is active higher in the call stack.
+    Handy in scripts that serialize many elements: set it once and forget about it.
 
-!!! info "Nesting formatters"
-    Formatter context managers can be safely nested. The innermost active formatter always takes precedence, and exiting a block restores the previous one.
+!!! warning "The context reaches further than it looks"
+    A `Formatter` context manager affects **every** `.to_xml()` and `.save()` call made while the block is open, including ones inside functions you call. Unexpected output from a bare `.to_xml()` usually means a formatter is active somewhere up the call stack.
+
+    Nesting is safe: the innermost formatter wins, and leaving a block restores the previous one.
 
 ## Formatting options
 
@@ -93,8 +94,11 @@ There are three equivalent ways to apply a formatter:
     |------|--------|
     | `hex-short` | `#f00` |
     | `hex-long` | `#ff0000` |
-    | `rgb` | `rgb(255, 0, 0)` |
+    | `rgb` | `rgb(255 0 0)` |
+    | `hsl` | `hsl(0 100% 50%)` |
     | `named` | `red` |
+
+    The components are joined with `list_separator`, so switching that to `", "` gives the more familiar `rgb(255, 0, 0)`.
 
 ### Numbers and precision
 
@@ -106,6 +110,9 @@ There are three equivalent ways to apply a formatter:
 | `opacity_precision` | `int \| FloatPrecisionSettings \| None` | `None` | Override for opacity values |
 | `scale_precision` | `int \| FloatPrecisionSettings \| None` | `None` | Override for scale values |
 | `strip_leading_zero` | `bool` | `True` | Omit leading zero for numbers between -1 and 1 (e.g., `.5`) |
+| `show_decimal_part_if_int` | `bool` | `False` | Write `1.0` instead of `1` |
+| `small_number_scientific_threshold` | `float \| None` | `1e-06` | Below this magnitude, use scientific notation; `None` disables it |
+| `large_number_scientific_threshold` | `int \| None` | `1000000` | Above this magnitude, use scientific notation; `None` disables it |
 
 !!! info "Precision hierarchy"
     The type-specific precision settings take precedence over the general `general_precision`. If neither is set, a default fallback precision is used.
@@ -146,12 +153,12 @@ For more on path data, see [Path Data](path-data.md).
 
 ## Predefined formatters
 
-<span style="font-variant: small-caps;">svglab</span> ships with ready-made formatters for common use cases:
+<span class="svglab">svglab</span> ships with ready-made formatters for common use cases:
 
 | Formatter | Purpose |
 |-----------|---------|
 | `DEFAULT_FORMATTER` | Sensible defaults for human-readable output |
-| `MINIMAL_FORMATTER` | Compatibility-oriented output: original colors, no scientific notation, explicit commands |
+| `MINIMAL_FORMATTER` | Compatibility-oriented output: original colors and path commands, no scientific notation, no stripped leading zeros, `xmlns` always written, 4-space indent |
 
 ```python
 from svglab import DEFAULT_FORMATTER, MINIMAL_FORMATTER
@@ -165,18 +172,26 @@ svg.save("compatible.svg", formatter=MINIMAL_FORMATTER)
 If you need to control how a particular object is serialized, you can implement the `CustomSerializable` protocol. This is useful when writing your own attribute types or extending the library:
 
 ```python
-from svglab import CustomSerializable, get_current_formatter
+from svglab import get_current_formatter
+from svglab.protocols import CustomSerializable
+
 
 class MyValue(CustomSerializable):
     def serialize(self) -> str:
         return "my-custom-output"
 ```
 
+`CustomSerializable` lives in `svglab.protocols` rather than the top-level package. It is a `Protocol`, so subclassing is optional &mdash; any object with a `serialize()` method is serialized through it.
+
 The `serialize` method takes no arguments. If your custom type needs to respect the active formatter's settings, use `get_current_formatter()` to retrieve it.
 
 ## Next steps
 
-- [Parsing](parsing.md) &mdash; reading SVGs back in
-- [Path Data](path-data.md) &mdash; path-specific serialization options
-- [Transforms](transforms.md) &mdash; transform serialization
-- [API Reference: Elements](../api-reference/elements.md) &mdash; `to_xml()`, `save()`, and `Formatter` reference
+<div class="grid cards" markdown>
+
+-   __[Parsing](parsing.md)__ &mdash; reading SVGs back in
+-   __[Path Data](path-data.md)__ &mdash; path-specific serialization options
+-   __[Transforms](transforms.md)__ &mdash; transform serialization
+-   __[API Reference: Elements](../api-reference/index.md)__ &mdash; `to_xml()` and `save()` on each element class
+
+</div>

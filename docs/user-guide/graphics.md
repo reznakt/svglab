@@ -1,74 +1,82 @@
 # Graphical Operations
 
-<span style="font-variant: small-caps;">svglab</span> can go beyond manipulating the SVG DOM &mdash; it can **render** elements, compute **bounding boxes**, extract **masks**, and **reify** transforms into geometry. These operations bridge the gap between the vector description and the actual pixels on screen.
+<span class="svglab">svglab</span> can go beyond manipulating the SVG DOM &mdash; it can **render** elements, compute **bounding boxes**, extract **masks**, and **reify** transforms into geometry. These operations bridge the gap between the vector description and the actual pixels on screen.
 
 !!! note "Requirements"
     Graphical operations rely on an SVG renderer (resvg) and image processing libraries (Pillow, NumPy). These are included as dependencies and work out of the box.
 
 ## Rendering
 
-The `.render()` method rasterizes an SVG element into a PIL `Image`:
+The `.render()` method rasterizes an SVG document into a PIL `Image`. It is defined on `Svg` only &mdash; rasterizing needs a complete document with its own dimensions:
 
-```python
+```python { .annotate }
 from pathlib import Path
 from svglab import parse_svg
 
 svg = parse_svg(Path("drawing.svg"))
-image = svg.render()          # PIL Image (RGBA)
+image = svg.render()  # (1)!
 image.save("output.png")
 ```
 
-!!! info "How rendering works"
-    <span style="font-variant: small-caps;">svglab</span> uses [resvg](https://github.com/baseplate-admin/resvg-py) under the hood, a high-quality SVG renderer written in Rust. The result is a pixel-perfect rasterization that matches what you'd see in a modern browser.
+1.  An RGBA `PIL.Image`, rasterized by [resvg](https://github.com/baseplate-admin/resvg-py) &mdash; a renderer written in Rust that tracks what a modern browser would draw.
 
-!!! tip "Rendering subtrees"
-    When you render a single element (rather than the root `Svg`), it's temporarily wrapped in an `<svg>` for rendering. This means inherited styles from parent elements won't apply &mdash; what you see is the element in isolation.
+`render()` takes `width` and `height` to override the document's own dimensions (the aspect ratio is preserved either way), plus resvg's font and rendering options &mdash; `background`, `dpi`, `font_family`, `shape_rendering`, `zoom` and friends.
+
+!!! tip "Rendering a single element"
+    There is no `.render()` on `Rect` or `G`. To rasterize part of a document, copy the subtree into an `Svg` of its own &mdash; or use [`get_mask()`](#masks), which renders just that element for you.
 
 ## Bounding boxes
 
-A bounding box is the smallest axis-aligned rectangle that encloses an element's geometry. <span style="font-variant: small-caps;">svglab</span> provides two variants:
+A bounding box is the smallest axis-aligned rectangle that encloses an element. `get_bbox()` is available on graphics elements and containers alike, and comes in two variants. Both are computed by **rendering**, so the result is a tuple of integer pixel coordinates `(x_min, y_min, x_max, y_max)` in the rendered document's pixel space &mdash; or `None` if nothing was drawn.
 
-### `get_bbox()` &mdash; geometric bounding box
+### `get_bbox()` &mdash; the element on its own
 
-Returns the bounding box based on the element's geometry alone, ignoring visual effects like clipping and masking:
+Renders the document with every other element hidden and this one forced to be visible, then measures the drawn pixels:
 
-```python
-box = svg.get_bbox()
-# box is a tuple (x_min, y_min, x_max, y_max) or None
+```python { .annotate }
+box = rect.get_bbox()  # (1)!
 ```
 
-### `get_bbox(visible_only=True)` &mdash; rendered bounding box
+1.  `(9, 9, 41, 41)` for a 30&times;30 rect at (10, 10) &mdash; or `None` if nothing was drawn.
 
-Returns the bounding box of the element **as it actually appears** after applying clips, masks, opacity, and filters. This is computed by rendering the element and analyzing the visible pixels:
+    The box runs a little wide because making the element visible means giving it a solid black fill *and* stroke, so an unstroked shape gains about half a stroke on each side.
+
+Fill, stroke and opacity settings on the element are overridden, so a transparent or `display: none` element still gets a box. A clip path or mask applied to the element is *not* removed, so a clipped element is measured clipped &mdash; and if its clip path is defined elsewhere in the document, the result can even be `None`.
+
+### `get_bbox(visible_only=True)` &mdash; what the element contributes
+
+Renders the whole document twice, with and without this element, and measures the pixels that differ:
 
 ```python
-vbox = svg.get_bbox(visible_only=True)
+vbox = rect.get_bbox(visible_only=True)
 ```
+
+This is the element **as it actually appears**: clips, masks, opacity and filters all apply, and any part covered by an element painted on top of it is excluded.
 
 !!! tip "When to use which"
-    Use `get_bbox()` when you need the theoretical extent of the geometry (e.g. for layout calculations). Use `get_bbox(visible_only=True)` when you need to know what the user actually sees (e.g. for cropping or collision detection).
+    Use `get_bbox()` for the extent of the element considered by itself (e.g. for layout calculations). Use `get_bbox(visible_only=True)` when you need to know what the user actually sees (e.g. for cropping or collision detection). The second variant renders twice, in a process pool, so it is markedly slower.
 
 ## Masks
 
-Masks give you a pixel-level view of where an element draws content. They're returned as NumPy arrays where each pixel is either visible or transparent.
+Masks give you a pixel-level view of where an element draws content. They are 2D NumPy boolean arrays the size of the rendered document, `True` where the element is present. The two variants match the two bounding boxes above &mdash; in fact `get_bbox()` is just the box around the corresponding mask.
 
 ### `get_mask()`
 
-The full geometric mask, including parts that might be clipped or hidden:
+The element rendered on its own, forced visible:
 
 ```python
-import numpy as np
-
-m = svg.get_mask()   # NumPy boolean array
+m = rect.get_mask()  # NumPy bool array, shape (height, width)
 ```
 
 ### `get_mask(visible_only=True)`
 
-The mask of only the **actually visible** pixels, after clips and masks are applied:
+Only the pixels the element actually contributes to the rendered document, after clips, masks, opacity and overlapping elements:
 
 ```python
-vm = svg.get_mask(visible_only=True)
+vm = rect.get_mask(visible_only=True)
 ```
+
+Both accept `width` and `height` to render at a size other than the document's own.
 
 ## Reification
 
@@ -102,20 +110,21 @@ Call `.reify()` on any element to recursively reify it and all its descendants:
 svg.reify()
 ```
 
-Under the hood, reification:
+Under the hood, reification works through the `transform` list left to right and, for each entry:
 
-1. Decomposes the `transform` into a matrix
+1. Decomposes a `Matrix` into simpler transforms, and adjusts the parameters of a `Rotate` or a skew so a translation or scale can be pulled out of it
 2. Applies translations to position attributes (`x`, `y`, `cx`, `cy`, &hellip;)
 3. Applies scaling to size attributes (`width`, `height`, `r`, `rx`, `ry`, &hellip;)
 4. Transforms path data coordinates directly
-5. Adjusts `stroke-width` to compensate for scaling
-6. Removes the `transform` attribute
+5. Adjusts `stroke-width`, dash patterns and `pathLength` to compensate for scaling
+
+Only translation and scaling can actually be baked into an element. Reification **stops at the first transform it can't apply** &mdash; a non-uniform scale on a circle, say &mdash; and leaves that transform and everything before it in the attribute. The `transform` attribute is removed only when the whole list was consumed.
 
 !!! warning "Lossy operation"
-    Reification modifies attributes in place and cannot be undone. For complex transforms (rotation, skew), basic shapes may need to be [converted to paths](path-data.md#converting-shapes-to-paths) first to accurately represent the transformed geometry.
+    Reification modifies attributes in place and cannot be undone. For complex transforms (rotation, skew), basic shapes may need to be [converted to paths](path-data.md#converting-shapes-to-paths) first to accurately represent the transformed geometry. Every length involved must be convertible to user units, or `SvgUnitConversionError` is raised.
 
-!!! note "Silently skipped elements"
-    Reification quietly skips elements it can't safely transform, including `<use>`, `<pattern>`, elements that reference paint servers (gradients, clip paths), and gradients using `objectBoundingBox` units. No error is raised &mdash; those elements simply keep their `transform` attribute unchanged.
+!!! svglab "Silently skipped elements"
+    Reification quietly skips elements it can't safely transform: `<use>`, `<pattern>`, elements that reference other elements (paint servers, clip paths), and gradients using `objectBoundingBox` units. No error is raised &mdash; the element keeps its `transform` attribute unchanged, and because the recursion stops there, **so does its whole subtree**.
 
 ## Shape-to-path conversion
 
@@ -123,7 +132,11 @@ Basic shapes can be converted to `Path` elements via `.to_path()` and `.to_path_
 
 ## Next steps
 
-- [Transforms](transforms.md) &mdash; the transform types that reification consumes
-- [Path Data](path-data.md) &mdash; the universal geometry representation
-- [Traits](traits.md) &mdash; which elements support graphical operations
-- [Serialization](serialization.md) &mdash; writing the optimized result to a file
+<div class="grid cards" markdown>
+
+-   __[Transforms](transforms.md)__ &mdash; the transform types that reification consumes
+-   __[Path Data](path-data.md)__ &mdash; the universal geometry representation
+-   __[Traits](traits.md)__ &mdash; which elements support graphical operations
+-   __[Serialization](serialization.md)__ &mdash; writing the optimized result to a file
+
+</div>

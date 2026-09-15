@@ -30,14 +30,14 @@
 
 ### Features
 
-- Full SVG 1.1 coverage &mdash; all 80 elements and 295 attributes
+- Full SVG 1.1 coverage &mdash; all 80 elements and 276 attributes
 - Typed, validated attributes via [Pydantic](https://pypi.org/project/pydantic/)
 - 20+ configurable formatting and optimization options
 - Raster rendering via [resvg](https://lib.rs/crates/resvg), through bindings that ship with the library
 - Bounding box and mask computation
 - Transform reification (baking transforms into geometry)
 
-See the [Overview](https://reznakt.github.io/svglab/overview/) for a detailed description of each capability.
+See the [Overview](https://svglab.rocks/overview/) for a detailed description of each capability.
 
 ```mermaid
 ---
@@ -81,7 +81,7 @@ graph TD
 pip install svglab
 ```
 
-For alternative package managers (Poetry, uv) and installing from source, see the [Installation guide](https://reznakt.github.io/svglab/getting-started/installation/).
+For alternative package managers (Poetry, uv) and installing from source, see the [Installation guide](https://svglab.rocks/getting-started/installation/).
 
 ## Usage
 
@@ -89,20 +89,24 @@ For alternative package managers (Poetry, uv) and installing from source, see th
 from svglab import parse_svg, Rect, Circle, Length, Color
 
 # Parse an SVG
-svg = parse_svg('<svg width="200" height="200"><circle cx="50" cy="50" r="40"/></svg>')
+svg = parse_svg(
+    '<svg width="200" height="200"><circle cx="50" cy="50" r="40"/></svg>'
+)
 
 # Find and modify elements
 circle = svg.find(Circle)
 circle.fill = Color("red")
 
 # Add new elements
-svg.add_child(Rect(x=Length(10), y=Length(10), width=Length(30), height=Length(30)))
+svg.add_child(
+    Rect(x=Length(10), y=Length(10), width=Length(30), height=Length(30))
+)
 
 # Serialize
 svg.save("output.svg")
 ```
 
-For a complete walkthrough, see the [Quickstart](https://reznakt.github.io/svglab/getting-started/quickstart/).
+For a complete walkthrough, see the [Quickstart](https://svglab.rocks/getting-started/quickstart/).
 
 ## Development
 

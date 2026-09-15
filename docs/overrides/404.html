@@ -1,0 +1,25 @@
+{% extends "main.html" %}
+
+{% block content %}
+<div style="text-align: center; padding: 3rem 1rem 4rem;">
+  <img src="{{ 'assets/logo.svg' | url }}" alt="" aria-hidden="true"
+       style="width: 96px; height: 96px; opacity: 0.35; margin-bottom: 1.5rem;">
+
+  <h1 style="margin-bottom: 0.5rem;">This page doesn't exist</h1>
+
+  <p style="max-width: 46ch; margin: 0 auto 2rem;
+            color: var(--md-default-fg-color--light);">
+    The link may be outdated, or the page may have moved. Search above, or
+    pick up from one of these:
+  </p>
+
+  <div style="display: flex; gap: 0.75rem; justify-content: center;
+              flex-wrap: wrap;">
+    <a class="md-button md-button--primary" href="{{ 'getting-started/' | url }}">
+      Getting Started
+    </a>
+    <a class="md-button" href="{{ 'user-guide/' | url }}">User Guide</a>
+    <a class="md-button" href="{{ 'api-reference/' | url }}">API Reference</a>
+  </div>
+</div>
+{% endblock %}
