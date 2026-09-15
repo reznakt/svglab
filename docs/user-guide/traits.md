@@ -1,10 +1,10 @@
 # Traits
 
-The SVG specification groups its 80 elements into **categories** &mdash; graphics elements, basic shapes, containers, and so on. <span style="font-variant: small-caps;">svglab</span> represents these categories as **traits**: abstract base classes that tell you *what an element can do*, not just what it is.
+The SVG specification groups its 80 elements into **categories** &mdash; graphics elements, basic shapes, containers, and so on. <span class="svglab">svglab</span> represents these categories as **traits**: abstract base classes that tell you *what an element can do*, not just what it is.
 
 ## Why traits?
 
-Consider rendering. Not every SVG element can be rendered &mdash; a `<defs>` block defines reusable content but doesn't draw anything by itself. Traits let <span style="font-variant: small-caps;">svglab</span> express this cleanly: only elements that implement `GraphicsElement` support operations like computing a bounding box.
+Consider converting a shape to a path. `<rect>` and `<circle>` can be rewritten as a `<path>` with equivalent geometry; `<defs>` and `<filter>` cannot, because they don't describe geometry at all. Traits let <span class="svglab">svglab</span> express this cleanly: `.to_path()` exists on `BasicShape` and nowhere else, so the elements that can't do it don't advertise a method that would fail.
 
 You can also use traits for runtime type checking, which is more robust than checking a list of tag names:
 
@@ -20,43 +20,56 @@ isinstance(circle, GraphicsElement)  # True
 ```mermaid
 graph TD
     GraphicsElement --> Shape
+    GraphicsElement --> TextContentElement
     Shape --> BasicShape
     ContainerElement
+    GraphicsReferencingElement
+    StructuralElement
     DescriptiveElement
     AnimationElement
     FilterPrimitiveElement
     GradientElement
     LightSourceElement
-    TextContentElement
     TextContentChildElement
+    TextContentBlockElement
 ```
 
-The most important traits are described below. For the complete hierarchy with every method signature, see the [API Reference: Traits](../api-reference/traits.md).
+/// caption
+Traits that inherit from another trait are shown connected; the rest derive directly from `Element`.
+///
+
+The most important traits are described below. For the complete hierarchy with every method signature, see the [API Reference: Traits](../api-reference/index.md).
 
 ## Graphics elements
 
 `GraphicsElement` is the broadest category of "things that produce visual output". This includes shapes, text, images, and the `<use>` element. Any element with this trait can be:
 
-- [Rendered to a raster image](graphics.md#rendering)
 - [Queried for its bounding box](graphics.md#bounding-boxes)
-- [Masked](graphics.md#masks)
+- [Turned into a pixel mask](graphics.md#masks)
+
+`ContainerElement` grants those same two operations, so groups and other containers can be measured as well. [Rendering](graphics.md#rendering) is different: `.render()` lives on `Svg` alone, because rasterizing needs a complete document with its own dimensions.
 
 ## Shapes and basic shapes
 
 ### `Shape`
 
-A `Shape` is a `GraphicsElement` whose geometry is defined by path data &mdash; either directly (like `<path>`) or indirectly (like `<rect>` or `<circle>`). Every shape has a `.to_path_data()` method that returns its geometry as a `PathData` object.
+A `Shape` is a `GraphicsElement` whose geometry is defined by straight lines and curves &mdash; either directly (like `<path>`) or indirectly (like `<rect>` or `<circle>`). What every shape gets from this trait is `pathLength` and the `.set_path_length()` method, which rescales `stroke-dasharray` and `stroke-dashoffset` so the dash pattern keeps its appearance.
 
 ### `BasicShape`
 
-`BasicShape` narrows things further to the six SVG primitives: `Rect`, `Circle`, `Ellipse`, `Line`, `Polyline`, and `Polygon`. In addition to `.to_path_data()`, basic shapes support `.to_path()`, which converts the element itself into a `Path` element:
+`BasicShape` narrows things further to the six SVG primitives: `Rect`, `Circle`, `Ellipse`, `Line`, `Polyline`, and `Polygon`. These are the elements that can be rewritten as paths, via `.to_path_data()` for the raw geometry and `.to_path()` for a complete replacement element:
 
 ```python
 from svglab import Rect, Length
 
-rect = Rect(x=Length(10), y=Length(20), width=Length(100), height=Length(50))
-path = rect.to_path()   # Path element with equivalent geometry
+rect = Rect(
+    x=Length(10), y=Length(20), width=Length(100), height=Length(50)
+)
+path = rect.to_path()  # Path element with equivalent geometry
 ```
+
+!!! svglab "`Path` is not a `BasicShape`"
+    `Path` is a `Shape` but not a `BasicShape`, so it has neither method &mdash; its geometry is already path data, available as `path.d`.
 
 This is useful for [optimization and normalization](graphics.md) &mdash; paths are a universal representation that many operations can work with.
 
@@ -68,19 +81,24 @@ This is useful for [optimization and normalization](graphics.md) &mdash; paths a
 
 ## Container elements
 
-`ContainerElement` covers elements that hold child elements: `Svg`, `G`, `Defs`, `Symbol`, `Marker`, `ClipPath`, `Mask`, and `Pattern`. These elements define coordinate spaces and can apply [transforms](transforms.md) or styles to all their children at once.
+`ContainerElement` covers the eleven elements the specification lists as containers: `Svg`, `G`, `A`, `Defs`, `Switch`, `Symbol`, `Marker`, `Mask`, `Pattern`, `Glyph`, and `MissingGlyph`. These elements define coordinate spaces and can apply [transforms](transforms.md) or styles to all their children at once.
+
+!!! note
+    `ClipPath` is *not* a container element in the SVG sense, even though it has children &mdash; it defines a clipping region rather than a rendered coordinate space.
 
 ## Other traits
 
 | Trait | Covers | Purpose |
 |-------|--------|---------|
-| `DescriptiveElement` | `Title`, `Desc`, `Metadata` | Metadata and accessibility |
-| `AnimationElement` | `Animate`, `AnimateMotion`, `AnimateTransform`, `Set` | SMIL animations |
-| `FilterPrimitiveElement` | `FeGaussianBlur`, `FeColorMatrix`, &hellip; | SVG filter effects |
-| `GradientElement` | `LinearGradient`, `RadialGradient` | Color gradients |
-| `LightSourceElement` | `FeDistantLight`, `FePointLight`, `FeSpotLight` | Lighting for filter effects |
-| `TextContentElement` | `Text`, `Tspan`, `TextPath`, &hellip; | Text layout |
-| `TextContentChildElement` | `Tspan`, `TextPath`, `AltGlyph`, `Tref` | Children of text elements |
+| [`DescriptiveElement`](../api-reference/traits/DescriptiveElement.md) | `Title`, `Desc`, `Metadata` | Metadata and accessibility |
+| [`AnimationElement`](../api-reference/traits/AnimationElement.md) | `Animate`, `AnimateColor`, `AnimateMotion`, `AnimateTransform`, `Set` | SMIL animations |
+| [`FilterPrimitiveElement`](../api-reference/traits/FilterPrimitiveElement.md) | `FeGaussianBlur`, `FeColorMatrix`, &hellip; | SVG filter effects |
+| [`GradientElement`](../api-reference/traits/GradientElement.md) | `LinearGradient`, `RadialGradient` | Color gradients |
+| [`LightSourceElement`](../api-reference/traits/LightSourceElement.md) | `FeDistantLight`, `FePointLight`, `FeSpotLight` | Lighting for filter effects |
+| [`TextContentElement`](../api-reference/traits/TextContentElement.md) | `Text`, `Tspan`, `TextPath`, &hellip; | Text layout |
+| [`TextContentChildElement`](../api-reference/traits/TextContentChildElement.md) | `Tspan`, `TextPath`, `AltGlyph`, `Tref` | Children of text elements |
+| [`StructuralElement`](../api-reference/traits/StructuralElement.md) | `Svg`, `G`, `Defs`, `Symbol`, `Use` | Document structure |
+| [`GraphicsReferencingElement`](../api-reference/traits/GraphicsReferencingElement.md) | `Use`, `Image` | Graphics pulled in by reference |
 
 ## Using traits with `isinstance`
 
@@ -111,7 +129,11 @@ for element in svg.find_all():
 
 ## Next steps
 
-- [Elements](elements.md) &mdash; the full element catalogue
-- [Path Data](path-data.md) &mdash; working with `.to_path_data()` results
-- [Graphical Operations](graphics.md) &mdash; rendering, bounding boxes, and masks
-- [API Reference: Traits](../api-reference/traits.md) &mdash; complete trait documentation
+<div class="grid cards" markdown>
+
+-   __[Elements](elements.md)__ &mdash; the full element catalogue
+-   __[Path Data](path-data.md)__ &mdash; working with `.to_path_data()` results
+-   __[Graphical Operations](graphics.md)__ &mdash; rendering, bounding boxes, and masks
+-   __[API Reference: Traits](../api-reference/index.md)__ &mdash; complete trait documentation
+
+</div>

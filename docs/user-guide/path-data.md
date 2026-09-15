@@ -1,6 +1,6 @@
 # Path Data
 
-The `<path>` element is SVG's most versatile drawing tool. Its `d` attribute is a compact string of drawing commands &mdash; move the pen here, draw a line there, trace a cubic Bézier curve &mdash; that can describe any shape. <span style="font-variant: small-caps;">svglab</span> parses this into a `PathData` object: a structured, manipulable sequence of typed commands.
+The `<path>` element is SVG's most versatile drawing tool. Its `d` attribute is a compact string of drawing commands &mdash; move the pen here, draw a line there, trace a cubic Bézier curve &mdash; that can describe any shape. <span class="svglab">svglab</span> parses this into a `PathData` object: a structured, manipulable sequence of typed commands.
 
 ## Path commands at a glance
 
@@ -20,7 +20,7 @@ Every SVG path is built from these commands:
 | `Z` / `z` | `ClosePath` | Close the current subpath |
 
 !!! info "Absolute vs. relative"
-    Uppercase letters (`M`, `L`, &hellip;) use **absolute** coordinates; lowercase (`m`, `l`, &hellip;) use coordinates **relative** to the current pen position. <span style="font-variant: small-caps;">svglab</span> preserves the original coordinate mode unless you explicitly convert it.
+    Uppercase letters (`M`, `L`, &hellip;) use **absolute** coordinates; lowercase (`m`, `l`, &hellip;) use coordinates **relative** to the current pen position. <span class="svglab">svglab</span> stores every command as absolute coordinates and picks the letter case on output, controlled by the formatter's `path_data_coordinates` option (`"absolute"` by default). A path parsed as `m 10 10 l 5 5` therefore serializes as `M10,10 15,15` unless you ask for `"relative"`.
 
 ## Creating path data
 
@@ -34,7 +34,7 @@ from svglab import parse_svg
 svg = parse_svg('<svg><path d="M 10 20 L 50 60 Z"/></svg>')
 path = svg.find("path")
 
-path.d   # PathData([MoveTo(...), LineTo(...), ClosePath()])
+path.d  # PathData(MoveTo(...), LineTo(...), ClosePath())
 ```
 
 ### Programmatically
@@ -44,12 +44,14 @@ Build path data by hand with command objects:
 ```python
 from svglab import PathData, MoveTo, LineTo, ClosePath, Point
 
-triangle = PathData([
-    MoveTo(end=Point(0, 0)),
-    LineTo(end=Point(100, 0)),
-    LineTo(end=Point(50, 87)),
-    ClosePath(),
-])
+triangle = PathData(
+    [
+        MoveTo(end=Point(0, 0)),
+        LineTo(end=Point(100, 0)),
+        LineTo(end=Point(50, 87)),
+        ClosePath(),
+    ]
+)
 ```
 
 ## Working with commands
@@ -57,9 +59,9 @@ triangle = PathData([
 `PathData` behaves like a **sequence** &mdash; you can iterate, index, slice, and check its length:
 
 ```python
-len(triangle)     # 4
-triangle[0]       # MoveTo(point=Point(x=0, y=0))
-triangle[-1]      # ClosePath()
+len(triangle)  # 4
+triangle[0]  # MoveTo(end=Point(x=0.0, y=0.0))
+triangle[-1]  # ClosePath()
 
 for cmd in triangle:
     print(cmd)
@@ -78,7 +80,10 @@ path_data.extend(other_path)
 ```
 
 !!! note "Mutability"
-    `PathData` is mutable. Methods like `.append()` and `.extend()` modify the path **in place**. Use the builder methods (`.line_to()`, `.move_to()`, etc.) for a fluent chaining style.
+    `PathData` is mutable. `.append()`, `.extend()` and the builder methods (`.move_to()`, `.line_to()`, &hellip;) all modify the path **in place**; the builders additionally return the same object, which is what makes chaining work.
+
+!!! warning "A path has to start with a move"
+    Every `PathData` must begin with a `MoveTo`. Appending to an empty path, or constructing one whose first command is anything else, raises `SvgPathMissingMoveToError`.
 
 ## Transforming path data
 
@@ -102,7 +107,9 @@ All [basic shapes](traits.md#shapes-and-basic-shapes) can be converted to equiva
     ```python
     from svglab import Rect, Length
 
-    rect = Rect(x=Length(10), y=Length(20), width=Length(100), height=Length(50))
+    rect = Rect(
+        x=Length(10), y=Length(20), width=Length(100), height=Length(50)
+    )
     path_data = rect.to_path_data()
     ```
 
@@ -122,17 +129,18 @@ The [Formatter](serialization.md) provides several options specifically for path
 ```python
 from svglab import Formatter
 
-fmt = Formatter(
-    path_data_coordinates="relative",
-    coordinate_precision=1,
-)
+fmt = Formatter(path_data_coordinates="relative", coordinate_precision=1)
 
 print(path.to_xml(formatter=fmt))
 ```
 
 ## Next steps
 
-- [Transforms](transforms.md) &mdash; transformation types in detail
-- [Traits](traits.md) &mdash; which elements support path conversion
-- [Serialization](serialization.md) &mdash; all formatting options
-- [API Reference: Elements](../api-reference/elements.md) &mdash; `Path`, `PathData`, and command classes
+<div class="grid cards" markdown>
+
+-   __[Transforms](transforms.md)__ &mdash; transformation types in detail
+-   __[Traits](traits.md)__ &mdash; which elements support path conversion
+-   __[Serialization](serialization.md)__ &mdash; all formatting options
+-   __[API Reference: Elements](../api-reference/index.md)__ &mdash; the `Path` element class
+
+</div>

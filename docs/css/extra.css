@@ -1,0 +1,249 @@
+/* The library name is always set in small caps. */
+.svglab {
+  font-variant: small-caps;
+}
+
+/* Give the icons in grid cards the same weight as the card title. */
+.md-typeset .grid.cards .twemoji {
+  height: 1.4em;
+  width: 1.4em;
+}
+
+/* ── Reference tables ──────────────────────────────────────── */
+
+/* Keep the header visible while scrolling long reference tables. */
+.md-typeset table:not([class]) th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--md-default-bg-color);
+  box-shadow: inset 0 -1px 0 var(--md-default-fg-color--lightest);
+}
+
+.md-typeset table:not([class]) tbody tr:nth-child(odd) {
+  background-color: var(--md-default-fg-color--lightest);
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: var(--md-accent-fg-color--transparent);
+}
+
+/* Inline code in tables is usually an identifier; let it breathe. */
+.md-typeset table:not([class]) code {
+  white-space: nowrap;
+}
+
+/* ── `svglab` admonition ───────────────────────────────────── */
+
+/* A branded box for notes about how this library behaves, as opposed
+   to what the SVG specification says. */
+:root {
+  --md-admonition-icon--svglab: url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M2%202h6v2h8V2h6v6h-2v8h2v6h-6v-2H8v2H2v-6h2V8H2zm14%206V6H8v2H6v8h2v2h8v-2h2V8zM4%204v2h2V4zm14%200v2h2V4zM4%2018v2h2v-2zm14%200v2h2v-2z%22%2F%3E%3C%2Fsvg%3E');
+}
+
+.md-typeset .admonition.svglab,
+.md-typeset details.svglab {
+  border-color: var(--md-primary-fg-color);
+}
+
+.md-typeset .svglab > .admonition-title,
+.md-typeset .svglab > summary {
+  background-color: var(--md-primary-fg-color--transparent, rgba(63, 81, 181, 0.1));
+}
+
+.md-typeset .svglab > .admonition-title::before,
+.md-typeset .svglab > summary::before {
+  background-color: var(--md-primary-fg-color);
+  -webkit-mask-image: var(--md-admonition-icon--svglab);
+  mask-image: var(--md-admonition-icon--svglab);
+}
+
+/* ── Playground ───────────────────────────────────────────── */
+
+.playground {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+  background: var(--md-code-bg-color);
+}
+
+.playground__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+}
+
+.playground__spacer {
+  flex: 1;
+}
+
+.playground__status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--md-default-fg-color--lightest);
+  color: var(--md-default-fg-color--light);
+  white-space: nowrap;
+}
+
+.playground__status[data-state="ready"] {
+  background: var(--md-primary-fg-color);
+  color: #fff;
+}
+
+.playground__status[data-state="error"] {
+  background: #b3261e;
+  color: #fff;
+}
+
+/* Loading progress */
+.playground__progress {
+  display: block;
+  width: 9rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--md-default-fg-color--lightest);
+}
+
+.playground__progress[hidden] {
+  display: none;
+}
+
+.playground__progress-bar {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--md-primary-fg-color);
+  transition: width 0.35s ease;
+}
+
+.playground__picker {
+  font-size: 0.68rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--md-default-fg-color--lighter);
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset .playground__run,
+.md-typeset .playground__reset {
+  margin: 0;
+  padding: 0.15rem 0.9rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+.md-typeset .playground__run[data-state="running"] {
+  opacity: 0.6;
+}
+
+/* Editor and output, side by side on wide screens */
+.playground__panes {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 24rem;
+}
+
+@media screen and (min-width: 60em) {
+  .playground__panes {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.playground__editor-pane {
+  display: flex;
+  min-width: 0;
+  background: var(--md-code-bg-color);
+}
+
+/* Monaco sizes itself to its container, so the container must have one. */
+.playground__monaco {
+  flex: 1;
+  min-width: 0;
+  min-height: 24rem;
+}
+
+.playground__monaco[hidden] {
+  display: none;
+}
+
+/* Monaco draws its own background; let it sit flush in the pane. */
+.playground__monaco .monaco-editor,
+.playground__monaco .monaco-editor .overflow-guard {
+  border-radius: 0;
+}
+
+.playground__editor {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 0.85rem 0.85rem 0.85rem 0;
+  background: transparent;
+  color: var(--md-default-fg-color);
+  font-family: var(--md-code-font-family, monospace);
+  font-size: 0.72rem;
+  line-height: 1.7;
+  tab-size: 4;
+  overflow: auto;
+  white-space: pre;
+}
+
+.playground__output {
+  min-width: 0;
+  overflow: auto;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+  font-family: var(--md-code-font-family, monospace);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media screen and (min-width: 60em) {
+  .playground__output {
+    border-top: none;
+    border-left: 1px solid var(--md-default-fg-color--lightest);
+  }
+}
+
+.playground__line {
+  display: block;
+}
+
+.playground__line--err {
+  color: #d93025;
+}
+
+.playground__image {
+  display: block;
+  max-width: 100%;
+  margin: 0.5rem 0;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 4px;
+  background: repeating-conic-gradient(
+      var(--md-default-fg-color--lightest) 0% 25%, transparent 0% 50%)
+    50% / 16px 16px;
+}
+
+/* Highlighted output borrows the site's token colors; make sure it does not
+   also inherit the block styling meant for real code blocks. */
+.playground__output .highlight {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  background: none;
+}

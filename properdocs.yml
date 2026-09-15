@@ -11,10 +11,13 @@ edit_uri: edit/main/docs/
 nav:
   - Home: index.md
   - Overview: overview.md
+  - Playground: playground.md
   - Getting Started:
+      - getting-started/index.md
       - Installation: getting-started/installation.md
       - Quickstart: getting-started/quickstart.md
   - User Guide:
+      - user-guide/index.md
       - Elements: user-guide/elements.md
       - Attributes: user-guide/attributes.md
       - Traits: user-guide/traits.md
@@ -23,15 +26,15 @@ nav:
       - Path Data: user-guide/path-data.md
       - Transforms: user-guide/transforms.md
       - Graphical Operations: user-guide/graphics.md
-  - API Reference:
-      - Elements: api-reference/elements.md
-      - Attributes: api-reference/attributes.md
-      - Attribute Groups: api-reference/attribute-groups.md
-      - Traits: api-reference/traits.md
+  - API Reference: api-reference/
 
 theme:
   name: material
   language: en
+
+  font:
+    text: Inter
+    code: JetBrains Mono
   logo: &logo assets/logo.svg
   favicon: *logo
   custom_dir: docs/overrides
@@ -84,24 +87,41 @@ theme:
     - search.share
     - search.suggest
     - toc.follow
-    - toc.integrate
+
+hooks:
+  - hooks/griffe_mro_cache.py
+  - hooks/playground_wheel.py
 
 plugins:
   - optimize
+
+  - gen-files:
+      scripts:
+        - scripts/gen_api_pages.py
+
+  - literate-nav:
+      nav_file: SUMMARY.md
   - privacy
   - search
-  - social
-
-  - redirects:
-      redirect_maps:
-        getting-started.md: getting-started/installation.md
+  - social:
+      cards_layout_options:
+        background_color: "#3f51b5"
+        color: "#ffffff"
+        font_family: Inter
+        logo: docs/assets/logo.svg
 
   - git-revision-date-localized:
       enable_creation_date: true
+      exclude:
+        - api-reference/elements/*
+        - api-reference/traits/*
 
   - git-committers:
       repository: reznakt/svglab
       branch: main
+      exclude:
+        - api-reference/elements/*
+        - api-reference/traits/*
 
   - minify:
       minify_html: true
@@ -122,8 +142,11 @@ plugins:
             allow_inspection: true
             show_bases: true
             docstring_style: google
-            docstring_section_style: list
+            docstring_section_style: table
             show_if_no_docstring: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            summary: true
             show_submodules: true
             show_signature_annotations: true
             separate_signature: true
@@ -142,6 +165,7 @@ markdown_extensions:
   - pymdownx.caret
   - pymdownx.details
   - pymdownx.inlinehilite
+  - pymdownx.keys
   - pymdownx.mark
   - pymdownx.smartsymbols
   - pymdownx.tilde
@@ -155,7 +179,12 @@ markdown_extensions:
   - pymdownx.highlight:
       use_pygments: true
       anchor_linenums: true
-      linenums: true
+      linenums: false
+  - pymdownx.snippets:
+      base_path: [.]
+      check_paths: true
+      auto_append:
+        - includes/glossary.md
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.tasklist:
@@ -176,8 +205,10 @@ extra_javascript:
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
   - js/keybinds.js
   - js/mathjax.js
+  - js/playground.js
 
 extra_css:
+  - css/extra.css
   - css/mathjax.css
 
 extra:
