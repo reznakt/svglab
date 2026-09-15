@@ -16,11 +16,21 @@ specification.
 
 import abc
 
-from typing_extensions import Protocol
+from typing_extensions import Final, Protocol, override
 
 from svglab import entities, graphics, models
-from svglab.attrparse import path_data
+from svglab.attrparse import path_data, transform
 from svglab.attrs import attrdefs, attrgroups
+
+
+_VIEWPORT_ATTRS: Final = (
+    "viewBox",
+    "width",
+    "height",
+    "markerWidth",
+    "markerHeight",
+)
+"""Attributes whose presence means an element establishes a viewport."""
 
 
 # common attributes are defined directly on the Element class
@@ -177,6 +187,10 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
         as the original basic shape. The `Path` element will have the same
         attributes as the original basic shape.
 
+        The resulting element is detached from the element tree; its parent is
+        `None`, and it holds deep copies of the children of this shape. Use
+        `Element.replace_with()` to put it in the place of this shape.
+
         Returns:
             A `Path` element representing the basic shape.
 
@@ -206,6 +220,19 @@ class ContainerElement(
     > "An element which can have graphics elements and other container elements
     as child elements."
     """
+
+    @override
+    def _reify_rotation(self, rotation: transform.Rotate, /) -> None:
+        # a container has no geometry of its own; the rotation is reified by
+        # pushing it down to the children. that does not work for a nested
+        # container that establishes a viewport, because the viewport clips
+        # the content and would stay unrotated
+        if self.parent is not None and any(
+            getattr(self, attr, None) is not None
+            for attr in _VIEWPORT_ATTRS
+        ):
+            msg = f"Unsupported transformation: {rotation}"
+            raise ValueError(msg)
 
 
 class DescriptiveElement(Element):

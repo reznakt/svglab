@@ -470,8 +470,8 @@ def test_svg_to_data_uri_roundtrip() -> None:
                 fill=svglab.Color("orange"),
                 stroke=svglab.Color("black"),
             ),
-            9,
-            svglab.ArcTo,
+            10,
+            svglab.ClosePath,
             id="rect-rx-only",
         ),
         pytest.param(
@@ -484,8 +484,8 @@ def test_svg_to_data_uri_roundtrip() -> None:
                 fill=svglab.Color("cyan"),
                 stroke=svglab.Color("black"),
             ),
-            9,
-            svglab.ArcTo,
+            10,
+            svglab.ClosePath,
             id="rect-ry-only",
         ),
         pytest.param(
@@ -499,8 +499,8 @@ def test_svg_to_data_uri_roundtrip() -> None:
                 fill=svglab.Color("pink"),
                 stroke=svglab.Color("black"),
             ),
-            9,
-            svglab.ArcTo,
+            10,
+            svglab.ClosePath,
             id="rect-rx-ry",
         ),
     ],
@@ -1075,6 +1075,17 @@ _TRANSFORMS: Final = [
         svglab.Translate(0, 10),
     ],
     [svglab.Scale(1), svglab.Translate(0)],
+    # rotations are about a point that keeps the shape inside the viewport,
+    # so that the rendered comparison is not made on a blank image
+    [svglab.Rotate(90, 250, 250)],
+    [svglab.Rotate(45, 250, 250)],
+    [svglab.Rotate(30, 500, 500)],
+    [svglab.Rotate(15), svglab.Rotate(-15)],
+    [
+        svglab.Translate(10, 20),
+        svglab.Rotate(180, 250, 250),
+        svglab.Scale(1.5),
+    ],
 ]
 
 _REIFY_SVGS: Final = [

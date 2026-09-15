@@ -641,8 +641,13 @@ TransformFunction: TypeAlias = (
 Transform: TypeAlias = list[TransformFunction]
 """A list of transformations."""
 
-Reifiable: TypeAlias = Translate | Scale
-"""A transformation that can be reified."""
+Reifiable: TypeAlias = Translate | Scale | Rotate
+"""A transformation that may be reifiable.
+
+Whether a transformation can actually be reified depends on the element as
+well; a `Rotate`, for example, can be reified on a `circle`, but not on a
+`text`. See `Element.reify()`.
+"""
 
 
 def decompose_matrices(transform: Transform) -> None:
