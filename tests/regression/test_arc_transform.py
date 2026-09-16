@@ -3,10 +3,13 @@ from typing_extensions import Final
 
 from svglab import (
     Length,
+    Matrix,
     Path,
     PathData,
     Rotate,
     Scale,
+    SkewX,
+    SkewY,
     Svg,
     TransformFunction,
 )
@@ -52,9 +55,28 @@ def test_transformed_arc_is_visually_equal(
     assert_svg_visually_equal(original, transformed)
 
 
-def test_tilted_arc_rejects_a_non_uniform_scale() -> None:
-    with pytest.raises(NotImplementedError, match="tilted arc"):
-        _ = Scale(2, 3) @ PathData.from_str(_D)
+@pytest.mark.parametrize(
+    "transformation",
+    [
+        Scale(0.5, 0.3),
+        Scale(-0.5, 0.3),
+        SkewX(20),
+        SkewY(-25),
+        Matrix(0.8, 0.3, -0.2, 0.6, 10, -20),
+    ],
+)
+def test_tilted_arc_survives_a_distorting_transformation(
+    transformation: TransformFunction,
+) -> None:
+    # an affine map takes an ellipse to another ellipse, so even a skew has
+    # an exact arc representation -- just not one expressible in terms of the
+    # original radii and tilt
+    original = _svg(
+        Path(d=PathData.from_str(_D), transform=[transformation])
+    )
+    transformed = _svg(Path(d=transformation @ PathData.from_str(_D)))
+
+    assert_svg_visually_equal(original, transformed, tolerance=5e-5)
 
 
 @pytest.mark.parametrize("arc_angle", [0, 90, 180, 270])
