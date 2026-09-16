@@ -57,3 +57,11 @@ class SvgTransformOriginError(SvgError):
         super().__init__(
             f"Unsupported transform-origin: {transform_origin!r}"
         )
+
+
+class SvgSingularMatrixError(SvgError):
+    """Exception raised when a singular matrix cannot be worked with."""
+
+    @override
+    def __init__(self, matrix: object) -> None:
+        super().__init__(f"Matrix {matrix!r} is singular")
