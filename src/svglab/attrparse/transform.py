@@ -582,11 +582,10 @@ class Matrix(_TransformFunctionBase):
             Matrix(a=0.5, b=0.0, c=0.0, d=0.5, e=0.0, f=0.0)
 
         """
-        det = self.determinant()
-
-        if is_close(det, 0):
+        if self.is_singular():
             raise SvgSingularMatrixError(self)
 
+        det = self.determinant()
         a, b, c, d, e, f = self.to_tuple()
 
         return Matrix(
