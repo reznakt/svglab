@@ -154,14 +154,7 @@ def _normalize_transform(
     if matrix == transform.Matrix.identity():
         return None
 
-    decomposition = matrix.decompose()
-
-    # a decomposition is only worth keeping if it really is the same
-    # transformation; degenerate matrices do not always survive one
-    if transform.compose(decomposition) != matrix:
-        return [matrix]
-
-    return decomposition
+    return matrix.decompose()
 
 
 def _attr_or_default(
