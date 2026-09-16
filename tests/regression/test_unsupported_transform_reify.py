@@ -48,7 +48,7 @@ def test_unsupported_transform_is_not_dropped(
 
     reified.reify()
 
-    assert reified.find(svglab.Rect).transform
+    assert conftest.transforms_left(reified)
     conftest.assert_svg_visually_equal(original, reified)
 
 
@@ -74,4 +74,33 @@ def test_axis_preserving_transform_is_absorbed(
     reified.reify()
 
     assert reified.find(svglab.Rect).transform is None
+    conftest.assert_svg_visually_equal(original, reified)
+
+
+def test_a_group_keeps_the_leftover_once_instead_of_on_every_child() -> (
+    None
+):
+    # handing a group's transformation to children that cannot absorb it
+    # writes the leftover onto every one of them, where it started out
+    # written once -- reification is supposed to remove transformations, not
+    # multiply them
+    group = svglab.G(transform=[svglab.SkewX(20)])
+
+    for i in range(10):
+        group.add_child(
+            svglab.Text(
+                x=[svglab.Length(10 * i)],
+                y=[svglab.Length(20)],
+                font_size=svglab.Length(8),
+            ).add_child(svglab.RawText("x"))
+        )
+
+    original = svglab.Svg(
+        width=svglab.Length(200), height=svglab.Length(200)
+    ).add_child(group)
+    reified = copy.deepcopy(original)
+
+    reified.reify()
+
+    assert len(conftest.transforms_left(reified)) == 1
     conftest.assert_svg_visually_equal(original, reified)
