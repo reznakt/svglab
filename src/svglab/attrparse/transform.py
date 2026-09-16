@@ -29,7 +29,7 @@ from typing_extensions import (
     override,
 )
 
-from svglab import mixins, models, protocols, serialize, utiltypes
+from svglab import errors, mixins, models, protocols, serialize, utiltypes
 from svglab.attrparse import parse
 from svglab.utils import mathutils, miscutils
 
@@ -517,6 +517,239 @@ class Matrix(_TransformFunctionBase):
         """
         return self.a * self.d - self.b * self.c
 
+    def is_singular(self) -> bool:
+        """Check whether the matrix collapses the plane onto a line or point.
+
+        A singular transformation cannot be undone, so shapes transformed by
+        it cannot be recovered.
+
+        Returns:
+            `True` if the determinant of the matrix is zero.
+
+        Examples:
+            >>> Scale(0).to_matrix().is_singular()
+            True
+            >>> Scale(2).to_matrix().is_singular()
+            False
+
+        """
+        return mathutils.is_close(self.determinant(), 0)
+
+    def inverse(self) -> Matrix:
+        """Compute the inverse of the matrix.
+
+        Returns:
+            The matrix that undoes this transformation.
+
+        Raises:
+            SvgSingularMatrixError: If the matrix is singular.
+
+        Examples:
+            >>> Translate(10, 20).to_matrix().inverse()
+            Matrix(a=1.0, b=0.0, c=0.0, d=1.0, e=-10.0, f=-20.0)
+            >>> Scale(2).to_matrix().inverse()
+            Matrix(a=0.5, b=0.0, c=0.0, d=0.5, e=0.0, f=0.0)
+
+        """
+        det = self.determinant()
+
+        if mathutils.is_close(det, 0):
+            raise errors.SvgSingularMatrixError(self)
+
+        a, b, c, d, e, f = self.to_tuple()
+
+        return Matrix(
+            a=mathutils.normalize_zero(d / det),
+            b=mathutils.normalize_zero(-b / det),
+            c=mathutils.normalize_zero(-c / det),
+            d=mathutils.normalize_zero(a / det),
+            e=mathutils.normalize_zero((c * f - d * e) / det),
+            f=mathutils.normalize_zero((b * e - a * f) / det),
+        )
+
+    def linear(self) -> Matrix:
+        """Drop the translation, keeping only the linear part of the matrix.
+
+        Examples:
+            >>> Matrix(1, 2, 3, 4, 5, 6).linear()
+            Matrix(a=1.0, b=2.0, c=3.0, d=4.0, e=0.0, f=0.0)
+
+        """
+        return Matrix(a=self.a, b=self.b, c=self.c, d=self.d, e=0, f=0)
+
+    def translation(self) -> Translate:
+        """Extract the translation applied after the linear part.
+
+        Examples:
+            >>> Matrix(1, 2, 3, 4, 5, 6).translation()
+            Translate(tx=5.0, ty=6.0)
+
+        """
+        return Translate(self.e, self.f)
+
+    def split_translation(self) -> tuple[Matrix, Translate]:
+        """Split the matrix into a linear part and a trailing translation.
+
+        The matrix is factored as `linear @ translate`, so that the
+        translation is the *rightmost* factor and is therefore the part that
+        an element can absorb into its coordinate attributes without
+        disturbing anything that precedes it.
+
+        Returns:
+            A 2-tuple `(linear, translate)` whose composition equals this
+            matrix.
+
+        Raises:
+            SvgSingularMatrixError: If the matrix is singular.
+
+        Examples:
+            >>> m = Matrix(2, 0, 0, 2, 10, 20)
+            >>> linear, translate = m.split_translation()
+            >>> linear
+            Matrix(a=2.0, b=0.0, c=0.0, d=2.0, e=0.0, f=0.0)
+            >>> translate
+            Translate(tx=5.0, ty=10.0)
+            >>> linear @ translate == m
+            True
+
+        """
+        linear = self.linear()
+        inv = linear.inverse()
+
+        return linear, Translate(
+            inv.a * self.e + inv.c * self.f,
+            inv.b * self.e + inv.d * self.f,
+        )
+
+    def qr_decompose(self) -> tuple[Matrix, Matrix]:
+        """Split the linear part of the matrix into a rotation and the rest.
+
+        The linear part is factored as `q @ r`, where `q` is a pure rotation
+        (never a reflection) and `r` is upper triangular. `r` describes the
+        shape change that survives the rotation: its diagonal holds the scale
+        factors along the two axes and its off-diagonal entry is non-zero
+        exactly when the transformation shears.
+
+        The translation of this matrix is not part of either factor.
+
+        Returns:
+            A 2-tuple `(q, r)` of matrices with no translation.
+
+        Raises:
+            SvgSingularMatrixError: If the matrix is singular.
+
+        Examples:
+            >>> q, r = (Rotate(90) @ Scale(2, 3)).qr_decompose()
+            >>> q == Rotate(90).to_matrix()
+            True
+            >>> r == Scale(2, 3).to_matrix()
+            True
+
+        """
+        if self.is_singular():
+            raise errors.SvgSingularMatrixError(self)
+
+        a, b, c, d = self.a, self.b, self.c, self.d
+
+        # Gram-Schmidt on the columns; the first column fixes the rotation
+        r11 = math.hypot(a, b)
+        q1x, q1y = a / r11, b / r11
+
+        # the second basis vector is the first one turned a quarter turn, so
+        # that `q` is always a rotation and the reflection (if any) ends up in
+        # the sign of `r22`
+        q2x = mathutils.normalize_zero(-q1y)
+        q2y = q1x
+
+        r12 = q1x * c + q1y * d
+        r22 = self.determinant() / r11
+
+        q = Matrix(a=q1x, b=q1y, c=q2x, d=q2y, e=0, f=0)
+        r = Matrix(a=r11, b=0, c=r12, d=r22, e=0, f=0)
+
+        return q, r
+
+    def svd_decompose(self) -> tuple[float, float, float]:
+        """Split the linear part of the matrix into rotated axis scalings.
+
+        The linear part is factored as `rotate(angle) @ scale(sx, sy) @ v`,
+        where `v` is a rotation that is not reported because it only
+        reparametrizes the unit circle: the image of the unit circle under
+        this matrix is the ellipse with semi-axes `abs(sx)` and `abs(sy)`,
+        the first of which points `angle` degrees away from the x-axis.
+
+        This is the singular value decomposition, with the sign of the
+        smaller singular value kept so that a reflection is not lost.
+
+        Returns:
+            A 3-tuple `(angle, sx, sy)`. `sx` is always non-negative and is
+            the larger of the two; `sy` is negative exactly when the
+            transformation reflects.
+
+        Examples:
+            >>> Scale(2, 3).to_matrix().svd_decompose()
+            (90.0, 3.0, 2.0)
+            >>> Scale(2).to_matrix().svd_decompose()
+            (0.0, 2.0, 2.0)
+
+        """
+        a, b, c, d = self.a, self.b, self.c, self.d
+
+        e = (a + d) / 2
+        f = (a - d) / 2
+        g = (b + c) / 2
+        h = (b - c) / 2
+
+        q = math.hypot(e, h)
+        r = math.hypot(f, g)
+
+        angle = (math.atan2(h, e) + math.atan2(g, f)) / 2
+
+        return mathutils.degrees(angle), q + r, q - r
+
+    def condition_number(self) -> float:
+        """Measure how much the matrix distorts the plane.
+
+        The condition number is the ratio between the longest and the
+        shortest semi-axis of the ellipse the unit circle is mapped onto. It
+        is 1 for a similarity and grows without bound as the matrix
+        approaches a singular one, where the plane collapses onto a line.
+
+        It also bounds how much precision is lost by undoing the matrix: a
+        transformation with a large condition number cannot be split into
+        factors accurately.
+
+        Returns:
+            The condition number, or infinity if the matrix is singular.
+
+        Examples:
+            >>> Rotate(30).to_matrix().condition_number()
+            1.0
+            >>> Scale(2, 4).to_matrix().condition_number()
+            2.0
+            >>> Scale(0).to_matrix().condition_number()
+            inf
+
+        """
+        _, sx, sy = self.svd_decompose()
+
+        if mathutils.is_close(sy, 0):
+            return math.inf
+
+        return abs(sx / sy)
+
+    def rotation_angle(self) -> float:
+        """Compute the angle, in degrees, of the rotation part of the matrix.
+
+        Examples:
+            >>> (Rotate(30) @ Scale(2)).rotation_angle()
+            30.0
+            >>> Translate(10, 20).to_matrix().rotation_angle()
+            0.0
+
+        """
+        return mathutils.degrees(math.atan2(self.b, self.a))
+
     def __qr_decompose(self) -> Transform:
         result: Transform = []
         a, b, c, d, e, f = self.to_tuple()
@@ -640,6 +873,9 @@ TransformFunction: TypeAlias = (
 
 Transform: TypeAlias = list[TransformFunction]
 """A list of transformations."""
+
+Reifiable: TypeAlias = Translate | Scale
+"""A transformation that can be reified."""
 
 Reifiable: TypeAlias = Translate | Scale
 """A transformation that can be reified."""
