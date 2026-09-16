@@ -4,6 +4,7 @@ import pytest
 
 from svglab import G, Path, parse_svg
 from svglab.attrparse.transform import Matrix, Scale
+from svglab.errors import SvgSingularMatrixError
 
 
 # an Inkscape drawing in the freesvg corpus carries this on a group: the
@@ -49,3 +50,22 @@ def test_reifying_a_tiny_scale_does_not_raise() -> None:
 
     assert svg.find(G).transform is None
     assert svg.find(Path).d is not None
+
+
+def test_a_tiny_matrix_can_still_be_inverted() -> None:
+    # `inverse` had its own copy of the absolute test rather than calling
+    # `is_singular`, so fixing one site left the other raising
+    inverse = _TINY.inverse()
+
+    assert _TINY @ inverse == Matrix.identity()
+    assert inverse @ _TINY == Matrix.identity()
+
+
+@pytest.mark.parametrize(
+    "matrix",
+    [Matrix(0, 0, 0, 0, 0, 0), Scale(1, 0).to_matrix()],
+    ids=["zero", "collapsed"],
+)
+def test_inverting_a_collapsed_matrix_still_raises(matrix: Matrix) -> None:
+    with pytest.raises(SvgSingularMatrixError):
+        matrix.inverse()
