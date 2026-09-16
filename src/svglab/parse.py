@@ -51,6 +51,9 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     element when using HTML parsers that implicitly wrap the document in
     certain HTML elements (e.g., <html>).
 
+    Only fragments at that one depth count. An `<svg>` nested inside another
+    establishes a viewport within the document; it is not a second root.
+
     Args:
         soup: A BeautifulSoup `Tag` object representing the root of the
             document.
@@ -69,6 +72,11 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
         ... )
         >>> _get_root_svg_fragments(soup)
         [<svg><rect></rect></svg>]
+        >>> soup = bs4.BeautifulSoup(
+        ...     "<svg><svg/></svg>", features="lxml-xml"
+        ... )
+        >>> _get_root_svg_fragments(soup)
+        [<svg><svg/></svg>]
 
     """
     queue: collections.deque[bs4.Tag] = collections.deque([soup])
@@ -76,7 +84,7 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     while queue:
         node = queue.popleft()
 
-        if svg_fragments := node.find_all("svg"):
+        if svg_fragments := node.find_all("svg", recursive=False):
             return svg_fragments
 
         queue.extend(
