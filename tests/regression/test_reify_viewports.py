@@ -19,7 +19,11 @@ from svglab import (
     Transform,
     Translate,
 )
-from tests.conftest import ASSETS_DIR, assert_svg_visually_equal
+from tests.conftest import (
+    ASSETS_DIR,
+    assert_svg_visually_equal,
+    transforms_left,
+)
 
 
 L = Length
@@ -105,10 +109,9 @@ def test_a_viewport_is_resized_only_as_far_as_its_content_follows(
         reified = copy.deepcopy(original)
         reified.reify()
 
-        inner = reified.find(G).get_child(0)
+        absorbed = not transforms_left(reified)
 
-        assert isinstance(inner, Element)
-        assert (inner.transform is None) == expected, transform
+        assert absorbed == expected, transform
         assert_svg_visually_equal(original, reified, tolerance=1e-6)
 
 
@@ -133,5 +136,5 @@ def test_an_embedded_bitmap_refuses_to_be_turned() -> None:
 
     reified.reify()
 
-    assert reified.find(Image).transform
+    assert transforms_left(reified)
     assert_svg_visually_equal(original, reified)
