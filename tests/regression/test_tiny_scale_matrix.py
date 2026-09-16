@@ -3,6 +3,7 @@
 import pytest
 
 import svglab
+from svglab import errors
 from svglab.attrparse import transform
 
 
@@ -49,3 +50,27 @@ def test_reifying_a_tiny_scale_does_not_raise() -> None:
 
     assert svg.find(svglab.G).transform is None
     assert svg.find(svglab.Path).d is not None
+
+
+def test_a_tiny_matrix_can_still_be_inverted() -> None:
+    # `inverse` had its own copy of the absolute test rather than calling
+    # `is_singular`, so fixing one site left the other raising
+    inverse = _TINY.inverse()
+
+    assert _TINY @ inverse == transform.Matrix.identity()
+    assert inverse @ _TINY == transform.Matrix.identity()
+
+
+@pytest.mark.parametrize(
+    "matrix",
+    [
+        transform.Matrix(0, 0, 0, 0, 0, 0),
+        transform.Scale(1, 0).to_matrix(),
+    ],
+    ids=["zero", "collapsed"],
+)
+def test_inverting_a_collapsed_matrix_still_raises(
+    matrix: transform.Matrix,
+) -> None:
+    with pytest.raises(errors.SvgSingularMatrixError):
+        matrix.inverse()
