@@ -48,12 +48,22 @@ class Path(
 
 
 def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
-    """Convert a basic shape to a `Path` element."""
+    """Convert a basic shape to a detached `Path` element."""
     # try to convert to PathData first, so we don't call convert() if the shape
     # is not convertible
     d = basic_shape.to_path_data()
 
-    path = models.convert(basic_shape, Path)
+    # `parent` is an ordinary field, so converting a shape that sits in a tree
+    # would deep-copy every one of its ancestors into a phantom document; the
+    # result is a new element and belongs to no tree until it is added to one
+    parent = basic_shape.parent
+    basic_shape.parent = None
+
+    try:
+        path = models.convert(basic_shape, Path)
+    finally:
+        basic_shape.parent = parent
+
     path.d = d
 
     return path
