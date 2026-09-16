@@ -1479,6 +1479,36 @@ def _resolve_reference(
     return target
 
 
+def _pattern_transform_capability(target: Element, /) -> Capability:
+    """Work out what survives a pattern's own `patternTransform`.
+
+    The tiling is laid out in the bounding box of the element and the pattern
+    transform is applied to the result, in user space. Reification rewrites
+    the bounding box, which happens *before* the pattern transform, so the
+    picture only survives if doing the absorbed part first comes to the same
+    thing as doing it last -- that is, if the two commute.
+
+    Moving the tiling commutes with moving the element. A pattern transform
+    that only turns or stretches the tiling commutes with resizing the
+    element about the origin, which is the one resizing that leaves the
+    corner of the box where it is. Nothing else is safe.
+    """
+    pattern_transform = _attr_or_default(target, "patternTransform")
+    matrix = compose(cast("Transform | None", pattern_transform) or [])
+    identity = Matrix.identity()
+
+    if matrix == identity:
+        return AFFINE
+
+    if matrix.linear() == identity:
+        return TRANSLATION
+
+    if matrix.translation() == Translate(0, 0):
+        return UNIFORM_SCALING - TRANSLATION
+
+    return NOTHING
+
+
 def _pattern_capability(target: Element, /) -> Capability:
     """Work out what a pattern lets the element it paints absorb.
 
@@ -1487,10 +1517,20 @@ def _pattern_capability(target: Element, /) -> Capability:
     own coordinate system does: a `viewBox` maps it onto the tile, and
     `patternContentUnits` can tie it to the bounding box, but by default it is
     drawn at its natural size in user space and only the tiling changes.
+
+    Whatever the tile allows is then narrowed by the pattern's own
+    `patternTransform`, which the tiling has to keep in step with.
     """
     if _attr_or_default(target, "patternUnits") != "objectBoundingBox":
         return NOTHING
 
+    return _pattern_tile_capability(
+        target
+    ) & _pattern_transform_capability(target)
+
+
+def _pattern_tile_capability(target: Element, /) -> Capability:
+    """Work out how far the content of a pattern follows its tile."""
     if _attr_or_default(target, "viewBox") is not None:
         return UPRIGHT if stretches_content(target) else UNIFORM_SCALING
 
