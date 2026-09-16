@@ -484,6 +484,7 @@ from svglab.errors import (
     SvgPathError,
     SvgPathMissingMoveToError,
     SvgRenderError,
+    SvgSingularMatrixError,
     SvgTransformSwapError,
     SvgUnitConversionError,
 )
@@ -844,6 +845,7 @@ __all__: __Final = [
     "SvgPathError",
     "SvgPathMissingMoveToError",
     "SvgRenderError",
+    "SvgSingularMatrixError",
     "SvgTransformSwapError",
     "SvgUnitConversionError",
     "Switch",
