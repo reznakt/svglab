@@ -877,9 +877,6 @@ Transform: TypeAlias = list[TransformFunction]
 Reifiable: TypeAlias = Translate | Scale
 """A transformation that can be reified."""
 
-Reifiable: TypeAlias = Translate | Scale
-"""A transformation that can be reified."""
-
 
 def decompose_matrices(transform: Transform) -> None:
     """Decompose matrices in a transformation list into elementary transforms.
