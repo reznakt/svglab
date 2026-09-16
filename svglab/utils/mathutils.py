@@ -40,6 +40,28 @@ def is_close(
     )
 
 
+def normalize_zero(value: float, /) -> float:
+    """Turn a negative zero into a positive one.
+
+    Negating or dividing an exact zero produces `-0.0`, which compares equal
+    to zero but serializes as `-0`.
+
+    Args:
+        value: The value to normalize.
+
+    Returns:
+        The value, with a negative zero replaced by a positive zero.
+
+    Examples:
+        >>> normalize_zero(-0.0)
+        0.0
+        >>> normalize_zero(-1.5)
+        -1.5
+
+    """
+    return value + 0.0
+
+
 def clamp(
     value: SupportsRichComparisonT,
     /,
