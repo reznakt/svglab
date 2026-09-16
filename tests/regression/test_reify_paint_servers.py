@@ -15,6 +15,7 @@ from svglab import (
     Rect,
     Rotate,
     Scale,
+    SkewX,
     Stop,
     Svg,
     Transform,
@@ -211,3 +212,55 @@ def test_a_gradient_reifies_its_own_transform_whatever_its_units() -> None:
             units
         )
         assert_svg_visually_equal(original, reified)
+
+
+@pytest.mark.parametrize(
+    ("pattern_transform", "absorbed"),
+    [
+        (None, True),
+        ([Translate(5, 3)], True),
+        ([Rotate(20)], False),
+        ([Scale(1.5)], False),
+        ([Scale(1.3, 0.7)], False),
+        ([SkewX(15)], False),
+    ],
+    ids=["none", "translate", "rotate", "uniform", "non-uniform", "skew"],
+)
+def test_a_pattern_transform_has_to_commute_with_what_is_folded_in(
+    pattern_transform: Transform | None, *, absorbed: bool
+) -> None:
+    # the tiling is laid out in the box of the shape and the pattern
+    # transform is applied to the result, so moving the shape moves the
+    # tiling *before* the pattern transform rather than after it -- the two
+    # only agree when they commute
+    pattern = _pattern()
+    pattern.patternTransform = pattern_transform
+
+    original = _svg(
+        Defs().add_child(pattern),
+        _rect(fill=pattern.get_func_iri(), transform=[Translate(16, 12)]),
+    )
+    reified = copy.deepcopy(original)
+    reified.reify()
+
+    assert (
+        reified.find(Rect, recursive=False).transform is None
+    ) == absorbed
+    assert_svg_visually_equal(original, reified)
+
+
+def test_a_linear_pattern_transform_still_allows_a_resize() -> None:
+    # resizing about the origin leaves the corner of the box where it is, and
+    # that does commute with turning or stretching the tiling
+    pattern = _pattern(viewbox=True)
+    pattern.patternTransform = [Rotate(20)]
+
+    original = _svg(
+        Defs().add_child(pattern),
+        _rect(fill=pattern.get_func_iri(), transform=[Scale(2)]),
+    )
+    reified = copy.deepcopy(original)
+    reified.reify()
+
+    assert reified.find(Rect, recursive=False).transform is None
+    assert_svg_visually_equal(original, reified)
