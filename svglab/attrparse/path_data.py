@@ -310,7 +310,7 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
             @ transform.Rotate(self.angle)
             @ transform.Scale(self.radii.x, self.radii.y)
         )
-        new_angle, rx, ry = generator.svd_decompose()
+        new_angle, rx, ry, _ = generator.svd_decompose()
 
         # a reflection turns the arc inside out, which is the one thing the
         # radii and the tilt cannot express
