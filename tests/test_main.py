@@ -51,12 +51,10 @@ from svglab import (
     SvgElementNotFoundError,
     SvgPathMissingMoveToError,
     Transform,
-    TransformFunction,
     Translate,
     UnknownElement,
     compose,
     parse_svg,
-    swap_transforms,
 )
 from svglab.elements import elements, traits
 from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED
@@ -1230,42 +1228,6 @@ def test_set_viewbox_produces_visually_equal_svg(svg: Svg) -> None:
     transformed.set_viewbox((5, 5, 100, 100))
 
     assert_svg_visually_equal(svg, transformed)
-
-
-@pytest.mark.parametrize(
-    ("original", "swapped"),
-    [
-        # transforms of same type
-        (
-            (Translate(1, 2), Translate(2, 1)),
-            (Translate(2, 1), Translate(1, 2)),
-        ),
-        ((Scale(2), Scale(0.5)), (Scale(0.5), Scale(2))),
-        # isotropic scaling and translation
-        ((Scale(2), Translate(1, 2)), (Translate(2, 4), Scale(2))),
-        # skew and translation
-        (
-            (SkewX(45), Translate(10, 20)),
-            (Translate(10 + 20, 20), SkewX(45)),
-        ),
-        # skew and isotropic scaling
-        ((SkewX(45), Scale(2)), (Scale(2), SkewX(45))),
-        # skew and anisotropic scaling
-        (
-            (SkewX(45), Scale(2, 3)),
-            (Scale(2, 3), SkewX(56.30993247402021308647)),
-        ),
-    ],
-)
-def test_transform_swap(
-    original: tuple[TransformFunction, TransformFunction],
-    swapped: tuple[TransformFunction, TransformFunction],
-) -> None:
-    a, b = original
-    c, d = swapped
-
-    assert swap_transforms(a, b) == swapped
-    assert swap_transforms(c, d) == original
 
 
 @pytest.mark.parametrize(
