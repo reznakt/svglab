@@ -4,8 +4,7 @@ Use `Transform` to represent transform lists in SVG.
 Use `TransformType` in Pydantic fields.
 
 Use `Translate`, `Scale`, `Rotate`, `SkewX`, `SkewY`, and `Matrix` to represent
-transformations. Use `TransformFunction` to represent any transformation. Use
-`Reifiable` to represent transformations that can be reified.
+transformations. Use `TransformFunction` to represent any transformation.
 """
 
 from __future__ import annotations
@@ -877,9 +876,6 @@ TransformFunction: TypeAlias = (
 
 Transform: TypeAlias = list[TransformFunction]
 """A list of transformations."""
-
-Reifiable: TypeAlias = Translate | Scale
-"""A transformation that can be reified."""
 
 
 def decompose_matrices(transform: Transform) -> None:
