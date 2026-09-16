@@ -1021,6 +1021,18 @@ class Rect(
         rx = min(rx, width / 2, key=float)
         ry = min(ry, height / 2, key=float)
 
+        if not rx or not ry:
+            # a rectangle with square corners needs no arcs; emitting
+            # zero-radius ones would only bloat the output
+            return (
+                path_data.PathData()
+                .move_to(point.Point(x, y))
+                .horizontal_line_to(x + width)
+                .vertical_line_to(y + height)
+                .horizontal_line_to(x)
+                .close()
+            )
+
         return (
             path_data.PathData()
             .move_to(point.Point(x + rx, y))
@@ -1056,6 +1068,9 @@ class Rect(
                 large=False,
                 sweep=True,
             )
+            # the outline of a rectangle is closed, so its first corner is a
+            # join rather than two line caps
+            .close()
         )
 
     @override
