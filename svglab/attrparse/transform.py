@@ -550,17 +550,41 @@ class Matrix(_TransformFunctionBase):
         A singular transformation cannot be undone, so shapes transformed by
         it cannot be recovered.
 
+        The determinant grows with the square of the entries, so it is
+        judged against them rather than against zero outright: a matrix that
+        merely makes everything very small is not one that collapses the
+        plane. `matrix(6.9e-06 0 0 6.9e-06 0 0)` has a determinant of
+        4.8e-11 and is a perfectly ordinary uniform scale.
+
         Returns:
-            `True` if the determinant of the matrix is zero.
+            `True` if the determinant of the matrix is zero next to the size
+            of the matrix itself.
 
         Examples:
             >>> Scale(0).to_matrix().is_singular()
             True
             >>> Scale(2).to_matrix().is_singular()
             False
+            >>> Scale(6.9e-06).to_matrix().is_singular()
+            False
 
         """
-        return mathutils.is_close(self.determinant(), 0)
+        magnitude = max(abs(self.a), abs(self.b), abs(self.c), abs(self.d))
+
+        if magnitude == 0:
+            return True
+
+        # scale the entries down to at most one before taking the
+        # determinant, rather than dividing the determinant by the square of
+        # the magnitude afterwards, which underflows for extreme matrices
+        a, b, c, d = (
+            self.a / magnitude,
+            self.b / magnitude,
+            self.c / magnitude,
+            self.d / magnitude,
+        )
+
+        return mathutils.is_close(a * d - b * c, 0)
 
     def inverse(self) -> Matrix:
         """Compute the inverse of the matrix.
