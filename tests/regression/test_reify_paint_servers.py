@@ -204,3 +204,56 @@ def test_a_gradient_reifies_its_own_transform_whatever_its_units() -> None:
             reified.find(svglab.LinearGradient).gradientTransform is None
         ), units
         conftest.assert_svg_visually_equal(original, reified)
+
+
+@pytest.mark.parametrize(
+    ("pattern_transform", "absorbed"),
+    [
+        (None, True),
+        ([svglab.Translate(5, 3)], True),
+        ([svglab.Rotate(20)], False),
+        ([svglab.Scale(1.5)], False),
+        ([svglab.Scale(1.3, 0.7)], False),
+        ([svglab.SkewX(15)], False),
+    ],
+    ids=["none", "translate", "rotate", "uniform", "non-uniform", "skew"],
+)
+def test_a_pattern_transform_has_to_commute_with_what_is_folded_in(
+    pattern_transform: svglab.Transform | None, *, absorbed: bool
+) -> None:
+    # the tiling is laid out in the box of the shape and the pattern
+    # transform is applied to the result, so moving the shape moves the
+    # tiling *before* the pattern transform rather than after it -- the two
+    # only agree when they commute
+    pattern = _pattern()
+    pattern.patternTransform = pattern_transform
+
+    original = _svg(
+        svglab.Defs().add_child(pattern),
+        _rect(
+            fill=pattern.get_func_iri(),
+            transform=[svglab.Translate(16, 12)],
+        ),
+    )
+    reified = copy.deepcopy(original)
+    reified.reify()
+
+    assert (reified.find(svglab.Rect).transform is None) == absorbed
+    conftest.assert_svg_visually_equal(original, reified)
+
+
+def test_a_linear_pattern_transform_still_allows_a_resize() -> None:
+    # resizing about the origin leaves the corner of the box where it is, and
+    # that does commute with turning or stretching the tiling
+    pattern = _pattern(viewbox=True)
+    pattern.patternTransform = [svglab.Rotate(20)]
+
+    original = _svg(
+        svglab.Defs().add_child(pattern),
+        _rect(fill=pattern.get_func_iri(), transform=[svglab.Scale(2)]),
+    )
+    reified = copy.deepcopy(original)
+    reified.reify()
+
+    assert reified.find(svglab.Rect).transform is None
+    conftest.assert_svg_visually_equal(original, reified)
