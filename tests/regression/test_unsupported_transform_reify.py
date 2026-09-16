@@ -7,16 +7,18 @@ from svglab import (
     G,
     Length,
     Matrix,
+    RawText,
     Rect,
     Rotate,
     Scale,
     SkewX,
     SkewY,
     Svg,
+    Text,
     Transform,
     Translate,
 )
-from tests.conftest import assert_svg_visually_equal
+from tests.conftest import assert_svg_visually_equal, transforms_left
 
 
 def _svg(transform: Transform, *, group: bool) -> Svg:
@@ -59,7 +61,7 @@ def test_unsupported_transform_is_not_dropped(
 
     reified.reify()
 
-    assert reified.find(Rect).transform
+    assert transforms_left(reified)
     assert_svg_visually_equal(original, reified)
 
 
@@ -85,4 +87,29 @@ def test_axis_preserving_transform_is_absorbed(
     reified.reify()
 
     assert reified.find(Rect).transform is None
+    assert_svg_visually_equal(original, reified)
+
+
+def test_a_group_keeps_the_leftover_once_instead_of_on_every_child() -> (
+    None
+):
+    # handing a group's transformation to children that cannot absorb it
+    # writes the leftover onto every one of them, where it started out
+    # written once -- reification is supposed to remove transformations, not
+    # multiply them
+    group = G(transform=[SkewX(20)])
+
+    for i in range(10):
+        group.add_child(
+            Text(
+                x=[Length(10 * i)], y=[Length(20)], font_size=Length(8)
+            ).add_child(RawText("x"))
+        )
+
+    original = Svg(width=Length(200), height=Length(200)).add_child(group)
+    reified = copy.deepcopy(original)
+
+    reified.reify()
+
+    assert len(transforms_left(reified)) == 1
     assert_svg_visually_equal(original, reified)
