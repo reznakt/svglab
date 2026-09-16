@@ -415,6 +415,7 @@ class FeDiffuseLighting(
     attrdefs.KernelUnitLengthAttr,
     attrdefs.StyleAttr,
     attrdefs.SurfaceScaleAttr,
+    traits.FilterPrimitiveElement,
     traits.Element,
 ):
     pass
