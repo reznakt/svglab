@@ -993,13 +993,13 @@ class RadiusAttr(Attr):
 
 
 class RefXAttr(Attr):
-    ref_x: models.Attr[
+    refX: models.Attr[
         Literal["left", "center", "right"] | typedefs.Coordinate
     ] = None
 
 
 class RefYAttr(Attr):
-    ref_y: models.Attr[
+    refY: models.Attr[
         Literal["top", "center", "bottom"] | typedefs.Coordinate
     ] = None
 
