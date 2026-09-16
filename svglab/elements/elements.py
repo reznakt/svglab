@@ -21,7 +21,7 @@ from collections.abc import Iterable
 import PIL.Image
 from typing_extensions import Literal, final, overload, override
 
-from svglab import graphics, models, protocols, serialize
+from svglab import graphics, models, protocols, reify, serialize
 from svglab.attrparse import color, length, path_data, point, transform
 from svglab.attrs import attrdefs, attrgroups
 from svglab.elements import traits
@@ -37,6 +37,7 @@ def _length_or_zero(value: length.Length | None, /) -> length.Length:
 
 @final
 class Path(
+    reify.AffineGeometry,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.DAttr,
@@ -49,12 +50,22 @@ class Path(
 
 
 def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
-    """Convert a basic shape to a `Path` element."""
+    """Convert a basic shape to a detached `Path` element."""
     # try to convert to PathData first, so we don't call convert() if the shape
     # is not convertible
     d = basic_shape.to_path_data()
 
-    path = models.convert(basic_shape, Path)
+    # `parent` is an ordinary field, so converting a shape that sits in a tree
+    # would deep-copy every one of its ancestors into a phantom document; the
+    # result is a new element and belongs to no tree until it is added to one
+    parent = basic_shape.parent
+    basic_shape.parent = None
+
+    try:
+        path = models.convert(basic_shape, Path)
+    finally:
+        basic_shape.parent = parent
+
     path.d = d
 
     return path
@@ -123,6 +134,7 @@ def _ellipse_to_path_data(
 
 @final
 class A(
+    reify.TransformInheritedByChildren,
     attrgroups.ConditionalProcessingAttrs,
     attrgroups.XlinkAttrs,
     attrdefs.ClassAttr,
@@ -156,12 +168,12 @@ class AltGlyph(
 
 
 @final
-class AltGlyphDef(traits.Element):
+class AltGlyphDef(reify.RenderedIndirectly, traits.Element):
     pass
 
 
 @final
-class AltGlyphItem(traits.Element):
+class AltGlyphItem(reify.RenderedIndirectly, traits.Element):
     pass
 
 
@@ -226,6 +238,8 @@ class AnimateTransform(
 
 @final
 class Circle(
+    reify.SimilarityGeometry,
+    reify.ImplicitlyOrientedShape,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.CxAttr,
@@ -251,6 +265,8 @@ class Circle(
 
 @final
 class ClipPath(
+    reify.TransformInheritedByChildren,
+    reify.RenderedIndirectly,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.ClipPathUnitsAttr,
@@ -263,6 +279,7 @@ class ClipPath(
 
 @final
 class ColorProfile(
+    reify.RenderedIndirectly,
     attrgroups.XlinkAttrs,
     attrdefs.LocalAttr,
     attrdefs.NameNameAttr,
@@ -274,6 +291,7 @@ class ColorProfile(
 
 @final
 class Cursor(
+    reify.RenderedIndirectly,
     attrgroups.ConditionalProcessingAttrs,
     attrgroups.XlinkAttrs,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -286,6 +304,7 @@ class Cursor(
 
 @final
 class Defs(
+    reify.RenderedIndirectly,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -308,6 +327,8 @@ class Desc(
 
 @final
 class Ellipse(
+    reify.RectilinearGeometry,
+    reify.ImplicitlyOrientedShape,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.CxAttr,
@@ -415,6 +436,7 @@ class FeDiffuseLighting(
     attrdefs.KernelUnitLengthAttr,
     attrdefs.StyleAttr,
     attrdefs.SurfaceScaleAttr,
+    traits.FilterPrimitiveElement,
     traits.Element,
 ):
     pass
@@ -611,6 +633,7 @@ class FeTurbulence(
 
 @final
 class Filter(
+    reify.RenderedIndirectly,
     attrgroups.XlinkAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -629,6 +652,7 @@ class Filter(
 
 @final
 class Font(
+    reify.RenderedIndirectly,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
     attrdefs.HorizAdvXAttr,
@@ -645,6 +669,7 @@ class Font(
 
 @final
 class FontFace(
+    reify.RenderedIndirectly,
     attrdefs.AccentHeightAttr,
     attrdefs.AlphabeticAttr,
     attrdefs.AscentAttr,
@@ -678,27 +703,35 @@ class FontFace(
 
 
 @final
-class FontFaceFormat(attrdefs.StringAttr, traits.Element):
+class FontFaceFormat(
+    reify.RenderedIndirectly, attrdefs.StringAttr, traits.Element
+):
     pass
 
 
 @final
-class FontFaceName(attrdefs.StringAttr, traits.Element):
+class FontFaceName(
+    reify.RenderedIndirectly, attrdefs.StringAttr, traits.Element
+):
     pass
 
 
 @final
-class FontFaceSrc(traits.Element):
+class FontFaceSrc(reify.RenderedIndirectly, traits.Element):
     pass
 
 
 @final
-class FontFaceUri(attrgroups.XlinkAttrs, traits.Element):
+class FontFaceUri(
+    reify.RenderedIndirectly, attrgroups.XlinkAttrs, traits.Element
+):
     pass
 
 
 @final
 class ForeignObject(
+    reify.TranslatableGeometry,
+    reify.ViewportEstablishing,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -714,6 +747,7 @@ class ForeignObject(
 
 @final
 class G(
+    reify.TransformInheritedByChildren,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -726,6 +760,7 @@ class G(
 
 @final
 class Glyph(
+    reify.RenderedIndirectly,
     attrdefs.ArabicFormAttr,
     attrdefs.ClassAttr,
     attrdefs.DAttr,
@@ -745,6 +780,7 @@ class Glyph(
 
 @final
 class GlyphRef(
+    reify.RenderedIndirectly,
     attrgroups.XlinkAttrs,
     attrdefs.ClassAttr,
     attrdefs.DxNumberAttr,
@@ -761,6 +797,7 @@ class GlyphRef(
 
 @final
 class Hkern(
+    reify.RenderedIndirectly,
     attrdefs.G1Attr,
     attrdefs.G2Attr,
     attrdefs.KAttr,
@@ -773,6 +810,8 @@ class Hkern(
 
 @final
 class Image(
+    reify.UniformlyScalableGeometry,
+    reify.ViewportEstablishing,
     attrgroups.ConditionalProcessingAttrs,
     attrgroups.XlinkAttrs,
     attrdefs.ClassAttr,
@@ -792,6 +831,7 @@ class Image(
 
 @final
 class Line(
+    reify.AffineGeometry,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -842,6 +882,8 @@ class LinearGradient(
 
 @final
 class Marker(
+    reify.RenderedIndirectly,
+    reify.ViewportEstablishing,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
     attrdefs.MarkerHeightAttr,
@@ -860,6 +902,7 @@ class Marker(
 
 @final
 class Mask(
+    reify.RenderedIndirectly,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
     attrdefs.HeightAttr,
@@ -881,6 +924,7 @@ class Metadata(traits.DescriptiveElement, traits.Element):
 
 @final
 class MissingGlyph(
+    reify.RenderedIndirectly,
     attrdefs.ClassAttr,
     attrdefs.DAttr,
     attrdefs.HorizAdvXAttr,
@@ -895,6 +939,7 @@ class MissingGlyph(
 
 @final
 class Mpath(
+    reify.RenderedIndirectly,
     attrgroups.XlinkAttrs,
     attrdefs.ExternalResourcesRequiredAttr,
     traits.Element,
@@ -904,6 +949,8 @@ class Mpath(
 
 @final
 class Pattern(
+    reify.RenderedIndirectly,
+    reify.ViewportEstablishing,
     attrgroups.XlinkAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -924,6 +971,7 @@ class Pattern(
 
 @final
 class Polygon(
+    reify.AffineGeometry,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -945,6 +993,7 @@ class Polygon(
 
 @final
 class Polyline(
+    reify.AffineGeometry,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -985,6 +1034,8 @@ class RadialGradient(
 
 @final
 class Rect(
+    reify.RectilinearGeometry,
+    reify.ImplicitlyOrientedShape,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -1019,6 +1070,18 @@ class Rect(
         # the specification requires clamping the radii to half the side
         rx = min(rx, width / 2, key=float)
         ry = min(ry, height / 2, key=float)
+
+        if not rx or not ry:
+            # a rectangle with square corners needs no arcs; emitting
+            # zero-radius ones would only bloat the output
+            return (
+                path_data.PathData()
+                .move_to(point.Point(x, y))
+                .horizontal_line_to(x + width)
+                .vertical_line_to(y + height)
+                .horizontal_line_to(x)
+                .close()
+            )
 
         return (
             path_data.PathData()
@@ -1055,6 +1118,9 @@ class Rect(
                 large=False,
                 sweep=True,
             )
+            # the outline of a rectangle is closed, so its first corner is a
+            # join rather than two line caps
+            .close()
         )
 
     @override
@@ -1064,6 +1130,7 @@ class Rect(
 
 @final
 class Script(
+    reify.RenderedIndirectly,
     attrgroups.XlinkAttrs,
     attrdefs.ExternalResourcesRequiredAttr,
     attrdefs.TypeContentTypeAttr,
@@ -1086,6 +1153,7 @@ class Set(
 
 @final
 class Stop(
+    reify.RenderedIndirectly,
     attrdefs.ClassAttr,
     attrdefs.OffsetNumberPercentageAttr,
     attrdefs.StyleAttr,
@@ -1096,6 +1164,8 @@ class Stop(
 
 @final
 class Style(
+    reify.Stylesheet,
+    reify.RenderedIndirectly,
     attrdefs.MediaAttr,
     attrdefs.TitleAttr,
     attrdefs.TypeContentTypeAttr,
@@ -1106,6 +1176,9 @@ class Style(
 
 @final
 class Svg(
+    reify.DocumentFragmentRoot,
+    reify.TranslatableGeometry,
+    reify.ViewportEstablishing,
     attrgroups.ConditionalProcessingAttrs,
     attrgroups.DocumentEventsAttrs,
     attrdefs.BaseProfileAttr,
@@ -1271,8 +1344,8 @@ class Svg(
         tx = min_x - sx * old_min_x
         ty = min_y - sy * old_min_y
 
-        # skip self; this can be done in a single for loop because the
-        # SVG is a tree (probably)
+        # skip self; the mapping is handed to the children, each of which
+        # folds as much of it as it can into its own geometry
         for child in self.find_all(recursive=False):
             # this is normally done in the reify method, but we need to do it
             # before we prepend the new transformations
@@ -1284,7 +1357,7 @@ class Svg(
                 *(child.transform or []),
             ]
 
-            child.reify(limit=2, recursive=False)
+        self.reify()
 
         self.viewBox = viewbox
 
@@ -1413,6 +1486,7 @@ class Svg(
 
 @final
 class Switch(
+    reify.TransformInheritedByChildren,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
@@ -1424,6 +1498,8 @@ class Switch(
 
 @final
 class Symbol(
+    reify.RenderedIndirectly,
+    reify.ViewportEstablishing,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
     attrdefs.PreserveAspectRatioAttr,
@@ -1458,14 +1534,17 @@ class Text(
 
 @final
 class TextPath(
+    reify.PositionedByReference,
     attrgroups.ConditionalProcessingAttrs,
     attrgroups.XlinkAttrs,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.LengthAdjustAttr,
     attrdefs.MethodAttr,
     attrdefs.SpacingAttr,
     attrdefs.StartOffsetAttr,
     attrdefs.StyleAttr,
+    attrdefs.TextLengthAttr,
     traits.TextContentChildElement,
     traits.TextContentElement,
     traits.Element,
@@ -1488,8 +1567,15 @@ class Tref(
     attrgroups.ConditionalProcessingAttrs,
     attrgroups.XlinkAttrs,
     attrdefs.ClassAttr,
+    attrdefs.DxListOfLengthsAttr,
+    attrdefs.DyListOfLengthsAttr,
     attrdefs.ExternalResourcesRequiredAttr,
+    attrdefs.LengthAdjustAttr,
+    attrdefs.RotateListOfNumbersAttr,
     attrdefs.StyleAttr,
+    attrdefs.TextLengthAttr,
+    attrdefs.XListOfCoordinatesAttr,
+    attrdefs.YListOfCoordinatesAttr,
     traits.TextContentChildElement,
     traits.TextContentElement,
     traits.Element,
@@ -1520,6 +1606,7 @@ class Tspan(
 
 @final
 class Use(
+    reify.TranslatableGeometry,
     attrgroups.ConditionalProcessingAttrs,
     attrgroups.XlinkAttrs,
     attrdefs.ClassAttr,
@@ -1539,6 +1626,7 @@ class Use(
 
 @final
 class View(
+    reify.RenderedIndirectly,
     attrdefs.ExternalResourcesRequiredAttr,
     attrdefs.PreserveAspectRatioAttr,
     attrdefs.ViewBoxAttr,
@@ -1551,6 +1639,7 @@ class View(
 
 @final
 class Vkern(
+    reify.RenderedIndirectly,
     attrdefs.G1Attr,
     attrdefs.G2Attr,
     attrdefs.KAttr,

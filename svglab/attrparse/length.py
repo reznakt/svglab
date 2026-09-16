@@ -38,8 +38,11 @@ _convert: Final[units.Converter[Length, utiltypes.LengthUnit]] = (
         conversion_table={
             ("in", "cm"): 2.54,
             ("cm", "mm"): 10,
-            ("pc", "px"): 15,
-            ("pt", "px"): 1.25,
+            # CSS pins the reference pixel at 96 per inch, so a point is
+            # 96/72 pixels and a pica is twelve points; the 90-dpi figures
+            # of SVG 1.1 disagree with every renderer in use
+            ("pc", "px"): 16,
+            ("pt", "px"): 4 / 3,
             (None, "px"): 1,
             ("mm", "Q"): 4,
         }

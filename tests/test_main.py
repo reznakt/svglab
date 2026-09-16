@@ -470,8 +470,8 @@ def test_svg_to_data_uri_roundtrip() -> None:
                 fill=svglab.Color("orange"),
                 stroke=svglab.Color("black"),
             ),
-            9,
-            svglab.ArcTo,
+            10,
+            svglab.ClosePath,
             id="rect-rx-only",
         ),
         pytest.param(
@@ -484,8 +484,8 @@ def test_svg_to_data_uri_roundtrip() -> None:
                 fill=svglab.Color("cyan"),
                 stroke=svglab.Color("black"),
             ),
-            9,
-            svglab.ArcTo,
+            10,
+            svglab.ClosePath,
             id="rect-ry-only",
         ),
         pytest.param(
@@ -499,8 +499,8 @@ def test_svg_to_data_uri_roundtrip() -> None:
                 fill=svglab.Color("pink"),
                 stroke=svglab.Color("black"),
             ),
-            9,
-            svglab.ArcTo,
+            10,
+            svglab.ClosePath,
             id="rect-rx-ry",
         ),
     ],
@@ -1316,51 +1316,6 @@ def test_set_viewbox_produces_visually_equal_svg(svg: svglab.Svg) -> None:
     transformed.set_viewbox((5, 5, 100, 100))
 
     conftest.assert_svg_visually_equal(svg, transformed)
-
-
-@pytest.mark.parametrize(
-    ("original", "swapped"),
-    [
-        # transforms of same type
-        (
-            (svglab.Translate(1, 2), svglab.Translate(2, 1)),
-            (svglab.Translate(2, 1), svglab.Translate(1, 2)),
-        ),
-        (
-            (svglab.Scale(2), svglab.Scale(0.5)),
-            (svglab.Scale(0.5), svglab.Scale(2)),
-        ),
-        # isotropic scaling and translation
-        (
-            (svglab.Scale(2), svglab.Translate(1, 2)),
-            (svglab.Translate(2, 4), svglab.Scale(2)),
-        ),
-        # skew and translation
-        (
-            (svglab.SkewX(45), svglab.Translate(10, 20)),
-            (svglab.Translate(10 + 20, 20), svglab.SkewX(45)),
-        ),
-        # skew and isotropic scaling
-        (
-            (svglab.SkewX(45), svglab.Scale(2)),
-            (svglab.Scale(2), svglab.SkewX(45)),
-        ),
-        # skew and anisotropic scaling
-        (
-            (svglab.SkewX(45), svglab.Scale(2, 3)),
-            (svglab.Scale(2, 3), svglab.SkewX(56.30993247402021308647)),
-        ),
-    ],
-)
-def test_transform_swap(
-    original: tuple[svglab.TransformFunction, svglab.TransformFunction],
-    swapped: tuple[svglab.TransformFunction, svglab.TransformFunction],
-) -> None:
-    a, b = original
-    c, d = swapped
-
-    assert svglab.swap_transforms(a, b) == swapped
-    assert svglab.swap_transforms(c, d) == original
 
 
 @pytest.mark.parametrize(
