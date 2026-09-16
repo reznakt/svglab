@@ -64,6 +64,7 @@ from svglab.reify import (
     has_own_geometry,
     split,
     stretches_content,
+    style_capability,
     stylesheet_capability,
 )
 from svglab.serialize import (
@@ -1695,12 +1696,20 @@ def _element_capability(
         return NOTHING
 
     if _delegates_transform(element):
-        # handing the transformation to the children is the whole of the
+        # the element has no geometry of its own, but what it refers to is
+        # still resolved where it sits: a clip path, a mask or a filter in
+        # user space stays behind when the transformation moves down to the
+        # children, and the content slides out from under it
+        capability = (
+            _reference_capability(element, context.by_id)
+            & style_capability(element)
+            & context.stylesheet
+        )
+
+        # handing the transformation to the children is the rest of the
         # work, so the element can take on exactly as much as all of them
         # can. Handing them more only writes the leftover onto every one of
         # them, where it started out written once
-        capability = AFFINE
-
         for child in inheriting:
             capability &= children[id(child)]
 
