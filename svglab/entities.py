@@ -1352,6 +1352,9 @@ class _Context(NamedTuple):
     move the animation, not the element.
     """
 
+    capabilities: Mapping[int, reify.Capability]
+    """What each element of the tree can absorb, by object identity."""
+
     stylesheet: reify.Capability
     """What the document's stylesheets leave reifiable anywhere in it."""
 
@@ -1583,16 +1586,26 @@ def _children_inheriting_transform(element: Element, /) -> list[Element]:
     ]
 
 
-def _transform_capability(
-    element: Element, /, *, context: _Context
+def _element_capability(
+    element: Element,
+    /,
+    *,
+    context: _Context,
+    children: Mapping[int, reify.Capability],
 ) -> reify.Capability:
-    """Work out how much of a transformation an element can take on."""
+    """Work out how much of a transformation an element can take on.
+
+    `children` holds the capability of every element below this one, so that
+    the whole tree is worked out from the leaves upwards in a single pass.
+    """
     if id(element) in context.frozen:
         return reify.NOTHING
 
+    inheriting = _children_inheriting_transform(element)
+
     if _pushes_transform_to_children(element) and any(
         id(child) in context.pinned or id(child) in context.frozen
-        for child in _children_inheriting_transform(element)
+        for child in inheriting
     ):
         # a child that something else in the document points at has to keep
         # rendering the way it does now, so nothing may be pushed into it --
@@ -1600,7 +1613,16 @@ def _transform_capability(
         return reify.NOTHING
 
     if _delegates_transform(element):
-        return reify.AFFINE
+        # handing the transformation to the children is the whole of the
+        # work, so the element can take on exactly as much as all of them
+        # can. Handing them more only writes the leftover onto every one of
+        # them, where it started out written once
+        capability = reify.AFFINE
+
+        for child in inheriting:
+            capability &= children[id(child)]
+
+        return capability
 
     capability = (
         reify.geometry_capability(element)
@@ -1616,13 +1638,59 @@ def _transform_capability(
     # stroke -- are folded into its own attributes, so a child that kept the
     # transformation instead of absorbing it would have the inherited part
     # applied to it twice
-    for child in _children_inheriting_transform(element):
+    for child in inheriting:
         if child.main_transform:
             return reify.NOTHING
 
-        capability &= _transform_capability(child, context=context)
+        capability &= children[id(child)]
 
     return capability
+
+
+def _capabilities(
+    root: Element, /, *, context: _Context
+) -> dict[int, reify.Capability]:
+    """Work out what every element of a tree can absorb, leaves first.
+
+    A container can only take on what its children can, so the tree has to be
+    read from the bottom up. Doing that once here keeps it linear, and keeps
+    the depth of the document out of the call stack.
+    """
+    order: list[Element] = []
+    stack = collections.deque([root])
+
+    while stack:
+        element = stack.pop()
+        order.append(element)
+        stack.extend(element.find_all(recursive=False))
+
+    capabilities: dict[int, reify.Capability] = {}
+
+    # a parent always comes before its children in the order above, so
+    # reversing it puts every child before its parent
+    for element in reversed(order):
+        capabilities[id(element)] = _element_capability(
+            element, context=context, children=capabilities
+        )
+
+    return capabilities
+
+
+def _transform_capability(
+    element: Element, /, *, context: _Context
+) -> reify.Capability:
+    """Look up how much of a transformation an element can take on."""
+    capability = context.capabilities.get(id(element))
+
+    if capability is not None:
+        return capability
+
+    # an element made during the walk rather than read from the document --
+    # the `path` a basic shape is converted into. It draws the shape itself
+    # and has no children, so there is nothing below it to work out first
+    return _element_capability(
+        element, context=context, children=context.capabilities
+    )
 
 
 def _reify_element(element: Element, /, *, context: _Context) -> None:
@@ -1855,11 +1923,16 @@ def _build_context(root: Element, /) -> _Context:
     index = _index_by_id(root)
     frozen = _frozen_elements(root, index)
 
-    return _Context(
+    context = _Context(
         by_id=index,
         pinned=_pinned_elements(root, index, frozen),
         frozen=frozen,
+        capabilities={},
         stylesheet=_stylesheet_capability(root),
+    )
+
+    return context._replace(
+        capabilities=_capabilities(root, context=context)
     )
 
 
