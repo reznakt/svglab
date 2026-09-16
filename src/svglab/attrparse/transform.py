@@ -13,7 +13,7 @@ import abc
 import functools
 import math
 import operator
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from types import NotImplementedType
 
 import lark
@@ -23,6 +23,7 @@ from typing_extensions import (
     Annotated,
     Self,
     TypeAlias,
+    cast,
     final,
     overload,
     override,
@@ -35,31 +36,6 @@ from svglab.utils import mathutils, miscutils
 
 _Vector: TypeAlias = tuple[float, float]
 """A 2D vector."""
-
-
-def _dot_product(u: _Vector, v: _Vector, /) -> float:
-    """Calculate the dot product of two vectors.
-
-    Args:
-        u: The first vector.
-        v: The second vector.
-
-    Returns:
-        The dot product of the two vectors.
-
-    Examples:
-        >>> _dot_product((1.0, 2.0), (3.0, 4.0))
-        11.0
-        >>> _dot_product((1.0, 2.0), (1.0, 2.0))
-        5.0
-        >>> _dot_product((1.0, 2.0), (0.0, 0.0))
-        0.0
-
-    """
-    u1, u2 = u
-    v1, v2 = v
-
-    return u1 * v1 + u2 * v2
 
 
 class _TransformFunctionBase(
@@ -344,33 +320,71 @@ class SkewX(_TransformFunctionBase):
         return hash((type(self), self.angle))
 
 
-def _transform_weight(transform: Iterable[TransformFunction], /) -> int:
-    """Calculate the weight of a transformation.
+def _argument_count(transformation: TransformFunction, /) -> int:
+    """Count the numbers a transformation function serializes to.
 
-    The weight is used to determine the best decomposition of a matrix.
+    The serializers leave out what they can -- a translation with no vertical
+    component, a scaling with one factor, a rotation about the origin -- so
+    this is the length of the output, not of the tuple.
+
+    The transformation functions are final classes, and they inherit a
+    protocol, which makes `isinstance` on them go the long way round. Their
+    exact type is a pointer comparison and says the same thing.
+    """
+    kind = type(transformation)
+
+    if kind is Translate:
+        translate = cast("Translate", transformation)
+        return 1 if mathutils.is_close(translate.ty, 0) else 2
+
+    if kind is Scale:
+        scale = cast("Scale", transformation)
+        return 1 if mathutils.is_close(scale.sx, scale.sy) else 2
+
+    if kind is Rotate:
+        rotate = cast("Rotate", transformation)
+        return (
+            1
+            if mathutils.is_close(rotate.cx, 0)
+            and mathutils.is_close(rotate.cy, 0)
+            else 3
+        )
+
+    if kind in {SkewX, SkewY}:
+        return 1
+
+    return 6
+
+
+def _transform_cost(
+    transform: Iterable[TransformFunction], /
+) -> tuple[int, int]:
+    """Measure how much output a transformation list takes up.
+
+    Decompositions are compared by this, smallest first: the numbers that
+    have to be written out, and then the number of functions to break the
+    ties. Nothing reads the shape of a decomposition any more -- it is
+    composed straight back into a matrix -- so the only thing left to
+    optimize for is how it reads and how much room it takes.
 
     Args:
-        transform: The transformation to calculate the weight of.
+        transform: The transformation list to measure.
 
     Returns:
-        The weight of the transformation - the higher the weight, the more
-        complex the transformation.
+        A 2-tuple of the number of arguments and the number of functions.
+
+    Examples:
+        >>> _transform_cost([Rotate(45, 10, 20)])
+        (3, 1)
+        >>> _transform_cost([Translate(10, 20), Rotate(45)])
+        (3, 2)
+        >>> _transform_cost([Matrix(1, 2, 3, 4, 5, 6)])
+        (6, 1)
 
     """
-    weight = 0
+    functions = list(transform)
 
-    for t in transform:
-        match t:
-            case SkewX() | SkewY():
-                weight += 1_000_000
-            case Scale(sx, sy) if not mathutils.is_close(sx, sy):
-                weight += 1_000_000
-            case Rotate():
-                weight += 1_000
-            case _:
-                weight += 1
-
-    return weight
+    return sum(map(_argument_count, functions)), len(functions)
 
 
 @models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
@@ -430,24 +444,34 @@ class Translate(_Translate):
 def _remove_redundant_transformations(
     transform: Iterable[TransformFunction],
 ) -> Transform:
+    """Drop the transformations in a list that do nothing.
+
+    Exact types rather than `isinstance`, for the reason given in
+    `_argument_count`.
+    """
     result: Transform = []
 
-    for t in transform:
-        match t:
-            case Translate(tx, ty) if mathutils.is_close(
-                tx, 0
-            ) and mathutils.is_close(ty, 0):
-                continue
-            case Scale(sx, sy) if mathutils.is_close(
-                sx, 1
-            ) and mathutils.is_close(sy, 1):
-                continue
-            case Rotate(angle) | SkewX(angle) | SkewY(angle) if (
-                mathutils.is_close(angle, 0)
+    for transformation in transform:
+        kind = type(transformation)
+
+        if kind is Translate:
+            translate = cast("Translate", transformation)
+            if mathutils.is_close(translate.tx, 0) and mathutils.is_close(
+                translate.ty, 0
             ):
                 continue
-            case _:
-                result.append(t)
+        elif kind is Scale:
+            scale = cast("Scale", transformation)
+            if mathutils.is_close(scale.sx, 1) and mathutils.is_close(
+                scale.sy, 1
+            ):
+                continue
+        elif kind in {Rotate, SkewX, SkewY}:
+            turn = cast("Rotate | SkewX | SkewY", transformation)
+            if mathutils.is_close(turn.angle, 0):
+                continue
+
+        result.append(transformation)
 
     return result
 
@@ -672,28 +696,37 @@ class Matrix(_TransformFunctionBase):
 
         return q, r
 
-    def svd_decompose(self) -> tuple[float, float, float]:
+    def svd_decompose(self) -> tuple[float, float, float, float]:
         """Split the linear part of the matrix into rotated axis scalings.
 
-        The linear part is factored as `rotate(angle) @ scale(sx, sy) @ v`,
-        where `v` is a rotation that is not reported because it only
-        reparametrizes the unit circle: the image of the unit circle under
-        this matrix is the ellipse with semi-axes `abs(sx)` and `abs(sy)`,
-        the first of which points `angle` degrees away from the x-axis.
+        The linear part is factored as
+        `rotate(angle) @ scale(sx, sy) @ rotate(pre)`. Every matrix has such a
+        factorization, singular ones included, which is what makes it the one
+        decomposition that never fails.
 
-        This is the singular value decomposition, with the sign of the
-        smaller singular value kept so that a reflection is not lost.
+        Geometrically, the image of the unit circle under this matrix is the
+        ellipse with semi-axes `abs(sx)` and `abs(sy)`, the first of which
+        points `angle` degrees away from the x-axis. `pre` only says where a
+        point of the circle starts out, so anything describing the ellipse
+        alone -- an elliptical arc, say -- can ignore it.
+
+        This is the singular value decomposition, with the sign of the smaller
+        singular value kept so that a reflection is not lost.
 
         Returns:
-            A 3-tuple `(angle, sx, sy)`. `sx` is always non-negative and is
-            the larger of the two; `sy` is negative exactly when the
+            A 4-tuple `(angle, sx, sy, pre)`. `sx` is always non-negative and
+            is the larger of the two; `sy` is negative exactly when the
             transformation reflects.
 
         Examples:
-            >>> Scale(2, 3).to_matrix().svd_decompose()
+            >>> angle, sx, sy, pre = (
+            ...     Scale(2, 3).to_matrix().svd_decompose()
+            ... )
+            >>> angle, sx, sy
             (90.0, 3.0, 2.0)
-            >>> Scale(2).to_matrix().svd_decompose()
-            (0.0, 2.0, 2.0)
+            >>> rebuilt = Rotate(angle) @ Scale(sx, sy) @ Rotate(pre)
+            >>> rebuilt == Scale(2, 3).to_matrix()
+            True
 
         """
         a, b, c, d = self.a, self.b, self.c, self.d
@@ -706,9 +739,15 @@ class Matrix(_TransformFunctionBase):
         q = math.hypot(e, h)
         r = math.hypot(f, g)
 
-        angle = (math.atan2(h, e) + math.atan2(g, f)) / 2
+        sum_of_angles = math.atan2(h, e)
+        difference = math.atan2(g, f)
 
-        return mathutils.degrees(angle), q + r, q - r
+        return (
+            mathutils.degrees((sum_of_angles + difference) / 2),
+            q + r,
+            q - r,
+            mathutils.degrees((sum_of_angles - difference) / 2),
+        )
 
     def condition_number(self) -> float:
         """Measure how much the matrix distorts the plane.
@@ -734,7 +773,7 @@ class Matrix(_TransformFunctionBase):
             inf
 
         """
-        _, sx, sy = self.svd_decompose()
+        _, sx, sy, _pre = self.svd_decompose()
 
         if mathutils.is_close(sy, 0):
             return math.inf
@@ -753,104 +792,193 @@ class Matrix(_TransformFunctionBase):
         """
         return mathutils.degrees(math.atan2(self.b, self.a))
 
-    def __qr_decompose(self) -> Transform:
-        result: Transform = []
+    def __rotation_centre(self) -> _Vector | None:
+        """Find the point a rotation leaves where it is, if this is one.
+
+        A rotation about a point is a rotation about the origin surrounded by
+        a pair of translations, and `rotate(a cx cy)` writes all three in one
+        function. The centre is the matrix's fixed point: the `c` that solves
+        `(I - R) c = v`.
+        """
+        a, b, _, _, e, f = self.to_tuple()
+        determinant = (1 - a) ** 2 + b**2
+
+        if mathutils.is_close(determinant, 0):
+            # the rotation is by a whole turn, so every point is fixed
+            return None
+
+        return (
+            ((1 - a) * e - b * f) / determinant,
+            (b * e + (1 - a) * f) / determinant,
+        )
+
+    def __qr_candidate(self, prefix: Transform, /) -> Transform | None:
+        """Factor as a rotation, an axis scaling and a skew along x.
+
+        Gram-Schmidt on the columns; the shape that survives the rotation is
+        upper triangular, and an upper triangular matrix is a scaling
+        followed by a skew along x.
+        """
+        try:
+            rotation, rest = self.qr_decompose()
+        except errors.SvgSingularMatrixError:
+            return None
+
+        return [
+            *prefix,
+            Rotate(rotation.rotation_angle()),
+            Scale(rest.a, rest.d),
+            SkewX(mathutils.arctan(rest.c / rest.a)),
+        ]
+
+    def __ldu_candidate(self, prefix: Transform, /) -> Transform | None:
+        """Factor as a skew along y, an axis scaling and a skew along x."""
+        a, b, c, *_ = self.to_tuple()
+
+        if mathutils.is_close(a, 0):
+            return None
+
+        return [
+            *prefix,
+            SkewY(mathutils.arctan(b / a)),
+            Scale(a, self.determinant() / a),
+            SkewX(mathutils.arctan(c / a)),
+        ]
+
+    def __svd_candidate(self, prefix: Transform, /) -> Transform:
+        """Factor as a rotation, an axis scaling and another rotation.
+
+        Every matrix has this factorization, singular ones included, which is
+        what makes it the one that is always available.
+        """
+        angle, sx, sy, pre = self.svd_decompose()
+
+        return [*prefix, Rotate(angle), Scale(sx, sy), Rotate(pre)]
+
+    def __candidates(self) -> Generator[Transform]:
+        """Propose ways of writing the matrix as elementary transformations.
+
+        A proposal need not be correct: `decompose` composes each one back and
+        keeps only those that reconstruct the matrix exactly, so a candidate
+        can be offered on a hunch and rejected on the arithmetic. What the
+        guards below are for is not correctness but cost -- every function
+        built here is a model that has to be validated, and the guesses that
+        cannot possibly hold are not worth building.
+
+        The matrix itself is always among the candidates, so there is always
+        an answer.
+        """
         a, b, c, d, e, f = self.to_tuple()
 
-        # we prefer to use r over s if possible
-        if not mathutils.is_close(a, 0) or not mathutils.is_close(b, 0):
-            result.append(Translate(e, f))
+        moves = not mathutils.is_close(e, 0) or not mathutils.is_close(
+            f, 0
+        )
+        # a guess is worth making in one arrangement only: with the move if
+        # there is one to make, without it if there is not
+        prefix: Transform = [self.translation()] if moves else []
 
-            r = math.hypot(a, b)
-            # `atan2` is the closed form of the paper's sign(b) * arccos(a/r),
-            # without the singularity at b == 0
-            angle = mathutils.degrees(math.atan2(b, a))
-            result.append(Rotate(angle))
+        yield [self]
 
-            det = self.determinant()
-            result.append(Scale(r, det / r))
+        if mathutils.is_close(b, 0) and mathutils.is_close(c, 0):
+            yield [*prefix, Scale(a, d)]
 
-            col_dot = _dot_product((a, b), (c, d))
-            angle = mathutils.arctan(col_dot / r**2)
-            result.append(SkewX(angle))
+        if (
+            mathutils.is_close(a, 1)
+            and mathutils.is_close(d, 1)
+            and mathutils.is_close(b, 0)
+        ):
+            yield [*prefix, SkewX(mathutils.arctan(c))]
 
-        # if r is unsuitable, we use s
-        elif not mathutils.is_close(c, 0) or not mathutils.is_close(d, 0):
-            result.append(Translate(e, f))
+        if (
+            mathutils.is_close(a, 1)
+            and mathutils.is_close(d, 1)
+            and mathutils.is_close(c, 0)
+        ):
+            yield [*prefix, SkewY(mathutils.arctan(b))]
 
-            s = math.hypot(c, d)
-            angle = mathutils.degrees(math.atan2(-c, d))
-            result.append(Rotate(angle))
+        if (
+            mathutils.is_close(a, d)
+            and mathutils.is_close(b, -c)
+            and mathutils.is_close(math.hypot(a, b), 1)
+        ):
+            angle = self.rotation_angle()
 
-            det = self.determinant()
-            result.append(Scale(det / s, s))
+            yield [*prefix, Rotate(angle)]
 
-            col_dot = _dot_product((a, b), (c, d))
-            angle = mathutils.arctan(col_dot / s**2)
-            result.append(SkewY(angle))
+            # a rotation about a point says the same as a rotation between
+            # two moves, in one function instead of three
+            centre = self.__rotation_centre()
 
-        # degenerate transformation; the translation must still be preserved
-        else:
-            result.append(Translate(e, f))
-            result.append(Scale(0))
+            if moves and centre is not None:
+                yield [Rotate(angle, *centre)]
 
-        return result
-
-    def __ldu_decompose(self) -> Transform:
-        result: Transform = []
-        a, b, c, d, e, f = self.to_tuple()
-
-        result.append(Translate(e, f))
-
-        if not mathutils.is_close(a, 0):
-            result.append(SkewY(mathutils.arctan(b / a)))
-            result.append(Scale(a, self.determinant() / a))
-            result.append(SkewX(mathutils.arctan(c / a)))
-        elif not mathutils.is_close(b, 0):
-            result.append(Rotate(90))
-            result.append(Scale(b, self.determinant() / b))
-            result.append(SkewX(mathutils.arctan(d / b)))
-        else:
-            result.append(Scale(c, d))
-            result.append(SkewX(45))
-            result.append(Scale(0, 1))
-
-        return result
+        for candidate in (
+            self.__qr_candidate(prefix),
+            self.__ldu_candidate(prefix),
+            self.__svd_candidate(prefix),
+        ):
+            if candidate is not None:
+                yield candidate
 
     def decompose(self) -> Transform:
         """Decompose the matrix into elementary transformations.
 
-        The result is a list of transformations that, when composed, are
-        equivalent to the original matrix.
+        The result is a list of transformations that, composed, are equal to
+        the original matrix -- always, since the matrix itself is a last
+        resort. Of the candidates that reconstruct it exactly, the one that
+        writes out the fewest numbers wins.
 
-        The algorithm is based on Frédéric Wang's [Decomposition of
-        2D-transform matrices](https://frederic-wang.fr/2013/12/01/decomposition-of-2d-transform-matrices/).
+        Several factorizations are tried. Three are general: QR, which is a
+        rotation, an axis scaling and a skew along x; LDU, which is a skew
+        along y, an axis scaling and a skew along x; and the singular value
+        decomposition, which is a rotation, an axis scaling and a rotation,
+        and which is the only one that survives a singular matrix. The rest
+        are guesses at the matrix being something simpler -- a scaling, a
+        skew, a rotation about a point -- that are kept only if they turn out
+        to be right.
 
-        Two decomposition methods are used: QR and LDU. The
-        final decomposition is chosen based on which method produces the
-        transformation with the lowest complexity.
+        The two general non-singular factorizations are those of Frédéric
+        Wang's [Decomposition of 2D-transform
+        matrices](https://frederic-wang.fr/2013/12/01/decomposition-of-2d-transform-matrices/).
 
         Returns:
             A transformation list composed of elementary transformations.
 
         Examples:
-            >>> m = Translate(10, 20).to_matrix()
-            >>> m.decompose()
+            >>> Translate(10, 20).to_matrix().decompose()
             [Translate(tx=10.0, ty=20.0)]
-            >>> m = SkewY(45).to_matrix()
-            >>> m.decompose()
+            >>> SkewY(45).to_matrix().decompose()
             [SkewY(angle=45.0)]
-            >>> m = Translate(10, 20) @ Scale(2, 2)
-            >>> m.decompose()
+            >>> (Translate(10, 20) @ Scale(2, 2)).decompose()
             [Translate(tx=10.0, ty=20.0), Scale(sx=2.0, sy=2.0)]
 
-        """
-        decompositions = [self.__ldu_decompose(), self.__qr_decompose()]
+            A rotation about a point is written as one function, not three:
 
-        return min(
-            map(_remove_redundant_transformations, decompositions),
-            key=_transform_weight,
+            >>> m = Translate(10, 20) @ Rotate(45) @ Translate(-10, -20)
+            >>> m.decompose()
+            [Rotate(angle=45.0, cx=10.0, cy=20.0)]
+
+            A singular matrix still comes apart, where it used to lose a
+            column:
+
+            >>> decomposition = Matrix(0, 0, 3, 4, 0, 0).decompose()
+            >>> compose(decomposition) == Matrix(0, 0, 3, 4, 0, 0)
+            True
+
+        """
+        candidates = sorted(
+            map(_remove_redundant_transformations, self.__candidates()),
+            key=_transform_cost,
         )
+
+        # cheapest first, so the first one that reconstructs the matrix is
+        # the cheapest one that does; composing is the expensive part, and
+        # this way it usually happens once or twice
+        for candidate in candidates:
+            if compose(candidate) == self:
+                return candidate
+
+        raise AssertionError("the matrix itself always reconstructs")
 
     @override
     def __eq__(self, other: object, /) -> bool:
@@ -876,36 +1004,6 @@ TransformFunction: TypeAlias = (
 
 Transform: TypeAlias = list[TransformFunction]
 """A list of transformations."""
-
-
-def decompose_matrices(transform: Transform) -> None:
-    """Decompose matrices in a transformation list into elementary transforms.
-
-    See `Matrix.decompose` for more information.
-
-    Args:
-        transform: The transformation list to decompose.
-
-    Examples:
-        >>> transform = [Matrix(1, 0, 0, 1, 10, 20)]
-        >>> decompose_matrices(transform)
-        >>> transform
-        [Translate(tx=10.0, ty=20.0)]
-
-    """
-    i = 0
-
-    while i < len(transform):
-        transformation = transform[i]
-
-        if not isinstance(transformation, Matrix):
-            i += 1
-            continue
-
-        decomposition = transformation.decompose()
-        transform[i : i + 1] = decomposition
-
-        i += len(decomposition)
 
 
 def compose(transforms: Iterable[TransformFunction], /) -> Matrix:
