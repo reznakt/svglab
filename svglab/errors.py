@@ -35,16 +35,6 @@ class SvgUnitConversionError(SvgError):
         )
 
 
-class SvgTransformSwapError(SvgError):
-    """Exception raised when two transformations cannot be swapped."""
-
-    @override
-    def __init__(self, transform_a: object, transform_b: object) -> None:
-        super().__init__(
-            f"Cannot swap {transform_a!r} and {transform_b!r}"
-        )
-
-
 class SvgTransformOriginError(SvgError):
     """Exception raised when a transform origin value is unsupported."""
 
