@@ -27,10 +27,6 @@ from svglab.attrs.attrgroups import (
     GraphicalEventsAttrs,
 )
 from svglab.entities import Element as BaseElement
-from svglab.entities import (
-    StrokeWidthScaled,
-    scale_distance_along_a_path_attrs,
-)
 from svglab.graphics import (
     BBox,
     Mask,
@@ -40,6 +36,17 @@ from svglab.graphics import (
     visible_mask,
 )
 from svglab.models import Attr
+from svglab.reify import (
+    Animation,
+    FontSizeScaled,
+    PercentageDefaults,
+    RenderedIndirectly,
+    SimilarityGeometry,
+    StrokeWidthScaled,
+    TransformInheritedByChildren,
+    UniformlyScalableGeometry,
+    scale_distance_along_a_path_attrs,
+)
 
 
 # common attributes are defined directly on the Element class
@@ -197,7 +204,11 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
 
 
 class AnimationElement(
-    AnimationEventsAttrs, AnimationTimingAttrs, Element
+    AnimationEventsAttrs,
+    AnimationTimingAttrs,
+    Animation,
+    RenderedIndirectly,
+    Element,
 ):
     """An animation element.
 
@@ -218,7 +229,7 @@ class ContainerElement(
     """
 
 
-class DescriptiveElement(Element):
+class DescriptiveElement(RenderedIndirectly, Element):
     """A descriptive element.
 
     From the SVG 1.1 specification:
@@ -227,7 +238,9 @@ class DescriptiveElement(Element):
     """
 
 
-class FilterPrimitiveElement(FilterPrimitivesAttrs, Element):
+class FilterPrimitiveElement(
+    FilterPrimitivesAttrs, RenderedIndirectly, Element
+):
     """A filter primitive element.
 
     From the SVG 1.1 specification:
@@ -236,7 +249,9 @@ class FilterPrimitiveElement(FilterPrimitivesAttrs, Element):
     """
 
 
-class GradientElement(Element):
+class GradientElement(
+    SimilarityGeometry, PercentageDefaults, RenderedIndirectly, Element
+):
     """A gradient element.
 
     From the SVG 1.1 specification:
@@ -253,7 +268,7 @@ class GraphicsReferencingElement(Element):
     """
 
 
-class LightSourceElement(Element):
+class LightSourceElement(RenderedIndirectly, Element):
     """A light source element.
 
     From the SVG 1.1 specification:
@@ -271,7 +286,12 @@ class StructuralElement(Element):
     """
 
 
-class TextContentElement(GraphicsElement):
+class TextContentElement(
+    UniformlyScalableGeometry,
+    TransformInheritedByChildren,
+    FontSizeScaled,
+    GraphicsElement,
+):
     """A text content element.
 
     From the SVG 1.1 specification:

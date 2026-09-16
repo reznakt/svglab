@@ -219,6 +219,20 @@ from svglab.elements.traits import (
 from svglab.graphics import render
 from svglab.models import convert
 from svglab.protocols import SupportsWrite
+from svglab.reify import (
+    AffineGeometry,
+    DocumentFragmentRoot,
+    ImplicitlyOrientedShape,
+    PositionedByReference,
+    RectilinearGeometry,
+    RenderedIndirectly,
+    SimilarityGeometry,
+    Stylesheet,
+    TransformInheritedByChildren,
+    TranslatableGeometry,
+    UniformlyScalableGeometry,
+    ViewportEstablishing,
+)
 from svglab.resvg import RenderOptions
 from svglab.serialize import MINIMAL_FORMATTER, Formatter
 from svglab.utils.mathutils import is_close
@@ -233,6 +247,7 @@ def _length_or_zero(value: Length | None, /) -> Length:
 
 @final
 class Path(
+    AffineGeometry,
     ConditionalProcessingAttrs,
     ClassAttr,
     DAttr,
@@ -325,6 +340,7 @@ def _ellipse_to_path_data(
 
 @final
 class A(
+    TransformInheritedByChildren,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -358,12 +374,12 @@ class AltGlyph(
 
 
 @final
-class AltGlyphDef(Element):
+class AltGlyphDef(RenderedIndirectly, Element):
     pass
 
 
 @final
-class AltGlyphItem(Element):
+class AltGlyphItem(RenderedIndirectly, Element):
     pass
 
 
@@ -428,6 +444,8 @@ class AnimateTransform(
 
 @final
 class Circle(
+    SimilarityGeometry,
+    ImplicitlyOrientedShape,
     ConditionalProcessingAttrs,
     ClassAttr,
     CxAttr,
@@ -453,6 +471,8 @@ class Circle(
 
 @final
 class ClipPath(
+    TransformInheritedByChildren,
+    RenderedIndirectly,
     ConditionalProcessingAttrs,
     ClassAttr,
     ClipPathUnitsAttr,
@@ -465,13 +485,19 @@ class ClipPath(
 
 @final
 class ColorProfile(
-    XlinkAttrs, LocalAttr, NameNameAttr, RenderingIntentAttr, Element
+    RenderedIndirectly,
+    XlinkAttrs,
+    LocalAttr,
+    NameNameAttr,
+    RenderingIntentAttr,
+    Element,
 ):
     pass
 
 
 @final
 class Cursor(
+    RenderedIndirectly,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ExternalResourcesRequiredAttr,
@@ -484,6 +510,7 @@ class Cursor(
 
 @final
 class Defs(
+    RenderedIndirectly,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -501,6 +528,8 @@ class Desc(ClassAttr, StyleAttr, DescriptiveElement, Element):
 
 @final
 class Ellipse(
+    RectilinearGeometry,
+    ImplicitlyOrientedShape,
     ConditionalProcessingAttrs,
     ClassAttr,
     CxAttr,
@@ -780,6 +809,7 @@ class FeTurbulence(
 
 @final
 class Filter(
+    RenderedIndirectly,
     XlinkAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -798,6 +828,7 @@ class Filter(
 
 @final
 class Font(
+    RenderedIndirectly,
     ClassAttr,
     ExternalResourcesRequiredAttr,
     HorizAdvXAttr,
@@ -814,6 +845,7 @@ class Font(
 
 @final
 class FontFace(
+    RenderedIndirectly,
     AccentHeightAttr,
     AlphabeticAttr,
     AscentAttr,
@@ -847,27 +879,29 @@ class FontFace(
 
 
 @final
-class FontFaceFormat(StringAttr, Element):
+class FontFaceFormat(RenderedIndirectly, StringAttr, Element):
     pass
 
 
 @final
-class FontFaceName(StringAttr, Element):
+class FontFaceName(RenderedIndirectly, StringAttr, Element):
     pass
 
 
 @final
-class FontFaceSrc(Element):
+class FontFaceSrc(RenderedIndirectly, Element):
     pass
 
 
 @final
-class FontFaceUri(XlinkAttrs, Element):
+class FontFaceUri(RenderedIndirectly, XlinkAttrs, Element):
     pass
 
 
 @final
 class ForeignObject(
+    TranslatableGeometry,
+    ViewportEstablishing,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -883,6 +917,7 @@ class ForeignObject(
 
 @final
 class G(
+    TransformInheritedByChildren,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -895,6 +930,7 @@ class G(
 
 @final
 class Glyph(
+    RenderedIndirectly,
     ArabicFormAttr,
     ClassAttr,
     DAttr,
@@ -914,6 +950,7 @@ class Glyph(
 
 @final
 class GlyphRef(
+    RenderedIndirectly,
     XlinkAttrs,
     ClassAttr,
     DxNumberAttr,
@@ -929,12 +966,16 @@ class GlyphRef(
 
 
 @final
-class Hkern(G1Attr, G2Attr, KAttr, U1Attr, U2Attr, Element):
+class Hkern(
+    RenderedIndirectly, G1Attr, G2Attr, KAttr, U1Attr, U2Attr, Element
+):
     pass
 
 
 @final
 class Image(
+    UniformlyScalableGeometry,
+    ViewportEstablishing,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -954,6 +995,7 @@ class Image(
 
 @final
 class Line(
+    AffineGeometry,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1000,6 +1042,8 @@ class LinearGradient(
 
 @final
 class Marker(
+    RenderedIndirectly,
+    ViewportEstablishing,
     ClassAttr,
     ExternalResourcesRequiredAttr,
     MarkerHeightAttr,
@@ -1018,6 +1062,7 @@ class Marker(
 
 @final
 class Mask(
+    RenderedIndirectly,
     ClassAttr,
     ExternalResourcesRequiredAttr,
     HeightAttr,
@@ -1039,6 +1084,7 @@ class Metadata(DescriptiveElement, Element):
 
 @final
 class MissingGlyph(
+    RenderedIndirectly,
     ClassAttr,
     DAttr,
     HorizAdvXAttr,
@@ -1052,12 +1098,16 @@ class MissingGlyph(
 
 
 @final
-class Mpath(XlinkAttrs, ExternalResourcesRequiredAttr, Element):
+class Mpath(
+    RenderedIndirectly, XlinkAttrs, ExternalResourcesRequiredAttr, Element
+):
     pass
 
 
 @final
 class Pattern(
+    RenderedIndirectly,
+    ViewportEstablishing,
     XlinkAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1078,6 +1128,7 @@ class Pattern(
 
 @final
 class Polygon(
+    AffineGeometry,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1099,6 +1150,7 @@ class Polygon(
 
 @final
 class Polyline(
+    AffineGeometry,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1139,6 +1191,8 @@ class RadialGradient(
 
 @final
 class Rect(
+    RectilinearGeometry,
+    ImplicitlyOrientedShape,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1228,7 +1282,11 @@ class Rect(
 
 @final
 class Script(
-    XlinkAttrs, ExternalResourcesRequiredAttr, TypeContentTypeAttr, Element
+    RenderedIndirectly,
+    XlinkAttrs,
+    ExternalResourcesRequiredAttr,
+    TypeContentTypeAttr,
+    Element,
 ):
     pass
 
@@ -1246,17 +1304,33 @@ class Set(
 
 
 @final
-class Stop(ClassAttr, OffsetNumberPercentageAttr, StyleAttr, Element):
+class Stop(
+    RenderedIndirectly,
+    ClassAttr,
+    OffsetNumberPercentageAttr,
+    StyleAttr,
+    Element,
+):
     pass
 
 
 @final
-class Style(MediaAttr, TitleAttr, TypeContentTypeAttr, Element):
+class Style(
+    Stylesheet,
+    RenderedIndirectly,
+    MediaAttr,
+    TitleAttr,
+    TypeContentTypeAttr,
+    Element,
+):
     pass
 
 
 @final
 class Svg(
+    DocumentFragmentRoot,
+    TranslatableGeometry,
+    ViewportEstablishing,
     ConditionalProcessingAttrs,
     DocumentEventsAttrs,
     BaseProfileAttr,
@@ -1422,8 +1496,8 @@ class Svg(
         tx = min_x - sx * old_min_x
         ty = min_y - sy * old_min_y
 
-        # skip self; this can be done in a single for loop because the
-        # SVG is a tree (probably)
+        # skip self; the mapping is handed to the children, each of which
+        # folds as much of it as it can into its own geometry
         for child in self.find_all(recursive=False):
             # this is normally done in the reify method, but we need to do it
             # before we prepend the new transformations
@@ -1435,7 +1509,7 @@ class Svg(
                 *(child.transform or []),
             ]
 
-            child.reify(limit=2, recursive=False)
+        self.reify()
 
         self.viewBox = viewbox
 
@@ -1528,6 +1602,7 @@ class Svg(
 
 @final
 class Switch(
+    TransformInheritedByChildren,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1539,6 +1614,8 @@ class Switch(
 
 @final
 class Symbol(
+    RenderedIndirectly,
+    ViewportEstablishing,
     ClassAttr,
     ExternalResourcesRequiredAttr,
     PreserveAspectRatioAttr,
@@ -1573,6 +1650,7 @@ class Text(
 
 @final
 class TextPath(
+    PositionedByReference,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -1639,6 +1717,7 @@ class Tspan(
 
 @final
 class Use(
+    TranslatableGeometry,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -1658,6 +1737,7 @@ class Use(
 
 @final
 class View(
+    RenderedIndirectly,
     ExternalResourcesRequiredAttr,
     PreserveAspectRatioAttr,
     ViewBoxAttr,
@@ -1669,5 +1749,7 @@ class View(
 
 
 @final
-class Vkern(G1Attr, G2Attr, KAttr, U1Attr, U2Attr, Element):
+class Vkern(
+    RenderedIndirectly, G1Attr, G2Attr, KAttr, U1Attr, U2Attr, Element
+):
     pass
