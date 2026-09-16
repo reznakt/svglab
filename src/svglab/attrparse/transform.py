@@ -119,15 +119,19 @@ class _TransformFunctionBase(
         if not isinstance(other, _TransformFunctionBase):
             return NotImplemented
 
-        prod = np.array(self) @ np.array(other)
+        # an affine matrix has a constant bottom row, so the product is
+        # twelve multiplications; going through numpy for a 3x3 costs more in
+        # building the arrays than the arithmetic saves
+        a1, b1, c1, d1, e1, f1 = self.to_matrix().to_tuple()
+        a2, b2, c2, d2, e2, f2 = other.to_matrix().to_tuple()
 
         return Matrix(
-            a=prod[0, 0],
-            b=prod[1, 0],
-            c=prod[0, 1],
-            d=prod[1, 1],
-            e=prod[0, 2],
-            f=prod[1, 2],
+            a=a1 * a2 + c1 * b2,
+            b=b1 * a2 + d1 * b2,
+            c=a1 * c2 + c1 * d2,
+            d=b1 * c2 + d1 * d2,
+            e=a1 * e2 + c1 * f2 + e1,
+            f=b1 * e2 + d1 * f2 + f1,
         )
 
 
