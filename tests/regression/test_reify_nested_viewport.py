@@ -68,11 +68,11 @@ def test_a_nested_viewport_is_resized_only_when_it_has_a_view_box() -> (
 
     reified_without = copy.deepcopy(without)
     reified_without.reify()
-    assert reified_without.find(svglab.Svg).transform
+    assert conftest.transforms_left(reified_without)
 
     reified_with = copy.deepcopy(with_viewbox)
     reified_with.reify()
-    assert reified_with.find(svglab.Svg).transform is None
+    assert not conftest.transforms_left(reified_with)
 
 
 def test_the_outermost_svg_transforms_its_content() -> None:
