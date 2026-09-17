@@ -681,7 +681,14 @@ class Element(
         ),
     )
 
-    prefix: str | None = None
+    namespace_prefix: str | None = None
+    """The XML namespace prefix the element was written with, if any.
+
+    Deliberately *not* called `prefix`: `prefix` is a real attribute in the
+    wild (RDFa uses it, and WikiPathways writes it on `svg`), and a declared
+    field of that name swallows the attribute and then emits its value as a
+    namespace prefix.
+    """
 
     # a lambda is faster with pydantic than `list`
     __children: list[Entity] = pydantic.PrivateAttr(
@@ -804,7 +811,7 @@ class Element(
     def _eq(self, other: Entity) -> bool:
         return (
             isinstance(other, Element)
-            and self.prefix == other.prefix
+            and self.namespace_prefix == other.namespace_prefix
             and self.all_attrs() == other.all_attrs()
             and self.num_children == other.num_children
             and all(
@@ -820,7 +827,7 @@ class Element(
         return hash(
             (
                 type(self),
-                self.prefix,
+                self.namespace_prefix,
                 frozenset(self.all_attrs().items()),
                 tuple(hash(child) for child in self.children),
             )
@@ -835,8 +842,8 @@ class Element(
         if self.__children:
             attrs["children"] = list(self.children)
 
-        if self.prefix:
-            attrs["prefix"] = self.prefix
+        if self.namespace_prefix:
+            attrs["namespace_prefix"] = self.namespace_prefix
 
         if isinstance(self, UnknownElement):
             attrs["element_name"] = self.element_name
@@ -1370,7 +1377,7 @@ class Element(
         element = bs4.Tag(
             name=element_name(self),
             can_be_empty_element=True,
-            prefix=self.prefix,
+            prefix=self.namespace_prefix,
             is_xml=True,
         )
 

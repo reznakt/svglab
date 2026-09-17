@@ -615,7 +615,9 @@ def test_eq_element_group() -> None:
 
 @hypothesis.given(st.text())
 def test_eq_element_prefix(prefix: str) -> None:
-    assert svglab.Rect(prefix=prefix) == svglab.Rect(prefix=prefix)
+    assert svglab.Rect(namespace_prefix=prefix) == svglab.Rect(
+        namespace_prefix=prefix
+    )
 
 
 def test_tree_navigation_search_and_mutation() -> None:

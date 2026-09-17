@@ -113,9 +113,12 @@ def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
                 entities.UnknownElement,
             )
 
-            attrs = {"prefix": backend.prefix} | {
+            # the namespace prefix goes last: an element may carry an
+            # attribute of its own called `prefix`, and it must stay an
+            # attribute rather than becoming the element's namespace
+            attrs = {
                 k: str(v).strip() for k, v in backend.attrs.items()
-            }
+            } | {"namespace_prefix": backend.prefix}
 
             if element_class is entities.UnknownElement:
                 attrs["element_name"] = backend.name
