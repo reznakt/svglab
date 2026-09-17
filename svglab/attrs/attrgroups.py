@@ -245,9 +245,8 @@ class FilterPrimitivesAttrs(
     """
 
 
-class XlinkAttrs(
+class _XlinkAttrsWithoutActuate(
     attrdefs.HrefAttr,
-    attrdefs.XlinkActuateOnLoadAttr,
     attrdefs.XlinkArcroleAttr,
     attrdefs.XlinkHrefAttr,
     attrdefs.XlinkRoleAttr,
@@ -255,12 +254,33 @@ class XlinkAttrs(
     attrdefs.XlinkTitleAttr,
     attrdefs.XlinkTypeAttr,
 ):
-    """The XLink attributes.
+    """The XLink attributes other than `xlink:actuate`.
+
+    `xlink:actuate` is the one whose value differs between the elements that
+    carry these attributes, so each of the two groups below fixes it.
+    """
+
+
+class XlinkAttrs(
+    attrdefs.XlinkActuateOnLoadAttr, _XlinkAttrsWithoutActuate
+):
+    """The XLink attributes, for a reference traversed when the document is.
 
     From the SVG 1.1 specification:
     > "The XLink attributes are the seven attributes defined in the XML Linking
     Language specification, which are used on various SVG elements that can
     reference resources."
+    """
+
+
+class XlinkAttrsOnRequest(
+    attrdefs.XlinkActuateOnRequestAttr, _XlinkAttrsWithoutActuate
+):
+    """The XLink attributes, for a reference traversed when asked for.
+
+    This is the `a` element: a link is followed when the user follows it, so
+    the specification fixes its `xlink:actuate` to `onRequest` rather than
+    the `onLoad` every other referencing element takes.
     """
 
 

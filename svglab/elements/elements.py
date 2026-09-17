@@ -124,7 +124,7 @@ def _ellipse_to_path_data(
 @final
 class A(
     attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
+    attrgroups.XlinkAttrsOnRequest,
     attrdefs.ClassAttr,
     attrdefs.ExternalResourcesRequiredAttr,
     attrdefs.StyleAttr,
