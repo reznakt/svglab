@@ -1430,7 +1430,9 @@ class VectorEffectAttr(Attr):
 
 
 class VersionAttr(Attr):
-    version: models.Attr[Literal["1.0", "1.1", "1.2"]] = None
+    # the specification defines this as `<number>`, not as a choice between
+    # the versions that happen to exist: `version="1"` is well-formed
+    version: models.Attr[typedefs.Number] = None
 
 
 class VertAdvYAttr(Attr):
