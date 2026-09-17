@@ -4,8 +4,10 @@ import collections
 import contextlib
 import pathlib
 import warnings
+from collections.abc import Mapping
 
 import bs4
+import pydantic
 from typing_extensions import Final, Literal, TypeAlias, cast
 
 from svglab import entities, protocols
@@ -86,7 +88,60 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
+def _failed_attrs(error: pydantic.ValidationError, /) -> set[str]:
+    """Find the attribute names a validation error blames, if any."""
+    names_: set[str] = set()
+
+    for detail in error.errors():
+        location = detail.get("loc") or ()
+
+        if location and isinstance(location[0], str):
+            names_.add(location[0])
+
+    return names_
+
+
+def _validate(
+    element_class: type[entities.Element],
+    attrs: Mapping[str, object],
+    /,
+    *,
+    lenient: bool,
+) -> entities.Element:
+    """Build an element, optionally dropping the attributes that will not go.
+
+    A renderer faced with a value it cannot read ignores the declaration and
+    draws the rest of the document; strictly, so does the specification. In
+    lenient mode reification does the same thing, one attribute at a time,
+    rather than refusing the whole document over a single bad colour.
+    """
+    remaining = dict(attrs)
+
+    while True:
+        try:
+            return element_class.model_validate(remaining, strict=False)
+        except pydantic.ValidationError as error:  # noqa: PERF203
+            if not lenient:
+                raise
+
+            dropped = _failed_attrs(error) & remaining.keys()
+
+            if not dropped:
+                raise
+
+            for name in sorted(dropped):
+                warnings.warn(
+                    f"Dropping {name}={remaining[name]!r} on "
+                    f"<{element_class.__name__.lower()}>: it is not a"
+                    " value this attribute can take",
+                    stacklevel=2,
+                )
+                del remaining[name]
+
+
+def _convert_element(
+    backend: bs4.PageElement, /, *, lenient: bool = False
+) -> entities.Entity | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
@@ -94,6 +149,11 @@ def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
 
     Returns:
         An `Element` instance representing the given BeautifulSoup element.
+
+    Args:
+        backend: The BeautifulSoup element to convert.
+        lenient: Drop an attribute whose value cannot be read instead of
+            refusing the element.
 
     Raises:
         TypeError: If the given element cannot be converted.
@@ -123,10 +183,10 @@ def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
             if element_class is entities.UnknownElement:
                 attrs["element_name"] = backend.name
 
-            element = element_class.model_validate(attrs, strict=False)
+            element = _validate(element_class, attrs, lenient=lenient)
 
             for child in backend.children:
-                grandchild = _convert_element(child)
+                grandchild = _convert_element(child, lenient=lenient)
 
                 if grandchild is not None:
                     element.add_child(grandchild)
@@ -157,6 +217,7 @@ def parse_svg(
     parser: Literal[
         "html.parser", "lxml", "lxml-xml", "html5lib"
     ] = "lxml-xml",
+    lenient: bool = False,
 ) -> elements.Svg:
     """Parse an SVG document.
 
@@ -172,6 +233,12 @@ def parse_svg(
             - `pathlib.Path` - A path to a file containing the SVG markup.
 
         parser: The name of the parser to use. Defaults to 'lxml-xml'.
+
+        lenient: Drop an attribute whose value cannot be read, with a
+            warning, instead of refusing the document. This is what a
+            renderer does with a declaration it does not understand. Off by
+            default, so that a malformed document is an error unless you say
+            otherwise.
 
     Returns:
         The parsed SVG document in the form of an `Svg` instance.
@@ -206,4 +273,6 @@ def parse_svg(
 
         raise ValueError(msg)
 
-    return cast(elements.Svg, _convert_element(svg_fragments[0]))
+    return cast(
+        elements.Svg, _convert_element(svg_fragments[0], lenient=lenient)
+    )
