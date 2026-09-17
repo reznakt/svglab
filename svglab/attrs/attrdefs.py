@@ -877,8 +877,15 @@ class OverlineThicknessAttr(Attr):
 
 
 class PaintOrderAttr(Attr):
+    # `normal | [ fill || stroke || markers ]`: the keywords name an order,
+    # so the value is a sequence of them rather than a single one. A
+    # repeated keyword is not strictly allowed, but a renderer drops the
+    # declaration rather than the document, so it is not worth refusing here
     paint_order: (
-        models.Attr[Literal["normal", "fill", "stroke", "markers"]]
+        models.Attr[
+            Literal["normal"]
+            | models.List[Literal["fill", "stroke", "markers"]]
+        ]
         | typedefs.Inherit
     ) = None
 
