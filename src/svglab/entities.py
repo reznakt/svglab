@@ -1587,6 +1587,36 @@ def _children_inheriting_transform(element: Element, /) -> list[Element]:
     ]
 
 
+def _has_unusable_transform_origin(element: Element, /) -> bool:
+    """Check whether `transform-origin` is something reification can fold in.
+
+    Only a pair of absolute lengths can be turned into the two translations
+    that carry a transformation around the origin. A keyword such as
+    `center`, or a percentage of a box reification cannot see, cannot -- and
+    an element that cannot take its own origin apart cannot be handed a
+    transformation by its parent either.
+    """
+    origin = _attr_or_default(element, "transform-origin")
+
+    if origin is None:
+        return False
+
+    if not (
+        isinstance(origin, tuple)
+        and len(origin) == 2  # noqa: PLR2004
+        and all(isinstance(value, length.Length) for value in origin)
+    ):
+        return True
+
+    try:
+        float(origin[0])
+        float(origin[1])
+    except errors.SvgUnitConversionError:
+        return True
+
+    return False
+
+
 def _element_capability(
     element: Element,
     /,
@@ -1599,7 +1629,9 @@ def _element_capability(
     `children` holds the capability of every element below this one, so that
     the whole tree is worked out from the leaves upwards in a single pass.
     """
-    if id(element) in context.frozen:
+    if id(element) in context.frozen or _has_unusable_transform_origin(
+        element
+    ):
         return reify.NOTHING
 
     inheriting = _children_inheriting_transform(element)
