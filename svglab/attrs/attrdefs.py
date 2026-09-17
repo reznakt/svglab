@@ -139,7 +139,10 @@ class ClipAttr(Attr):
 
 class ClipPathAttr(Attr):
     clip_path: models.Attr[
-        typedefs.FuncIri | typedefs.None_ | typedefs.Inherit
+        typedefs.FuncIri
+        | typedefs.None_
+        | typedefs.Inherit
+        | typedefs.CssBasicShape
     ] = None
 
 
@@ -348,7 +351,10 @@ class FillRuleAttr(Attr):
 
 class FilterAttr(Attr):
     filter: models.Attr[
-        typedefs.FuncIri | typedefs.None_ | typedefs.Inherit
+        typedefs.FuncIri
+        | typedefs.None_
+        | typedefs.Inherit
+        | typedefs.CssFilterList
     ] = None
 
 
@@ -439,9 +445,10 @@ class FontVariantAttr(Attr):
 
 # a BeforeValidator must be used on non-string literals; pydantic will not
 # coerce literal values
+# SVG 1.1 allowed the nine hundreds; CSS Fonts 4 allows any number from 1
+# to 1000, which is what a variable font is set with
 _FontWeightInt: TypeAlias = Annotated[
-    Literal[100, 200, 300, 400, 500, 600, 700, 800, 900],
-    pydantic.BeforeValidator(int),
+    int, pydantic.BeforeValidator(int), pydantic.Field(ge=1, le=1000)
 ]
 
 
@@ -727,9 +734,9 @@ class MinAttr(Attr):
 
 
 class ModeAttr(Attr):
-    mode: models.Attr[
-        Literal["normal", "multiply", "screen", "darken", "lighten"]
-    ] = None
+    # SVG 1.1 gave `feBlend` five modes; SVG 2 defers to CSS Compositing,
+    # which has all sixteen, and that is what browsers implement
+    mode: models.Attr[typedefs.BlendMode] = None
 
 
 class NameAnythingAttr(Attr):

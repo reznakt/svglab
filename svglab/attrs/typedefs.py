@@ -134,3 +134,63 @@ TransformOrigin: TypeAlias = (
     | models.Tuple3[_TransformOriginValue, _TransformOriginValue, Length]
 )
 Dasharray: TypeAlias = models.List[Length | Percentage]
+
+
+# SVG 2 / CSS values. svglab models SVG 1.1, and these are the handful of
+# CSS values that the SVG 1.1 grammars leave out but that real documents and
+# every browser use. They are kept as text -- the point is to read and write
+# the document faithfully, not to interpret the function -- but constrained
+# enough that a value which is simply wrong is still refused.
+
+_FILTER_FUNCTION = (
+    r"blur|brightness|contrast|drop-shadow|grayscale|hue-rotate|invert"
+    r"|opacity|saturate|sepia"
+)
+_ARGUMENTS = r"\([^()]*(?:\([^()]*\)[^()]*)*\)"
+
+CssFilterList: TypeAlias = Annotated[
+    str,
+    pydantic.StringConstraints(
+        pattern=rf"^\s*(?:(?:{_FILTER_FUNCTION}){_ARGUMENTS}\s*)+$"
+    ),
+]
+"""A list of CSS filter functions, such as `blur(2px) saturate(2)`."""
+
+_BASIC_SHAPE = r"inset|circle|ellipse|polygon|path|rect|xywh"
+_GEOMETRY_BOX = (
+    r"content-box|padding-box|border-box|margin-box"
+    r"|fill-box|stroke-box|view-box"
+)
+
+CssBasicShape: TypeAlias = Annotated[
+    str,
+    pydantic.StringConstraints(
+        pattern=(
+            rf"^\s*(?:(?:{_BASIC_SHAPE}){_ARGUMENTS}"
+            rf"|(?:{_GEOMETRY_BOX}))"
+            rf"(?:\s+(?:(?:{_BASIC_SHAPE}){_ARGUMENTS}"
+            rf"|(?:{_GEOMETRY_BOX})))*\s*$"
+        )
+    ),
+]
+"""A CSS basic shape, such as `inset(0 round 4px)` or `circle(40%)`."""
+
+BlendMode: TypeAlias = Literal[
+    "normal",
+    "multiply",
+    "screen",
+    "overlay",
+    "darken",
+    "lighten",
+    "color-dodge",
+    "color-burn",
+    "hard-light",
+    "soft-light",
+    "difference",
+    "exclusion",
+    "hue",
+    "saturation",
+    "color",
+    "luminosity",
+]
+"""The blend modes of CSS Compositing, which SVG 2 gives `feBlend`."""
