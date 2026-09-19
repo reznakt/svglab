@@ -2181,19 +2181,19 @@ types = [
 
 [package.metadata]
 requires-dist = [
-    { name = "beautifulsoup4", specifier = ">=4.11.1,<5.0.0" },
+    { name = "beautifulsoup4", specifier = ">=4.11.1" },
     { name = "bidict", specifier = ">=0.22.0,<0.24.0" },
     { name = "html5lib", marker = "extra == 'html5lib'", specifier = ">=1.1" },
-    { name = "lark", specifier = ">=1.1.0,<2.0.0" },
-    { name = "lxml", specifier = ">=5.1.0,!=6.0.0,!=6.0.1,<7.0.0" },
-    { name = "more-itertools", specifier = ">=9.0.0,<12.0.0" },
-    { name = "numpy", specifier = ">=1.26.4,<3.0.0" },
-    { name = "pillow", specifier = ">=9.0.0,<13.0.0" },
+    { name = "lark", specifier = ">=1.1.0" },
+    { name = "lxml", specifier = ">=5.1.0,!=6.0.0,!=6.0.1" },
+    { name = "more-itertools", specifier = ">=9.0.0" },
+    { name = "numpy", specifier = ">=1.26.4" },
+    { name = "pillow", specifier = ">=9.0.0" },
     { name = "pydantic", specifier = ">=2.0.0,<3.0.0" },
     { name = "pydantic-extra-types", specifier = ">=2.0.0,<3.0.0" },
     { name = "resvg-py", specifier = ">=0.1.0,<0.6.0" },
-    { name = "rfc3986", specifier = ">=1.5.0,<3.0.0" },
-    { name = "typing-extensions", specifier = ">=4.6.0,<5.0.0" },
+    { name = "rfc3986", specifier = ">=1.5.0" },
+    { name = "typing-extensions", specifier = ">=4.6.0" },
     { name = "useful-types", specifier = ">=0.1.0,<0.3.0" },
 ]
 provides-extras = ["html5lib"]
