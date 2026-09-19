@@ -75,10 +75,19 @@ del circle.stroke_width  # remove the stroke-width attribute
 
 New elements can be created by instantiating the corresponding class. The constructor accepts attribute values as keyword arguments. Child elements can be added using the `#!python add_child()` or `#!python add_children()` methods.
 
-```python
-from svglab import Rect
+!!! note
+    Attribute values are strongly typed. A numeric attribute such as `width` takes a `#!python Length`, not a plain `#!python int` or `#!python float`.
 
-rect = Rect(x=10, y=10, width=30, height=30, fill=Color("green"))
+```python
+from svglab import Length, Rect
+
+rect = Rect(
+    x=Length(10),
+    y=Length(10),
+    width=Length(30),
+    height=Length(30),
+    fill=Color("green"),
+)
 svg.add_child(rect)
 ```
 
