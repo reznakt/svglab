@@ -62,7 +62,7 @@
   - one class per distinct SVG element
   - typed attributes
   - runtime validation thanks to [pydantic](https://pypi.org/project/pydantic/)
-- Support for all [beautifulsoup4](https://pypi.org/project/beautifulsoup4/) parsers (e.g., `html.parser`, `lxml`, `html5lib`)
+- Support for all [beautifulsoup4](https://pypi.org/project/beautifulsoup4/) parsers (e.g., `html.parser`, `lxml`, `html5lib` via the `html5lib` extra)
 - SVG can be rendered into a raster image using [resvg](https://lib.rs/crates/resvg)
 - Support for calculating the bounding box and mask of an element
 - Support for applying transformations in the `transform` attribute ("reification")

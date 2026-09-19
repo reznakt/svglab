@@ -2127,7 +2127,6 @@ source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "bidict" },
-    { name = "html5lib" },
     { name = "lark" },
     { name = "lxml" },
     { name = "more-itertools" },
@@ -2140,6 +2139,11 @@ dependencies = [
     { name = "rfc3986" },
     { name = "typing-extensions" },
     { name = "useful-types" },
+]
+
+[package.optional-dependencies]
+html5lib = [
+    { name = "html5lib" },
 ]
 
 [package.dev-dependencies]
@@ -2179,7 +2183,7 @@ types = [
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.11.1,<5.0.0" },
     { name = "bidict", specifier = ">=0.22.0,<0.24.0" },
-    { name = "html5lib", specifier = ">=1.1,<2.0" },
+    { name = "html5lib", marker = "extra == 'html5lib'", specifier = ">=1.1" },
     { name = "lark", specifier = ">=1.1.0,<2.0.0" },
     { name = "lxml", specifier = ">=5.1.0,!=6.0.0,!=6.0.1,<7.0.0" },
     { name = "more-itertools", specifier = ">=9.0.0,<12.0.0" },
@@ -2192,6 +2196,7 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.6.0,<5.0.0" },
     { name = "useful-types", specifier = ">=0.1.0,<0.3.0" },
 ]
+provides-extras = ["html5lib"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -21,7 +21,6 @@ requires-python = ">=3.10,<4.0"
 dependencies = [
   "beautifulsoup4>=4.11.1,<5.0.0",
   "bidict>=0.22.0,<0.24.0",
-  "html5lib>=1.1,<2.0",
   "lark>=1.1.0,<2.0.0",
   "lxml>=5.1.0,!=6.0.0,!=6.0.1,<7.0.0",
   "pydantic>=2.0.0,<3.0.0",
@@ -52,6 +51,9 @@ classifiers = [
   "Topic :: Text Processing :: Markup :: XML",
   "Typing :: Typed",
 ]
+
+[project.optional-dependencies]
+html5lib = ["html5lib>=1.1"]
 
 [project.urls]
 "GitHub" = "https://github.com/reznakt/svglab"

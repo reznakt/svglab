@@ -169,6 +169,8 @@ def parse_svg(
             - `pathlib.Path` - A path to a file containing the SVG markup.
 
         parser: The name of the parser to use. Defaults to 'lxml-xml'.
+            'html5lib' requires the `html5lib` extra to be installed
+            (`pip install svglab[html5lib]`).
 
     Returns:
         The parsed SVG document in the form of an `Svg` instance.
