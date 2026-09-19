@@ -178,6 +178,8 @@ def parse_svg(
     Raises:
         ValueError: If the markup does not contain a single SVG
         document fragment
+        ImportError: If `parser` is 'html5lib' and the `html5lib` extra
+        is not installed
 
     Examples:
         >>> svg = parse_svg("<svg><rect/></svg>")
@@ -192,7 +194,18 @@ def parse_svg(
         if isinstance(markup, protocols.SupportsRead):
             markup = markup.read()
 
-        soup = bs4.BeautifulSoup(markup, features=parser)
+        try:
+            soup = bs4.BeautifulSoup(markup, features=parser)
+        except bs4.FeatureNotFound as e:
+            if parser != "html5lib":
+                raise
+
+            msg = (
+                "The 'html5lib' parser requires the `html5lib` extra "
+                "(`pip install svglab[html5lib]`)."
+            )
+
+            raise ImportError(msg) from e
 
     svg_fragments = _get_root_svg_fragments(soup)
 

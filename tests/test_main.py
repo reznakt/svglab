@@ -1,5 +1,6 @@
 import base64
 import copy
+import importlib.util
 import inspect
 import io
 import pathlib
@@ -114,6 +115,15 @@ def test_parse_svg_requires_exactly_one_svg(
         ValueError, match=rf"Expected one <svg> element, found {count}"
     ):
         svglab.parse_svg(markup, parser="html.parser")
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("html5lib") is not None,
+    reason="the html5lib extra is installed",
+)
+def test_parse_svg_html5lib_without_extra() -> None:
+    with pytest.raises(ImportError, match=r"svglab\[html5lib\]"):
+        svglab.parse_svg("<svg/>", parser="html5lib")
 
 
 def test_parse_svg_unknown_element_roundtrip() -> None:
