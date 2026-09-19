@@ -96,6 +96,9 @@ default-groups = ["dev", "test", "types", "docs"]
 [tool.hatch.version]
 source = "vcs"
 
+[tool.hatch.build.targets.sdist]
+only-include = ["svglab", "tests", "LICENSE", "README.md"]
+
 [tool.pytest.ini_options]
 filterwarnings = [
   # https://bugs.launchpad.net/beautifulsoup/+bug/2076897
