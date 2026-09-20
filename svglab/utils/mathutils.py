@@ -21,7 +21,7 @@ def is_close(
         `True` if the two numbers are almost equal, `False` otherwise.
 
     Examples:
-        import math
+        >>> import math
         >>> is_close(1.0, 1.0)
         True
         >>> is_close(1.0, 1.0 + 1e-20)

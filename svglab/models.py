@@ -32,7 +32,7 @@ _T4 = TypeVar("_T4")
 
 
 Attr: TypeAlias = _T_co | None
-""" Pydantic field for an attribute. """
+"""Pydantic field for an attribute."""
 
 
 DATACLASS_CONFIG: Final = pydantic.ConfigDict(

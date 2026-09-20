@@ -109,9 +109,6 @@ def _normalize_element_name(name: ElementName, /) -> str:
     Returns:
         The normalized element name in `PascalCase`.
 
-    Raises:
-        ValueError: If the element name cannot be normalized.
-
     Examples:
     >>> _normalize_element_name("circle")
     'Circle'

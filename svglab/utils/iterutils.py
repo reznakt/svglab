@@ -75,7 +75,7 @@ def prev(sequence: Sequence[_T], item: _T) -> _T:
 
     Raises:
         ValueError: If the item is not found in the sequence or if the item
-
+            has no predecessor.
 
     Examples:
         >>> prev([1, 2, 3], 2)
