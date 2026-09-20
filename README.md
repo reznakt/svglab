@@ -1,48 +1,32 @@
-<a id="readme-top"></a>
-
-[![PyPI - Version](https://img.shields.io/pypi/v/svglab)](https://pypi.org/project/svglab/)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/svglab)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/svglab)
-[![Dependency status](https://img.shields.io/librariesio/github/reznakt/svglab)](https://libraries.io/pypi/svglab/tree)
-[![Test coverage](https://codecov.io/github/reznakt/svglab/graph/badge.svg)](https://codecov.io/github/reznakt/svglab)
-
-<br />
 <div align="center">
-  <img width="150" height="150" src="https://raw.githubusercontent.com/reznakt/svglab/refs/heads/main/assets/logo.svg" />
+  <img width="200" src="https://raw.githubusercontent.com/reznakt/svglab/refs/heads/main/assets/logo.svg" />
 
-  <h3 align="center">svglab</h3>
+  <h1 align="center">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/reznakt/svglab/refs/heads/main/assets/wordmark-dark.svg" />
+      <img alt="svglab" width="260" src="https://raw.githubusercontent.com/reznakt/svglab/refs/heads/main/assets/wordmark-light.svg" />
+    </picture>
+  </h1>
 
   <p align="center">
-    <em>A manipulation and optimization library for Scalable Vector Graphics</em>
+    <em>The Python library for parsing, manipulating, and optimizing SVG files</em>
+  </p>
+
+  <p align="center">
+    <a href="https://pypi.org/project/svglab/"><img alt="PyPI - Version" src="https://img.shields.io/pypi/v/svglab" /></a>
+    <a href="https://pypi.org/project/svglab/"><img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/svglab" /></a>
+    <a href="https://pypi.org/project/svglab/"><img alt="PyPI - Types" src="https://img.shields.io/pypi/types/svglab" /></a>
+    <a href="https://codecov.io/github/reznakt/svglab"><img alt="Test coverage" src="https://codecov.io/github/reznakt/svglab/graph/badge.svg" /></a>
+    <br />
+    <a href="https://svglab.rocks/"><img alt="Documentation" src="https://img.shields.io/badge/docs-svglab.rocks-blue" /></a>
+    <a href="https://pepy.tech/project/svglab"><img alt="PyPI - Downloads" src="https://img.shields.io/pepy/dt/svglab" /></a>
+    <a href="https://github.com/reznakt/svglab/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/pypi/l/svglab" /></a>
   </p>
 </div>
-<hr />
 
-### Table of Contents
+<br />
 
-<ul>
-  <li>
-    <a href="#about-the-project">About The Project</a>
-  </li>
-  <li>
-    <a href="#getting-started">Getting Started</a>
-    <ul>
-      <li><a href="#prerequisites">Prerequisites</a></li>
-      <li><a href="#installation">Installation</a></li>
-    </ul>
-  </li>
-  <li><a href="#usage">Usage</a></li>
-  <li>
-    <a href="#development">Development</a>
-    <ul>
-      <li><a href="#setup">Setup</a></li>
-      <li><a href="#common-tasks">Common tasks</a></li>
-    </ul>
-  </li>
-  <li><a href="#license">License</a></li>
-</ul>
-
-## About The Project
+## About the project
 
 ### Features
 
@@ -88,18 +72,16 @@ graph TD
 
   etc1:::etc
 
-  classDef abc stroke:white,stroke-width:2px;
+  classDef abc stroke-dasharray:5 5,stroke-width:2px;
   classDef etc stroke:gray,stroke-width:2px;
   classDef default stroke:orange,stroke-width:2px;
 ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
-- [CPython](https://www.python.org/) $\geq$ 3.10
+- [CPython](https://www.python.org/) 3.10+
 - [uv](https://docs.astral.sh/uv/) (development only)
 - [just](https://just.systems/) (development only; optional)
 
@@ -121,12 +103,11 @@ pip install git+https://github.com/reznakt/svglab.git
 pip install git+ssh://git@github.com/reznakt/svglab.git
 ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ## Usage
 
+### Parsing
+
 ```python
-# Parse an existing SVG file
 svg = parse_svg(
     """
     <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
@@ -152,8 +133,11 @@ svg = parse_svg(
 )
 
 print(svg)
+```
 
-# Create an element programmatically
+### Building elements
+
+```python
 group = G().add_children(
     Rect(
         width=Length(15, "px"),
@@ -194,27 +178,39 @@ group = G().add_children(
 
 # Add the element to the SVG
 svg.add_child(group)
+```
 
-# Manipulate attributes
+### Attributes and output
+
+```python
 print(svg.xmlns)  # http://www.w3.org/2000/svg
 svg.x = Length(10, "px")
 
 # Save to a file
 svg.save(sys.stdout)
+```
 
-# Search the entity tree
+### Searching the tree
+
+```python
 print(*svg.find_all(Rect), sep="\n")
 rect = svg.find(G).find(Rect)
+```
 
-# Compute the bounding box and mask of an element
+### Geometry and rendering
+
+```python
 print(rect.get_bbox())
 print(rect.get_mask())
 
 # Render the SVG to an image
 image = svg.render()
 print(image)
+```
 
-# Apply transformations in the transform attribute
+### Transformations
+
+```python
 svg.reify()
 print(svg.to_xml())
 
@@ -222,8 +218,6 @@ print(svg.to_xml())
 svg.set_viewbox((0, 0, 50, 50))
 print(svg.to_xml())
 ```
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Development
 
@@ -262,10 +256,6 @@ just format
 just format-fix
 ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ## License
 
 This software is distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "svglab"
-description = "A manipulation and optimization library for Scalable Vector Graphics"
+description = "The Python library for parsing, manipulating, and optimizing SVG files."
 authors = [{ name = "Tomáš Režňák", email = "tomas.reznak@proton.me" }]
 keywords = [
   "svg",

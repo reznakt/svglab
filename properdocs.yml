@@ -1,5 +1,5 @@
 site_name: SVGLAB Documentation
-site_description: A manipulation and optimization library for Scalable Vector Graphics
+site_description: The Python library for parsing, manipulating, and optimizing SVG files.
 site_author: Tomáš Režňák
 site_url: https://svglab.rocks/
 

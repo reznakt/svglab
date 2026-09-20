@@ -1,4 +1,4 @@
-"""A manipulation and optimization library for Scalable Vector Graphics (SVG).
+"""The Python library for parsing, manipulating, and optimizing SVG files.
 
 This package provides a set of tools for parsing, manipulating, and serializing
 SVG files. It allows you to create, modify, and optimize SVG graphics in a
