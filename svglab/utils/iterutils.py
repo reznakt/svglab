@@ -1,8 +1,8 @@
 """Utilities for working with iterables."""
 
-import functools
 from collections.abc import Generator, Iterable, Sequence
 
+import more_itertools
 from typing_extensions import Sized, SupportsIndex, TypeVar
 
 
@@ -30,7 +30,7 @@ def take_last(iterable: Iterable[_T], /) -> _T | None:
         2
 
     """
-    return functools.reduce(lambda _, s: s, iterable, None)
+    return more_itertools.last(iterable, default=None)
 
 
 def search_by_reference(sequence: Iterable[_T], item: _T) -> int:

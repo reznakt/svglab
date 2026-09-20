@@ -114,18 +114,18 @@ def arctan(value: float) -> float:
 
     Examples:
         >>> arctan(0)
-        0
+        0.0
         >>> arctan(1)
-        45
+        45.0
 
     """
     match value:
         case 0:
-            return 0
+            return 0.0
         case 1:
-            return 45
+            return 45.0
         case -1:
-            return -45
+            return -45.0
         case _:
             return math.degrees(math.atan(value))
 
@@ -144,20 +144,20 @@ def tan(degrees: float) -> float:
 
     Examples:
         >>> tan(0)
-        0
+        0.0
         >>> tan(45)
-        1
+        1.0
 
     """
     degrees %= 180
 
     match degrees:
         case 0:
-            return 0
+            return 0.0
         case 45:
-            return 1
+            return 1.0
         case 135:
-            return -1
+            return -1.0
         case _:
             return math.tan(math.radians(degrees))
 

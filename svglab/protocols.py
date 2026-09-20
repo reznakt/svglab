@@ -94,6 +94,7 @@ class SupportsTrueDiv(Protocol[_T_contra]):
     def __truediv__(self, other: _T_contra, /) -> Self: ...
 
 
+@runtime_checkable
 class SupportsRTrueDiv(Protocol[_T_contra]):
     def __rtruediv__(self, other: _T_contra, /) -> Self: ...
 
