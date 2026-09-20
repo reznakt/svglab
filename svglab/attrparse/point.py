@@ -70,10 +70,10 @@ class _Point(
             The reflected point.
 
         Examples:
-        >>> Point(1, 1).line_reflect(Point(0, 0))
-        Point(x=-1.0, y=-1.0)
-        >>> Point(0, 0).line_reflect(Point(10, 10))
-        Point(x=20.0, y=20.0)
+            >>> Point(1, 1).line_reflect(Point(0, 0))
+            Point(x=-1.0, y=-1.0)
+            >>> Point(0, 0).line_reflect(Point(10, 10))
+            Point(x=20.0, y=20.0)
 
         """
         return center + (center - self)

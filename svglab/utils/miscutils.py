@@ -72,23 +72,23 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     an attribute. If the attribute is not a function call, `None` is returned.
 
     Args:
-    attr: The attribute to extract the function name and arguments from.
+        attr: The attribute to extract the function name and arguments from.
 
     Returns:
-    A tuple containing the function name and the arguments,
-    or `None` if the attribute is not a function call.
+        A tuple containing the function name and the arguments,
+        or `None` if the attribute is not a function call.
 
     Examples:
-    >>> extract_function_name_and_args("foo()") is None  # no arguments
-    True
-    >>> extract_function_name_and_args("foo(42)")
-    ('foo', '42')
-    >>> extract_function_name_and_args("foo(42, 'bar')")
-    ('foo', "42, 'bar'")
-    >>> extract_function_name_and_args(
-    ...     "bar"
-    ... ) is None  # not a function call
-    True
+        >>> extract_function_name_and_args("foo()") is None  # no arguments
+        True
+        >>> extract_function_name_and_args("foo(42)")
+        ('foo', '42')
+        >>> extract_function_name_and_args("foo(42, 'bar')")
+        ('foo', "42, 'bar'")
+        >>> extract_function_name_and_args(
+        ...     "bar"
+        ... ) is None  # not a function call
+        True
 
     """
     match = re.match(r"^([^\(\)]+)\(([^\(\)]+)\)$", attr)

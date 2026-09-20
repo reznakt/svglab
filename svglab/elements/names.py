@@ -110,12 +110,12 @@ def _normalize_element_name(name: ElementName, /) -> str:
         The normalized element name in `PascalCase`.
 
     Examples:
-    >>> _normalize_element_name("circle")
-    'Circle'
-    >>> _normalize_element_name("feGaussianBlur")
-    'FeGaussianBlur'
-    >>> _normalize_element_name("font-face-name")
-    'FontFaceName'
+        >>> _normalize_element_name("circle")
+        'Circle'
+        >>> _normalize_element_name("feGaussianBlur")
+        'FeGaussianBlur'
+        >>> _normalize_element_name("font-face-name")
+        'FontFaceName'
 
     """
     return "".join(part[0].upper() + part[1:] for part in name.split("-"))

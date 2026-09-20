@@ -1171,26 +1171,26 @@ class Svg(
         """Convert the SVG document fragment to XML and write it to a file.
 
         Args:
-        path_or_file: The path to the file to save the XML to,
-        or a file-like object.
-        pretty: Whether to produce pretty-printed XML.
-        trailing_newline: Whether to add a trailing newline to the file.
-        formatter: The formatter to use for serialization.
+            path_or_file: The path to the file to save the XML to,
+                or a file-like object.
+            pretty: Whether to produce pretty-printed XML.
+            trailing_newline: Whether to add a trailing newline to the file.
+            formatter: The formatter to use for serialization.
 
         Examples:
-        >>> import sys
-        >>> from svglab import Rect, Svg
-        >>> svg = Svg(id="foo").add_child(Rect())
-        >>> formatter = serialize.Formatter(indent=4)
-        >>> svg.save(
-        ...     sys.stdout,
-        ...     pretty=True,
-        ...     trailing_newline=False,
-        ...     formatter=formatter,
-        ... )
-        <svg id="foo">
-            <rect/>
-        </svg>
+            >>> import sys
+            >>> from svglab import Rect, Svg
+            >>> svg = Svg(id="foo").add_child(Rect())
+            >>> formatter = serialize.Formatter(indent=4)
+            >>> svg.save(
+            ...     sys.stdout,
+            ...     pretty=True,
+            ...     trailing_newline=False,
+            ...     formatter=formatter,
+            ... )
+            <svg id="foo">
+                <rect/>
+            </svg>
 
         """
         with contextlib.ExitStack() as stack:
@@ -1234,13 +1234,14 @@ class Svg(
         exception.
 
         Args:
-        viewbox: A tuple of four numbers representing the new viewBox.
+            viewbox: A tuple of four numbers representing the new viewBox.
 
         Raises:
-        ValueError: If `viewBox` is not set and `width` and `height` are not
-            set or if the aspect ratios of the old and new viewBox differ.
-        SvgUnitConversionError: If an attribute is not convertible to user
-            units.
+            ValueError: If `viewBox` is not set and `width` and `height` are
+                not set or if the aspect ratios of the old and new viewBox
+                differ.
+            SvgUnitConversionError: If an attribute is not convertible to user
+                units.
 
         """
         if self.viewBox is None:
@@ -1333,42 +1334,43 @@ class Svg(
         rendered as one pixel.
 
         Args:
-        background: The background color of the rendered image. If `None`,
-            the background is transparent.
-        cursive_family: The font family to use for `cursive` fonts.
-        dpi: The resolution of the rendered image, in dots per inch.
-        fantasy_family: The font family to use for `fantasy` fonts.
-        font_dirs: A list of directories to search for extra fonts.
-        font_family: The default font family (when no `font-family` is
-            specified).
-        font_files: A list of extra font files to load.
-        font_size: The default font size (when no `font-size` is specified); in
-            points.
-        height: The height of the rendered image, in pixels. If `None`, the
-            height attribute of the SVG element is used.
-        image_rendering: The default image rendering method (when no
-            `image-rendering` is specified).
-        languages: A list of language codes to use when resolving the
-            `systemLanguage` attribute. Example: ["de", "en-US"].
-        monospace_family: The font family to use for `monospace` fonts.
-        resources_dir: A directory containing resources such as images
-            referenced by relative URLs in the SVG document.
-        sans_serif_family: The font family to use for `sans-serif` fonts.
-        serif_family: The font family to use for `serif` fonts.
-        shape_rendering: The default shape rendering method (when no
-            `shape-rendering` is specified).
-        skip_system_fonts: If `True`, do not load system fonts. In this case,
-            only the fonts specified in `font_dirs` and `font_files` are used.
-        svg: The SVG document fragment to render.
-        text_rendering: The default text rendering method (when no
-            `text-rendering` is specified).
-        width: The width of the rendered image, in pixels. If `None`, the width
-            attribute of the SVG element is used.
-        zoom: The zoom level to use when rendering the image. A zoom level of
-            1 means no zoom, 2 means 200%, and so on.
+            background: The background color of the rendered image. If `None`,
+                the background is transparent.
+            cursive_family: The font family to use for `cursive` fonts.
+            dpi: The resolution of the rendered image, in dots per inch.
+            fantasy_family: The font family to use for `fantasy` fonts.
+            font_dirs: A list of directories to search for extra fonts.
+            font_family: The default font family (when no `font-family` is
+                specified).
+            font_files: A list of extra font files to load.
+            font_size: The default font size (when no `font-size` is
+                specified); in points.
+            height: The height of the rendered image, in pixels. If `None`, the
+                height attribute of the SVG element is used.
+            image_rendering: The default image rendering method (when no
+                `image-rendering` is specified).
+            languages: A list of language codes to use when resolving the
+                `systemLanguage` attribute. Example: ["de", "en-US"].
+            monospace_family: The font family to use for `monospace` fonts.
+            resources_dir: A directory containing resources such as images
+                referenced by relative URLs in the SVG document.
+            sans_serif_family: The font family to use for `sans-serif` fonts.
+            serif_family: The font family to use for `serif` fonts.
+            shape_rendering: The default shape rendering method (when no
+                `shape-rendering` is specified).
+            skip_system_fonts: If `True`, do not load system fonts. In this
+                case, only the fonts specified in `font_dirs` and `font_files`
+                are used.
+            svg: The SVG document fragment to render.
+            text_rendering: The default text rendering method (when no
+                `text-rendering` is specified).
+            width: The width of the rendered image, in pixels. If `None`, the
+                width attribute of the SVG element is used.
+            zoom: The zoom level to use when rendering the image. A zoom level
+                of 1 means no zoom, 2 means 200%, and so on.
 
         Returns:
-        The rendered image.
+            The rendered image.
 
         """
         return graphics.render(

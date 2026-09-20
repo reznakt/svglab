@@ -53,7 +53,7 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
 
     Args:
         soup: A BeautifulSoup `Tag` object representing the root of the
-        document.
+            document.
 
     Returns:
         A list of SVG fragments found in the document.
@@ -177,9 +177,9 @@ def parse_svg(
 
     Raises:
         ValueError: If the markup does not contain a single SVG
-        document fragment
+            document fragment
         ImportError: If `parser` is 'html5lib' and the `html5lib` extra
-        is not installed
+            is not installed
 
     Examples:
         >>> svg = parse_svg("<svg><rect/></svg>")

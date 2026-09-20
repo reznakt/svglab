@@ -381,7 +381,7 @@ class Formatter:
         Args:
             value: The number to get the precision for.
             precision_group: The precision group to use when formatting
-            the number.
+                the number.
 
         Returns:
             The number of decimal places to use when serializing the number.
@@ -468,31 +468,31 @@ def _serialize_number(
     """Format a number into a string based on current formatter settings.
 
     Args:
-    number: The number to format.
-    precision_group: The precision group to use when formatting the number.
+        number: The number to format.
+        precision_group: The precision group to use when formatting the number.
 
     Returns:
-    The formatted number as a string.
+        The formatted number as a string.
 
     Examples:
-    >>> _serialize_number(42)
-    '42'
-    >>> _serialize_number(3.14)
-    '3.14'
-    >>> _serialize_number(1.0)
-    '1'
-    >>> _serialize_number(1e9)
-    '1e+09'
-    >>> _serialize_number(-0.1)
-    '-.1'
-    >>> _serialize_number(0.123456789)
-    '.123456789'
-    >>> _serialize_number(1e-7)
-    '1e-07'
-    >>> _serialize_number(-1e9)
-    '-1e+09'
-    >>> _serialize_number(-1e-7)
-    '-1e-07'
+        >>> _serialize_number(42)
+        '42'
+        >>> _serialize_number(3.14)
+        '3.14'
+        >>> _serialize_number(1.0)
+        '1'
+        >>> _serialize_number(1e9)
+        '1e+09'
+        >>> _serialize_number(-0.1)
+        '-.1'
+        >>> _serialize_number(0.123456789)
+        '.123456789'
+        >>> _serialize_number(1e-7)
+        '1e-07'
+        >>> _serialize_number(-1e9)
+        '-1e+09'
+        >>> _serialize_number(-1e-7)
+        '-1e-07'
 
     """
     formatter = get_current_formatter()
@@ -554,23 +554,23 @@ def _serialize_bool(
     """Serialize a boolean value into its SVG representation.
 
     Args:
-    value: The boolean value to serialize.
-    mode: The serialization mode to use. Can be either "text" or "number".
-    If set to "text", the value is serialized as "true" or "false".
-    If set to "number", the value is serialized as "1" or "0".
+        value: The boolean value to serialize.
+        mode: The serialization mode to use. Can be either "text" or "number".
+            If set to "text", the value is serialized as "true" or "false".
+            If set to "number", the value is serialized as "1" or "0".
 
     Returns:
-    The SVG representation of the boolean value.
+        The SVG representation of the boolean value.
 
     Examples:
-    >>> _serialize_bool(True, mode="text")
-    'true'
-    >>> _serialize_bool(False, mode="text")
-    'false'
-    >>> _serialize_bool(True, mode="number")
-    '1'
-    >>> _serialize_bool(False, mode="number")
-    '0'
+        >>> _serialize_bool(True, mode="text")
+        'true'
+        >>> _serialize_bool(False, mode="text")
+        'false'
+        >>> _serialize_bool(True, mode="number")
+        '1'
+        >>> _serialize_bool(False, mode="number")
+        '0'
 
     """
     match mode:
@@ -689,11 +689,11 @@ def serialize_attr(name: str, value: object) -> str:
     """Serialize an attribute into its SVG representation.
 
     Args:
-    name: The name of the attribute.
-    value: The value to serialize.
+        name: The name of the attribute.
+        value: The value to serialize.
 
     Returns:
-    The SVG representation of the value.
+        The SVG representation of the value.
 
     """
     result = serialize(
@@ -713,21 +713,22 @@ def serialize_function_call(
     """Serialize a function call into its SVG representation.
 
     Args:
-    name: The name of the function.
-    args: The arguments to pass to the function. If an argument is `None`,
-    it is omitted.
-    precision_group: The precision group to use when formatting the arguments.
+        name: The name of the function.
+        args: The arguments to pass to the function. If an argument is `None`,
+            it is omitted.
+        precision_group: The precision group to use when formatting the
+            arguments.
 
     Returns:
-    The SVG representation of the function call.
+        The SVG representation of the function call.
 
     Examples:
-    >>> serialize_function_call("rotate", 45)
-    'rotate(45)'
-    >>> serialize_function_call("translate", 10, 20)
-    'translate(10 20)'
-    >>> serialize_function_call("rgb", 255, None, 0, 128)
-    'rgb(255 0 128)'
+        >>> serialize_function_call("rotate", 45)
+        'rotate(45)'
+        >>> serialize_function_call("translate", 10, 20)
+        'translate(10 20)'
+        >>> serialize_function_call("rgb", 255, None, 0, 128)
+        'rgb(255 0 128)'
 
     """
     args_str = serialize(
@@ -749,17 +750,19 @@ def serialize_path_command(
         args: The arguments of the command.
         char: The command character, in uppercase.
         implicit: Whether the command is implicit (i.e., the command character
-        is omitted).
+            is omitted).
 
     Returns:
         The serialized command.
 
     Examples:
-    >>> from svglab import Point
-    >>> serialize_path_command(Point(10, 10), char="M", implicit=False)
-    'M10,10'
-    >>> serialize_path_command(Point(100, 100), char="L", implicit=True)
-    '100,100'
+        >>> from svglab import Point
+        >>> serialize_path_command(Point(10, 10), char="M", implicit=False)
+        'M10,10'
+        >>> serialize_path_command(
+        ...     Point(100, 100), char="L", implicit=True
+        ... )
+        '100,100'
 
     """
     formatter = get_current_formatter()

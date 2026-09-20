@@ -69,21 +69,22 @@ def _match_element(
     """Check if an element matches the given search criteria.
 
     Args:
-    element: The element to check.
-    search: The search criteria. Can be an element name or an element class.
+        element: The element to check.
+        search: The search criteria. Can be an element name or an element
+            class.
 
     Returns:
-    `True` if the element matches the search criteria, `False` otherwise.
+        `True` if the element matches the search criteria, `False` otherwise.
 
     Examples:
-    >>> from svglab import Rect
-    >>> rect = Rect()
-    >>> _match_element(rect, search="rect")
-    True
-    >>> _match_element(rect, search=Rect)
-    True
-    >>> _match_element(rect, search="circle")
-    False
+        >>> from svglab import Rect
+        >>> rect = Rect()
+        >>> _match_element(rect, search="rect")
+        True
+        >>> _match_element(rect, search=Rect)
+        True
+        >>> _match_element(rect, search="circle")
+        False
 
     """
     if isinstance(search, type):
@@ -101,20 +102,20 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
     tuple, the function is applied recursively to each element.
 
     Args:
-    attr: The attribute to scale.
-    by: The factor by which to scale the attribute.
+        attr: The attribute to scale.
+        by: The factor by which to scale the attribute.
 
     Returns:
-    The scaled attribute.
+        The scaled attribute.
 
     Examples:
-    >>> from svglab import Length
-    >>> _scale_attr(Length(10), 2)
-    Length(value=20.0, unit=None)
-    >>> _scale_attr(None, 2) is None
-    True
-    >>> _scale_attr(Length(10, "%"), 2)
-    Length(value=10.0, unit='%')
+        >>> from svglab import Length
+        >>> _scale_attr(Length(10), 2)
+        Length(value=20.0, unit=None)
+        >>> _scale_attr(None, 2) is None
+        True
+        >>> _scale_attr(Length(10, "%"), 2)
+        Length(value=10.0, unit='%')
 
     """
     match attr:
@@ -139,25 +140,25 @@ def _inherited_stroke_width(
     (`1`) is used.
 
     Args:
-    element: The element whose inherited `stroke-width` to resolve.
+        element: The element whose inherited `stroke-width` to resolve.
 
     Returns:
-    The inherited `stroke-width`.
+        The inherited `stroke-width`.
 
     Examples:
-    >>> from svglab import G, Length, Path
-    >>> path = Path()
-    >>> g = G(stroke_width=Length(5)).add_child(path)
-    >>> _inherited_stroke_width(path)
-    Length(value=5.0, unit=None)
-    >>> nested = Path()
-    >>> g = G(stroke_width=Length(5)).add_child(
-    ...     G(stroke_width=Length(3)).add_child(nested)
-    ... )
-    >>> _inherited_stroke_width(nested)
-    Length(value=3.0, unit=None)
-    >>> _inherited_stroke_width(Path())
-    Length(value=1.0, unit=None)
+        >>> from svglab import G, Length, Path
+        >>> path = Path()
+        >>> g = G(stroke_width=Length(5)).add_child(path)
+        >>> _inherited_stroke_width(path)
+        Length(value=5.0, unit=None)
+        >>> nested = Path()
+        >>> g = G(stroke_width=Length(5)).add_child(
+        ...     G(stroke_width=Length(3)).add_child(nested)
+        ... )
+        >>> _inherited_stroke_width(nested)
+        Length(value=3.0, unit=None)
+        >>> _inherited_stroke_width(Path())
+        Length(value=1.0, unit=None)
 
     """
     if isinstance(element, Element):
@@ -324,20 +325,20 @@ def _translate_attr(attr: _T, /, by: float) -> _T:
     tuple, the function is applied recursively to each element.
 
     Args:
-    attr: The attribute to translate.
-    by: The amount by which to translate the attribute.
+        attr: The attribute to translate.
+        by: The amount by which to translate the attribute.
 
     Returns:
-    The translated attribute.
+        The translated attribute.
 
     Examples:
-    >>> from svglab import Length
-    >>> _translate_attr(Length(10), 5)
-    Length(value=15.0, unit=None)
-    >>> _translate_attr(None, 5) is None
-    True
-    >>> _translate_attr(Length(10, "%"), 5)
-    Length(value=10.0, unit='%')
+        >>> from svglab import Length
+        >>> _translate_attr(Length(10), 5)
+        Length(value=15.0, unit=None)
+        >>> _translate_attr(None, 5) is None
+        True
+        >>> _translate_attr(Length(10, "%"), 5)
+        Length(value=10.0, unit='%')
 
     """
     match attr:
@@ -555,15 +556,15 @@ def element_name(element: Element, /) -> str:
     """Get the SVG element name of the given element.
 
     Args:
-    element: The element.
+        element: The element.
 
     Returns:
-    The SVG element name.
+        The SVG element name.
 
     Examples:
-    >>> from svglab import Rect
-    >>> element_name(Rect())
-    'rect'
+        >>> from svglab import Rect
+        >>> element_name(Rect())
+        'rect'
 
     """
     if isinstance(element, UnknownElement):
@@ -586,17 +587,17 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
         """Convert the element to XML.
 
         Args:
-        pretty: Whether to produce pretty-printed XML.
-        formatter: The formatter to use for serialization.
+            pretty: Whether to produce pretty-printed XML.
+            formatter: The formatter to use for serialization.
 
         Returns:
-        The XML representation of the element.
+            The XML representation of the element.
 
         Examples:
-        >>> from svglab import Rect, Length
-        >>> rect = Rect(id="foo", stroke_linecap="round")
-        >>> rect.to_xml()
-        '<rect id="foo" stroke-linecap="round"/>'
+            >>> from svglab import Rect, Length
+            >>> rect = Rect(id="foo", stroke_linecap="round")
+            >>> rect.to_xml()
+            '<rect id="foo" stroke-linecap="round"/>'
 
         """
         with formatter or serialize.get_current_formatter():
@@ -868,7 +869,7 @@ class Element(
         """Get the number of children of the element.
 
         Returns:
-        The number of children of the element.
+            The number of children of the element.
 
         """
         return len(self.__children)
@@ -877,7 +878,7 @@ class Element(
         """Check if the element has any children.
 
         Returns:
-        `True` if the element has children, `False` otherwise.
+            `True` if the element has children, `False` otherwise.
 
         """
         return self.num_children > 0
@@ -1153,26 +1154,26 @@ class Element(
         """Find all elements that match the given search criteria.
 
         Args:
-        elements: The elements to search for. Can be element names or element
-        classes.  If no search criteria are provided, all elements are
-        returned.
-        recursive: If `False`, only search the direct children of the element,
-        otherwise search all descendants.
+            elements: The elements to search for. Can be element names or
+                element classes.  If no search criteria are provided, all
+                elements are returned.
+            recursive: If `False`, only search the direct children of the
+                element, otherwise search all descendants.
 
         Returns:
-        An iterator over all elements that match the search criteria.
+            An iterator over all elements that match the search criteria.
 
         Examples:
-        >>> from svglab import G, Rect
-        >>> g = G().add_children(Rect(), G().add_child(Rect()))
-        >>> list(g.find_all("rect"))
-        [Rect(), Rect()]
-        >>> list(g.find_all(G))
-        [G(children=[Rect()])]
-        >>> list(g.find_all(Rect, recursive=False))
-        [Rect()]
-        >>> list(g.find_all(G, "rect"))
-        [Rect(), G(children=[Rect()]), Rect()]
+            >>> from svglab import G, Rect
+            >>> g = G().add_children(Rect(), G().add_child(Rect()))
+            >>> list(g.find_all("rect"))
+            [Rect(), Rect()]
+            >>> list(g.find_all(G))
+            [G(children=[Rect()])]
+            >>> list(g.find_all(Rect, recursive=False))
+            [Rect()]
+            >>> list(g.find_all(G, "rect"))
+            [Rect(), G(children=[Rect()]), Rect()]
 
         """
         for child in self.descendants if recursive else self.children:
@@ -1222,31 +1223,31 @@ class Element(
         """Find the first element that matches the given search criteria.
 
         Args:
-        elements: The elements to search for. Can be element names or element
-        classes.
-        recursive: If `False`, only search the direct children of the element,
-        otherwise search all descendants.
-        default: The default value to return if no element matches the search
-        criteria.
+            elements: The elements to search for. Can be element names or
+                element classes.
+            recursive: If `False`, only search the direct children of the
+                element, otherwise search all descendants.
+            default: The default value to return if no element matches the
+                search criteria.
 
         Returns:
-        The first element that matches the search criteria.
+            The first element that matches the search criteria.
 
         Raises:
-        SvgElementNotFoundError: If no element matches the search criteria and
-        no default value is provided.
+            SvgElementNotFoundError: If no element matches the search criteria
+                and no default value is provided.
 
         Examples:
-        >>> from svglab import G, Rect
-        >>> g = G().add_children(
-        ...     Rect(id="foo"), G().add_child(Rect(id="bar"))
-        ... )
-        >>> g.find("rect")
-        Rect(id='foo')
-        >>> g.find(G)
-        G(children=[Rect(id='bar')])
-        >>> g.find("circle", default=None) is None
-        True
+            >>> from svglab import G, Rect
+            >>> g = G().add_children(
+            ...     Rect(id="foo"), G().add_child(Rect(id="bar"))
+            ... )
+            >>> g.find("rect")
+            Rect(id='foo')
+            >>> g.find(G)
+            G(children=[Rect(id='bar')])
+            >>> g.find("circle", default=None) is None
+            True
 
         """
         try:
@@ -1486,12 +1487,12 @@ class Element(
         """Apply a transformation to the attributes of the element.
 
         Args:
-        transformation: The transformation to apply.
+            transformation: The transformation to apply.
 
         Raises:
-        ValueError: If the transformation is not supported.
-        SvgLengthConversionError: If a length attribute is not convertible
-        to user units.
+            ValueError: If the transformation is not supported.
+            SvgLengthConversionError: If a length attribute is not convertible
+                to user units.
 
         """
         match transformation:

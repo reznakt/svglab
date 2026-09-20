@@ -598,15 +598,15 @@ class Matrix(_TransformFunctionBase):
             A transformation list composed of elementary transformations.
 
         Examples:
-        >>> m = Translate(10, 20).to_matrix()
-        >>> m.decompose()
-        [Translate(tx=10.0, ty=20.0)]
-        >>> m = SkewY(45).to_matrix()
-        >>> m.decompose()
-        [SkewY(angle=45.0)]
-        >>> m = Translate(10, 20) @ Scale(2, 2)
-        >>> m.decompose()
-        [Translate(tx=10.0, ty=20.0), Scale(sx=2.0, sy=2.0)]
+            >>> m = Translate(10, 20).to_matrix()
+            >>> m.decompose()
+            [Translate(tx=10.0, ty=20.0)]
+            >>> m = SkewY(45).to_matrix()
+            >>> m.decompose()
+            [SkewY(angle=45.0)]
+            >>> m = Translate(10, 20) @ Scale(2, 2)
+            >>> m.decompose()
+            [Translate(tx=10.0, ty=20.0), Scale(sx=2.0, sy=2.0)]
 
         """
         decompositions = [self.__ldu_decompose(), self.__qr_decompose()]

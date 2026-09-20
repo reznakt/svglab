@@ -129,21 +129,21 @@ def _compute_render_size(
     SVG element.
 
     Args:
-    svg: The SVG element to compute the render size for.
-    width: The desired width of the rendered image, in pixels. If `None`,
-        the width attribute of the SVG element is used.
-    height: The desired height of the rendered image, in pixels. If `None`,
-        the height attribute of the SVG element is used.
+        svg: The SVG element to compute the render size for.
+        width: The desired width of the rendered image, in pixels. If `None`,
+            the width attribute of the SVG element is used.
+        height: The desired height of the rendered image, in pixels. If `None`,
+            the height attribute of the SVG element is used.
 
     Returns:
-    A tuple containing the computed width and height of the rendered image,
-    in pixels.
+        A tuple containing the computed width and height of the rendered image,
+        in pixels.
 
     Raises:
-    TypeError: If the provided `svg` is not an instance of
-        `_SvgElementLike`.
-    ValueError: If the width and height cannot be determined from the SVG
-        element or the provided parameters.
+        TypeError: If the provided `svg` is not an instance of
+            `_SvgElementLike`.
+        ValueError: If the width and height cannot be determined from the SVG
+            element or the provided parameters.
 
     Examples:
         >>> from svglab import Svg, Length
@@ -450,7 +450,7 @@ def _render_tree(
 
     Raises:
         ValueError: If `make_element_visible` is `True` and `render_this`
-        is `False`.
+            is `False`.
 
     """
     if make_element_visible and not render_this:

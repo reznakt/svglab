@@ -338,11 +338,11 @@ def _get_end_at(path_data: PathData, idx: int) -> point.Point:
             coordinates would require looking before the start of the path.
 
     Examples:
-    >>> path_data = PathData.from_str("M 10,10 H 100 V 100 Z")
-    >>> _get_end_at(path_data, 0)
-    Point(x=10.0, y=10.0)
-    >>> _get_end_at(path_data, 1)
-    Point(x=100.0, y=10.0)
+        >>> path_data = PathData.from_str("M 10,10 H 100 V 100 Z")
+        >>> _get_end_at(path_data, 0)
+        Point(x=10.0, y=10.0)
+        >>> _get_end_at(path_data, 1)
+        Point(x=100.0, y=10.0)
 
     """
     # shorthand line commands set one coordinate and inherit the other, so
@@ -391,9 +391,9 @@ def _iter_end_points(path_data: PathData, /) -> Generator[point.Point]:
         The end point of each command, in order.
 
     Examples:
-    >>> path_data = PathData.from_str("M 10,10 H 100 V 100 Z")
-    >>> [tuple(end) for end in _iter_end_points(path_data)]
-    [(10.0, 10.0), (100.0, 10.0), (100.0, 100.0), (10.0, 10.0)]
+        >>> path_data = PathData.from_str("M 10,10 H 100 V 100 Z")
+        >>> [tuple(end) for end in _iter_end_points(path_data)]
+        [(10.0, 10.0), (100.0, 10.0), (100.0, 100.0), (10.0, 10.0)]
 
     """
     end = subpath_start = point.Point.zero()
@@ -434,9 +434,9 @@ def _quadratic_control_at(path_data: PathData, idx: int) -> point.Point:
         ValueError: If the command has no predecessor.
 
     Examples:
-    >>> path_data = PathData.from_str("M 0,0 Q 20,0 20,20 T 40,40")
-    >>> _quadratic_control_at(path_data, 2)
-    Point(x=20.0, y=40.0)
+        >>> path_data = PathData.from_str("M 0,0 Q 20,0 20,20 T 40,40")
+        >>> _quadratic_control_at(path_data, 2)
+        Point(x=20.0, y=40.0)
 
     """
     if idx == 0:
@@ -478,11 +478,11 @@ def _cubic_control_at(path_data: PathData, idx: int) -> point.Point:
         ValueError: If the command has no predecessor.
 
     Examples:
-    >>> path_data = PathData.from_str(
-    ...     "M 0,0 C 20,0 20,20 40,40 S 100,100 50,50"
-    ... )
-    >>> _cubic_control_at(path_data, 2)
-    Point(x=60.0, y=60.0)
+        >>> path_data = PathData.from_str(
+        ...     "M 0,0 C 20,0 20,20 40,40 S 100,100 50,50"
+        ... )
+        >>> _cubic_control_at(path_data, 2)
+        Point(x=60.0, y=60.0)
 
     """
     if idx == 0:
@@ -514,9 +514,9 @@ def _relativize(path_data: PathData) -> PathData:
         recomputed as if they were relative.
 
     Examples:
-    >>> path_data = PathData.from_str("M 10,10")
-    >>> _relativize(path_data)
-    PathData(MoveTo(end=Point(x=10.0, y=10.0)))
+        >>> path_data = PathData.from_str("M 10,10")
+        >>> _relativize(path_data)
+        PathData(MoveTo(end=Point(x=10.0, y=10.0)))
 
     """
     result = PathData()
@@ -556,20 +556,25 @@ def _can_use_implicit_command(
         `True` if the command can be serialized implicitly, `False` otherwise.
 
     Examples:
-    >>> _can_use_implicit_command(MoveTo(point.Point(10, 10)), prev=None)
-    False
-    >>> _can_use_implicit_command(
-    ...     LineTo(point.Point(100, 100)), prev=MoveTo(point.Point(10, 10))
-    ... )
-    True
-    >>> _can_use_implicit_command(
-    ...     LineTo(point.Point(100, 100)), prev=LineTo(point.Point(10, 10))
-    ... )
-    True
-    >>> _can_use_implicit_command(
-    ...     MoveTo(point.Point(100, 100)), prev=MoveTo(point.Point(10, 10))
-    ... )
-    False
+        >>> _can_use_implicit_command(
+        ...     MoveTo(point.Point(10, 10)), prev=None
+        ... )
+        False
+        >>> _can_use_implicit_command(
+        ...     LineTo(point.Point(100, 100)),
+        ...     prev=MoveTo(point.Point(10, 10)),
+        ... )
+        True
+        >>> _can_use_implicit_command(
+        ...     LineTo(point.Point(100, 100)),
+        ...     prev=LineTo(point.Point(10, 10)),
+        ... )
+        True
+        >>> _can_use_implicit_command(
+        ...     MoveTo(point.Point(100, 100)),
+        ...     prev=MoveTo(point.Point(10, 10)),
+        ... )
+        False
 
     """
     if isinstance(prev, MoveTo):
@@ -610,21 +615,21 @@ class PathData(  # noqa: PLW1641
             "pen" to the starting point.
 
     Examples:
-    >>> path_data = (
-    ...     PathData()
-    ...     .move_to(point.Point(10, 10))
-    ...     .line_to(point.Point(100, 100), relative=True)
-    ... )
-    >>> len(path_data)
-    2
-    >>> bool(path_data)
-    True
-    >>> path_data[0]
-    MoveTo(end=Point(x=10.0, y=10.0))
-    >>> path_data.pop()
-    LineTo(end=Point(x=110.0, y=110.0))
-    >>> path_data.close()
-    PathData(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
+        >>> path_data = (
+        ...     PathData()
+        ...     .move_to(point.Point(10, 10))
+        ...     .line_to(point.Point(100, 100), relative=True)
+        ... )
+        >>> len(path_data)
+        2
+        >>> bool(path_data)
+        True
+        >>> path_data[0]
+        MoveTo(end=Point(x=10.0, y=10.0))
+        >>> path_data.pop()
+        LineTo(end=Point(x=110.0, y=110.0))
+        >>> path_data.close()
+        PathData(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
 
     """
 
@@ -646,10 +651,10 @@ class PathData(  # noqa: PLW1641
 
         Args:
             iterable: An iterable of `PathCommand` instances (for example,
-            another `PathData` instance).
-            start: The starting point of the path. If `start` is not `None`,
-            a `MoveTo` command is automatically added to the path, moving the
-            "pen" to the starting point.
+                another `PathData` instance).
+            start: The starting point of the path. If `start` is not `None`, a
+                `MoveTo` command is automatically added to the path, moving the
+                "pen" to the starting point.
 
         """
         self.__commands: Final[list[PathCommand]] = []
@@ -677,7 +682,7 @@ class PathData(  # noqa: PLW1641
         Args:
             end: The end point of the move command.
             relative: Whether the coordinates are relative to the current
-            point.
+                point.
 
         Returns:
             A reference to the current `PathData` instance.
@@ -693,7 +698,7 @@ class PathData(  # noqa: PLW1641
         Args:
             end: The end point of the line command.
             relative: Whether the coordinates are relative to the current
-            point.
+                point.
 
         Returns:
             A reference to the current `PathData` instance.
@@ -713,7 +718,7 @@ class PathData(  # noqa: PLW1641
         Args:
             x: The x-coordinate of the end point of the line command.
             relative: Whether the coordinates are relative to the current
-            point.
+                point.
 
         Returns:
             A reference to the current `PathData` instance.
@@ -733,7 +738,7 @@ class PathData(  # noqa: PLW1641
         Args:
             y: The y-coordinate of the end point of the line command.
             relative: Whether the coordinates are relative to the current
-            point.
+                point.
 
         Returns:
             A reference to the current `PathData` instance.
@@ -758,7 +763,7 @@ class PathData(  # noqa: PLW1641
             control: The control point of the curve.
             end: The end point of the curve.
             relative: Whether the coordinates are relative to the current
-            point.
+                point.
 
         Returns:
             A reference to the current `PathData` instance.
@@ -786,7 +791,7 @@ class PathData(  # noqa: PLW1641
             control2: The second control point of the curve.
             end: The end point of the curve.
             relative: Whether the coordinates are relative to the current
-            point.
+                point.
 
         Returns:
             A reference to the current `PathData` instance.
@@ -817,9 +822,9 @@ class PathData(  # noqa: PLW1641
             end: The end point of the arc.
             large: A flag indicating whether the arc is large or small.
             sweep: A flag indicating whether the arc is drawn in a positive or
-            negative angle direction.
+                negative angle direction.
             relative: Whether the coordinates are relative to the current
-            point.
+                point.
 
         Returns:
             A reference to the current `PathData` instance.
@@ -845,7 +850,7 @@ class PathData(  # noqa: PLW1641
         Args:
             end: The end point of the curve.
             relative: Whether the coordinates are relative to the current
-            point.
+                point.
 
         Returns:
             A reference to the current `PathData` instance.
@@ -875,7 +880,7 @@ class PathData(  # noqa: PLW1641
             control2: The second control point of the curve.
             end: The end point of the curve.
             relative: Whether the coordinates are relative to the current
-            point.
+                point.
 
         Returns:
             A reference to the current `PathData` instance.
@@ -910,7 +915,7 @@ class PathData(  # noqa: PLW1641
 
         Raises:
             ValueError: If the string cannot be parsed into a valid `PathData`
-            instance.
+                instance.
 
         Examples:
             >>> path_data = PathData.from_str("M 10,10 Z")
@@ -1038,9 +1043,9 @@ class PathData(  # noqa: PLW1641
 
         Args:
             lines: Whether to resolve shorthand line commands (`H`, `V`) into
-            the full-length equivalent (`L`).
+                the full-length equivalent (`L`).
             curves: Whether to resolve shorthand curve commands (`S`, `T`) into
-            the full-length equivalent (`C`, `Q`).
+                the full-length equivalent (`C`, `Q`).
 
         Returns:
             A new `PathData` instance with the shorthand commands
@@ -1048,9 +1053,9 @@ class PathData(  # noqa: PLW1641
             (`L`, `C`, `Q`).
 
         Examples:
-        >>> path_data = PathData.from_str("M 0,0")
-        >>> path_data.resolve_shorthands()
-        PathData(MoveTo(end=Point(x=0.0, y=0.0)))
+            >>> path_data = PathData.from_str("M 0,0")
+            >>> path_data.resolve_shorthands()
+            PathData(MoveTo(end=Point(x=0.0, y=0.0)))
 
         """
         path_data = type(self)()
@@ -1082,9 +1087,9 @@ class PathData(  # noqa: PLW1641
 
         Args:
             lines: Whether to convert line commands (`L`) to shorthand
-            (`H`, `V`) where possible.
+                (`H`, `V`) where possible.
             curves: Whether to convert curve commands (`Q`, `C`) to shorthand
-            (`T`, `S`) where possible.
+                (`T`, `S`) where possible.
 
         Returns:
             A new `PathData` instance with the full-length commands
@@ -1092,9 +1097,9 @@ class PathData(  # noqa: PLW1641
             (`H`, `V`, `S`, `T`).
 
         Examples:
-        >>> path_data = PathData.from_str("M 10,10 L 100,10")
-        >>> path_data.apply_shorthands()
-        PathData(MoveTo(end=Point(x=10.0, y=10.0)), HorizontalLineTo(x=100.0))
+            >>> path_data = PathData.from_str("M 1,1 L 9,1")
+            >>> path_data.apply_shorthands()
+            PathData(MoveTo(end=Point(x=1.0, y=1.0)), HorizontalLineTo(x=9.0))
 
         """
         path_data = type(self)()
