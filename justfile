@@ -2,7 +2,7 @@ default:
     @just --list
 
 docs *args:
-    uv run properdocs build {{args}}
+    SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" uv run properdocs build {{args}}
 
 docs-serve *args:
     uv run properdocs serve {{args}}
