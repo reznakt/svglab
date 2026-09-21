@@ -1,0 +1,40 @@
+name: Stamp version
+description: >
+  Write the version of the published release into the crate manifest, from
+  which maturin reads the version of the distribution it builds.
+
+inputs:
+  tag:
+    description: The tag of the release, with an optional leading `v`.
+    required: true
+
+runs:
+  using: composite
+
+  steps:
+    - shell: bash
+      env:
+        TAG: ${{ inputs.tag }}
+      run: |
+        python3 - <<'PY'
+        import os
+        import pathlib
+        import re
+
+        version = os.environ["TAG"].removeprefix("v")
+        manifest = pathlib.Path("src/svglab-resvg/Cargo.toml")
+
+        # only the first `version` key belongs to the package itself
+        patched, count = re.subn(
+            r'(?m)^version = ".*"$',
+            f'version = "{version}"',
+            manifest.read_text(),
+            count=1,
+        )
+
+        if count != 1:
+            raise SystemExit("no version key found in src/svglab-resvg/Cargo.toml")
+
+        manifest.write_text(patched)
+        print(f"stamped version {version}")
+        PY

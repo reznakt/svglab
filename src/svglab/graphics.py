@@ -2,20 +2,17 @@
 
 import concurrent.futures
 import copy
-import io
 import itertools
-import pathlib
+import threading
 import uuid
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Iterable, Iterator
 
 import numpy as np
 import numpy.typing as npt
 import PIL.Image
-import resvg_py
 from typing_extensions import (
     Final,
     Literal,
-    ParamSpec,
     Protocol,
     TypeAlias,
     TypeVar,
@@ -23,7 +20,7 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import entities, errors, serialize
+from svglab import entities, errors, resvg, serialize
 from svglab.attrparse import color, length
 
 
@@ -32,12 +29,11 @@ BBox: TypeAlias = tuple[int, int, int, int]
 
 _ImageArray: TypeAlias = npt.NDArray[np.uint8]
 
-_P = ParamSpec("_P")
-_T = TypeVar("_T")
 _ElementT = TypeVar("_ElementT", bound=entities.Element)
 
 
 _BLACK: Final = color.Color((0, 0, 0))
+_COPY_LOCK: Final = threading.Lock()
 
 
 @runtime_checkable
@@ -238,89 +234,14 @@ def _compute_render_size(
     return width, height
 
 
-def _run_sandboxed(
-    func: Callable[_P, _T], *, timeout: int | None = None
-) -> Callable[_P, _T]:
-    """Run a function in a separate process.
-
-    This can be used to isolate code that may crash the interpreter or have
-    other side effects.
-
-    The function must be pickleable (in particular, its definition must be
-    executed in the newly spawned process).
-
-    Args:
-        func: The function to run in a separate process.
-        timeout: The maximum number of seconds to wait for the function to
-            complete. If the function does not complete within this time, a
-            `concurrent.futures.TimeoutError` will be raised. If `None`, wait
-            indefinitely (default).
-
-    Returns:
-        A wrapper function that runs the original function in a separate
-        process.
-
-    Raises:
-        concurrent.futures.TimeoutError: If the function does not complete
-            within the specified timeout.
-        concurrent.futures.process.BrokenProcessPool: If the process crashes.
-
-    Examples:
-        >>> import math
-        >>> sqrt = _run_sandboxed(math.sqrt)
-        >>> sqrt(4)
-        2.0
-        >>> import os
-        >>> crash = _run_sandboxed(os.abort)
-        >>> crash()  # doctest: +SKIP
-        Traceback (most recent call last):
-          ...
-        concurrent.futures.process.BrokenProcessPool: ...
-        >>> import time
-        >>> sleep = _run_sandboxed(time.sleep, timeout=1)
-        >>> sleep(10)  # doctest: +SKIP
-        Traceback (most recent call last):
-          ...
-        concurrent.futures.TimeoutError: ...
-
-    """
-
-    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _T:
-        with concurrent.futures.ProcessPoolExecutor(
-            max_workers=1
-        ) as executor:
-            return executor.submit(func, *args, **kwargs).result(
-                timeout=timeout
-            )
-
-    return wrapper
-
-
 def render(  # noqa: D103
     svg: entities.Element,
+    options: resvg.RenderOptions | None = None,
     *,
-    background: color.Color | None,
-    cursive_family: str | None,
-    dpi: int,
-    fantasy_family: str | None,
-    font_dirs: Iterable[pathlib.Path],
-    font_family: str | None,
-    font_files: Iterable[pathlib.Path],
-    font_size: int,
-    height: float | None,
-    image_rendering: Literal["optimize_quality", "optimize_speed"],
-    languages: Iterable[str],
-    monospace_family: str | None,
-    resources_dir: pathlib.Path | None,
-    sans_serif_family: str | None,
-    serif_family: str | None,
-    shape_rendering: Literal[
-        "optimize_speed", "crisp_edges", "geometric_precision"
-    ],
-    skip_system_fonts: bool,
-    text_rendering: Literal["optimize_speed", "optimize_legibility"],
-    width: float | None,
-    zoom: int,
+    background: color.Color | None = None,
+    height: float | None = None,
+    width: float | None = None,
+    zoom: float = 1,
 ) -> PIL.Image.Image:
     if not isinstance(svg, _SvgElementLike):
         raise TypeError("Element must be an SVG element")
@@ -332,33 +253,8 @@ def render(  # noqa: D103
     svg.height = length.Length(render_size[1])
 
     xml = svg.to_xml(formatter=serialize.MINIMAL_FORMATTER)
-    raw = _run_sandboxed(resvg_py.svg_to_bytes)(
-        xml,
-        background=background.serialize()
-        if background is not None
-        else None,
-        cursive_family=cursive_family,
-        dpi=dpi,
-        fantasy_family=fantasy_family,
-        font_dirs=list(map(str, font_dirs)),
-        font_family=font_family,
-        font_files=list(map(str, font_files)),
-        font_size=font_size,
-        image_rendering=image_rendering,
-        languages=list(languages),
-        monospace_family=monospace_family,
-        resources_dir=str(resources_dir)
-        if resources_dir is not None
-        else None,
-        sans_serif_family=sans_serif_family,
-        serif_family=serif_family,
-        shape_rendering=shape_rendering,
-        skip_system_fonts=skip_system_fonts,
-        text_rendering=text_rendering,
-        zoom=zoom,
-    )
 
-    return PIL.Image.open(io.BytesIO(raw))
+    return resvg.render(xml, options, background=background, zoom=zoom)
 
 
 def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
@@ -383,18 +279,21 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
     if not isinstance(svg, _SvgElementLike):
         raise ValueError("Element must be part of an SVG tree")  # noqa: TRY004
 
-    original_id = element.id
-    element.id = uuid.uuid4().hex
+    with _COPY_LOCK:
+        original_id = element.id
+        element.id = uuid.uuid4().hex
 
-    try:
-        svg = copy.deepcopy(svg)
-        candidates = cast(
-            Iterable[_ElementT],
-            itertools.chain([svg], svg.find_all(type(element))),
-        )
-        this = next(elem for elem in candidates if elem.id == element.id)
-    finally:
-        element.id = original_id
+        try:
+            svg = copy.deepcopy(svg)
+            candidates = cast(
+                Iterable[_ElementT],
+                itertools.chain([svg], svg.find_all(type(element))),
+            )
+            this = next(
+                elem for elem in candidates if elem.id == element.id
+            )
+        finally:
+            element.id = original_id
 
     return this, svg
 
@@ -531,7 +430,7 @@ def visible_mask(  # noqa: D103
     width: float | None = None,
     height: float | None = None,
 ) -> Mask:
-    with concurrent.futures.ProcessPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         future_without = executor.submit(
             _render_tree,
             element,

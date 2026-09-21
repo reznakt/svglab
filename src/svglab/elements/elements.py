@@ -16,12 +16,11 @@ import contextlib
 import itertools
 import os
 import pathlib
-from collections.abc import Iterable
 
 import PIL.Image
-from typing_extensions import Literal, final, overload, override
+from typing_extensions import final, overload, override
 
-from svglab import graphics, models, protocols, serialize
+from svglab import graphics, models, protocols, resvg, serialize
 from svglab.attrparse import color, length, path_data, point, transform
 from svglab.attrs import attrdefs, attrgroups
 from svglab.elements import traits
@@ -1291,33 +1290,12 @@ class Svg(
 
     def render(
         self,
+        options: resvg.RenderOptions | None = None,
         *,
         background: color.Color | None = None,
-        cursive_family: str | None = None,
-        dpi: int = 96,
-        fantasy_family: str | None = None,
-        font_dirs: Iterable[pathlib.Path] = (),
-        font_family: str | None = None,
-        font_files: Iterable[pathlib.Path] = (),
-        font_size: int = 16,
         height: float | None = None,
-        image_rendering: Literal[
-            "optimize_quality", "optimize_speed"
-        ] = "optimize_quality",
-        languages: Iterable[str] = ("en",),
-        monospace_family: str | None = None,
-        resources_dir: pathlib.Path | None = None,
-        sans_serif_family: str | None = None,
-        serif_family: str | None = None,
-        shape_rendering: Literal[
-            "optimize_speed", "crisp_edges", "geometric_precision"
-        ] = "geometric_precision",
-        skip_system_fonts: bool = False,
-        text_rendering: Literal[
-            "optimize_speed", "optimize_legibility"
-        ] = "optimize_legibility",
         width: float | None = None,
-        zoom: int = 1,
+        zoom: float = 1,
     ) -> PIL.Image.Image:
         """Render an SVG document fragment into a Pillow image.
 
@@ -1334,36 +1312,12 @@ class Svg(
         rendered as one pixel.
 
         Args:
+            options: The renderer options, such as the default font and the
+                resolution.
             background: The background color of the rendered image. If `None`,
                 the background is transparent.
-            cursive_family: The font family to use for `cursive` fonts.
-            dpi: The resolution of the rendered image, in dots per inch.
-            fantasy_family: The font family to use for `fantasy` fonts.
-            font_dirs: A list of directories to search for extra fonts.
-            font_family: The default font family (when no `font-family` is
-                specified).
-            font_files: A list of extra font files to load.
-            font_size: The default font size (when no `font-size` is
-                specified); in points.
             height: The height of the rendered image, in pixels. If `None`, the
                 height attribute of the SVG element is used.
-            image_rendering: The default image rendering method (when no
-                `image-rendering` is specified).
-            languages: A list of language codes to use when resolving the
-                `systemLanguage` attribute. Example: ["de", "en-US"].
-            monospace_family: The font family to use for `monospace` fonts.
-            resources_dir: A directory containing resources such as images
-                referenced by relative URLs in the SVG document.
-            sans_serif_family: The font family to use for `sans-serif` fonts.
-            serif_family: The font family to use for `serif` fonts.
-            shape_rendering: The default shape rendering method (when no
-                `shape-rendering` is specified).
-            skip_system_fonts: If `True`, do not load system fonts. In this
-                case, only the fonts specified in `font_dirs` and `font_files`
-                are used.
-            svg: The SVG document fragment to render.
-            text_rendering: The default text rendering method (when no
-                `text-rendering` is specified).
             width: The width of the rendered image, in pixels. If `None`, the
                 width attribute of the SVG element is used.
             zoom: The zoom level to use when rendering the image. A zoom level
@@ -1372,27 +1326,29 @@ class Svg(
         Returns:
             The rendered image.
 
+        Raises:
+            ValueError: If the image dimensions cannot be determined, are not
+                positive, or if an argument is not a valid value for its
+                parameter.
+            OSError: If a font file named by `options` cannot be read.
+            MemoryError: If the image does not fit in memory.
+            RuntimeError: If the renderer panics, which is a bug in it.
+            SvgRenderError: If the document cannot be rasterized.
+
+        Examples:
+            >>> from svglab import Svg, Length, resvg
+            >>> svg = Svg(width=Length(20), height=Length(10))
+            >>> svg.render().size
+            (20, 10)
+            >>> svg.render(resvg.RenderOptions(dpi=300), width=40).size
+            (40, 20)
+
         """
         return graphics.render(
             self,
+            options,
             background=background,
-            cursive_family=cursive_family,
-            dpi=dpi,
-            fantasy_family=fantasy_family,
-            font_dirs=font_dirs,
-            font_family=font_family,
-            font_files=font_files,
-            font_size=font_size,
             height=height,
-            image_rendering=image_rendering,
-            languages=languages,
-            monospace_family=monospace_family,
-            resources_dir=resources_dir,
-            sans_serif_family=sans_serif_family,
-            serif_family=serif_family,
-            shape_rendering=shape_rendering,
-            skip_system_fonts=skip_system_fonts,
-            text_rendering=text_rendering,
             width=width,
             zoom=zoom,
         )

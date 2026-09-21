@@ -34,15 +34,15 @@ repos:
     hooks:
       - id: lint
         name: lint
-        entry: uv run ruff check --fix
+        entry: just lint-fix
         language: system
-        types: [python]
+        files: ^(.*\.(py|pyi|rs)|src/svglab-resvg/Cargo\.(toml|lock))$
         pass_filenames: false
       - id: format
         name: format
-        entry: uv run ruff format
+        entry: just format-fix
         language: system
-        types: [python]
+        files: ^(.*\.(py|pyi|rs)|src/svglab-resvg/Cargo\.(toml|lock))$
         pass_filenames: false
       - id: versioncheck
         name: versioncheck
@@ -52,9 +52,9 @@ repos:
         pass_filenames: false
       - id: licensecheck
         name: licensecheck
-        entry: uv run licensecheck
+        entry: just licensecheck
         language: system
-        files: ^(pyproject\.toml|uv\.lock)$
+        files: ^(pyproject\.toml|uv\.lock|src/svglab-resvg/(Cargo\.(toml|lock)|deny\.toml))$
         pass_filenames: false
       - id: typecheck
         name: typecheck

@@ -483,10 +483,12 @@ from svglab.errors import (
     SvgError,
     SvgPathError,
     SvgPathMissingMoveToError,
+    SvgRenderError,
     SvgTransformSwapError,
     SvgUnitConversionError,
 )
 from svglab.parse import parse_svg
+from svglab.resvg import RenderOptions
 from svglab.serialize import (
     DEFAULT_FORMATTER,
     MINIMAL_FORMATTER,
@@ -784,6 +786,7 @@ __all__: __Final = [
     "RefXAttr",
     "RefYAttr",
     "Reifiable",
+    "RenderOptions",
     "RenderingIntentAttr",
     "RepeatCountAttr",
     "RepeatDurAttr",
@@ -840,6 +843,7 @@ __all__: __Final = [
     "SvgError",
     "SvgPathError",
     "SvgPathMissingMoveToError",
+    "SvgRenderError",
     "SvgTransformSwapError",
     "SvgUnitConversionError",
     "Switch",

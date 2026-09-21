@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  test:
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.resolution == 'latest' }}
 
@@ -44,6 +44,16 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
+      - name: Cache the Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src/svglab-resvg/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('src/svglab-resvg/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
       - name: Install tools
         run: uv sync --all-groups --python ${{ matrix.python }}
 
@@ -51,23 +61,8 @@ jobs:
         if: matrix.resolution != 'locked'
         run: uv pip install --python .venv --reinstall --resolution ${{ matrix.resolution }} -e .
 
-      - name: Run linter
-        run: just lint
-
-      - name: Run formatter
-        run: just format
-
       - name: Run tests
         run: just test --cov-branch --cov-report=xml --junitxml=junit.xml
-
-      - name: Run type checking
-        run: just typecheck
-
-      - name: Run version check
-        run: just versioncheck
-
-      - name: Run license check
-        run: just licensecheck
 
       - name: Upload coverage results to Codecov
         uses: codecov/codecov-action@v7.0.0
@@ -79,3 +74,47 @@ jobs:
         uses: codecov/test-results-action@v1.2.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  check:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: nix develop --command bash -e {0}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Cache the Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src/svglab-resvg/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('src/svglab-resvg/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Install tools
+        run: uv sync --all-groups
+
+      - name: Run linter
+        run: just lint
+
+      - name: Run formatter
+        run: just format
+
+      - name: Run type checking
+        run: just typecheck
+
+      - name: Run version check
+        run: just versioncheck
+
+      - name: Run license check
+        run: just licensecheck

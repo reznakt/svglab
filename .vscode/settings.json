@@ -12,6 +12,8 @@
     "tag:yaml.org,2002:python/name:material.extensions.emoji.twemoji scalar",
     "tag:yaml.org,2002:python/name:material.extensions.emoji.to_svg scalar"
   ],
+  "rust-analyzer.linkedProjects": ["src/svglab-resvg/Cargo.toml"],
+  "rust-analyzer.check.command": "clippy",
   "nixEnvSelector.nixFile": "${workspaceFolder}/flake.nix",
   "nixEnvSelector.useFlakes": true
 }
