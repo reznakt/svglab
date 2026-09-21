@@ -57,6 +57,59 @@ jobs:
           name: dist-${{ matrix.platform.runner }}-${{ matrix.platform.target }}-${{ matrix.platform.manylinux || 'native' }}
           path: dist/
 
+  build-freethreaded:
+    name: Build ${{ matrix.platform.target }} free-threaded wheel (${{ matrix.platform.manylinux || matrix.platform.runner }})
+
+    runs-on: ${{ matrix.platform.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64
+            manylinux: auto
+          - runner: ubuntu-latest
+            target: aarch64
+            manylinux: auto
+          - runner: ubuntu-latest
+            target: x86_64
+            manylinux: musllinux_1_2
+          - runner: ubuntu-latest
+            target: aarch64
+            manylinux: musllinux_1_2
+          - runner: macos-latest
+            target: x86_64
+          - runner: macos-latest
+            target: aarch64
+          - runner: windows-latest
+            target: x64
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Stamp the version from the release tag
+        uses: ./.github/actions/stamp-version
+        with:
+          tag: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-python@v6
+        if: runner.os != 'Linux'
+        with:
+          python-version: 3.14t
+
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          manylinux: ${{ matrix.platform.manylinux }}
+          args: --profile dist --out dist --interpreter 3.14t
+          sccache: true
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-freethreaded-${{ matrix.platform.runner }}-${{ matrix.platform.target }}-${{ matrix.platform.manylinux || 'native' }}
+          path: dist/
+
   sdist:
     name: Build source distribution
 
@@ -83,7 +136,7 @@ jobs:
   publish:
     name: Publish to PyPI
 
-    needs: [build, sdist]
+    needs: [build, build-freethreaded, sdist]
     runs-on: ubuntu-latest
 
     environment:
