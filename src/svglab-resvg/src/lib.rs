@@ -9,10 +9,9 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
 use resvg::usvg;
-use resvg::usvg::fontdb;
 
 use crate::errors::{Error, RenderError};
-use crate::fonts::build_fonts;
+use crate::fonts::{build_fonts, default_family};
 use crate::parse::{parse_image_rendering, parse_shape_rendering, parse_text_rendering};
 use crate::raster::rasterize;
 
@@ -68,6 +67,8 @@ fn render(
 ) -> PyResult<(u32, u32, Py<PyBytes>)> {
     let (width, height) = default_size;
 
+    let serif_is_chosen = serif_family.is_some();
+
     let fonts = build_fonts(
         skip_system_fonts,
         font_files,
@@ -79,8 +80,7 @@ fn render(
         serif_family,
     )?;
 
-    let font_family =
-        font_family.unwrap_or_else(|| fonts.family_name(&fontdb::Family::Serif).to_owned());
+    let font_family = font_family.unwrap_or_else(|| default_family(&fonts, serif_is_chosen));
 
     let options = usvg::Options {
         default_size: usvg::Size::from_wh(width, height)

@@ -84,3 +84,27 @@ pub(crate) fn build_fonts(
 
     Ok(fonts)
 }
+
+pub(crate) fn default_family(fonts: &fontdb::Database, serif_is_chosen: bool) -> String {
+    let serif = fonts.family_name(&fontdb::Family::Serif);
+
+    if serif_is_chosen {
+        return serif.to_owned();
+    }
+
+    let query = fontdb::Query {
+        families: &[fontdb::Family::Serif],
+        weight: fontdb::Weight::NORMAL,
+        stretch: fontdb::Stretch::Normal,
+        style: fontdb::Style::Normal,
+    };
+
+    if fonts.query(&query).is_some() {
+        return serif.to_owned();
+    }
+
+    fonts
+        .faces()
+        .find_map(|face| face.families.first().map(|(name, _)| name.clone()))
+        .unwrap_or_else(|| serif.to_owned())
+}
