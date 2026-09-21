@@ -137,15 +137,16 @@ def test_skip_system_fonts_draws_no_text() -> None:
     assert svg.render(options).getbbox() is None
 
 
-def test_serif_family_changes_the_rendering() -> None:
+def test_default_font_family_resolves_through_serif() -> None:
     text = svglab.Text(font_size=svglab.Length(20), y=[svglab.Length(20)])
     text.add_child(svglab.RawText("hello"))
     svg = svglab.Svg(
         width=svglab.Length(60), height=svglab.Length(30)
     ).add_child(text)
-    options = resvg.RenderOptions(serif_family="DejaVu Serif")
+    options = resvg.RenderOptions(serif_family="NoSuchFontFamily")
 
-    assert svg.render().getbbox() != svg.render(options).getbbox()
+    assert svg.render().getbbox() is not None
+    assert svg.render(options).getbbox() is None
 
 
 def test_options_reject_an_unknown_rendering_mode() -> None:

@@ -9,6 +9,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::wrap_pyfunction;
 use resvg::usvg;
+use resvg::usvg::fontdb;
 
 use crate::errors::{Error, RenderError};
 use crate::fonts::build_fonts;
@@ -50,7 +51,7 @@ fn render(
     dpi: f32,
     fantasy_family: Option<String>,
     font_dirs: Vec<PathBuf>,
-    font_family: String,
+    font_family: Option<String>,
     font_files: Vec<PathBuf>,
     font_size: f32,
     image_rendering: &str,
@@ -67,22 +68,27 @@ fn render(
 ) -> PyResult<(u32, u32, Py<PyBytes>)> {
     let (width, height) = default_size;
 
+    let fonts = build_fonts(
+        skip_system_fonts,
+        font_files,
+        font_dirs,
+        cursive_family,
+        fantasy_family,
+        monospace_family,
+        sans_serif_family,
+        serif_family,
+    )?;
+
+    let font_family =
+        font_family.unwrap_or_else(|| fonts.family_name(&fontdb::Family::Serif).to_owned());
+
     let options = usvg::Options {
         default_size: usvg::Size::from_wh(width, height)
             .ok_or_else(|| Error::Value(format!("invalid default_size: {width}x{height}")))?,
         dpi,
         font_family,
         font_size,
-        fontdb: build_fonts(
-            skip_system_fonts,
-            font_files,
-            font_dirs,
-            cursive_family,
-            fantasy_family,
-            monospace_family,
-            sans_serif_family,
-            serif_family,
-        )?,
+        fontdb: fonts,
         image_rendering: parse_image_rendering(image_rendering)?,
         languages,
         resources_dir,

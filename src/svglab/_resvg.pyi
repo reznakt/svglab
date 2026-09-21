@@ -28,7 +28,7 @@ def render(
     dpi: float,
     fantasy_family: str | None,
     font_dirs: Sequence[_Path],
-    font_family: str,
+    font_family: str | None,
     font_files: Sequence[_Path],
     font_size: float,
     image_rendering: ImageRendering,

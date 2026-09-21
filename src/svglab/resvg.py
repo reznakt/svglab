@@ -82,8 +82,11 @@ class RenderOptions:
     fonts are skipped.
     """
 
-    font_family: str = "Times New Roman"
-    """The font family to use where the document specifies none."""
+    font_family: str | None = None
+    """
+    The font family to use where the document specifies none. If `None`, the
+    family the system resolves `serif` to is used.
+    """
 
     font_files: Sequence[pathlib.Path] = ()
     """Extra font files to load."""
