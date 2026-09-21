@@ -526,7 +526,7 @@ dependencies = [
 
 [[package]]
 name = "svglab-resvg"
-version = "0.16.0"
+version = "0.0.0"
 dependencies = [
  "pyo3",
  "pyo3-log",

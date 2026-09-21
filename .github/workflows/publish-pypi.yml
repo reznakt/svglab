@@ -39,12 +39,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Stamp the version from the release tag
-        uses: ./.github/actions/stamp-version
-        with:
-          tag: ${{ github.event.release.tag_name }}
-
       # a single abi3 wheel per platform covers every supported Python
+      - name: Take the version from the release tag
+        shell: bash
+        run: |
+          sed -i.bak "s/^version = .*/version = \"${GITHUB_REF_NAME#v}\"/" pyproject.toml
+          rm pyproject.toml.bak
+
       - uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
@@ -88,15 +89,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Stamp the version from the release tag
-        uses: ./.github/actions/stamp-version
-        with:
-          tag: ${{ github.event.release.tag_name }}
-
       - uses: actions/setup-python@v6
         if: runner.os != 'Linux'
         with:
           python-version: 3.14t
+
+      - name: Take the version from the release tag
+        shell: bash
+        run: |
+          sed -i.bak "s/^version = .*/version = \"${GITHUB_REF_NAME#v}\"/" pyproject.toml
+          rm pyproject.toml.bak
 
       - uses: PyO3/maturin-action@v1
         with:
@@ -118,10 +120,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Stamp the version from the release tag
-        uses: ./.github/actions/stamp-version
-        with:
-          tag: ${{ github.event.release.tag_name }}
+      - name: Take the version from the release tag
+        shell: bash
+        run: |
+          sed -i.bak "s/^version = .*/version = \"${GITHUB_REF_NAME#v}\"/" pyproject.toml
+          rm pyproject.toml.bak
 
       - uses: PyO3/maturin-action@v1
         with:

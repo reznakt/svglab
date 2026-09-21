@@ -1,14 +1,8 @@
 [package]
 name = "svglab-resvg"
-# kept in sync with the last release by hand; the release workflow stamps
-# the published version in (see `.github/actions/stamp-version`), so this
-# key must stay on one line with no trailing comment
-version = "0.16.0"
-description = "Python bindings to resvg for the svglab package."
-repository = "https://github.com/reznakt/svglab"
-license = "MIT"
 edition = "2024"
 rust-version = "1.85"
+license = "MIT"
 publish = false
 
 [lib]
