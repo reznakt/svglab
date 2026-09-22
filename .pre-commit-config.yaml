@@ -36,17 +36,17 @@ repos:
         name: lint
         entry: just lint-fix
         language: system
-        files: ^(.*\.(py|pyi|rs)|src/svglab-resvg/Cargo\.(toml|lock))$
+        files: &code ^(.*\.(py|pyi|rs)|src/svglab-resvg/Cargo\.(toml|lock))$
         pass_filenames: false
       - id: format
         name: format
         entry: just format-fix
         language: system
-        files: ^(.*\.(py|pyi|rs)|src/svglab-resvg/Cargo\.(toml|lock))$
+        files: *code
         pass_filenames: false
       - id: versioncheck
         name: versioncheck
-        entry: uv run vermin .
+        entry: just versioncheck
         language: system
         types: [python]
         pass_filenames: false
@@ -58,13 +58,13 @@ repos:
         pass_filenames: false
       - id: typecheck
         name: typecheck
-        entry: uv run pyright --warnings
+        entry: just typecheck
         language: system
         types: [python]
         pass_filenames: false
       - id: test
         name: test
-        entry: uv run pytest
+        entry: just test
         language: system
         types: [python]
         pass_filenames: false
