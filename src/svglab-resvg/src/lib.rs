@@ -86,9 +86,8 @@ fn render(
     };
 
     let (width, height, pixels) = py.detach(move || {
-        let serif_is_chosen = font_options.serif_family.is_some();
         let fonts = build_fonts(&font_options)?;
-        let font_family = font_family.unwrap_or_else(|| default_family(&fonts, serif_is_chosen));
+        let font_family = font_family.unwrap_or_else(|| default_family(&fonts));
 
         let options = usvg::Options {
             default_size,

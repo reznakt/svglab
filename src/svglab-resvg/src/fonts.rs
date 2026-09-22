@@ -1,11 +1,11 @@
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
 use resvg::usvg::fontdb;
 
 use crate::errors::Error;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub(crate) struct FontOptions {
     pub cursive_family: Option<String>,
     pub fantasy_family: Option<String>,
@@ -19,125 +19,126 @@ pub(crate) struct FontOptions {
 
 impl FontOptions {
     fn is_bare(&self) -> bool {
-        self.font_files.is_empty()
-            && self.font_dirs.is_empty()
-            && self.cursive_family.is_none()
-            && self.fantasy_family.is_none()
-            && self.monospace_family.is_none()
-            && self.sans_serif_family.is_none()
-            && self.serif_family.is_none()
+        *self
+            == Self {
+                skip_system_fonts: self.skip_system_fonts,
+                ..Self::default()
+            }
     }
 }
 
-fn system_fonts() -> &'static Arc<fontdb::Database> {
-    static SYSTEM_FONTS: OnceLock<Arc<fontdb::Database>> = OnceLock::new();
+static SYSTEM_FONTS: LazyLock<Arc<fontdb::Database>> = LazyLock::new(|| {
+    let mut fonts = fontdb::Database::new();
+    fonts.load_system_fonts();
+    repair_generic_families(&mut fonts);
 
-    SYSTEM_FONTS.get_or_init(|| {
-        let mut fonts = fontdb::Database::new();
-        fonts.load_system_fonts();
+    Arc::new(fonts)
+});
 
-        Arc::new(fonts)
-    })
+static DERIVED_FONTS: Mutex<Option<(FontOptions, Arc<fontdb::Database>)>> = Mutex::new(None);
+
+fn is_available(fonts: &fontdb::Database, family: fontdb::Family<'_>) -> bool {
+    let query = fontdb::Query {
+        families: &[family],
+        weight: fontdb::Weight::NORMAL,
+        stretch: fontdb::Stretch::Normal,
+        style: fontdb::Style::Normal,
+    };
+
+    fonts.query(&query).is_some()
 }
 
-type DerivedFonts = Mutex<Option<(FontOptions, Arc<fontdb::Database>)>>;
+fn repair_generic_families(fonts: &mut fontdb::Database) {
+    let Some(fallback) = fonts
+        .faces()
+        .find_map(|face| face.families.first().map(|(name, _)| name.clone()))
+    else {
+        return;
+    };
 
-fn derived_fonts() -> &'static DerivedFonts {
-    static DERIVED_FONTS: OnceLock<DerivedFonts> = OnceLock::new();
+    if !is_available(fonts, fontdb::Family::Cursive) {
+        fonts.set_cursive_family(fallback.clone());
+    }
 
-    DERIVED_FONTS.get_or_init(|| Mutex::new(None))
+    if !is_available(fonts, fontdb::Family::Fantasy) {
+        fonts.set_fantasy_family(fallback.clone());
+    }
+
+    if !is_available(fonts, fontdb::Family::Monospace) {
+        fonts.set_monospace_family(fallback.clone());
+    }
+
+    if !is_available(fonts, fontdb::Family::SansSerif) {
+        fonts.set_sans_serif_family(fallback.clone());
+    }
+
+    if !is_available(fonts, fontdb::Family::Serif) {
+        fonts.set_serif_family(fallback);
+    }
 }
 
 fn load_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
-    let mut database = if options.skip_system_fonts {
+    let mut fonts = if options.skip_system_fonts {
         fontdb::Database::new()
     } else {
-        (**system_fonts()).clone()
+        (**SYSTEM_FONTS).clone()
     };
 
     for file in &options.font_files {
-        database.load_font_file(file).map_err(|source| Error::Io {
+        fonts.load_font_file(file).map_err(|source| Error::Io {
             path: file.clone(),
             source,
         })?;
     }
 
     for dir in &options.font_dirs {
-        database.load_fonts_dir(dir);
+        fonts.load_fonts_dir(dir);
     }
 
+    repair_generic_families(&mut fonts);
+
     if let Some(family) = &options.cursive_family {
-        database.set_cursive_family(family.clone());
+        fonts.set_cursive_family(family.clone());
     }
 
     if let Some(family) = &options.fantasy_family {
-        database.set_fantasy_family(family.clone());
+        fonts.set_fantasy_family(family.clone());
     }
 
     if let Some(family) = &options.monospace_family {
-        database.set_monospace_family(family.clone());
+        fonts.set_monospace_family(family.clone());
     }
 
     if let Some(family) = &options.sans_serif_family {
-        database.set_sans_serif_family(family.clone());
+        fonts.set_sans_serif_family(family.clone());
     }
 
     if let Some(family) = &options.serif_family {
-        database.set_serif_family(family.clone());
+        fonts.set_serif_family(family.clone());
     }
 
-    Ok(Arc::new(database))
+    Ok(Arc::new(fonts))
 }
 
 pub(crate) fn build_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
-    if options.is_bare() {
-        return Ok(if options.skip_system_fonts {
-            Arc::new(fontdb::Database::new())
-        } else {
-            Arc::clone(system_fonts())
-        });
+    if options.is_bare() && !options.skip_system_fonts {
+        return Ok(Arc::clone(&SYSTEM_FONTS));
     }
 
-    let cache = derived_fonts();
+    let mut cached = DERIVED_FONTS.lock().unwrap_or_else(PoisonError::into_inner);
 
-    let hit = cache.lock().ok().and_then(|cached| match cached.as_ref() {
-        Some((key, fonts)) if key == options => Some(Arc::clone(fonts)),
-        _ => None,
-    });
-
-    if let Some(fonts) = hit {
-        return Ok(fonts);
+    if let Some((key, fonts)) = cached.as_ref() {
+        if key == options {
+            return Ok(Arc::clone(fonts));
+        }
     }
 
     let fonts = load_fonts(options)?;
-
-    if let Ok(mut cached) = cache.lock() {
-        *cached = Some((options.clone(), Arc::clone(&fonts)));
-    }
+    *cached = Some((options.clone(), Arc::clone(&fonts)));
 
     Ok(fonts)
 }
 
-pub(crate) fn default_family(fonts: &fontdb::Database, serif_is_chosen: bool) -> String {
-    let serif = fonts.family_name(&fontdb::Family::Serif);
-
-    if serif_is_chosen {
-        return serif.to_owned();
-    }
-
-    let query = fontdb::Query {
-        families: &[fontdb::Family::Serif],
-        weight: fontdb::Weight::NORMAL,
-        stretch: fontdb::Stretch::Normal,
-        style: fontdb::Style::Normal,
-    };
-
-    if fonts.query(&query).is_some() {
-        return serif.to_owned();
-    }
-
-    fonts
-        .faces()
-        .find_map(|face| face.families.first().map(|(name, _)| name.clone()))
-        .unwrap_or_else(|| serif.to_owned())
+pub(crate) fn default_family(fonts: &fontdb::Database) -> String {
+    fonts.family_name(&fontdb::Family::Serif).to_owned()
 }
