@@ -1,6 +1,8 @@
+use std::path::PathBuf;
+
 use pyo3::PyErr;
 use pyo3::create_exception;
-use pyo3::exceptions::{PyException, PyMemoryError, PyValueError};
+use pyo3::exceptions::{PyException, PyMemoryError, PyOSError, PyValueError};
 
 create_exception!(
     _resvg,
@@ -13,7 +15,10 @@ create_exception!(
 pub(crate) enum Error {
     Value(String),
     Render(String),
-    Io(std::io::Error),
+    Io {
+        path: PathBuf,
+        source: std::io::Error,
+    },
     Memory(String),
 }
 
@@ -22,7 +27,13 @@ impl From<Error> for PyErr {
         match error {
             Error::Value(message) => PyValueError::new_err(message),
             Error::Render(message) => RenderError::new_err(message),
-            Error::Io(error) => error.into(),
+            Error::Io { path, source } => match source.raw_os_error() {
+                Some(errno) => {
+                    PyOSError::new_err((errno, source.to_string(), path.display().to_string()))
+                }
+                None => std::io::Error::new(source.kind(), format!("{}: {source}", path.display()))
+                    .into(),
+            },
             Error::Memory(message) => PyMemoryError::new_err(message),
         }
     }

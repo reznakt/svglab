@@ -56,11 +56,9 @@ fn load_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
     };
 
     for file in &options.font_files {
-        database.load_font_file(file).map_err(|error| {
-            Error::Io(std::io::Error::new(
-                error.kind(),
-                format!("cannot load font file {}: {error}", file.display()),
-            ))
+        database.load_font_file(file).map_err(|source| Error::Io {
+            path: file.clone(),
+            source,
         })?;
     }
 
