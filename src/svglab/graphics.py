@@ -3,9 +3,7 @@
 import concurrent.futures
 import copy
 import itertools
-import threading
-import uuid
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 
 import numpy as np
 import numpy.typing as npt
@@ -33,7 +31,6 @@ _ElementT = TypeVar("_ElementT", bound=entities.Element)
 
 
 _BLACK: Final = color.Color((0, 0, 0))
-_COPY_LOCK: Final = threading.Lock()
 
 
 @runtime_checkable
@@ -285,21 +282,9 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
     if not isinstance(svg, _SvgElementLike):
         raise ValueError("Element must be part of an SVG tree")  # noqa: TRY004
 
-    with _COPY_LOCK:
-        original_id = element.id
-        element.id = uuid.uuid4().hex
-
-        try:
-            svg = copy.deepcopy(svg)
-            candidates = cast(
-                Iterable[_ElementT],
-                itertools.chain([svg], svg.find_all(type(element))),
-            )
-            this = next(
-                elem for elem in candidates if elem.id == element.id
-            )
-        finally:
-            element.id = original_id
+    memo: dict[int, object] = {}
+    svg = copy.deepcopy(svg, memo)
+    this = cast(_ElementT, memo[id(element)])
 
     return this, svg
 
