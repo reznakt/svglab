@@ -23,9 +23,7 @@ from svglab.attrs import typedefs
 @models.dataclass(
     frozen=True,
     kw_only=True,
-    config=pydantic.ConfigDict(
-        models.DATACLASS_CONFIG, strict=False, arbitrary_types_allowed=True
-    ),
+    config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
 )
 class RenderOptions:
     """The settings a document is rendered with.
