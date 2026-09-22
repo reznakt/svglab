@@ -1,11 +1,4 @@
-"""Rendering of SVG documents into raster images.
-
-Rendering is done by [resvg], which `svglab` binds directly; `RenderOptions`
-mirrors its configuration. `Svg.render` is the usual entry point, and takes an
-`RenderOptions` instance.
-
-[resvg]: https://github.com/linebender/resvg
-"""
+"""Rendering of SVG documents into raster images."""
 
 import pathlib
 from collections.abc import Sequence
@@ -26,27 +19,7 @@ from svglab.attrs import typedefs
     config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
 )
 class RenderOptions:
-    """The settings a document is rendered with.
-
-    A setting cannot be reassigned after construction; build a new
-    instance to change one. Every setting has a default, so a bare
-    `RenderOptions()` is what `Svg.render` uses when it is given none.
-
-    The settings are those of the underlying renderer, and their defaults are
-    its own, with one exception: fonts default to those installed on this
-    system rather than to an empty database. Several defaults differ from the
-    values an SVG document would inherit; `font_family` and `font_size` in
-    particular are fallbacks for documents that specify neither.
-
-    Examples:
-        >>> from svglab.resvg import RenderOptions
-        >>> options = RenderOptions(dpi=300, shape_rendering="crispEdges")
-        >>> options.dpi
-        300.0
-        >>> options.font_size
-        12.0
-
-    """
+    """The settings a document is rendered with."""
 
     cursive_family: str | None = None
     """
