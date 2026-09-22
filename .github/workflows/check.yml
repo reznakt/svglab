@@ -45,13 +45,13 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Cache the Rust build
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             src/svglab-resvg/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('src/svglab-resvg/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('src/svglab-resvg/Cargo.lock', 'flake.lock') }}
           restore-keys: cargo-${{ runner.os }}-
 
       - name: Install tools
@@ -98,7 +98,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src/svglab-resvg/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('src/svglab-resvg/Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('src/svglab-resvg/Cargo.lock', 'flake.lock') }}
           restore-keys: cargo-${{ runner.os }}-
 
       - name: Install tools
