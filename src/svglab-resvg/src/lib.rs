@@ -1,9 +1,9 @@
 mod errors;
 mod fonts;
-mod parse;
 mod raster;
 
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
@@ -12,8 +12,13 @@ use resvg::usvg;
 
 use crate::errors::{Error, RenderError};
 use crate::fonts::{FontOptions, build_fonts, default_family};
-use crate::parse::parse;
 use crate::raster::rasterize;
+
+fn parse<T: FromStr>(name: &str, value: &str) -> Result<T, Error> {
+    value
+        .parse()
+        .map_err(|_| Error::Value(format!("invalid {name}: {value:?}")))
+}
 
 /// Render an SVG document into unpremultiplied RGBA pixels.
 #[pyfunction]
