@@ -205,8 +205,7 @@ def render(
             because it is malformed.
 
     """
-    if options is None:
-        options = _DEFAULT_OPTIONS
+    options = _DEFAULT_OPTIONS if options is None else options
 
     try:
         width, height, pixels = _resvg.render(
