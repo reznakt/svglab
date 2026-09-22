@@ -11,7 +11,7 @@ use pyo3::wrap_pyfunction;
 use resvg::usvg;
 
 use crate::errors::{Error, RenderError};
-use crate::fonts::{build_fonts, default_family};
+use crate::fonts::{FontOptions, build_fonts, default_family};
 use crate::parse::{parse_image_rendering, parse_shape_rendering, parse_text_rendering};
 use crate::raster::rasterize;
 
@@ -67,38 +67,46 @@ fn render(
 ) -> PyResult<(u32, u32, Py<PyBytes>)> {
     let (width, height) = default_size;
 
-    let serif_is_chosen = serif_family.is_some();
+    let default_size = usvg::Size::from_wh(width, height)
+        .ok_or_else(|| Error::Value(format!("invalid default_size: {width}x{height}")))?;
 
-    let fonts = build_fonts(
-        skip_system_fonts,
-        font_files,
-        font_dirs,
+    let image_rendering = parse_image_rendering(image_rendering)?;
+    let shape_rendering = parse_shape_rendering(shape_rendering)?;
+    let text_rendering = parse_text_rendering(text_rendering)?;
+
+    let font_options = FontOptions {
         cursive_family,
         fantasy_family,
+        font_dirs,
+        font_files,
         monospace_family,
         sans_serif_family,
         serif_family,
-    )?;
-
-    let font_family = font_family.unwrap_or_else(|| default_family(&fonts, serif_is_chosen));
-
-    let options = usvg::Options {
-        default_size: usvg::Size::from_wh(width, height)
-            .ok_or_else(|| Error::Value(format!("invalid default_size: {width}x{height}")))?,
-        dpi,
-        font_family,
-        font_size,
-        fontdb: fonts,
-        image_rendering: parse_image_rendering(image_rendering)?,
-        languages,
-        resources_dir,
-        shape_rendering: parse_shape_rendering(shape_rendering)?,
-        style_sheet,
-        text_rendering: parse_text_rendering(text_rendering)?,
-        ..usvg::Options::default()
+        skip_system_fonts,
     };
 
-    let (width, height, pixels) = py.detach(move || rasterize(&svg, &options, background, zoom))?;
+    let (width, height, pixels) = py.detach(move || {
+        let serif_is_chosen = font_options.serif_family.is_some();
+        let fonts = build_fonts(&font_options)?;
+        let font_family = font_family.unwrap_or_else(|| default_family(&fonts, serif_is_chosen));
+
+        let options = usvg::Options {
+            default_size,
+            dpi,
+            font_family,
+            font_size,
+            fontdb: fonts,
+            image_rendering,
+            languages,
+            resources_dir,
+            shape_rendering,
+            style_sheet,
+            text_rendering,
+            ..usvg::Options::default()
+        };
+
+        rasterize(&svg, &options, background, zoom)
+    })?;
 
     Ok((width, height, PyBytes::new(py, &pixels).unbind()))
 }

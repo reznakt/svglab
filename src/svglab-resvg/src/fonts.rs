@@ -1,9 +1,33 @@
 use std::path::PathBuf;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use resvg::usvg::fontdb;
 
 use crate::errors::Error;
+
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct FontOptions {
+    pub cursive_family: Option<String>,
+    pub fantasy_family: Option<String>,
+    pub font_dirs: Vec<PathBuf>,
+    pub font_files: Vec<PathBuf>,
+    pub monospace_family: Option<String>,
+    pub sans_serif_family: Option<String>,
+    pub serif_family: Option<String>,
+    pub skip_system_fonts: bool,
+}
+
+impl FontOptions {
+    fn is_bare(&self) -> bool {
+        self.font_files.is_empty()
+            && self.font_dirs.is_empty()
+            && self.cursive_family.is_none()
+            && self.fantasy_family.is_none()
+            && self.monospace_family.is_none()
+            && self.sans_serif_family.is_none()
+            && self.serif_family.is_none()
+    }
+}
 
 fn system_fonts() -> &'static Arc<fontdb::Database> {
     static SYSTEM_FONTS: OnceLock<Arc<fontdb::Database>> = OnceLock::new();
@@ -16,41 +40,23 @@ fn system_fonts() -> &'static Arc<fontdb::Database> {
     })
 }
 
-pub(crate) fn build_fonts(
-    skip_system_fonts: bool,
-    font_files: Vec<PathBuf>,
-    font_dirs: Vec<PathBuf>,
-    cursive_family: Option<String>,
-    fantasy_family: Option<String>,
-    monospace_family: Option<String>,
-    sans_serif_family: Option<String>,
-    serif_family: Option<String>,
-) -> Result<Arc<fontdb::Database>, Error> {
-    let generic_families = [
-        &cursive_family,
-        &fantasy_family,
-        &monospace_family,
-        &sans_serif_family,
-        &serif_family,
-    ];
+type DerivedFonts = Mutex<Option<(FontOptions, Arc<fontdb::Database>)>>;
 
-    let mut fonts = if skip_system_fonts {
-        Arc::new(fontdb::Database::new())
+fn derived_fonts() -> &'static DerivedFonts {
+    static DERIVED_FONTS: OnceLock<DerivedFonts> = OnceLock::new();
+
+    DERIVED_FONTS.get_or_init(|| Mutex::new(None))
+}
+
+fn load_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
+    let mut database = if options.skip_system_fonts {
+        fontdb::Database::new()
     } else {
-        Arc::clone(system_fonts())
+        (**system_fonts()).clone()
     };
 
-    if font_files.is_empty()
-        && font_dirs.is_empty()
-        && generic_families.iter().all(|family| family.is_none())
-    {
-        return Ok(fonts);
-    }
-
-    let database = Arc::make_mut(&mut fonts);
-
-    for file in font_files {
-        database.load_font_file(&file).map_err(|error| {
+    for file in &options.font_files {
+        database.load_font_file(file).map_err(|error| {
             Error::Io(std::io::Error::new(
                 error.kind(),
                 format!("cannot load font file {}: {error}", file.display()),
@@ -58,28 +64,57 @@ pub(crate) fn build_fonts(
         })?;
     }
 
-    for dir in font_dirs {
+    for dir in &options.font_dirs {
         database.load_fonts_dir(dir);
     }
 
-    if let Some(family) = cursive_family {
-        database.set_cursive_family(family);
+    if let Some(family) = &options.cursive_family {
+        database.set_cursive_family(family.clone());
     }
 
-    if let Some(family) = fantasy_family {
-        database.set_fantasy_family(family);
+    if let Some(family) = &options.fantasy_family {
+        database.set_fantasy_family(family.clone());
     }
 
-    if let Some(family) = monospace_family {
-        database.set_monospace_family(family);
+    if let Some(family) = &options.monospace_family {
+        database.set_monospace_family(family.clone());
     }
 
-    if let Some(family) = sans_serif_family {
-        database.set_sans_serif_family(family);
+    if let Some(family) = &options.sans_serif_family {
+        database.set_sans_serif_family(family.clone());
     }
 
-    if let Some(family) = serif_family {
-        database.set_serif_family(family);
+    if let Some(family) = &options.serif_family {
+        database.set_serif_family(family.clone());
+    }
+
+    Ok(Arc::new(database))
+}
+
+pub(crate) fn build_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
+    if options.is_bare() {
+        return Ok(if options.skip_system_fonts {
+            Arc::new(fontdb::Database::new())
+        } else {
+            Arc::clone(system_fonts())
+        });
+    }
+
+    let cache = derived_fonts();
+
+    let hit = cache.lock().ok().and_then(|cached| match cached.as_ref() {
+        Some((key, fonts)) if key == options => Some(Arc::clone(fonts)),
+        _ => None,
+    });
+
+    if let Some(fonts) = hit {
+        return Ok(fonts);
+    }
+
+    let fonts = load_fonts(options)?;
+
+    if let Ok(mut cached) = cache.lock() {
+        *cached = Some((options.clone(), Arc::clone(&fonts)));
     }
 
     Ok(fonts)
