@@ -547,9 +547,7 @@ class IdeographicAttr(Attr):
 
 class ImageRenderingAttr(Attr):
     image_rendering: models.Attr[
-        typedefs.Auto
-        | Literal["optimizeSpeed", "optimizeQuality"]
-        | typedefs.Inherit
+        typedefs.Auto | typedefs.ImageRendering | typedefs.Inherit
     ] = None
 
 
@@ -1078,9 +1076,7 @@ class SeedAttr(Attr):
 
 class ShapeRenderingAttr(Attr):
     shape_rendering: models.Attr[
-        typedefs.Auto
-        | Literal["optimizeSpeed", "crispEdges", "geometricPrecision"]
-        | typedefs.Inherit
+        typedefs.Auto | typedefs.ShapeRendering | typedefs.Inherit
     ] = None
 
 
@@ -1305,11 +1301,7 @@ class TextLengthAttr(Attr):
 
 class TextRenderingAttr(Attr):
     text_rendering: models.Attr[
-        typedefs.Auto
-        | Literal[
-            "optimizeSpeed", "optimizeLegibility", "geometricPrecision"
-        ]
-        | typedefs.Inherit
+        typedefs.Auto | typedefs.TextRendering | typedefs.Inherit
     ] = None
 
 

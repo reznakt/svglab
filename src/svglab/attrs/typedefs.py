@@ -64,6 +64,7 @@ Character: TypeAlias = Annotated[
 ]
 Color: TypeAlias = color.ColorType
 FuncIri: TypeAlias = iri.FuncIriType
+ImageRendering: TypeAlias = Literal["optimizeSpeed", "optimizeQuality"]
 Integer: TypeAlias = int
 Iri: TypeAlias = iri.IriType
 Length: TypeAlias = length.LengthType
@@ -71,6 +72,12 @@ ListOfPoints: TypeAlias = points.PointsType
 Number: TypeAlias = pydantic.FiniteFloat
 PathData: TypeAlias = path_data.PathDataType
 RelativeSize: TypeAlias = Literal["smaller", "larger"]
+ShapeRendering: TypeAlias = Literal[
+    "optimizeSpeed", "crispEdges", "geometricPrecision"
+]
+TextRendering: TypeAlias = Literal[
+    "optimizeSpeed", "optimizeLegibility", "geometricPrecision"
+]
 TransformList: TypeAlias = transform.TransformType
 
 

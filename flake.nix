@@ -34,24 +34,34 @@
           packages =
             with pkgs;
             [
+              cargo
+              cargo-deny
+              clippy
               just
+              maturin
               pngquant
               pre-commit
-              uv
               python
+              rust-analyzer
+              rustc
+              rustfmt
+              uv
             ]
             ++ systemLibs;
 
           env = rec {
-            UV_PYTHON_DOWNLOADS = "never";
-            UV_PYTHON = lib.getExe python;
-            CPATH = lib.makeSearchPathOutput "dev" "include" systemLibs;
             C_INCLUDE_PATH = CPATH;
-            LIBRARY_PATH = lib.makeLibraryPath systemLibs;
+            CPATH = lib.makeSearchPathOutput "dev" "include" systemLibs;
             LD_LIBRARY_PATH = lib.makeLibraryPath (systemLibs ++ [ pkgs.stdenv.cc.cc.lib ]);
+            LIBRARY_PATH = lib.makeLibraryPath systemLibs;
+            RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
+            UV_PYTHON = lib.getExe python;
+            UV_PYTHON_DOWNLOADS = "never";
           };
 
           shellHook = ''
+            unset PYTHONPATH
+
             if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
               pre-commit install
             fi

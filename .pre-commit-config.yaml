@@ -34,37 +34,37 @@ repos:
     hooks:
       - id: lint
         name: lint
-        entry: uv run ruff check --fix
+        entry: just lint-fix
         language: system
-        types: [python]
+        files: &code ^(.*\.(py|pyi|rs)|src/svglab-resvg/Cargo\.(toml|lock))$
         pass_filenames: false
       - id: format
         name: format
-        entry: uv run ruff format
+        entry: just format-fix
         language: system
-        types: [python]
+        files: *code
         pass_filenames: false
       - id: versioncheck
         name: versioncheck
-        entry: uv run vermin .
+        entry: just versioncheck
         language: system
         types: [python]
         pass_filenames: false
       - id: licensecheck
         name: licensecheck
-        entry: uv run licensecheck
+        entry: just licensecheck
         language: system
-        files: ^(pyproject\.toml|uv\.lock)$
+        files: ^(pyproject\.toml|uv\.lock|src/svglab-resvg/(Cargo\.(toml|lock)|deny\.toml))$
         pass_filenames: false
       - id: typecheck
         name: typecheck
-        entry: uv run pyright --warnings
+        entry: just typecheck
         language: system
         types: [python]
         pass_filenames: false
       - id: test
         name: test
-        entry: uv run pytest
+        entry: just test
         language: system
         types: [python]
         pass_filenames: false

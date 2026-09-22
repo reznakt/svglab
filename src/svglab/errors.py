@@ -35,6 +35,10 @@ class SvgUnitConversionError(SvgError):
         )
 
 
+class SvgRenderError(SvgError):
+    """Exception raised when a document cannot be rendered into an image."""
+
+
 class SvgTransformSwapError(SvgError):
     """Exception raised when two transformations cannot be swapped."""
 

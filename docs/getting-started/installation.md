@@ -4,6 +4,10 @@
 
 In order to use <span style="font-variant: small-caps;">svglab</span>, **you need to have Python 3.10 or higher installed** on your system. You can download the latest version of Python from the [official website](https://www.python.org/downloads/) or use your system's package manager.
 
+<span style="font-variant: small-caps;">svglab</span> bundles a small Rust extension module that binds [resvg](https://lib.rs/crates/resvg), the renderer behind `Svg.render()`. Prebuilt wheels are published for Linux (glibc and musl), macOS and Windows on x86-64 and ARM64, so most users need nothing else. On any other platform the package is built from source, which requires a [Rust toolchain](https://rustup.rs/) of version 1.85 or newer.
+
+Wheels for the free-threaded build of CPython 3.14 (`3.14t`) are published as well. On those builds the GIL is re-enabled when <span style="font-variant: small-caps;">svglab</span> is imported, because [lxml](https://pypi.org/project/lxml/) does not yet declare support for free-threading, so rendering does not run in parallel by default. Setting `PYTHON_GIL=0` overrides this, but it opts every dependency into free-threading whether or not it is ready for it.
+
 ## Install from PyPI
 
 Tagged releases are available on [PyPI](https://pypi.org/project/svglab/) and can be installed using pip, poetry, uv or any other Python package manager.

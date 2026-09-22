@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.9,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "svglab"
@@ -16,7 +16,7 @@ keywords = [
 ]
 license = "MIT"
 readme = "README.md"
-dynamic = ["version"]
+version = "0.0.0"
 requires-python = ">=3.10,<4.0"
 dependencies = [
   "beautifulsoup4>=4.11.1",
@@ -27,7 +27,6 @@ dependencies = [
   "pydantic-extra-types>=2.0.0,<3.0.0",
   "useful-types>=0.1.0,<0.3.0",
   "typing-extensions>=4.6.0",
-  "resvg-py>=0.1.0,<0.6.0",
   "pillow>=9.0.0",
   "numpy>=1.26.4",
   "more-itertools>=9.0.0",
@@ -93,11 +92,16 @@ docs = [
 [tool.uv]
 default-groups = ["dev", "test", "types", "docs"]
 
-[tool.hatch.version]
-source = "vcs"
-
-[tool.hatch.build.targets.sdist]
-only-include = ["svglab", "tests", "LICENSE", "README.md"]
+[tool.maturin]
+manifest-path = "src/svglab-resvg/Cargo.toml"
+python-source = "src"
+module-name = "svglab._resvg"
+features = ["pyo3/extension-module"]
+include = [
+  { path = "LICENSE", format = "sdist" },
+  { path = "tests/**/*", format = "sdist" },
+]
+exclude = ["**/__pycache__/**/*"]
 
 [tool.pytest.ini_options]
 filterwarnings = [
@@ -206,7 +210,6 @@ skip-magic-trailing-comma = true
 [tool.licensecheck]
 format = "ansi"
 ignore_packages = [
-  "resvg-py",     # MIT
   "useful-types", # MIT
 ]
 zero = true
