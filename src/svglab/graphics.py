@@ -43,7 +43,13 @@ class _SvgElementLike(Protocol):
     viewBox: tuple[float, float, float, float] | None  # noqa: N815
 
     def render(
-        self, width: float | None = None, height: float | None = None
+        self,
+        options: resvg.RenderOptions | None = None,
+        *,
+        background: color.Color | None = None,
+        height: float | None = None,
+        width: float | None = None,
+        zoom: float = 1,
     ) -> PIL.Image.Image: ...
 
 
