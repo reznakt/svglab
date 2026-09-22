@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.platform.target }} wheel (${{ matrix.platform.manylinux || matrix.platform.runner }})
+    name: Build ${{ matrix.platform.target }} ${{ matrix.python.name }} wheel (${{ matrix.platform.manylinux || matrix.platform.runner }})
 
     runs-on: ${{ matrix.platform.runner }}
 
@@ -35,64 +35,19 @@ jobs:
             target: aarch64
           - runner: windows-latest
             target: x64
-
-    steps:
-      - uses: actions/checkout@v7
-
-      # a single abi3 wheel per platform covers every supported Python
-      - uses: astral-sh/setup-uv@v7
-
-      - name: Take the version from the release tag
-        shell: bash
-        run: uv version --frozen "${GITHUB_REF_NAME#v}"
-
-      - uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.platform.target }}
-          manylinux: ${{ matrix.platform.manylinux }}
-          args: --profile dist --out dist
-          sccache: true
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: dist-${{ matrix.platform.runner }}-${{ matrix.platform.target }}-${{ matrix.platform.manylinux || 'native' }}
-          path: dist/
-
-  build-freethreaded:
-    name: Build ${{ matrix.platform.target }} free-threaded wheel (${{ matrix.platform.manylinux || matrix.platform.runner }})
-
-    runs-on: ${{ matrix.platform.runner }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          - runner: ubuntu-latest
-            target: x86_64
-            manylinux: auto
-          - runner: ubuntu-latest
-            target: aarch64
-            manylinux: auto
-          - runner: ubuntu-latest
-            target: x86_64
-            manylinux: musllinux_1_2
-          - runner: ubuntu-latest
-            target: aarch64
-            manylinux: musllinux_1_2
-          - runner: macos-latest
-            target: x86_64
-          - runner: macos-latest
-            target: aarch64
-          - runner: windows-latest
-            target: x64
+        python:
+          # a single abi3 wheel per platform covers every supported Python
+          - name: abi3
+          - name: freethreaded
+            interpreter: 3.14t
 
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v6
-        if: runner.os != 'Linux'
+        if: matrix.python.interpreter && runner.os != 'Linux'
         with:
-          python-version: 3.14t
+          python-version: ${{ matrix.python.interpreter }}
 
       - uses: astral-sh/setup-uv@v7
 
@@ -104,12 +59,12 @@ jobs:
         with:
           target: ${{ matrix.platform.target }}
           manylinux: ${{ matrix.platform.manylinux }}
-          args: --profile dist --out dist --interpreter 3.14t
+          args: --profile dist --out dist ${{ matrix.python.interpreter && format('--interpreter {0}', matrix.python.interpreter) || '' }}
           sccache: true
 
       - uses: actions/upload-artifact@v7
         with:
-          name: dist-freethreaded-${{ matrix.platform.runner }}-${{ matrix.platform.target }}-${{ matrix.platform.manylinux || 'native' }}
+          name: dist-${{ matrix.python.name }}-${{ matrix.platform.runner }}-${{ matrix.platform.target }}-${{ matrix.platform.manylinux || 'native' }}
           path: dist/
 
   sdist:
@@ -139,7 +94,7 @@ jobs:
   publish:
     name: Publish to PyPI
 
-    needs: [build, build-freethreaded, sdist]
+    needs: [build, sdist]
     runs-on: ubuntu-latest
 
     environment:
