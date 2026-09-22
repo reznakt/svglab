@@ -29,6 +29,21 @@ def solid(width: int, height: int, color: svglab.Color) -> svglab.Svg:
     )
 
 
+def text_svg() -> svglab.Svg:
+    text = svglab.Text(font_size=svglab.Length(20), y=[svglab.Length(20)])
+    text.add_child(svglab.RawText("hello"))
+
+    return svglab.Svg(
+        width=svglab.Length(60), height=svglab.Length(30)
+    ).add_child(text)
+
+
+requires_text = pytest.mark.skipif(
+    text_svg().render().getbbox() is None,
+    reason="the host has no usable system font",
+)
+
+
 @hypothesis.settings(deadline=None)
 @hypothesis.given(
     width=sizes, height=sizes, red=channels, green=channels, blue=channels
@@ -124,25 +139,18 @@ def test_style_sheet_overrides_attributes() -> None:
     assert svg.render(options).getpixel((0, 0)) == (0, 255, 0, 255)
 
 
+@requires_text
 def test_skip_system_fonts_draws_no_text() -> None:
-    text = svglab.Text(font_size=svglab.Length(20), y=[svglab.Length(20)])
-    text.add_child(svglab.RawText("hello"))
-    svg = svglab.Svg(
-        width=svglab.Length(60), height=svglab.Length(30)
-    ).add_child(text)
-
+    svg = text_svg()
     options = resvg.RenderOptions(skip_system_fonts=True)
 
     assert svg.render().getbbox() is not None
     assert svg.render(options).getbbox() is None
 
 
+@requires_text
 def test_default_font_family_resolves_through_serif() -> None:
-    text = svglab.Text(font_size=svglab.Length(20), y=[svglab.Length(20)])
-    text.add_child(svglab.RawText("hello"))
-    svg = svglab.Svg(
-        width=svglab.Length(60), height=svglab.Length(30)
-    ).add_child(text)
+    svg = text_svg()
     options = resvg.RenderOptions(serif_family="NoSuchFontFamily")
 
     assert svg.render().getbbox() is not None
