@@ -1,7 +1,3 @@
-# Type stubs for the `svglab._resvg` extension module.
-# This is private plumbing; `svglab.resvg` is the documented public API.
-# See `src/svglab-resvg/` for the implementation.
-
 import os
 from collections.abc import Sequence
 
