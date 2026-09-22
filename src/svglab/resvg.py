@@ -56,7 +56,7 @@ class RenderOptions:
     the renderer's own default is used.
     """
 
-    default_size: tuple[float, float] = (100.0, 100.0)
+    default_size: tuple[typedefs.Number, typedefs.Number] = (100.0, 100.0)
     """
     The viewport, in pixels, to assume when the document has no `viewBox` and
     a relative `width` or `height`. `Svg.render` resolves the size of the
@@ -64,7 +64,7 @@ class RenderOptions:
     `svglab.resvg.render` directly.
     """
 
-    dpi: float = 96.0
+    dpi: typedefs.Number = 96.0
     """
     The resolution, in dots per inch, used to convert physical units such as
     `cm` and `pt` into pixels.
@@ -91,7 +91,7 @@ class RenderOptions:
     font_files: Sequence[pathlib.Path] = ()
     """Extra font files to load."""
 
-    font_size: float = 12.0
+    font_size: typedefs.Number = 12.0
     """The font size, in points, to use where the document specifies none."""
 
     image_rendering: typedefs.ImageRendering = "optimizeQuality"
