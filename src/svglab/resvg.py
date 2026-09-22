@@ -12,7 +12,7 @@ from collections.abc import Sequence
 
 import PIL.Image
 import pydantic
-from typing_extensions import final
+from typing_extensions import Final, final
 
 from svglab import _resvg, errors, models
 from svglab.attrparse import color
@@ -145,6 +145,9 @@ class RenderOptions:
     """The text rendering method to use where the document specifies none."""
 
 
+_DEFAULT_OPTIONS: Final = RenderOptions()
+
+
 def _to_rgba(value: color.Color, /) -> tuple[int, int, int, int]:
     """Convert a color into its 8-bit RGBA components.
 
@@ -203,7 +206,7 @@ def render(
 
     """
     if options is None:
-        options = RenderOptions()
+        options = _DEFAULT_OPTIONS
 
     try:
         width, height, pixels = _resvg.render(
