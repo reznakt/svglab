@@ -193,8 +193,7 @@ def render(
         zoom: The factor by which to scale the rendered image.
 
     Returns:
-        The rendered image, in `RGBA` mode. The image shares memory with the
-        renderer output and is therefore read-only; see `Svg.render`.
+        The rendered image, in `RGBA` mode.
 
     Raises:
         ValueError: If an argument is not a valid value for its parameter.
