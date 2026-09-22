@@ -38,10 +38,10 @@ def text_svg() -> svglab.Svg:
     ).add_child(text)
 
 
-requires_text = pytest.mark.skipif(
-    text_svg().render().getbbox() is None,
-    reason="the host has no usable system font",
-)
+@pytest.fixture(scope="session")
+def system_font() -> None:
+    if text_svg().render().getbbox() is None:
+        pytest.skip("the host has no usable system font")
 
 
 @hypothesis.settings(deadline=None)
@@ -139,7 +139,7 @@ def test_style_sheet_overrides_attributes() -> None:
     assert svg.render(options).getpixel((0, 0)) == (0, 255, 0, 255)
 
 
-@requires_text
+@pytest.mark.usefixtures("system_font")
 def test_skip_system_fonts_draws_no_text() -> None:
     svg = text_svg()
     options = resvg.RenderOptions(skip_system_fonts=True)
@@ -148,7 +148,7 @@ def test_skip_system_fonts_draws_no_text() -> None:
     assert svg.render(options).getbbox() is None
 
 
-@requires_text
+@pytest.mark.usefixtures("system_font")
 def test_default_font_family_resolves_through_serif() -> None:
     svg = text_svg()
     options = resvg.RenderOptions(serif_family="NoSuchFontFamily")
