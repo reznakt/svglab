@@ -12,7 +12,7 @@ use resvg::usvg;
 
 use crate::errors::{Error, RenderError};
 use crate::fonts::{FontOptions, build_fonts, default_family};
-use crate::parse::{parse_image_rendering, parse_shape_rendering, parse_text_rendering};
+use crate::parse::parse;
 use crate::raster::rasterize;
 
 /// Render an SVG document into unpremultiplied RGBA pixels.
@@ -70,9 +70,9 @@ fn render(
     let default_size = usvg::Size::from_wh(width, height)
         .ok_or_else(|| Error::Value(format!("invalid default_size: {width}x{height}")))?;
 
-    let image_rendering = parse_image_rendering(image_rendering)?;
-    let shape_rendering = parse_shape_rendering(shape_rendering)?;
-    let text_rendering = parse_text_rendering(text_rendering)?;
+    let image_rendering: usvg::ImageRendering = parse("image_rendering", image_rendering)?;
+    let shape_rendering: usvg::ShapeRendering = parse("shape_rendering", shape_rendering)?;
+    let text_rendering: usvg::TextRendering = parse("text_rendering", text_rendering)?;
 
     let font_options = FontOptions {
         cursive_family,
