@@ -1,6 +1,5 @@
 """Functions related to rendering and other graphics operations."""
 
-import concurrent.futures
 import copy
 import itertools
 from collections.abc import Iterator
@@ -421,34 +420,26 @@ def visible_mask(  # noqa: D103
     width: float | None = None,
     height: float | None = None,
 ) -> Mask:
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        future_without = executor.submit(
-            _render_tree,
-            element,
-            render_this=False,
-            render_other=True,
-            make_element_visible=False,
-            width=width,
-            height=height,
-        )
+    element_copy, svg = _copy_tree(element)
+    assert isinstance(svg, entities.Element)
 
-        future_with = executor.submit(
-            _render_tree,
-            element,
-            render_this=True,
-            render_other=True,
-            make_element_visible=False,
-            width=width,
-            height=height,
-        )
+    for t in svg.find_all():
+        t.visibility = "visible"
 
-        without_element: _ImageArray = np.array(future_without.result())
-        with_element: _ImageArray = np.array(future_with.result())
+    with_element: _ImageArray = np.array(
+        svg.render(width=width, height=height)
+    )
 
-        diff = np.any(without_element != with_element, axis=2)
-        assert isinstance(diff, np.ndarray)
+    _set_element_visibility(element_copy, "hidden")
 
-        return diff
+    without_element: _ImageArray = np.array(
+        svg.render(width=width, height=height)
+    )
+
+    diff = np.any(without_element != with_element, axis=2)
+    assert isinstance(diff, np.ndarray)
+
+    return diff
 
 
 def bbox(element: entities.Element) -> BBox | None:  # noqa: D103
