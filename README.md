@@ -82,6 +82,7 @@ graph TD
 ### Prerequisites
 
 - [CPython](https://www.python.org/) 3.10+
+- A C compiler and linker (source builds only; Rust is fetched automatically if missing)
 - [uv](https://docs.astral.sh/uv/) (development only)
 - [just](https://just.systems/) (development only; optional)
 
