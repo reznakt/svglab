@@ -436,8 +436,7 @@ def visible_mask(  # noqa: D103
         svg.render(width=width, height=height)
     )
 
-    diff = np.any(without_element != with_element, axis=2)
-    assert isinstance(diff, np.ndarray)
+    diff: Mask = np.any(without_element != with_element, axis=2)
 
     return diff
 

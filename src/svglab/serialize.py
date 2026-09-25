@@ -359,7 +359,12 @@ class Formatter:
     attribute_order: Mapping[
         elements_names.ElementName | Literal["*"],
         Sequence[attrs_names.AttributeName | str],
-    ] = pydantic.Field(default_factory=dict)
+    ] = pydantic.Field(
+        default_factory=dict[
+            elements_names.ElementName | Literal["*"],
+            Sequence[attrs_names.AttributeName | str],
+        ]
+    )
     """
     How to order attributes in the resulting SVG document. The keys are the
     element names of the elements, and the values are lists of attribute names.
@@ -619,11 +624,12 @@ def _serialize(
             result = value.decode()
         # this should go last to avoid classifying strings as iterables, etc.
         case Iterable():
+            items = cast(Iterable[object], value)
             result = formatter.list_separator.join(
                 _serialize(
                     v, bool_mode=bool_mode, precision_group=precision_group
                 )
-                for v in value
+                for v in items
             )
         case _:
             msg = f"Values of type {type(value)} are not serializable"

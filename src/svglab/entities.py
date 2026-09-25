@@ -124,7 +124,10 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
         case int() | float() | length.Length():
             return cast(_T, attr * by)
         case list() | tuple():
-            return type(attr)(_scale_attr(item, by) for item in attr)
+            items = cast(list[object] | tuple[object, ...], attr)
+            return cast(
+                _T, type(items)(_scale_attr(item, by) for item in items)
+            )
         case _:
             return attr
 
@@ -349,7 +352,11 @@ def _translate_attr(attr: _T, /, by: float) -> _T:
         case length.Length():
             return attr + length.Length(by)
         case list() | tuple():
-            return type(attr)(_translate_attr(item, by) for item in attr)
+            items = cast(list[object] | tuple[object, ...], attr)
+            return cast(
+                _T,
+                type(items)(_translate_attr(item, by) for item in items),
+            )
         case _:
             return attr
 

@@ -13,7 +13,6 @@ from __future__ import annotations
 import abc
 import functools
 import math
-import operator
 from collections.abc import Iterable
 
 import lark
@@ -201,7 +200,7 @@ class _Rotate(_TransformFunctionBase):
     @override
     def serialize(self) -> str:
         angle = serialize.serialize(self.angle, precision_group="angle")
-        origin = []
+        origin: list[float] = []
 
         if not mathutils.is_close(self.cx, 0) or not mathutils.is_close(
             self.cy, 0
@@ -695,7 +694,9 @@ def compose(transforms: Iterable[TransformFunction], /) -> Matrix:
         True
 
     """
-    return functools.reduce(operator.matmul, transforms, Matrix.identity())
+    return functools.reduce(
+        lambda acc, t: acc @ t, transforms, Matrix.identity()
+    )
 
 
 class PointAddSubWithTranslateRMatmul(
