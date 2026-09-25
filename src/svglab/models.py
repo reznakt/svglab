@@ -89,6 +89,11 @@ def convert(
     has extra fields, they are included in the new model as well. Other fields
     are discarded.
 
+    Fields that are not part of the initializer are never copied. Such fields
+    hold state that belongs to the source instance rather than to its value.
+    Copying them is meaningless at best; in the case of a back reference such
+    as the parent of an element, it would deep copy the whole document.
+
     If `deepcopy` is set to `False`, the source model instance should not be
     used after the conversion, as the new model will hold references to the
     source model's fields.
@@ -104,9 +109,14 @@ def convert(
         The converted model.
 
     """
-    common_fields = (
-        type(source).model_fields.keys() & target_type.model_fields.keys()
-    )
+    common_fields = {
+        name
+        for name in (
+            type(source).model_fields.keys()
+            & target_type.model_fields.keys()
+        )
+        if target_type.model_fields[name].init is not False
+    }
 
     data = {field: getattr(source, field) for field in common_fields}
 
