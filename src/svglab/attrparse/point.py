@@ -86,6 +86,7 @@ class _Point(
     def __mul__(self, scalar: float) -> Self:
         return type(self)(self.x * scalar, self.y * scalar)
 
+    @override
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         a, b, c, d, e, f = other.to_matrix().to_tuple()
 
@@ -110,6 +111,7 @@ class _Point(
     def __bool__(self) -> bool:
         return self != self.zero()
 
+    @override
     def __complex__(self) -> complex:
         return complex(self.x, self.y)
 

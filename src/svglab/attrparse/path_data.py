@@ -69,6 +69,7 @@ class LineTo(_HasEnd, _PhysicalPathCommand):
 
     end: point.Point
 
+    @override
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(end=other @ self.end)
 
@@ -147,6 +148,7 @@ class SmoothQuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
 
     end: point.Point
 
+    @override
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(end=other @ self.end)
 
@@ -165,6 +167,7 @@ class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
     control2: point.Point
     end: point.Point
 
+    @override
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(
             control2=other @ self.control2, end=other @ self.end
@@ -178,6 +181,7 @@ class MoveTo(_HasEnd, _PhysicalPathCommand):
 
     end: point.Point
 
+    @override
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(end=other @ self.end)
 
@@ -194,6 +198,7 @@ class QuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     control: point.Point
     end: point.Point
 
+    @override
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(
             control=other @ self.control, end=other @ self.end
@@ -213,6 +218,7 @@ class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
     control2: point.Point
     end: point.Point
 
+    @override
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         return type(self)(
             control1=other @ self.control1,
@@ -241,6 +247,7 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
     sweep: bool
     end: point.Point
 
+    @override
     def __rmatmul__(self, other: transform.TransformFunction) -> Self:
         radii = self.radii
         angle = self.angle
@@ -933,6 +940,7 @@ class PathData(  # noqa: PLW1641
         return path_data
 
     @classmethod
+    @override
     def _validate(
         cls, value: object, info: pydantic_core.core_schema.ValidationInfo
     ) -> PathData:
