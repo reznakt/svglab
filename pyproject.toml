@@ -118,7 +118,6 @@ deprecateTypingAliases = false        # covered by Ruff + shows false positives
 enableReachabilityAnalysis = true
 pythonPlatform = "All"
 pythonVersion = "3.10"
-reportAbstractUsage = false           # pydantic dataclass decorator returns PydanticDataclass protocol type
 reportInvalidTypeVarUse = true
 reportMissingImports = true
 reportMissingTypeArgument = true
