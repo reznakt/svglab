@@ -710,7 +710,7 @@ class PointAddSubWithTranslateRMatmul(
         return Translate(other.x, other.y) @ self
 
 
-@lark.v_args(inline=True)
+@parse.inline_args
 class _Transformer(lark.Transformer[object, Transform]):
     number = parse.FiniteFloat
 

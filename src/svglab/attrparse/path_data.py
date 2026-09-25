@@ -1260,7 +1260,7 @@ class PathData(  # noqa: PLW1641
         return f"{name}({commands})"
 
 
-@lark.v_args(inline=True)
+@parse.inline_args
 @parse.visit_tokens  # there are a few terminals we want to parse
 class _Transformer(lark.Transformer[object, PathData]):
     point = point.Point

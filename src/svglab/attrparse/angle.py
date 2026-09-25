@@ -96,7 +96,7 @@ class Angle(
         return self.to(None).value
 
 
-@lark.v_args(inline=True)
+@parse.inline_args
 class _Transformer(lark.Transformer[object, Angle]):
     number = parse.FiniteFloat
     angle = Angle

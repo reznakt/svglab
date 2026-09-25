@@ -151,7 +151,7 @@ class Length(
         return self.to(None).value
 
 
-@lark.v_args(inline=True)
+@parse.inline_args
 class _Transformer(lark.Transformer[object, Length]):
     number = parse.FiniteFloat
     length = Length

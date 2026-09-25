@@ -142,6 +142,22 @@ def v_args_to_list(*values: _T) -> list[_T]:
     return list(values[1:])
 
 
+def inline_args(cls: type[_TransformerT]) -> type[_TransformerT]:
+    """A decorator to pass the children of a node as positional arguments.
+
+    This is a typed wrapper around `lark.v_args(inline=True)`, whose own type
+    hints lose the type of the decorated class.
+
+    Args:
+        cls: The transformer class to decorate.
+
+    Returns:
+        The decorated transformer class.
+
+    """  # noqa: D401
+    return cast(type[_TransformerT], lark.v_args(inline=True)(cls))
+
+
 def visit_tokens(cls: type[_TransformerT]) -> type[_TransformerT]:
     """A decorator to make a Lark transformer visit tokens.
 

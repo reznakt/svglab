@@ -161,7 +161,7 @@ class Point(_Point):
         super().__init__(float(x), float(y))
 
 
-@lark.v_args(inline=True)
+@parse.inline_args
 class _Transformer(lark.Transformer[object, Point]):
     number = parse.FiniteFloat
     point = Point

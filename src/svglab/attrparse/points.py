@@ -13,7 +13,7 @@ from svglab.attrparse import parse, point
 Points: TypeAlias = list[point.Point]
 
 
-@lark.v_args(inline=True)
+@parse.inline_args
 class _Transformer(lark.Transformer[object, Points]):
     number = parse.FiniteFloat
     point = point.Point
