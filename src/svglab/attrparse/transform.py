@@ -15,7 +15,6 @@ import functools
 import math
 import operator
 from collections.abc import Iterable
-from types import NotImplementedType
 
 import lark
 import numpy as np
@@ -107,16 +106,12 @@ class _TransformFunctionBase(
 
         return np.array(layout, dtype=dtype, copy=copy)
 
-    @overload
-    def __matmul__(  # type: ignore[reportOverlappingOverload]
-        self, other: _TransformFunctionBase
-    ) -> Matrix: ...
-
-    @overload
-    def __matmul__(self, other: object) -> NotImplementedType: ...
-
-    def __matmul__(self, other: object) -> Matrix | NotImplementedType:
-        if not isinstance(other, _TransformFunctionBase):
+    def __matmul__(self, other: _TransformFunctionBase, /) -> Matrix:
+        # reachable at runtime; declaring `other: object` would make pyright
+        # stop falling back to `__rmatmul__` of the right operand
+        if not isinstance(  # pyright: ignore[reportUnnecessaryIsInstance]
+            other, _TransformFunctionBase
+        ):
             return NotImplemented
 
         prod = np.array(self) @ np.array(other)
