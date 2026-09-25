@@ -193,7 +193,7 @@ def _scale_stroke_width(
     if inherited is not None:
         element.stroke_width = inherited
 
-    element.stroke_width = _scale_attr(element.stroke_width, by)  # type: ignore[reportAttributeAccessIssue]
+    element.stroke_width = _scale_attr(element.stroke_width, by)
 
     # if stroke-width was not set and the scaled value is equal to the value
     # the element inherits anyway, remove the attribute

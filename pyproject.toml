@@ -130,6 +130,7 @@ reportUnknownParameterType = false
 reportUnknownVariableType = false
 reportUnnecessaryCast = true
 reportUnnecessaryComparison = true
+reportUnnecessaryTypeIgnoreComment = true
 reportUntypedFunctionDecorator = true
 reportUnusedImport = false            # covered by Ruff
 strictDictionaryInference = true
