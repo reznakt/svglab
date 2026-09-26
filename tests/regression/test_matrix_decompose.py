@@ -58,7 +58,8 @@ _DEGENERATE: Final = st.sampled_from(
     [0.0, 1.0, -1.0, 1e-9, 1e9, 0.5, -3.0]
 )
 _MATRICES: Final = st.builds(
-    svglab.Matrix, *[st.one_of(_NUMBERS, _DEGENERATE)] * 6
+    svglab.Matrix,
+    **dict.fromkeys("abcdef", st.one_of(_NUMBERS, _DEGENERATE)),
 )
 
 

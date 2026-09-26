@@ -672,10 +672,7 @@ def test_an_unusable_transform_origin_leaves_the_element_alone() -> None:
         "center",
         (svglab.Length(50, "%"), svglab.Length(50, "%")),
     ):
-        rect = _rect(
-            transform=[svglab.Scale(2)],
-            transform_origin=origin,  # type: ignore[arg-type]
-        )
+        rect = _rect(transform=[svglab.Scale(2)], transform_origin=origin)
         rect.reify()
 
         assert rect.transform == [svglab.Scale(2)]
