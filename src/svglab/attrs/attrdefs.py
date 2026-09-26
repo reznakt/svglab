@@ -416,23 +416,25 @@ class FontSizeAdjustAttr(_Attr):
     font_size_adjust: Attr[Number | None_ | Inherit] = None
 
 
+_FontStretch: TypeAlias = Literal[
+    "condensed",
+    "expanded",
+    "extra-condensed",
+    "extra-expanded",
+    "narrower",
+    "normal",
+    "semi-condensed",
+    "semi-expanded",
+    "ultra-condensed",
+    "ultra-expanded",
+    "wider",
+]
+
+
 class FontStretchAttr(_Attr):
+    # a list only on `font-face`, which describes the stretches a font covers
     font_stretch: Attr[
-        All
-        | Literal[
-            "condensed",
-            "expanded",
-            "extra-condensed",
-            "extra-expanded",
-            "narrower",
-            "normal",
-            "semi-condensed",
-            "semi-expanded",
-            "ultra-condensed",
-            "ultra-expanded",
-            "wider",
-        ]
-        | Inherit
+        All | _FontStretch | CommaList[_FontStretch] | Inherit
     ] = None
 
 
@@ -442,8 +444,14 @@ class FontStyleAttr(_Attr):
     ] = None
 
 
+_FontVariant: TypeAlias = Literal["normal", "small-caps"]
+
+
 class FontVariantAttr(_Attr):
-    font_variant: Attr[Literal["normal", "small-caps"] | Inherit] = None
+    # a list only on `font-face`, which describes the variants a font covers
+    font_variant: Attr[
+        _FontVariant | CommaList[_FontVariant] | Inherit
+    ] = None
 
 
 # a BeforeValidator must be used on non-string literals; pydantic will not
