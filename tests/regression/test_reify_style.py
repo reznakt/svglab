@@ -51,6 +51,9 @@ def test_a_style_that_decides_the_geometry_stops_reification(
     [
         "stroke-width: 3",
         "font-size: 12px",
+        "letter-spacing: 2px",
+        "word-spacing: 4px",
+        "kerning: 1",
         "stroke-dasharray: 4 2",
         "stroke-dashoffset: 2",
         "marker-end: url(#m)",
