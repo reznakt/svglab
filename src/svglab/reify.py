@@ -221,6 +221,16 @@ class PositionedByReference:
     """
 
 
+class PositionDefaultsToOrigin:
+    """The element's unset `x` and `y` put it at the origin.
+
+    A `text` without a position starts at `(0, 0)`, so moving it means
+    spelling that position out. A `tspan` or `tref` without one carries on
+    from wherever the text before it ended instead, which already follows
+    the text it belongs to.
+    """
+
+
 class PercentageDefaults:
     """The element's unset geometry attributes default to percentages.
 
@@ -674,11 +684,11 @@ def _apply_text(element: object, matrix: transform.Matrix, /) -> None:
     factor = uniform_scale_factor(matrix)
 
     if isinstance(element, attrdefs.XListOfCoordinatesAttr):
-        x = _translated(_scaled(element.x, factor), matrix.e)
-        element.x = x  # type: ignore[assignment]
+        x = _text_position(element, element.x, matrix.e)
+        element.x = _translated(_scaled(x, factor), matrix.e)  # type: ignore[assignment]
     if isinstance(element, attrdefs.YListOfCoordinatesAttr):
-        y = _translated(_scaled(element.y, factor), matrix.f)
-        element.y = y  # type: ignore[assignment]
+        y = _text_position(element, element.y, matrix.f)
+        element.y = _translated(_scaled(y, factor), matrix.f)  # type: ignore[assignment]
 
     # a delta is a distance, so it is resized but never moved
     if isinstance(element, attrdefs.DxListOfLengthsAttr):
@@ -687,6 +697,18 @@ def _apply_text(element: object, matrix: transform.Matrix, /) -> None:
         element.dy = _scaled(element.dy, factor)  # type: ignore[reportAttributeAccessIssue]
     if isinstance(element, attrdefs.TextLengthAttr):
         element.textLength = _scaled(element.textLength, factor)  # type: ignore[reportAttributeAccessIssue]
+
+
+def _text_position(element: object, attr: object, by: float, /) -> object:
+    """Spell out the origin an unset position stands for, if it moves."""
+    if (
+        attr is None
+        and isinstance(element, PositionDefaultsToOrigin)
+        and not mathutils.is_close(by, 0)
+    ):
+        return [length.Length(0)]
+
+    return attr
 
 
 def _translated(attr: object, /, by: float) -> object:

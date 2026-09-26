@@ -1473,6 +1473,7 @@ class Symbol(
 
 @final
 class Text(
+    reify.PositionDefaultsToOrigin,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
     attrdefs.DxListOfLengthsAttr,
