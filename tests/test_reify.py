@@ -658,10 +658,7 @@ def test_an_unusable_transform_origin_leaves_the_element_alone() -> None:
     # `center` and percentages are resolved against a box reification cannot
     # see, so there is nothing to decompose the origin into
     for origin in ("center", (Length(50, "%"), Length(50, "%"))):
-        rect = _rect(
-            transform=[Scale(2)],
-            transform_origin=origin,  # type: ignore[arg-type]
-        )
+        rect = _rect(transform=[Scale(2)], transform_origin=origin)
         rect.reify()
 
         assert rect.transform == [Scale(2)]
