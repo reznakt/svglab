@@ -734,6 +734,28 @@ def _get_attr_precision_group(
             return "general"
 
 
+_COMMA_SEPARATED_ATTRS: Final = frozenset(
+    {
+        "cursor",
+        "font-family",
+        "font-style",
+        "font-weight",
+        "g1",
+        "g2",
+        "glyph-name",
+        "u1",
+        "u2",
+        "unicode-range",
+        "widths",
+    }
+)
+"""Attributes whose list items are separated by commas.
+
+An item of such a list may itself contain whitespace (`Times New Roman`, or a
+`widths` entry), so the formatter's list separator would merge the items.
+"""
+
+
 def serialize_attr(name: str, value: object) -> str:
     """Serialize an attribute into its SVG representation.
 
@@ -745,9 +767,17 @@ def serialize_attr(name: str, value: object) -> str:
         The SVG representation of the value.
 
     """
-    result = serialize(
-        value, precision_group=_get_attr_precision_group(name)
-    )
+    precision_group = _get_attr_precision_group(name)
+
+    if name in _COMMA_SEPARATED_ATTRS and isinstance(value, list):
+        items = cast("list[object]", value)
+        result = ", ".join(
+            serialize(item, precision_group=precision_group)
+            for item in items
+        )
+    else:
+        result = serialize(value, precision_group=precision_group)
+
     formatter = get_current_formatter()
 
     if formatter.spaces_around_attrs:
