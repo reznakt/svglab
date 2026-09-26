@@ -1848,7 +1848,9 @@ def _convert_to_path(
     """
     to_path = getattr(child, "to_path", None)
 
-    if to_path is None:
+    if to_path is None or id(child) in context.frozen:
+        # an animation of the shape's own attributes would have nothing left
+        # to animate on a path
         return
 
     try:

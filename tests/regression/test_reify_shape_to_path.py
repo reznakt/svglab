@@ -150,3 +150,39 @@ def test_a_shape_that_becomes_a_path_keeps_its_presentation_attrs() -> (
     conftest.assert_svg_visually_equal(
         original, reified, tolerance=_TOLERANCE
     )
+
+
+def test_an_animated_shape_stays_a_shape() -> None:
+    # a path has no `x` for the animation to animate
+    rect = svglab.Rect(
+        x=svglab.Length(20),
+        y=svglab.Length(20),
+        width=svglab.Length(60),
+        height=svglab.Length(40),
+        transform=[svglab.Rotate(25)],
+    ).add_child(svglab.Animate(attributeName="x", to="50", dur="1s"))
+    svg = _svg(rect)
+
+    svg.reify(convert_shapes_to_paths=True)
+
+    assert svg.find(svglab.Rect) is rect
+    assert rect.transform == [svglab.Rotate(25)]
+
+
+def test_a_shape_that_becomes_a_path_keeps_its_children() -> None:
+    rect = svglab.Rect(
+        x=svglab.Length(20),
+        y=svglab.Length(20),
+        width=svglab.Length(60),
+        height=svglab.Length(40),
+        transform=[svglab.Rotate(25)],
+    ).add_child(svglab.Title().add_child(svglab.RawText("a box")))
+    svg = _svg(rect)
+
+    svg.reify(convert_shapes_to_paths=True)
+    path = svg.find(svglab.Path)
+    title = path.find(svglab.Title)
+
+    assert path.transform is None
+    assert title.parent is path
+    assert list(svg.find_all(svglab.Rect)) == []
