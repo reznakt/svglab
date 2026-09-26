@@ -16,7 +16,7 @@ import itertools
 import reprlib
 import sys
 import warnings
-from collections.abc import Container, Generator, Mapping
+from collections.abc import Container, Generator, Iterator, Mapping
 
 import bs4
 import pydantic
@@ -1945,21 +1945,53 @@ def _pinned_elements(
     """
     pinned: set[int] = set()
 
-    def pin(target: Element, /) -> None:
+    for target in _referenced_elements(root, index, frozen):
         pinned.add(id(target))
         pinned.update(id(ancestor) for ancestor in target.ancestors)
 
+    return pinned
+
+
+def _referenced_elements(
+    root: Element, index: Mapping[str, Element], frozen: Container[int], /
+) -> Iterator[Element]:
+    """Find the elements that are seen with their own transformation.
+
+    An element that something else in the document refers to renders there
+    with its own transformation, and one an animation targets has its
+    transformation replaced over time.
+    """
     for element in itertools.chain([root], root.find_all()):
         if id(element) in frozen:
-            pin(element)
+            yield element
 
         for attr_name in (*_REFERENCE_ATTR_NAMES, "filter"):
             target = _resolve_reference(element, attr_name, index)
 
             if target is not None:
-                pin(target)
+                yield target
 
-    return pinned
+
+def referenced_elements(root: Element, /) -> Container[int]:
+    """Find the elements whose own transformation is seen somewhere else.
+
+    Prepending to the `transform` of such an element does not only move what
+    is drawn where it sits: a `use` referencing it would see the prepended
+    transformation as well, and an animation of it would discard it.
+
+    Args:
+        root: The root of the document to search.
+
+    Returns:
+        The `id()`s of the elements.
+
+    """
+    index = _index_by_id(root)
+    frozen = _frozen_elements(root, index)
+
+    return {
+        id(target) for target in _referenced_elements(root, index, frozen)
+    }
 
 
 def _stylesheet_capability(root: Element, /) -> reify.Capability:

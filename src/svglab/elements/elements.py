@@ -18,9 +18,17 @@ import os
 import pathlib
 
 import PIL.Image
-from typing_extensions import final, overload, override
+from typing_extensions import Final, final, overload, override
 
-from svglab import graphics, models, protocols, reify, resvg, serialize
+from svglab import (
+    entities,
+    graphics,
+    models,
+    protocols,
+    reify,
+    resvg,
+    serialize,
+)
 from svglab.attrparse import color, length, path_data, point, transform
 from svglab.attrs import attrdefs, attrgroups
 from svglab.elements import traits
@@ -1173,6 +1181,10 @@ class Style(
     pass
 
 
+_STYLED_TRANSFORM: Final = frozenset({"transform", "transform-origin"})
+"""Style properties that override what prepending to `transform` would do."""
+
+
 @final
 class Svg(
     reify.DocumentFragmentRoot,
@@ -1301,6 +1313,13 @@ class Svg(
         If the new `viewBox` is equal to the current one, the content is left
         untouched.
 
+        Children that are not drawn where they sit, such as `clipPath` or
+        `defs`, are left alone: they are drawn in the coordinate system of
+        whatever uses them. A child whose own transformation is seen elsewhere
+        -- one a `use` references, one an animation targets, or one whose
+        `style` sets its transformation -- is wrapped in a new `g` that
+        carries the scaling and translation instead.
+
         Any attributes of type `Length` in the SVG must be convertible to
         user units. If an attribute is not convertible, the method raises an
         exception.
@@ -1344,18 +1363,35 @@ class Svg(
         tx = min_x - sx * old_min_x
         ty = min_y - sy * old_min_y
 
+        mapping: transform.Transform = [
+            transform.Translate(tx, ty),
+            transform.Scale(sx, sy),
+        ]
+        referenced = entities.referenced_elements(self.get_root())
+
         # skip self; the mapping is handed to the children, each of which
         # folds as much of it as it can into its own geometry
-        for child in self.find_all(recursive=False):
+        for child in list(self.find_all(recursive=False)):
+            if isinstance(child, reify.RenderedIndirectly):
+                # drawn in the coordinate system of whatever uses it, which
+                # the mapping reaches already
+                continue
+
+            styled = reify.style_declarations(child).keys()
+
+            if id(child) in referenced or _STYLED_TRANSFORM & styled:
+                # the child's own transformation has to stay as it is, so the
+                # mapping goes around it instead
+                index = self.get_child_index(child)
+                self.remove_child(child)
+                wrapper = G(transform=list(mapping)).add_child(child)
+                self.add_child(wrapper, index=index)
+                continue
+
             # this is normally done in the reify method, but we need to do it
             # before we prepend the new transformations
             child.decompose_transform_origin()
-
-            child.transform = [
-                transform.Translate(tx, ty),
-                transform.Scale(sx, sy),
-                *(child.transform or []),
-            ]
+            child.transform = [*mapping, *(child.transform or [])]
 
         self.reify()
 
