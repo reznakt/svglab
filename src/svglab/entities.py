@@ -302,6 +302,28 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
         super().__delattr__(name)
         self.__pydantic_fields_set__.discard(name)
 
+    @override
+    def __deepcopy__(self, memo: dict[int, object] | None = None) -> Self:
+        """Copy the entity and everything below it, but nothing above it.
+
+        The copy is detached from the tree unless its parent is being copied
+        along with it. Pydantic only records a copy in `memo` once it is
+        complete, so following the parent link would copy the ancestors all
+        over again -- and, through their children, the entity itself.
+        """
+        memo = {} if memo is None else memo
+        parent = self.parent
+        blocked = parent is not None and id(parent) not in memo
+
+        if blocked:
+            memo[id(parent)] = None
+
+        try:
+            return super().__deepcopy__(memo)
+        finally:
+            if blocked:
+                del memo[id(parent)]
+
 
 class Element(
     Entity,
@@ -609,6 +631,21 @@ class Element(
 
         """
         return iterutils.take_last(self.ancestors) or self
+
+    # endregion
+    # region Copying
+
+    @override
+    def __deepcopy__(self, memo: dict[int, object] | None = None) -> Self:
+        copied = super().__deepcopy__(memo)
+
+        # each child was copied while this element was still being copied,
+        # so it could not be attached to the copy yet; the link is known to be
+        # valid, so it skips the validation an assignment would run
+        for child in copied.children:
+            object.__setattr__(child, "parent", copied)
+
+        return copied
 
     # endregion
     # region Tree Mutation
