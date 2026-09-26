@@ -224,6 +224,7 @@ from svglab.reify import (
     AffineGeometry,
     DocumentFragmentRoot,
     ImplicitlyOrientedShape,
+    PositionDefaultsToOrigin,
     PositionedByReference,
     RectilinearGeometry,
     RenderedIndirectly,
@@ -1636,6 +1637,7 @@ class Symbol(
 
 @final
 class Text(
+    PositionDefaultsToOrigin,
     ConditionalProcessingAttrs,
     ClassAttr,
     DxListOfLengthsAttr,
