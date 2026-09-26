@@ -1232,6 +1232,21 @@ def geometry_capability(element: object, /) -> Capability:
     if _is_stroked(element):
         capability &= SIMILARITY
 
+        if not _is_resizable(
+            resolved_value(
+                element, "stroke_width", initial=length.Length(1)
+            )
+        ) or (
+            _is_dashed(element)
+            and not all(
+                _is_scalable(resolved_value(element, name))
+                for name in ("stroke_dasharray", "stroke_dashoffset")
+            )
+        ):
+            # the stroke is drawn at a width reification cannot resolve, so
+            # the element may be moved but not resized
+            capability &= TRANSLATION
+
         if isinstance(element, ImplicitlyOrientedShape) and _is_dashed(
             element
         ):
