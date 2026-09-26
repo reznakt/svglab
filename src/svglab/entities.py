@@ -1710,6 +1710,13 @@ class Element(
     # endregion
 
 
+# Models defer their build, so the forward reference in `Entity.parent` would
+# otherwise stay unresolved in every subclass and fail to resolve later in the
+# subclass's own module, where `Element` is not in scope.
+Entity.model_rebuild()
+Element.model_rebuild()
+
+
 @final
 class UnknownElement(Element):
     """Represents an unknown element that is not part of the SVG specification.
