@@ -5,6 +5,7 @@ import copy
 import pytest
 
 from svglab import (
+    Animate,
     Circle,
     ClipPath,
     Color,
@@ -14,12 +15,14 @@ from svglab import (
     Length,
     Matrix,
     Path,
+    RawText,
     Rect,
     Rotate,
     Scale,
     SkewX,
     SkewY,
     Svg,
+    Title,
     Transform,
 )
 from tests.conftest import assert_svg_visually_equal
@@ -159,3 +162,39 @@ def test_a_shape_that_becomes_a_path_keeps_its_presentation_attrs() -> (
     assert path.stroke_width == Length(3)
 
     assert_svg_visually_equal(original, reified, tolerance=_TOLERANCE)
+
+
+def test_an_animated_shape_stays_a_shape() -> None:
+    # a path has no `x` for the animation to animate
+    rect = Rect(
+        x=Length(20),
+        y=Length(20),
+        width=Length(60),
+        height=Length(40),
+        transform=[Rotate(25)],
+    ).add_child(Animate(attributeName="x", to="50", dur="1s"))
+    svg = _svg(rect)
+
+    svg.reify(convert_shapes_to_paths=True)
+
+    assert svg.find(Rect) is rect
+    assert rect.transform == [Rotate(25)]
+
+
+def test_a_shape_that_becomes_a_path_keeps_its_children() -> None:
+    rect = Rect(
+        x=Length(20),
+        y=Length(20),
+        width=Length(60),
+        height=Length(40),
+        transform=[Rotate(25)],
+    ).add_child(Title().add_child(RawText("a box")))
+    svg = _svg(rect)
+
+    svg.reify(convert_shapes_to_paths=True)
+    path = svg.find(Path)
+    title = path.find(Title)
+
+    assert path.transform is None
+    assert title.parent is path
+    assert list(svg.find_all(Rect)) == []
