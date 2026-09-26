@@ -244,8 +244,12 @@ class ImplicitlyOrientedShape:
 class FontSizeScaled:
     """The element renders glyphs, so its `font-size` should be resized.
 
-    `font-size` is inherited, so only the elements that actually draw text
-    resolve and resize it. Resizing it on a container as well would apply the
+    The spacing between the glyphs -- `letter-spacing`, `word-spacing` and
+    `kerning` -- is a length in the same coordinate system, so it is resized
+    along with it.
+
+    These are inherited, so only the elements that actually draw text resolve
+    and resize them. Resizing them on a container as well would apply the
     factor twice to any descendant that keeps a transformation of its own.
     """
 
@@ -468,6 +472,15 @@ def _is_resizable(attr: object, /) -> bool:
     magnitude in play, it just is not one reification can see.
     """
     return attr is not None and _is_scalable(attr)
+
+
+def _is_spacing_scalable(attr: object, /) -> bool:
+    """Check whether a glyph spacing can be resized.
+
+    `normal` and `auto` leave the spacing to the font, which is resized with
+    the `font-size` already; any other keyword cannot be resolved.
+    """
+    return attr in ("normal", "auto") or _is_scalable(attr)
 
 
 def _get(element: object, name: str, /) -> object:
@@ -712,7 +725,8 @@ def _apply_magnitudes(
         return
 
     if isinstance(element, FontSizeScaled):
-        _scale_inherited(element, "font_size", factor)
+        for name in _FONT_MAGNITUDES:
+            _scale_inherited(element, name, factor)
 
     if _strokes_in_host_space(element) or not (
         isinstance(element, StrokeWidthScaled) and _is_stroked(element)
@@ -929,6 +943,12 @@ _POSITION_ATTRS: Final = (
 )
 """Attributes that say where the element is."""
 
+_GLYPH_SPACING_ATTRS: Final = ("letter_spacing", "word_spacing", "kerning")
+"""Properties that space out the glyphs of a text content element."""
+
+_FONT_MAGNITUDES: Final = ("font_size", *_GLYPH_SPACING_ATTRS)
+"""Properties that size the glyphs of a text content element."""
+
 _MAGNITUDE_ATTRS: Final = (
     "width",
     "height",
@@ -1035,6 +1055,9 @@ _STYLE_MAGNITUDES: Final = frozenset(
     {
         "stroke-width",
         "font-size",
+        "letter-spacing",
+        "word-spacing",
+        "kerning",
         "stroke-dasharray",
         "stroke-dashoffset",
         "marker",
@@ -1174,6 +1197,14 @@ def geometry_capability(element: object, /) -> Capability:
         # the glyphs are drawn at a size reification cannot resolve -- a
         # keyword, or whatever the renderer picks by default -- so the
         # element may be moved but not resized
+        capability &= TRANSLATION
+
+    if isinstance(element, FontSizeScaled) and not all(
+        _is_spacing_scalable(resolved_value(element, name))
+        for name in _GLYPH_SPACING_ATTRS
+    ):
+        # a spacing relative to the font or the viewport cannot be resized
+        # by a factor reification knows
         capability &= TRANSLATION
 
     if _is_stroked(element):
