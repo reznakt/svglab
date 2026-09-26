@@ -402,23 +402,27 @@ class FontSizeAdjustAttr(Attr):
     ] = None
 
 
+_FontStretch: TypeAlias = Literal[
+    "condensed",
+    "expanded",
+    "extra-condensed",
+    "extra-expanded",
+    "narrower",
+    "normal",
+    "semi-condensed",
+    "semi-expanded",
+    "ultra-condensed",
+    "ultra-expanded",
+    "wider",
+]
+
+
 class FontStretchAttr(Attr):
+    # a list only on `font-face`, which describes the stretches a font covers
     font_stretch: models.Attr[
         typedefs.All
-        | Literal[
-            "condensed ",
-            "condensed",
-            "expanded",
-            "extra-condensed",
-            "extra-expanded",
-            "narrower",
-            "normal",
-            "semi-condensed",
-            "semi-expanded",
-            "ultra-condensed",
-            "ultra-expanded",
-            "wider",
-        ]
+        | _FontStretch
+        | models.CommaList[_FontStretch]
         | typedefs.Inherit
     ] = None
 
@@ -431,9 +435,13 @@ class FontStyleAttr(Attr):
     ] = None
 
 
+_FontVariant: TypeAlias = Literal["normal", "small-caps"]
+
+
 class FontVariantAttr(Attr):
+    # a list only on `font-face`, which describes the variants a font covers
     font_variant: models.Attr[
-        Literal["normal", "small-caps"] | typedefs.Inherit
+        _FontVariant | models.CommaList[_FontVariant] | typedefs.Inherit
     ] = None
 
 

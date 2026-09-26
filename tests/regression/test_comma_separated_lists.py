@@ -53,7 +53,9 @@ def test_assigned_font_family_serializes_with_commas() -> None:
     [
         ("rect", "cursor", "url(#a), url(#b), pointer"),
         ("font-face", "font-family", "Times New Roman, serif"),
+        ("font-face", "font-stretch", "condensed, semi-expanded"),
         ("font-face", "font-style", "normal, italic"),
+        ("font-face", "font-variant", "normal, small-caps"),
         ("font-face", "font-weight", "400, 700, bold"),
         ("font-face", "unicode-range", "U+0-7F, U+A0-FF"),
         ("font-face", "widths", "U+0-7F 500, 600 700"),
@@ -70,3 +72,17 @@ def test_comma_separated_attribute_round_trips(
     doc = svglab.parse_svg(f'<svg><{element} {attr}="{value}"/></svg>')
 
     assert f'{attr}="{value}"' in doc.to_xml()
+
+
+@pytest.mark.parametrize(
+    ("attr", "value"),
+    [("font_stretch", "condensed"), ("font_variant", "small-caps")],
+)
+def test_a_single_font_face_value_stays_a_string(
+    attr: str, value: str
+) -> None:
+    doc = svglab.parse_svg(
+        f'<svg><text {attr.replace("_", "-")}="{value}">a</text></svg>'
+    )
+
+    assert getattr(doc.find(svglab.Text), attr) == value
