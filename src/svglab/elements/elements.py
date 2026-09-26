@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import copy
 import itertools
 import os
 import pathlib
@@ -62,18 +63,13 @@ def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
     # is not convertible
     d = basic_shape.to_path_data()
 
-    # `parent` is an ordinary field, so converting a shape that sits in a tree
-    # would deep-copy every one of its ancestors into a phantom document; the
-    # result is a new element and belongs to no tree until it is added to one
-    parent = basic_shape.parent
-    basic_shape.parent = None
-
-    try:
-        path = models.convert(basic_shape, Path)
-    finally:
-        basic_shape.parent = parent
-
+    # a deep copy stops at the element it starts from, so the path and the
+    # copies of the children belong to no tree until they are added to one
+    path = models.convert(basic_shape, Path)
     path.d = d
+    path.add_children(
+        *(copy.deepcopy(child) for child in basic_shape.children)
+    )
 
     return path
 
