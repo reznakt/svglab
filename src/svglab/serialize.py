@@ -757,7 +757,9 @@ _COMMA_SEPARATED_ATTRS: Final = frozenset(
     {
         "cursor",
         "font-family",
+        "font-stretch",
         "font-style",
+        "font-variant",
         "font-weight",
         "g1",
         "g2",
