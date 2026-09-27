@@ -213,6 +213,13 @@ class Formatter:
                 if possible. Falls back to `auto`.
     """
 
+    color_case: Literal["lower", "upper"] = "lower"
+    """
+    The case of the hex digits in colors serialized in a hex format (for
+    example, `#FFAA00` instead of `#ffaa00`). A color kept in its original
+    representation by `color_mode="original"` is written as it was given.
+    """
+
     alpha_channel: AlphaChannelMode = "float"
     """
     The mode to use when serializing the alpha channel of colors:

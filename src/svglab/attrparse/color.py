@@ -75,6 +75,7 @@ class Color(
     def serialize(self) -> str:
         formatter = serialize.get_current_formatter()
         result: str
+        verbatim = False
 
         match formatter.color_mode:
             case "original":
@@ -82,6 +83,7 @@ class Color(
 
                 if isinstance(original, str):
                     result = original
+                    verbatim = True
                 else:
                     result = self.as_named(fallback=True)
             case "auto":
@@ -96,6 +98,13 @@ class Color(
                 result = self.as_rgb(alpha_channel=formatter.alpha_channel)
             case "hsl":
                 result = self.as_hsl(alpha_channel=formatter.alpha_channel)
+
+        if (
+            formatter.color_case == "upper"
+            and not verbatim
+            and result.startswith("#")
+        ):
+            result = result.upper()
 
         if result.endswith(")"):  # just to make this a bit faster
             name_and_args = miscutils.extract_function_name_and_args(

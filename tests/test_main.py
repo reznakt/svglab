@@ -11,7 +11,7 @@ import hypothesis
 import hypothesis.strategies as st
 import pydantic
 import pytest
-from typing_extensions import Final, Protocol
+from typing_extensions import Final, Literal, Protocol
 
 import svglab
 from svglab import entities
@@ -1500,6 +1500,25 @@ def test_path_data_point_separator() -> None:
 
     assert path == '<path d="M 1 2 L 3 4 A 5 6 0 0 1 7 8"/>'
     assert polygon == '<polygon points="1,2 3,4"/>'
+
+
+@pytest.mark.parametrize(
+    ("color_mode", "serialized"),
+    [
+        ("hex-long", "#FFAA00"),
+        ("hex-short", "#FA0"),
+        ("rgb", "rgb(255 170 0)"),
+        ("original", "#ffaa00"),
+    ],
+)
+def test_color_case(
+    color_mode: Literal["hex-long", "hex-short", "rgb", "original"],
+    serialized: str,
+) -> None:
+    formatter = svglab.Formatter(color_mode=color_mode, color_case="upper")
+
+    with formatter:
+        assert svglab.Color("#ffaa00").serialize() == serialized
 
 
 def test_invalid_add_child_direct_circular_reference() -> None:
