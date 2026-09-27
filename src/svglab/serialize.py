@@ -26,6 +26,7 @@ from typing_extensions import (
     Literal,
     Self,
     TypeAlias,
+    TypeVar,
     cast,
     final,
     overload,
@@ -46,6 +47,14 @@ _ColorMode: TypeAlias = Literal[
 _PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
 _LengthUnitMode: TypeAlias = Literal["preserve"] | utiltypes.LengthUnit
 _Separator: TypeAlias = Literal[", ", ",", " "]
+
+_T = TypeVar("_T")
+
+# pydantic validates an `Iterable` field lazily, keeping a one-shot iterator
+# that cannot be pickled; collecting it into a tuple makes it reusable
+_Collected: TypeAlias = Annotated[
+    Iterable[_T], pydantic.AfterValidator(tuple)
+]
 
 _Precision: TypeAlias = Annotated[int, pydantic.Field(le=15)]
 _PrecisionGroup: TypeAlias = Literal[
@@ -92,7 +101,7 @@ class FloatPrecisionSettings:
     more convenient `float_precision()` function.
     """
 
-    precision_table: Iterable[PrecisionInterval] = ()
+    precision_table: _Collected[PrecisionInterval] = ()
     """
     An iterable of `PrecisionInterval` objects mapping intervals of
     floating-point numbers to their respective precision settings. The
@@ -109,7 +118,8 @@ class FloatPrecisionSettings:
     serialized with a precision of 3 digits. All other numbers will be
     serialized with the fallback precision.
 
-    The precision table may be of any iterable type; the order of the intervals
+    The precision table may be given as any iterable; it is stored as a tuple
+    so that the settings can be reused and pickled. The order of the intervals
     does not matter. Keep in mind, however, that duplicate or overlapping
     intervals are not allowed even if a collection type that allows them is
     used (such as a list or tuple).
@@ -347,13 +357,14 @@ class Formatter:
     - `original`: Serialize the `xmlns` attribute as-is.
     """
 
-    length_unit: _LengthUnitMode | Iterable[_LengthUnitMode] = "preserve"
+    length_unit: _LengthUnitMode | _Collected[_LengthUnitMode] = "preserve"
     """
     The length unit(s) to use when serializing lengths. If set to `preserve`,
     the original unit is used. If set to a specific unit, the length is
-    converted to that unit. If set to an iterable of units, each unit is tried
-    in order until one succeeds. If the length cannot be converted to any of
-    the specified units, the original unit is used.
+    converted to that unit. If set to an iterable of units (stored as a
+    tuple), each unit is tried in order until one succeeds. If the length
+    cannot be converted to any of the specified units, the original unit is
+    used.
     """
 
     attribute_order: Mapping[
