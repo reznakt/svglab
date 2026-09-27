@@ -14,6 +14,7 @@ The main components of this module are:
 from __future__ import annotations
 
 import contextvars
+import dataclasses
 import functools
 import math
 from collections.abc import Iterable, Mapping, Sequence
@@ -30,6 +31,7 @@ from typing_extensions import (
     cast,
     final,
     overload,
+    override,
 )
 
 from svglab import constants, models, protocols, utiltypes
@@ -437,6 +439,22 @@ class Formatter:
             raise TypeError(msg)
 
         return cast(FloatPrecisionSettings, settings).get_precision(value)
+
+    # the generated hash would fail on the `attribute_order` dict, so that
+    # one field is hashed by its value instead
+    @override
+    def __hash__(self) -> int:
+        return hash(
+            tuple(
+                frozenset(
+                    (name, tuple(names))
+                    for name, names in self.attribute_order.items()
+                )
+                if field.name == "attribute_order"
+                else getattr(self, field.name)
+                for field in dataclasses.fields(self)
+            )
+        )
 
     def __enter__(self) -> None:
         _formatters.set((*_formatters.get(), self))
