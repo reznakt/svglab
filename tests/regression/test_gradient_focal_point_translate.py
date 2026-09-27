@@ -33,3 +33,28 @@ def test_focal_point_is_translated() -> None:
     assert gradient.fy == svglab.Length(130)
 
     conftest.assert_svg_visually_equal(original, reified)
+
+
+def test_half_set_focal_point_is_translated_once() -> None:
+    original = svglab.parse_svg("""
+        <svg width="200" height="200">
+            <defs>
+                <radialGradient id="g" gradientUnits="userSpaceOnUse"
+                                cx="50" cy="50" r="50" fx="70"
+                                gradientTransform="translate(100, 100)">
+                    <stop offset="0" stop-color="red"/>
+                    <stop offset="1" stop-color="blue"/>
+                </radialGradient>
+            </defs>
+            <rect width="200" height="200" fill="url(#g)"/>
+        </svg>
+    """)
+    reified = copy.deepcopy(original)
+
+    reified.reify()
+    gradient = reified.find(svglab.RadialGradient)
+
+    assert gradient.fx == svglab.Length(170)
+    assert gradient.fy == svglab.Length(150)
+
+    conftest.assert_svg_visually_equal(original, reified)
