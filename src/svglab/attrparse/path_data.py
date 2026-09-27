@@ -982,6 +982,14 @@ class PathData(  # noqa: PLW1641
         if formatter.path_data_coordinates == "relative":
             path_data = _relativize(path_data)
 
+        separator = (
+            formatter.path_data_point_separator
+            or formatter.point_separator
+        )
+
+        def pt(value: point.Point) -> str:
+            return serialize.serialize_point(value, separator=separator)
+
         for prev, command in iterutils.pairwise(path_data):
             implicit = (
                 formatter.path_data_commands == "implicit"
@@ -991,11 +999,11 @@ class PathData(  # noqa: PLW1641
             match command:
                 case MoveTo(end):
                     yield serialize.serialize_path_command(
-                        end, char="M", implicit=implicit
+                        pt(end), char="M", implicit=implicit
                     )
                 case LineTo(end):
                     yield serialize.serialize_path_command(
-                        end, char="L", implicit=implicit
+                        pt(end), char="L", implicit=implicit
                     )
                 case HorizontalLineTo(x):
                     yield serialize.serialize_path_command(
@@ -1007,31 +1015,31 @@ class PathData(  # noqa: PLW1641
                     )
                 case QuadraticBezierTo(control, end):
                     yield serialize.serialize_path_command(
-                        control, end, char="Q", implicit=implicit
+                        pt(control), pt(end), char="Q", implicit=implicit
                     )
                 case SmoothQuadraticBezierTo(end):
                     yield serialize.serialize_path_command(
-                        end, char="T", implicit=implicit
+                        pt(end), char="T", implicit=implicit
                     )
                 case CubicBezierTo(control1, control2, end):
                     yield serialize.serialize_path_command(
-                        control1,
-                        control2,
-                        end,
+                        pt(control1),
+                        pt(control2),
+                        pt(end),
                         char="C",
                         implicit=implicit,
                     )
                 case SmoothCubicBezierTo(control2, end):
                     yield serialize.serialize_path_command(
-                        control2, end, char="S", implicit=implicit
+                        pt(control2), pt(end), char="S", implicit=implicit
                     )
                 case ArcTo(radii, angle, large, sweep, end):
                     yield serialize.serialize_path_command(
-                        radii,
+                        pt(radii),
                         angle,
                         large,
                         sweep,
-                        end,
+                        pt(end),
                         char="A",
                         implicit=implicit,
                     )

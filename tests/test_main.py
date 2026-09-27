@@ -1483,6 +1483,25 @@ def test_precision_table(
         assert value.serialize() == serialized
 
 
+def test_path_data_point_separator() -> None:
+    svg = svglab.parse_svg(
+        '<svg><path d="M1 2L3 4A5 6 0 0 1 7 8"/>'
+        '<polygon points="1 2 3 4"/></svg>'
+    )
+    formatter = svglab.Formatter(
+        point_separator=",",
+        path_data_point_separator=" ",
+        path_data_space_before_args=True,
+        path_data_commands="explicit",
+    )
+
+    path = svg.find(svglab.Path).to_xml(formatter=formatter)
+    polygon = svg.find(svglab.Polygon).to_xml(formatter=formatter)
+
+    assert path == '<path d="M 1 2 L 3 4 A 5 6 0 0 1 7 8"/>'
+    assert polygon == '<polygon points="1,2 3,4"/>'
+
+
 def test_invalid_add_child_direct_circular_reference() -> None:
     g = svglab.G()
 

@@ -331,6 +331,13 @@ class Formatter:
     point_separator: _Separator = ","
     """The separator to use when serializing points."""
 
+    path_data_point_separator: _Separator | None = None
+    """
+    The separator to use between the coordinates of a point in path data. If
+    `None`, `point_separator` is used. For example, `M 1 2 L 3 4` for paths
+    while `point_separator` keeps `points="1,2 3,4"` for polygons.
+    """
+
     indent: int = pydantic.Field(default=2, ge=0)
     """
     The number of spaces to use for indentation in the resulting SVG document.
@@ -754,6 +761,35 @@ def serialize_function_call(
     )
 
     return f"{name}({args_str})"
+
+
+def serialize_point(
+    point: protocols.PointLike, /, *, separator: str | None = None
+) -> str:
+    """Serialize a point into its SVG representation.
+
+    Args:
+        point: The point to serialize.
+        separator: The separator to put between the coordinates. If `None`,
+            the formatter's `point_separator` is used.
+
+    Returns:
+        The serialized point.
+
+    Examples:
+        >>> from svglab import Point
+        >>> serialize_point(Point(1, 2))
+        '1,2'
+        >>> serialize_point(Point(1, 2), separator=" ")
+        '1 2'
+
+    """
+    x, y = serialize(point.x, point.y, precision_group="coordinate")
+
+    if separator is None:
+        separator = get_current_formatter().point_separator
+
+    return f"{x}{separator}{y}"
 
 
 def serialize_path_command(

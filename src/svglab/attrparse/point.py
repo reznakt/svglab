@@ -40,12 +40,7 @@ class _Point(
 
     @override
     def serialize(self) -> str:
-        x, y = serialize.serialize(
-            self.x, self.y, precision_group="coordinate"
-        )
-        formatter = serialize.get_current_formatter()
-
-        return f"{x}{formatter.point_separator}{y}"
+        return serialize.serialize_point(self)
 
     @classmethod
     def from_complex(cls, value: complex, /) -> Self:
