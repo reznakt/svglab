@@ -754,6 +754,7 @@ class ForeignObject(
 
 @final
 class G(
+    reify.Grouping,
     reify.TransformInheritedByChildren,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,
@@ -1476,6 +1477,7 @@ class Svg(
 
 @final
 class Switch(
+    reify.SelectsAChild,
     reify.TransformInheritedByChildren,
     attrgroups.ConditionalProcessingAttrs,
     attrdefs.ClassAttr,

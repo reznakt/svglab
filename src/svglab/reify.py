@@ -189,6 +189,22 @@ class Stylesheet:
     """
 
 
+class Grouping:
+    """The element does nothing but group its children.
+
+    Stripped of its attributes, it no longer affects how its children are
+    rendered, so they can take its place in the tree.
+    """
+
+
+class SelectsAChild:
+    """The element renders only one of its direct children.
+
+    Which one depends on its children themselves, so lifting the children of
+    a group among them would change the choice.
+    """
+
+
 class RenderedIndirectly:
     """The element is not painted where it sits in the tree.
 
