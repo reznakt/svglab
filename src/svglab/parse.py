@@ -197,7 +197,9 @@ def parse_svg(
             markup = markup.read()
 
         try:
-            soup = bs4.BeautifulSoup(markup, features=parser)
+            soup = bs4.BeautifulSoup(
+                markup, features=parser, multi_valued_attributes=None
+            )
         except bs4.FeatureNotFound as e:
             if parser != "html5lib":
                 raise
