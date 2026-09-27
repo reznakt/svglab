@@ -536,6 +536,20 @@ def _coordinate(value: float, like: object, /) -> object:
     return value if isinstance(like, int | float) else length.Length(value)
 
 
+def _set_coordinate(
+    element: object, name: str, value: float, like: object, /
+) -> None:
+    """Write a coordinate, unless it was left out and stays at zero.
+
+    Every coordinate this is used for defaults to zero, so an unset one that
+    ends up at the origin already says what it has to.
+    """
+    if like is None and mathutils.is_close(value, 0):
+        return
+
+    setattr(element, name, _coordinate(value, like))
+
+
 # endregion
 # region Applying a matrix to attributes
 
@@ -565,11 +579,14 @@ def _apply_box(element: object, matrix: transform.Matrix, /) -> None:
     if features(matrix) <= TRANSLATION:
         # moving a box leaves its extents alone, which is the only thing that
         # can be done to one whose extents are a percentage of a viewport
-        x = _translated(element.x or length.Length(0), matrix.e)
-        y = _translated(element.y or length.Length(0), matrix.f)
-
-        element.x = x  # type: ignore[assignment]
-        element.y = y  # type: ignore[assignment]
+        if element.x is not None or not mathutils.is_close(matrix.e, 0):
+            element.x = _translated(
+                element.x or length.Length(0), matrix.e
+            )  # type: ignore[assignment]
+        if element.y is not None or not mathutils.is_close(matrix.f, 0):
+            element.y = _translated(
+                element.y or length.Length(0), matrix.f
+            )  # type: ignore[assignment]
 
         return
 
@@ -585,8 +602,12 @@ def _apply_box(element: object, matrix: transform.Matrix, /) -> None:
         matrix, x_value + width, y_value + height
     )
 
-    element.x = length.Length(min(start_corner.x, end_corner.x))
-    element.y = length.Length(min(start_corner.y, end_corner.y))
+    _set_coordinate(
+        element, "x", min(start_corner.x, end_corner.x), element.x
+    )
+    _set_coordinate(
+        element, "y", min(start_corner.y, end_corner.y), element.y
+    )
 
     if element.width is not None:
         element.width = length.Length(abs(end_corner.x - start_corner.x))
@@ -632,8 +653,8 @@ def _apply_centre(element: object, matrix: transform.Matrix, /) -> None:
     cx, cy = element.cx, element.cy
     centre = _transform_point(matrix, cx, cy)
 
-    element.cx = length.Length(centre.x)
-    element.cy = length.Length(centre.y)
+    _set_coordinate(element, "cx", centre.x, cx)
+    _set_coordinate(element, "cy", centre.y, cy)
 
     if isinstance(element, attrdefs.FxAttr | attrdefs.FyAttr):
         fx = _get(element, "fx")
@@ -671,10 +692,10 @@ def _apply_end_points(
     start = _transform_point(matrix, element.x1, element.y1)
     end = _transform_point(matrix, element.x2, element.y2)
 
-    element.x1 = _coordinate(start.x, element.x1)  # type: ignore[reportAttributeAccessIssue]
-    element.y1 = _coordinate(start.y, element.y1)  # type: ignore[reportAttributeAccessIssue]
-    element.x2 = _coordinate(end.x, element.x2)  # type: ignore[reportAttributeAccessIssue]
-    element.y2 = _coordinate(end.y, element.y2)  # type: ignore[reportAttributeAccessIssue]
+    _set_coordinate(element, "x1", start.x, element.x1)
+    _set_coordinate(element, "y1", start.y, element.y1)
+    _set_coordinate(element, "x2", end.x, element.x2)
+    _set_coordinate(element, "y2", end.y, element.y2)
 
 
 def _apply_text(element: object, matrix: transform.Matrix, /) -> None:
