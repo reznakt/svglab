@@ -58,6 +58,7 @@ class Length(
     """Represents the SVG `<length>` type.
 
     A length is a number optionally followed by a unit. Available units are:
+
     - `%`: percentage
     - `ch`: character unit
     - `cm`: centimeters
