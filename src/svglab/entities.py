@@ -653,6 +653,20 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
     def __hash__(self) -> int:
         return self._hash()
 
+    # an attribute set to `None` or deleted is no longer set, so it must not
+    # linger in `model_fields_set` either
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+
+        if value is None:
+            self.__pydantic_fields_set__.discard(name)
+
+    @override
+    def __delattr__(self, name: str) -> None:
+        super().__delattr__(name)
+        self.__pydantic_fields_set__.discard(name)
+
 
 class Element(
     Entity,
