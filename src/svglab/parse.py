@@ -139,7 +139,9 @@ def _get_markup_head(markup: _Markup, limit: int = 30) -> str:
                 markup if len(markup) <= limit else f"{markup[:limit]}..."
             )
         case bytes():
-            return _get_markup_head(markup.decode(), limit=limit)
+            return _get_markup_head(
+                markup.decode(errors="replace"), limit=limit
+            )
         case protocols.SupportsRead():
             return _get_markup_head(markup.read(limit + 1), limit=limit)
         case pathlib.Path():
