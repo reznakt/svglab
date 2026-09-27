@@ -629,7 +629,8 @@ def _apply_centre(element: object, matrix: transform.Matrix, /) -> None:
     assert isinstance(element, attrdefs.CxAttr)
     assert isinstance(element, attrdefs.CyAttr)
 
-    centre = _transform_point(matrix, element.cx, element.cy)
+    cx, cy = element.cx, element.cy
+    centre = _transform_point(matrix, cx, cy)
 
     element.cx = length.Length(centre.x)
     element.cy = length.Length(centre.y)
@@ -638,12 +639,13 @@ def _apply_centre(element: object, matrix: transform.Matrix, /) -> None:
         fx = _get(element, "fx")
         fy = _get(element, "fy")
 
-        # an unset focal point sits at the centre, where it stays
+        # an unset focal point sits at the centre, where it stays; a half-set
+        # one takes the other coordinate from the centre as it was written
         if fx is not None or fy is not None:
             focus = _transform_point(
                 matrix,
-                fx if fx is not None else element.cx,
-                fy if fy is not None else element.cy,
+                fx if fx is not None else cx,
+                fy if fy is not None else cy,
             )
 
             element.fx = length.Length(focus.x)  # type: ignore[reportAttributeAccessIssue]
