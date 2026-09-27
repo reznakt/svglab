@@ -145,7 +145,6 @@ class TrueDivWithMul(
 class FloatMulDiv(
     NegWithMul,
     RMulWithMul[float],
-    RTruedivWithTrueDiv[float],
     TrueDivWithMul[float],
     metaclass=abc.ABCMeta,
 ):
