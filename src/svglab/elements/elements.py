@@ -223,11 +223,13 @@ from svglab.protocols import SupportsWrite
 from svglab.reify import (
     AffineGeometry,
     DocumentFragmentRoot,
+    Grouping,
     ImplicitlyOrientedShape,
     PositionDefaultsToOrigin,
     PositionedByReference,
     RectilinearGeometry,
     RenderedIndirectly,
+    SelectsAChild,
     SimilarityGeometry,
     Stylesheet,
     TransformInheritedByChildren,
@@ -920,6 +922,7 @@ class ForeignObject(
 
 @final
 class G(
+    Grouping,
     TransformInheritedByChildren,
     ConditionalProcessingAttrs,
     ClassAttr,
@@ -1630,6 +1633,7 @@ class Svg(
 
 @final
 class Switch(
+    SelectsAChild,
     TransformInheritedByChildren,
     ConditionalProcessingAttrs,
     ClassAttr,
