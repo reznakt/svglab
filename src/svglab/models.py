@@ -191,7 +191,7 @@ class BaseModel(pydantic.BaseModel):
         validate_return=True,
     )
 
-    # patch pydantic's __repr__ so that is doesn't break on cyclic models
+    # patch pydantic's __repr__ so that it doesn't break on cyclic models
     # see https://github.com/pydantic/pydantic/issues/9424
     @reprlib.recursive_repr()
     @override
