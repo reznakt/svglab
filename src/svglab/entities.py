@@ -1165,6 +1165,7 @@ class Element(
         *,
         recursive: bool = True,
         convert_shapes_to_paths: bool = False,
+        unwrap_groups: bool = False,
     ) -> None:
         """Replace transformations with equivalent changes to the geometry.
 
@@ -1200,6 +1201,11 @@ class Element(
                 equivalent `path` element, which can absorb anything. Only
                 descendants are replaced; the element the method is called on
                 keeps its type.
+            unwrap_groups: If `True`, a descendant `g` that is left without
+                any attributes once its transformation is gone is replaced by
+                its children. Groups that had no attributes to begin with are
+                left alone, and so is every group in a document with a
+                stylesheet, whose selectors may depend on the tree's shape.
 
         Raises:
             SvgTransformOriginError: If the value of the `transform-origin`
@@ -1241,6 +1247,7 @@ class Element(
             context=_build_context(self.get_root()),
             recursive=recursive,
             convert_shapes_to_paths=convert_shapes_to_paths,
+            unwrap_groups=unwrap_groups,
         )
 
     # endregion
@@ -1879,6 +1886,7 @@ def _reify_tree(
     context: _Context,
     recursive: bool,
     convert_shapes_to_paths: bool,
+    unwrap_groups: bool,
 ) -> None:
     """Reify an element and, if asked, everything below it.
 
@@ -1894,13 +1902,30 @@ def _reify_tree(
     # each entry is a parent whose children still have to be visited, so that
     # a shape can be replaced in place once its own subtree is done
     pending: list[Element] = [element]
+    # groups whose transformation was taken off in full, parents first
+    emptied: list[Element] = []
 
     while pending:
         parent = pending.pop()
 
         for child in list(parent.find_all(recursive=False)):
+            grouping = (
+                unwrap_groups
+                and isinstance(child, reify.Grouping)
+                and child.main_transform is not None
+            )
             _reify_element(child, context=context)
             pending.append(child)
+
+            if grouping and child.main_transform is None:
+                emptied.append(child)
+
+    if emptied and not _has_stylesheet(element.get_root()):
+        # children first, so that each group is spliced into a parent that is
+        # still where it was
+        for group in reversed(emptied):
+            if _is_bare_group(group):
+                _unwrap(group)
 
     if not convert_shapes_to_paths:
         return
@@ -1909,6 +1934,34 @@ def _reify_tree(
         for child in list(parent.find_all(recursive=False)):
             if child.main_transform is not None:
                 _convert_to_path(parent, child, context=context)
+
+
+def _has_stylesheet(root: Element, /) -> bool:
+    return any(
+        isinstance(element, reify.Stylesheet)
+        for element in itertools.chain([root], root.find_all())
+    )
+
+
+def _is_bare_group(group: Element, /) -> bool:
+    """Check that lifting the group's children would not change a thing."""
+    return (
+        group.parent is not None
+        and not isinstance(group.parent, reify.SelectsAChild)
+        and not group.all_attrs()
+    )
+
+
+def _unwrap(group: Element, /) -> None:
+    """Put the group's children where the group is."""
+    parent = group.parent
+    assert parent is not None
+
+    index = parent.get_child_index(group)
+    parent.pop_child(index)
+
+    while group.has_children():
+        parent.add_child(group.pop_child(), index=index)
 
 
 def _index_by_id(root: Element, /) -> Mapping[str, Element]:
