@@ -1,0 +1,6 @@
+<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="s" viewBox="0 0 60 40">
+    <rect fill="orange" height="40" width="60"/>
+  </symbol>
+  <use href="#s" transform="translate(0) scale(2)" x="20" y="20"/>
+</svg>
