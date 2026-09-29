@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+  <g transform="scale(2)">
+    <text font-size="20" letter-spacing="2"><tspan x="10" y="30">Hello</tspan></text>
+  </g>
+</svg>

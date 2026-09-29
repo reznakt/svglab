@@ -1,0 +1,9 @@
+<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <text font-size="40" letter-spacing="4">
+      <tspan font-size="80" letter-spacing="8" x="20" y="60">
+        Hello
+      </tspan>
+    </text>
+  </g>
+</svg>
