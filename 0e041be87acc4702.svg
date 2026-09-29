@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <g transform="translate(20 20)"><g id="t"><rect width="30" height="30" fill="green"/></g></g>
+  <g id="t"><rect x="150" y="10" width="30" height="30" fill="red"/></g>
+  <use href="#t" x="100" y="100"/>
+</svg>

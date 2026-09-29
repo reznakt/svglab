@@ -1,0 +1,11 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <g id="t">
+      <rect fill="green" height="30" width="30" x="20" y="20"/>
+    </g>
+  </g>
+  <g id="t">
+    <rect fill="red" height="30" width="30" x="150" y="10"/>
+  </g>
+  <use href="#t" x="100" y="100"/>
+</svg>
