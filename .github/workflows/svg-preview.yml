@@ -1,6 +1,11 @@
 name: svg-preview
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/svg-preview.yml
+      - .github/scripts/**
   issues:
     types: [opened, edited, reopened]
   issue_comment:
@@ -11,13 +16,13 @@ on:
 permissions: {}
 
 concurrency:
-  group: svg-preview-${{ github.event.issue.number || github.event.pull_request.number }}
+  group: svg-preview-${{ github.event.issue.number || github.event.pull_request.number || 'all' }}
   cancel-in-progress: true
 
 jobs:
   preview:
     if: >-
-      contains(
+      github.event_name == 'push' || contains(
         fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'),
         (github.event.comment || github.event.issue || github.event.pull_request).author_association
       )

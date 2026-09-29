@@ -1,0 +1,24 @@
+{{ marker }}
+
+### SVG previews
+{% for p in previews %}
+
+<table>
+<tr><td align="center"><img src="{{ raw }}/{{ p.filename }}" {{ p.side }}="240"></td></tr>
+<tr><td>
+
+<p align="center">From <a href="{{ p.link }}">{{ p.label }}</a>, {{ p.where }}</p>
+{% if sources %}
+
+<details><summary>Code</summary>
+
+{{ p.fence }}svg
+{{ p.source }}
+{{ p.fence }}
+
+</details>
+{% endif %}
+
+</td></tr>
+</table>
+{% endfor %}

@@ -3,17 +3,22 @@
 # requires-python = ">=3.12"
 # dependencies = [
 #   "defusedxml>=0.7.1",
+#   "jinja2>=3.1.0",
 #   "markdown-it-py>=3.0.0",
 #   "pygithub>=2.5.0",
 # ]
 # ///
 """Show the SVGs that maintainers post in an issue or PR in a comment."""
 
+import dataclasses
 import hashlib
 import os
+import pathlib
+import re
 import xml.etree.ElementTree as ET
 
 import defusedxml.ElementTree
+import jinja2
 import markdown_it
 from github import (
     Auth,
@@ -22,42 +27,139 @@ from github import (
     UnknownObjectException,
 )
 from github.GithubObject import NotSet
+from github.Issue import Issue
 from github.Repository import Repository
+from markdown_it.token import Token
 
 
 MARKER = "<!-- svg-preview -->"
+MAX_COMMENT = 65536
+NAMES = ("width", "height")
 TRUSTED = {"OWNER", "MEMBER", "COLLABORATOR"}
 BOT = "github-actions[bot]"
 REF = "svg-previews/main"
 SVG_ROOT = "{http://www.w3.org/2000/svg}svg"
+SVG_TAG = re.compile(r"<(?P<close>/)?svg\b[^>]*?(?P<empty>/)?>")
+NAMESPACES = {
+    "xmlns": "http://www.w3.org/2000/svg",
+    "xmlns:xlink": "http://www.w3.org/1999/xlink",
+}
+TEMPLATE = jinja2.Environment(
+    loader=jinja2.FileSystemLoader(pathlib.Path(__file__).parent),
+    autoescape=jinja2.select_autoescape(),
+    trim_blocks=True,
+    lstrip_blocks=True,
+).get_template("preview_svgs.md.j2")
 
 
-def find_svgs(text: str) -> list[str]:
-    """Return the code blocks that contain an SVG."""
-    tokens = markdown_it.MarkdownIt("commonmark").parse(text)
+@dataclasses.dataclass(frozen=True)
+class Preview:
+    """An SVG to show and where in the thread it comes from."""
+
+    link: str
+    label: str
+    where: str
+    source: str
+    svg: str
+    side: str
+
+    @property
+    def filename(self) -> str:
+        """Name the file by its content so that repeats are free."""
+        return f"{hashlib.sha256(self.svg.encode()).hexdigest()[:16]}.svg"
+
+    @property
+    def fence(self) -> str:
+        """Return a code fence longer than any backticks in the source."""
+        ticks = max(map(len, re.findall("`+", self.source)), default=0)
+        return "`" * max(3, ticks + 1)
+
+
+def extract(code: str) -> list[str]:
+    """Return the outermost `svg` elements in a piece of code."""
+    found = []
+    depth = start = 0
+    for tag in SVG_TAG.finditer(code):
+        if tag["close"]:
+            depth = max(depth - 1, 0)
+            if depth == 0:
+                found.append(code[start : tag.end()])
+        elif tag["empty"]:
+            if depth == 0:
+                found.append(tag[0])
+        else:
+            if depth == 0:
+                start = tag.start()
+            depth += 1
+    return found
+
+
+def add_namespaces(svg: str) -> str:
+    """Declare the namespaces that HTML implies for an inline SVG."""
+    root = svg[: svg.index(">")]
+    declarations = "".join(
+        f' {name}="{uri}"'
+        for name, uri in NAMESPACES.items()
+        if not re.search(rf"\s{name}\s*=", root)
+        and (name == "xmlns" or "xlink:" in svg)
+    )
+    return f"<svg{declarations}{svg[4:]}"
+
+
+def versions(block: Token) -> list[tuple[str, str]]:
+    """Return the code of a block, or both sides of a diff, with a label."""
+    if block.info.split()[:1] != ["diff"]:
+        return [("", block.content)]
+    lines = block.content.splitlines()
     return [
-        t.content
-        for t in tokens
-        if t.type in {"fence", "code_block"} and "<svg" in t.content
+        (
+            side,
+            "\n".join(
+                line[1:] for line in lines if line[:1] in {" ", sign}
+            ),
+        )
+        for side, sign in [("before", "-"), ("after", "+")]
     ]
 
 
-def check(svg: str) -> str | None:
-    """Return why a browser would not display the SVG, if it would not."""
+def find_svgs(text: str) -> dict[str, str]:
+    """Map the SVG documents in a text's code blocks to where they are."""
+    tokens = markdown_it.MarkdownIt("commonmark").parse(text)
+    blocks = [t for t in tokens if t.type in {"fence", "code_block"}]
+    found: dict[str, str] = {}
+    for i, block in enumerate(blocks, 1):
+        for side, code in versions(block):
+            svgs = extract(code)
+            for k, svg in enumerate(svgs, 1):
+                where = [f"code block {i}"]
+                if side:
+                    where.append(side)
+                if len(svgs) > 1:
+                    where.append(f"SVG {k} of {len(svgs)}")
+                found.setdefault(svg, ", ".join(where))
+    return found
+
+
+def parse(svg: str) -> ET.Element | None:
+    """Return the root of an SVG that a browser would display."""
     try:
         root = defusedxml.ElementTree.fromstring(
             svg, forbid_entities=False
         )
-    except ET.ParseError as e:
-        return f"not well-formed XML: {e}"
-    if root.tag != SVG_ROOT:
-        return "the root is not an `svg` element in the SVG namespace"
-    return None
+    except ET.ParseError:
+        return None
+    return root if root.tag == SVG_ROOT else None
 
 
-def filename(svg: str) -> str:
-    """Name the file by its content so that repeats are free."""
-    return f"{hashlib.sha256(svg.encode()).hexdigest()[:16]}.svg"
+def side(root: ET.Element) -> str:
+    """Return the longer side of the SVG, which the preview box fits."""
+    box = root.get("viewBox", "").replace(",", " ").split()
+    sides = box[2:4] or [root.get(k, "") for k in NAMES]
+    try:
+        width, height = (float(re.match(r"[\d.]*", s)[0]) for s in sides)
+    except ValueError:
+        return "width"
+    return "height" if height > width else "width"
 
 
 def publish(repo: Repository, files: dict[str, str]) -> str:
@@ -89,52 +191,63 @@ def publish(repo: Repository, files: dict[str, str]) -> str:
     return commit.sha
 
 
-def main() -> None:
+def comment(raw: str, previews: list[Preview], *, sources: bool) -> str:
+    """Write the preview comment, with the SVGs' code if asked to."""
+    return TEMPLATE.render(
+        marker=MARKER, raw=raw, previews=previews, sources=sources
+    ).strip()
+
+
+def sync(repo: Repository, issue: Issue) -> None:
     """Sync the preview comment with the thread."""
-    client = Github(auth=Auth.Token(os.environ["GH_TOKEN"]))
-    repo = client.get_repo(os.environ["GITHUB_REPOSITORY"])
-    issue = repo.get_issue(int(os.environ["NUMBER"]))
     comments = list(issue.get_comments())
 
     own = next(
         (c for c in comments if c.user.login == BOT and MARKER in c.body),
         None,
     )
-    found = [
-        (label, item.html_url, svg)
+    previews = [
+        Preview(item.html_url, label, where, source, svg, side(root))
         for label, item in [
             ("the description", issue),
-            *((f"@{c.user.login}", c) for c in comments),
+            *(("a comment", c) for c in comments),
         ]
         if item.author_association in TRUSTED
-        for svg in find_svgs(item.body or "")
+        for source, where in find_svgs(item.body or "").items()
+        for svg in [add_namespaces(source)]
+        if (root := parse(svg)) is not None
     ]
 
-    if not found:
+    if not previews:
         if own is not None:
             own.delete()
         return
 
-    previews = [(label, url, svg, check(svg)) for label, url, svg in found]
-    files = {
-        filename(svg): svg for *_, svg, error in previews if not error
-    }
-    sha = publish(repo, files) if files else None
-
+    sha = publish(repo, {p.filename: p.svg for p in previews})
     raw = f"https://raw.githubusercontent.com/{repo.full_name}/{sha}"
-    lines = [MARKER, "### SVG previews"]
-    for label, url, svg, error in previews:
-        lines.append(f"From [{label}]({url}):")
-        if error:
-            lines.append(f"> [!WARNING]\n> Cannot show: {error}")
-        else:
-            lines.append(f'<img src="{raw}/{filename(svg)}">')
-
-    body = "\n\n".join(lines)
+    body = comment(raw, previews, sources=True)
+    if len(body) > MAX_COMMENT:
+        body = comment(raw, previews, sources=False)
     if own is None:
         issue.create_comment(body)
     elif own.body != body:
         own.edit(body)
+
+
+def main() -> None:
+    """Sync one thread, or every thread with a preview if none is given."""
+    client = Github(auth=Auth.Token(os.environ["GH_TOKEN"]))
+    repo = client.get_repo(os.environ["GITHUB_REPOSITORY"])
+    if number := os.environ.get("NUMBER"):
+        numbers = {int(number)}
+    else:
+        numbers = {
+            int(c.issue_url.rsplit("/", 1)[1])
+            for c in repo.get_issues_comments()
+            if c.user.login == BOT and MARKER in c.body
+        }
+    for n in sorted(numbers):
+        sync(repo, repo.get_issue(n))
 
 
 if __name__ == "__main__":
