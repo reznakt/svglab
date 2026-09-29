@@ -1,0 +1,45 @@
+name: svg-preview
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  issue_comment:
+    types: [created, edited, deleted]
+  pull_request_target:
+    types: [opened, edited, reopened]
+
+permissions: {}
+
+concurrency:
+  group: svg-preview-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: >-
+      contains(
+        fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'),
+        (github.event.comment || github.event.issue || github.event.pull_request).author_association
+      )
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout the script
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+
+      - name: Preview the SVGs
+        run: uv run --script --locked .github/scripts/preview_svgs.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
