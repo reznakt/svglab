@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <filter id="f"><feTurbulence baseFrequency="0.05"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+  <rect width="80" height="80" filter="url(#f)" transform="translate(60 60)"/>
+</svg>
