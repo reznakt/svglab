@@ -123,18 +123,19 @@ def versions(block: Token) -> list[tuple[str, str]]:
     ]
 
 
-def find_svgs(text: str) -> list[tuple[str, str]]:
-    """Return the SVG documents in a text's code blocks and where they are."""
+def find_svgs(text: str) -> list[list[tuple[str, str]]]:
+    """Group the SVGs in a text's code blocks, a diff's sides together."""
     tokens = markdown_it.MarkdownIt("commonmark").parse(text)
     blocks = [t for t in tokens if t.type in {"fence", "code_block"}]
-    found: list[tuple[str, str]] = []
+    found: list[list[tuple[str, str]]] = []
     for i, block in enumerate(blocks, 1):
         language = block.info.split()[:1]
         block_name = f"code block {i}"
         if language:
             block_name += f" (<code>{html.escape(language[0])}</code>)"
         unique: dict[str, str] = {}
-        for side, code in versions(block):
+        sides = versions(block)
+        for side, code in sides:
             svgs = extract(code)
             for k, svg in enumerate(svgs, 1):
                 where = [block_name]
@@ -143,7 +144,8 @@ def find_svgs(text: str) -> list[tuple[str, str]]:
                 if len(svgs) > 1:
                     where.append(f"SVG {k} of {len(svgs)}")
                 unique.setdefault(svg, ", ".join(where))
-        found += unique.items()
+        items = list(unique.items())
+        found += [items] if len(sides) > 1 else [[item] for item in items]
     return found
 
 
@@ -198,10 +200,12 @@ def publish(repo: Repository, files: dict[str, str]) -> str:
     return commit.sha
 
 
-def comment(raw: str, previews: list[Preview], *, sources: bool) -> str:
+def comment(
+    raw: str, figures: list[list[Preview]], *, sources: bool
+) -> str:
     """Write the preview comment, with the SVGs' code if asked to."""
     return TEMPLATE.render(
-        marker=MARKER, raw=raw, previews=previews, sources=sources
+        marker=MARKER, raw=raw, figures=figures, sources=sources
     ).strip()
 
 
@@ -213,28 +217,33 @@ def sync(repo: Repository, issue: Issue) -> None:
         (c for c in comments if c.user.login == BOT and MARKER in c.body),
         None,
     )
-    previews = [
-        Preview(item.html_url, label, where, source, svg, side(root))
+    groups = [
+        [
+            Preview(item.html_url, label, where, source, svg, side(root))
+            for source, where in group
+            for svg in [add_namespaces(source)]
+            if (root := parse(svg)) is not None
+        ]
         for label, item in [
             ("the description", issue),
             *(("a comment", c) for c in comments),
         ]
         if item.author_association in TRUSTED
-        for source, where in find_svgs(item.body or "")
-        for svg in [add_namespaces(source)]
-        if (root := parse(svg)) is not None
+        for group in find_svgs(item.body or "")
     ]
+    figures = [group for group in groups if group]
 
-    if not previews:
+    if not figures:
         if own is not None:
             own.delete()
         return
 
-    sha = publish(repo, {p.filename: p.svg for p in previews})
+    files = {p.filename: p.svg for figure in figures for p in figure}
+    sha = publish(repo, files)
     raw = f"https://raw.githubusercontent.com/{repo.full_name}/{sha}"
-    body = comment(raw, previews, sources=True)
+    body = comment(raw, figures, sources=True)
     if len(body) > MAX_COMMENT:
-        body = comment(raw, previews, sources=False)
+        body = comment(raw, figures, sources=False)
     if own is None:
         issue.create_comment(body)
     elif own.body != body:

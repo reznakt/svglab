@@ -1,11 +1,17 @@
 {{ marker }}
 
 ### SVG previews
-{% for p in previews %}
+{% for figure in figures %}
 
 <table>
-<tr><td align="center"><img src="{{ raw }}/{{ p.filename }}" {{ p.side }}="240"></td></tr>
-<tr><td>
+<tr>
+{% for p in figure %}
+<td align="center"><img src="{{ raw }}/{{ p.filename }}" {{ p.side }}="240"></td>
+{% endfor %}
+</tr>
+<tr>
+{% for p in figure %}
+<td>
 
 <p align="center">From <a href="{{ p.link }}">{{ p.label }}</a>, {{ p.where }}</p>
 {% if sources %}
@@ -19,6 +25,8 @@
 </details>
 {% endif %}
 
-</td></tr>
+</td>
+{% endfor %}
+</tr>
 </table>
 {% endfor %}
