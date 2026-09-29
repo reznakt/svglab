@@ -12,6 +12,7 @@
 
 import dataclasses
 import hashlib
+import html
 import os
 import pathlib
 import re
@@ -122,21 +123,27 @@ def versions(block: Token) -> list[tuple[str, str]]:
     ]
 
 
-def find_svgs(text: str) -> dict[str, str]:
-    """Map the SVG documents in a text's code blocks to where they are."""
+def find_svgs(text: str) -> list[tuple[str, str]]:
+    """Return the SVG documents in a text's code blocks and where they are."""
     tokens = markdown_it.MarkdownIt("commonmark").parse(text)
     blocks = [t for t in tokens if t.type in {"fence", "code_block"}]
-    found: dict[str, str] = {}
+    found: list[tuple[str, str]] = []
     for i, block in enumerate(blocks, 1):
+        language = block.info.split()[:1]
+        block_name = f"code block {i}"
+        if language:
+            block_name += f" (<code>{html.escape(language[0])}</code>)"
+        unique: dict[str, str] = {}
         for side, code in versions(block):
             svgs = extract(code)
             for k, svg in enumerate(svgs, 1):
-                where = [f"code block {i}"]
+                where = [block_name]
                 if side:
                     where.append(side)
                 if len(svgs) > 1:
                     where.append(f"SVG {k} of {len(svgs)}")
-                found.setdefault(svg, ", ".join(where))
+                unique.setdefault(svg, ", ".join(where))
+        found += unique.items()
     return found
 
 
@@ -213,7 +220,7 @@ def sync(repo: Repository, issue: Issue) -> None:
             *(("a comment", c) for c in comments),
         ]
         if item.author_association in TRUSTED
-        for source, where in find_svgs(item.body or "").items()
+        for source, where in find_svgs(item.body or "")
         for svg in [add_namespaces(source)]
         if (root := parse(svg)) is not None
     ]
