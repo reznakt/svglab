@@ -81,7 +81,7 @@ class PrecisionInterval:
     """The precision to use for numbers in this interval."""
 
     @pydantic.model_validator(mode="after")
-    def __validate_interval(self) -> Self:  # pyright: ignore[reportUnusedFunction]
+    def __validate_interval(self) -> Self:
         if self.end <= self.start:
             raise ValueError("End must be greater than start")
 
@@ -134,7 +134,7 @@ class FloatPrecisionSettings:
     does not fall within any of the specified intervals."""
 
     @pydantic.model_validator(mode="after")
-    def __validate_precision_table(self) -> Self:  # pyright: ignore[reportUnusedFunction]
+    def __validate_precision_table(self) -> Self:
         for fst, snd in iterutils.pairwise(self.__sorted_precision_table):
             if fst is not None and fst.end > snd.start:
                 msg = f"Overlapping intervals: {fst} and {snd}"

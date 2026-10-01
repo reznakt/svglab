@@ -713,7 +713,7 @@ class Element(
     # region Attribute Handling
 
     @pydantic.model_validator(mode="after")
-    def __validate_extra(self) -> Element:  # pyright: ignore[reportUnusedFunction]
+    def __validate_extra(self) -> Element:
         # model_extra cannot be None because extra is set to "allow"
         assert self.model_extra is not None, "model_extra is None"
 
