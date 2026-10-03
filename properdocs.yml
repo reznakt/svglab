@@ -92,6 +92,8 @@ plugins:
   - git-committers:
       repository: reznakt/svglab
       branch: main
+      exclude_committers:
+        - web-flow
 
   - minify:
       minify_html: true
