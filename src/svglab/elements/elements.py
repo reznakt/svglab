@@ -1228,9 +1228,9 @@ class Svg(
         If the new `viewBox` is equal to the current one, the content is left
         untouched.
 
-        Any attributes of type `Length` in the SVG must be convertible to
-        user units. If an attribute is not convertible, the method raises an
-        exception.
+        Any attributes of type `Length` in the SVG must be in absolute units,
+        such as user units, `px`, `mm` or `pt`. If an attribute is in a
+        relative unit, such as `%` or `em`, the method raises an exception.
 
         Args:
             viewbox: A tuple of four numbers representing the new viewBox.
@@ -1239,8 +1239,7 @@ class Svg(
             ValueError: If `viewBox` is not set and `width` and `height` are
                 not set or if the aspect ratios of the old and new viewBox
                 differ.
-            SvgUnitConversionError: If an attribute is not convertible to user
-                units.
+            SvgUnitConversionError: If an attribute is in a relative unit.
 
         """
         if self.viewBox is None:

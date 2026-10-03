@@ -1512,8 +1512,8 @@ class Element(
 
         Raises:
             ValueError: If the transformation is not supported.
-            SvgLengthConversionError: If a length attribute is not convertible
-                to user units.
+            SvgUnitConversionError: If a length attribute is in a relative
+                unit, such as `%` or `em`.
 
         """
         match transformation:
@@ -1651,7 +1651,8 @@ class Element(
         If all transformations are successfully applied, the `transform`
         attribute is removed from the element.
 
-        All length values in the element must be convertible to user units.
+        All length values in the element must be in absolute units, such as
+        user units, `px`, `mm` or `pt`.
 
         Args:
             limit: The maximum number of transformations to apply. If the
@@ -1667,12 +1668,10 @@ class Element(
 
         Raises:
             ValueError: If the limit is not a positive integer.
-            SvgUnitConversionError: If a length value cannot be converted to
-                user units.
+            SvgUnitConversionError: If a length value is in a relative unit,
+                such as `%` or `em`.
             SvgTransformOriginError: If the value of the `transform-origin`
                 attribute is unsupported.
-            SvgLengthConversionError: If a length value cannot be
-                converted to user units.
 
         Examples:
             >>> from svglab import Rect, Length, Scale, Translate

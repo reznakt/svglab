@@ -119,7 +119,8 @@ class Shape(attrdefs.PathLengthAttr, GraphicsElement):
 
         The shape must have the `pathLength` attribute defined. The `Length`
         values of the scaled attributes must be either in percentages (`%`) or
-        convertible to user units. Percentage values are not scaled.
+        in absolute units, such as user units, `px`, `mm` or `pt`. Percentage
+        values are not scaled.
 
         Args:
             value: The new value for the `pathLength` attribute. Must be
@@ -128,8 +129,8 @@ class Shape(attrdefs.PathLengthAttr, GraphicsElement):
         Raises:
             ValueError: If the `value` is not positive.
             RuntimeError: If the current path length is `None`.
-            SvgUnitConversionError: If the attribute values cannot be converted
-                to user units.
+            SvgUnitConversionError: If an attribute value is in a relative unit
+                other than a percentage, such as `em`.
 
         """
         if value <= 0:

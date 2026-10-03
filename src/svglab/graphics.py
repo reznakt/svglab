@@ -63,6 +63,8 @@ def _positive_user_units(value: length.Length | None, /) -> float | None:
         >>> from svglab import Length
         >>> _positive_user_units(Length(1.5))
         1.5
+        >>> _positive_user_units(Length(1, "in"))
+        96.0
         >>> _positive_user_units(Length(0))
         >>> _positive_user_units(None)
 

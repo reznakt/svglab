@@ -3,13 +3,13 @@
 This module provides a way to convert between different units of measurement.
 
 The main output of this module is the `make_converter` function, which creates
-a converter function that can convert between units based on a conversion
-table.
+a converter function from the size of each unit, expressed in a common base
+unit.
 
 """
 
-import collections
-import functools
+import fractions
+import itertools
 from collections.abc import Callable, Mapping
 
 from typing_extensions import (
@@ -37,72 +37,31 @@ class _HasUnit(Protocol[_UnitT_co]):
 
 
 _HasUnitT = TypeVar("_HasUnitT", bound=_HasUnit[_Unit])
-_ConversionGraph: TypeAlias = Mapping[_UnitT_co, Mapping[_UnitT_co, float]]
 
-ConversionTable: TypeAlias = Mapping[tuple[_UnitT_co, _UnitT_co], float]
+UnitScale: TypeAlias = Mapping[_UnitT_co, fractions.Fraction | float]
 """
-A table of conversion rates between units.
+The size of each unit, expressed in a common base unit.
 
-The keys are tuples of the form `(source, target)`, where `source` is the
-unit to convert from and `target` is the unit to convert to. The values are
-the conversion rates.
+A `Fraction` keeps the conversion rates between two rational sizes exact
+until the rate is rounded to a float, so every such rate is the float nearest
+to the true one. A float is for sizes that are not rational, such as a radian
+in degrees.
 """
 
 Converter: TypeAlias = Callable[[_HasUnitT, _UnitT_co], _HasUnitT]
 """A function that converts a value to a different unit."""
 
 
-def _table_to_graph(
-    conversion_table: ConversionTable[_UnitT_co],
-) -> _ConversionGraph[_UnitT_co]:
-    graph: collections.defaultdict[_UnitT_co, dict[_UnitT_co, float]] = (
-        collections.defaultdict(dict)
-    )
-
-    for (source, target), rate in conversion_table.items():
-        graph[source][target] = rate
-        graph[target][source] = 1 / rate
-
-    return dict(graph)
-
-
-def _get_conversion_rate(
-    source: _UnitT_co,
-    target: _UnitT_co,
-    *,
-    graph: _ConversionGraph[_UnitT_co],
-) -> float | None:
-    if source == target:
-        return 1
-
-    queue = collections.deque([(source, 1.0)])
-    visited = {source}
-
-    while queue:
-        u, u_rate = queue.popleft()
-
-        for v, v_rate in graph.get(u, {}).items():
-            if v in visited:
-                continue
-
-            rate = u_rate * v_rate
-
-            if v == target:
-                return rate
-
-            queue.append((v, rate))
-            visited.add(v)
-
-    return None
-
-
 def make_converter(
-    conversion_table: ConversionTable[_UnitT_co],
+    scale: UnitScale[_UnitT_co],
 ) -> Converter[_HasUnitT, _UnitT_co]:
-    """Create a converter function using the given conversion table.
+    """Create a converter function from the size of each unit.
+
+    Every unit in `scale` converts to every other one. A unit missing from
+    `scale` converts only to itself.
 
     Args:
-        conversion_table: A table of conversion rates.
+        scale: The size of each convertible unit, in a common base unit.
 
     Returns:
         A converter function that can convert between units. The function
@@ -112,22 +71,22 @@ def make_converter(
         a `SvgUnitConversionError` is raised.
 
     """
-    graph = _table_to_graph(conversion_table)
-
-    @functools.cache
-    def get_conversion_rate(
-        source: _UnitT_co, target: _UnitT_co
-    ) -> float | None:
-        return _get_conversion_rate(source, target, graph=graph)
+    rates: dict[tuple[_Unit, _Unit], float] = {
+        (source, target): float(scale[source] / scale[target])
+        for source, target in itertools.product(scale, repeat=2)
+    }
 
     def convert(obj: _HasUnitT, unit: _UnitT_co) -> _HasUnitT:
-        conversion_rate: float | None = get_conversion_rate(obj.unit, unit)
+        if obj.unit == unit:
+            return type(obj)(obj.value, unit)
 
-        if conversion_rate is None:
+        try:
+            rate = rates[obj.unit, unit]
+        except KeyError:
             raise errors.SvgUnitConversionError(
                 original_unit=obj.unit, target_unit=unit
-            )
+            ) from None
 
-        return type(obj)(obj.value * conversion_rate, unit)
+        return type(obj)(obj.value * rate, unit)
 
     return convert

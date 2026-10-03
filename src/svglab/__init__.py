@@ -45,7 +45,7 @@ from typing_extensions import Final as __Final
 from svglab.attrparse.angle import Angle, AngleUnit
 from svglab.attrparse.color import Color
 from svglab.attrparse.iri import FuncIri, Iri
-from svglab.attrparse.length import Length
+from svglab.attrparse.length import DPI, Length
 from svglab.attrparse.path_data import (
     ArcTo,
     ClosePath,
@@ -503,6 +503,7 @@ from svglab.utiltypes import LengthUnit
 
 __all__: __Final = [
     "DEFAULT_FORMATTER",
+    "DPI",
     "MINIMAL_FORMATTER",
     "A",
     "AccentHeightAttr",

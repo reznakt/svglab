@@ -8,7 +8,7 @@ import pydantic
 from typing_extensions import Final, final
 
 from svglab import _resvg, errors, models
-from svglab.attrparse import color
+from svglab.attrparse import color, length
 from svglab.attrs import typedefs
 
 
@@ -35,10 +35,12 @@ class RenderOptions:
     `svglab.resvg.render` directly.
     """
 
-    dpi: typedefs.Number = 96.0
+    dpi: typedefs.Number = length.DPI
     """
     The resolution, in dots per inch, used to convert physical units such as
-    `cm` and `pt` into pixels.
+    `cm` and `pt` into pixels. Any value other than `svglab.DPI` makes the
+    renderer disagree with `Length.to`, so a document whose lengths were
+    converted to user units no longer renders the same as the original.
     """
 
     fantasy_family: str | None = None

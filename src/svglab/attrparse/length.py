@@ -6,6 +6,7 @@ Use `Length` to represent lengths in SVG. Use `LengthType` in Pydantic fields.
 from __future__ import annotations
 
 import contextlib
+import fractions
 from collections.abc import Iterator
 
 import lark
@@ -33,15 +34,26 @@ from svglab import (
 from svglab.attrparse import parse
 
 
+DPI: Final = 96
+"""
+The number of user units (`px`) in an inch.
+
+CSS anchors the physical units to the reference pixel at 96 per inch, and SVG 2
+takes its units from CSS, so `1in` is `96px`, `2.54cm`, `72pt` and `6pc`. SVG
+1.1 left the figure to the user agent; browsers and resvg use 96 as well.
+"""
+
 _convert: Final[units.Converter[Length, utiltypes.LengthUnit]] = (
     units.make_converter(
-        conversion_table={
-            ("in", "cm"): 2.54,
-            ("cm", "mm"): 10,
-            ("pc", "px"): 15,
-            ("pt", "px"): 1.25,
-            (None, "px"): 1,
-            ("mm", "Q"): 4,
+        {
+            None: fractions.Fraction(1),
+            "px": fractions.Fraction(1),
+            "in": fractions.Fraction(DPI),
+            "cm": fractions.Fraction(DPI) / fractions.Fraction("2.54"),
+            "mm": fractions.Fraction(DPI) / fractions.Fraction("25.4"),
+            "Q": fractions.Fraction(DPI) / fractions.Fraction("101.6"),
+            "pt": fractions.Fraction(DPI, 72),
+            "pc": fractions.Fraction(DPI, 6),
         }
     )
 )
@@ -78,6 +90,11 @@ class Length(
 
     If the unit is set to `None`, the length is considered to be in user units.
 
+    The absolute units (`px`, `cm`, `mm`, `Q`, `in`, `pt` and `pc`) convert to
+    user units and to each other, with `DPI` user units to an inch. The
+    relative units depend on the font, the viewport or the parent element, so
+    they do not convert to anything but themselves.
+
     """
 
     value: float
@@ -93,7 +110,8 @@ class Length(
             A new `Length` object with the converted value and new unit.
 
         Raises:
-            SvgUnitConversionError: If the conversion is not possible.
+            SvgUnitConversionError: If either unit is relative, such as `%`
+                or `em`, and the units differ.
 
         Examples:
             >>> length = Length(10, "cm")
@@ -103,6 +121,10 @@ class Length(
             Length(value=2.54, unit='cm')
             >>> Length(1, "in").to("mm")
             Length(value=25.4, unit='mm')
+            >>> Length(1, "in").to(None)
+            Length(value=96.0, unit=None)
+            >>> Length(12, "pt").to("px")
+            Length(value=16.0, unit='px')
 
         """
         return _convert(self, unit)

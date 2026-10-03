@@ -5,6 +5,7 @@ Use `Angle` to represent angles in SVG. Use `AngleType` in Pydantic fields.
 
 from __future__ import annotations
 
+import fractions
 import math
 
 import lark
@@ -26,11 +27,12 @@ from svglab.attrparse import parse
 AngleUnit: TypeAlias = Literal["deg", "grad", "rad", "turn"] | None
 
 _convert: Final[units.Converter[Angle, AngleUnit]] = units.make_converter(
-    conversion_table={
-        ("deg", "grad"): 10 / 9,
-        ("rad", "deg"): 180 / math.pi,
-        ("turn", "deg"): 360,
-        (None, "deg"): 1,
+    {
+        None: fractions.Fraction(1),
+        "deg": fractions.Fraction(1),
+        "grad": fractions.Fraction(9, 10),
+        "turn": fractions.Fraction(360),
+        "rad": 180 / math.pi,
     }
 )
 
