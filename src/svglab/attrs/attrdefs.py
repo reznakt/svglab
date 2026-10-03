@@ -203,7 +203,7 @@ class CursorAttr(Attr):
     cursor: models.Attr[
         typedefs.CursorValue
         | typedefs.Inherit
-        | models.List[typedefs.CursorValue]
+        | models.CommaList[typedefs.CursorValue]
     ] = None
 
 
@@ -379,7 +379,7 @@ class FloodOpacityAttr(Attr):
 
 class FontFamilyAttr(Attr):
     font_family: models.Attr[
-        models.List[typedefs.FamilyName | typedefs.GenericFamily]
+        models.CommaList[typedefs.FamilyName | typedefs.GenericFamily]
         | typedefs.Inherit
     ] = None
 
@@ -402,23 +402,27 @@ class FontSizeAdjustAttr(Attr):
     ] = None
 
 
+_FontStretch: TypeAlias = Literal[
+    "condensed",
+    "expanded",
+    "extra-condensed",
+    "extra-expanded",
+    "narrower",
+    "normal",
+    "semi-condensed",
+    "semi-expanded",
+    "ultra-condensed",
+    "ultra-expanded",
+    "wider",
+]
+
+
 class FontStretchAttr(Attr):
+    # a list only on `font-face`, which describes the stretches a font covers
     font_stretch: models.Attr[
         typedefs.All
-        | Literal[
-            "condensed ",
-            "condensed",
-            "expanded",
-            "extra-condensed",
-            "extra-expanded",
-            "narrower",
-            "normal",
-            "semi-condensed",
-            "semi-expanded",
-            "ultra-condensed",
-            "ultra-expanded",
-            "wider",
-        ]
+        | _FontStretch
+        | models.CommaList[_FontStretch]
         | typedefs.Inherit
     ] = None
 
@@ -426,14 +430,18 @@ class FontStretchAttr(Attr):
 class FontStyleAttr(Attr):
     font_style: models.Attr[
         typedefs.All
-        | models.List[Literal["normal", "italic", "oblique"]]
+        | models.CommaList[Literal["normal", "italic", "oblique"]]
         | typedefs.Inherit
     ] = None
 
 
+_FontVariant: TypeAlias = Literal["normal", "small-caps"]
+
+
 class FontVariantAttr(Attr):
+    # a list only on `font-face`, which describes the variants a font covers
     font_variant: models.Attr[
-        Literal["normal", "small-caps"] | typedefs.Inherit
+        _FontVariant | models.CommaList[_FontVariant] | typedefs.Inherit
     ] = None
 
 
@@ -449,7 +457,7 @@ class FontWeightAttr(Attr):
     font_weight: models.Attr[
         typedefs.All
         | typedefs.Inherit
-        | models.List[
+        | models.CommaList[
             Literal["normal", "bold", "bolder", "lighter"] | _FontWeightInt
         ]
     ] = None
@@ -476,15 +484,15 @@ class FyAttr(Attr):
 
 
 class G1Attr(Attr):
-    g1: models.Attr[typedefs.ListOfNames] = None
+    g1: models.Attr[models.CommaList[typedefs.Name]] = None
 
 
 class G2Attr(Attr):
-    g2: models.Attr[typedefs.ListOfNames] = None
+    g2: models.Attr[models.CommaList[typedefs.Name]] = None
 
 
 class GlyphNameAttr(Attr):
-    glyph_name: models.Attr[typedefs.ListOfNames] = None
+    glyph_name: models.Attr[models.CommaList[typedefs.Name]] = None
 
 
 class GlyphOrientationHorizontalAttr(Attr):
@@ -993,13 +1001,13 @@ class RadiusAttr(Attr):
 
 
 class RefXAttr(Attr):
-    ref_x: models.Attr[
+    refX: models.Attr[
         Literal["left", "center", "right"] | typedefs.Coordinate
     ] = None
 
 
 class RefYAttr(Attr):
-    ref_y: models.Attr[
+    refY: models.Attr[
         Literal["top", "center", "bottom"] | typedefs.Coordinate
     ] = None
 
@@ -1348,15 +1356,15 @@ class TypeFeTurbluenceAttr(Attr):
 
 
 class U1Attr(Attr):
-    u1: models.Attr[models.List[typedefs.Character | typedefs.Urange]] = (
-        None
-    )
+    u1: models.Attr[
+        models.CommaList[typedefs.Character | typedefs.Urange]
+    ] = None
 
 
 class U2Attr(Attr):
-    u2: models.Attr[models.List[typedefs.Character | typedefs.Urange]] = (
-        None
-    )
+    u2: models.Attr[
+        models.CommaList[typedefs.Character | typedefs.Urange]
+    ] = None
 
 
 class UnderlinePositionAttr(Attr):
@@ -1378,7 +1386,7 @@ class UnicodeBidiAttr(Attr):
 
 
 class UnicodeRangeAttr(Attr):
-    unicode_range: models.Attr[models.List[typedefs.Urange]] = None
+    unicode_range: models.Attr[models.CommaList[typedefs.Urange]] = None
 
 
 class UnitsPerEmAttr(Attr):
@@ -1478,7 +1486,7 @@ class WidthAttr(Attr):
 
 class WidthsAttr(Attr):
     widths: models.Attr[
-        models.List[
+        models.CommaList[
             typedefs.Urange
             | models.Tuple2[typedefs.Urange, typedefs.Number]
         ]

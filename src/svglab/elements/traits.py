@@ -18,7 +18,7 @@ import abc
 
 from typing_extensions import Protocol
 
-from svglab import entities, graphics, models
+from svglab import entities, graphics, models, reify
 from svglab.attrparse import path_data
 from svglab.attrs import attrdefs, attrgroups
 
@@ -91,7 +91,7 @@ class _GraphicalOperations(Element):
 class GraphicsElement(
     _GraphicalOperations,
     attrgroups.GraphicalEventsAttrs,
-    entities.StrokeWidthScaled,
+    reify.StrokeWidthScaled,
     Element,
 ):
     """A graphics element.
@@ -139,7 +139,7 @@ class Shape(attrdefs.PathLengthAttr, GraphicsElement):
             raise RuntimeError("Current pathLength must not be None")
 
         ratio = value / self.pathLength
-        entities.scale_distance_along_a_path_attrs(self, ratio)
+        reify.scale_distance_along_a_path_attrs(self, ratio)
 
         self.pathLength = value
 
@@ -177,6 +177,9 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
         as the original basic shape. The `Path` element will have the same
         attributes as the original basic shape.
 
+        The resulting element is detached from the element tree; its parent is
+        `None`, and it holds deep copies of the children of this shape.
+
         Returns:
             A `Path` element representing the basic shape.
 
@@ -187,6 +190,8 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
 class AnimationElement(
     attrgroups.AnimationEventsAttrs,
     attrgroups.AnimationTimingAttrs,
+    reify.Animation,
+    reify.RenderedIndirectly,
     Element,
 ):
     """An animation element.
@@ -208,7 +213,7 @@ class ContainerElement(
     """
 
 
-class DescriptiveElement(Element):
+class DescriptiveElement(reify.RenderedIndirectly, Element):
     """A descriptive element.
 
     From the SVG 1.1 specification:
@@ -217,7 +222,9 @@ class DescriptiveElement(Element):
     """
 
 
-class FilterPrimitiveElement(attrgroups.FilterPrimitivesAttrs, Element):
+class FilterPrimitiveElement(
+    attrgroups.FilterPrimitivesAttrs, reify.RenderedIndirectly, Element
+):
     """A filter primitive element.
 
     From the SVG 1.1 specification:
@@ -226,7 +233,12 @@ class FilterPrimitiveElement(attrgroups.FilterPrimitivesAttrs, Element):
     """
 
 
-class GradientElement(Element):
+class GradientElement(
+    reify.SimilarityGeometry,
+    reify.PercentageDefaults,
+    reify.RenderedIndirectly,
+    Element,
+):
     """A gradient element.
 
     From the SVG 1.1 specification:
@@ -243,7 +255,7 @@ class GraphicsReferencingElement(Element):
     """
 
 
-class LightSourceElement(Element):
+class LightSourceElement(reify.RenderedIndirectly, Element):
     """A light source element.
 
     From the SVG 1.1 specification:
@@ -261,7 +273,12 @@ class StructuralElement(Element):
     """
 
 
-class TextContentElement(GraphicsElement):
+class TextContentElement(
+    reify.UniformlyScalableGeometry,
+    reify.TransformInheritedByChildren,
+    reify.FontSizeScaled,
+    GraphicsElement,
+):
     """A text content element.
 
     From the SVG 1.1 specification:
