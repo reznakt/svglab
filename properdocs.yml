@@ -173,6 +173,7 @@ extra_css:
   - css/mathjax.css
 
 extra:
+  generator: false
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/reznakt/svglab
