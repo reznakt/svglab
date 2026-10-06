@@ -4,7 +4,7 @@ import copy
 import functools
 import re
 import reprlib
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 
 import pydantic
 from typing_extensions import (
@@ -160,6 +160,44 @@ def _parse_list(
     return collection(result)
 
 
+_QUOTED_OR_UNSEPARATED: Final = re.compile(
+    r"""(?:"[^"]*"|'[^']*'|[^,])+"""
+)
+
+
+def _parse_comma_separated_list(text: str, /) -> Iterator[str]:
+    """Lazily parse a string into strings separated by commas.
+
+    Whitespace around an item is dropped, whitespace inside it is kept, and a
+    comma inside a quoted string does not separate anything.
+
+    Args:
+        text: The string to parse.
+
+    Returns:
+        An iterator over the items.
+
+    Examples:
+        >>> list(_parse_comma_separated_list("Arial, sans-serif"))
+        ['Arial', 'sans-serif']
+        >>> list(_parse_comma_separated_list("Times New Roman,serif"))
+        ['Times New Roman', 'serif']
+        >>> list(_parse_comma_separated_list("'Foo, Bar', serif"))
+        ["'Foo, Bar'", 'serif']
+        >>> list(_parse_comma_separated_list(""))
+        []
+
+    """
+    # the regex is only needed to keep quoted commas together; a plain split
+    # is several times faster on the common unquoted case
+    parts = (
+        _QUOTED_OR_UNSEPARATED.findall(text)
+        if "'" in text or '"' in text
+        else text.split(",")
+    )
+    return (item for part in parts if (item := part.strip()))
+
+
 def _get_validator(
     func: Callable[[str], object], /
 ) -> pydantic.BeforeValidator:
@@ -174,6 +212,17 @@ List: TypeAlias = Annotated[
     _get_validator(functools.partial(_parse_list, collection=list)),
 ]
 """Pydantic field for a list of strings. Uses `_parse_list` as a validator."""
+
+CommaList: TypeAlias = Annotated[
+    list[_T],
+    # strict mode only accepts an actual list, so materialize it here
+    _get_validator(lambda text: list(_parse_comma_separated_list(text))),
+]
+"""Pydantic field for a list of strings separated by commas.
+
+Uses `_parse_comma_separated_list` as a validator. The attribute must also be
+listed in `serialize._COMMA_SEPARATED_ATTRS` to be serialized with commas.
+"""
 
 Tuple: TypeAlias = Annotated[
     _T, _get_validator(functools.partial(_parse_list, collection=tuple))
