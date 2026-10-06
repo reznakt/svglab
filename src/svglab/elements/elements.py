@@ -1020,6 +1020,16 @@ class Rect(
         rx = min(rx, width / 2, key=float)
         ry = min(ry, height / 2, key=float)
 
+        if not rx or not ry:
+            return (
+                path_data.PathData()
+                .move_to(point.Point(x, y))
+                .horizontal_line_to(x + width)
+                .vertical_line_to(y + height)
+                .horizontal_line_to(x)
+                .close()
+            )
+
         return (
             path_data.PathData()
             .move_to(point.Point(x + rx, y))
@@ -1055,6 +1065,7 @@ class Rect(
                 large=False,
                 sweep=True,
             )
+            .close()
         )
 
     @override
