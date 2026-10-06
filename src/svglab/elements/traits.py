@@ -177,6 +177,9 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
         as the original basic shape. The `Path` element will have the same
         attributes as the original basic shape.
 
+        The resulting element is detached from the element tree; its parent is
+        `None`, and it holds deep copies of the children of this shape.
+
         Returns:
             A `Path` element representing the basic shape.
 
