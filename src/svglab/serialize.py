@@ -576,7 +576,8 @@ def _serialize_number(
         exponent = math.floor(math.log10(abs_value))
         number = abs_value / 10**exponent
 
-    result = str(number)
+    # `z` is `str()` except that it drops the sign of a negative zero
+    result = format(number, "z")
 
     if not formatter.show_decimal_part_if_int:
         result = result.removesuffix(".0")
