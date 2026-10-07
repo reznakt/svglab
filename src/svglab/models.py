@@ -13,6 +13,7 @@ from typing_extensions import (
     Final,
     TypeAlias,
     TypeVar,
+    TypeVarTuple,
     dataclass_transform,
     overload,
     override,
@@ -25,10 +26,7 @@ _ListOrTupleT = TypeVar("_ListOrTupleT", list[str], tuple[str])
 _BaseModelT = TypeVar("_BaseModelT", bound=pydantic.BaseModel)
 _ClsT = TypeVar("_ClsT", bound=type)
 
-_T1 = TypeVar("_T1")
-_T2 = TypeVar("_T2")
-_T3 = TypeVar("_T3")
-_T4 = TypeVar("_T4")
+_Ts = TypeVarTuple("_Ts")
 
 
 Attr: TypeAlias = _T_co | None
@@ -176,16 +174,10 @@ List: TypeAlias = Annotated[
 """Pydantic field for a list of strings. Uses `_parse_list` as a validator."""
 
 Tuple: TypeAlias = Annotated[
-    _T, _get_validator(functools.partial(_parse_list, collection=tuple))
+    tuple[*_Ts],
+    _get_validator(functools.partial(_parse_list, collection=tuple)),
 ]
 """Pydantic field for a tuple of strings. Uses `_parse_list` as a validator."""
-
-# unfortunately, there doesn't seem to be a better way to do this
-# see https://github.com/python/typing/issues/779
-Tuple1: TypeAlias = Tuple[tuple[_T1]]
-Tuple2: TypeAlias = Tuple[tuple[_T1, _T2]]
-Tuple3: TypeAlias = Tuple[tuple[_T1, _T2, _T3]]
-Tuple4: TypeAlias = Tuple[tuple[_T1, _T2, _T3, _T4]]
 
 
 class BaseModel(pydantic.BaseModel):

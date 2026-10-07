@@ -113,7 +113,7 @@ ListOfNumbers: TypeAlias = models.List[Number]
 ListOfStrings: TypeAlias = models.List[Anything]
 Miterlimit: TypeAlias = Annotated[Number, pydantic.Field(ge=1)]
 NumericValue: TypeAlias = Number
-NumberOptionalNumber: TypeAlias = Number | models.Tuple2[Number, Number]
+NumberOptionalNumber: TypeAlias = Number | models.Tuple[Number, Number]
 OpacityValue: TypeAlias = Annotated[
     Number,
     pydantic.AfterValidator(
@@ -137,7 +137,7 @@ _TransformOriginValue: TypeAlias = (
 )
 TransformOrigin: TypeAlias = (
     _TransformOriginValue
-    | models.Tuple2[_TransformOriginValue, _TransformOriginValue]
-    | models.Tuple3[_TransformOriginValue, _TransformOriginValue, Length]
+    | models.Tuple[_TransformOriginValue, _TransformOriginValue]
+    | models.Tuple[_TransformOriginValue, _TransformOriginValue, Length]
 )
 Dasharray: TypeAlias = models.List[Length | Percentage]

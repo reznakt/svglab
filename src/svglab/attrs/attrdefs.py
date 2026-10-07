@@ -96,7 +96,7 @@ class BaseProfileAttr(Attr):
 
 class BboxAttr(Attr):
     bbox: models.Attr[
-        models.Tuple4[
+        models.Tuple[
             typedefs.Number,
             typedefs.Number,
             typedefs.Number,
@@ -884,18 +884,16 @@ class PaintOrderAttr(Attr):
 class Panose1Attr(Attr):
     panose1: models.Attr[
         models.Tuple[
-            tuple[
-                typedefs.Integer,
-                typedefs.Integer,
-                typedefs.Integer,
-                typedefs.Integer,
-                typedefs.Integer,
-                typedefs.Integer,
-                typedefs.Integer,
-                typedefs.Integer,
-                typedefs.Integer,
-                typedefs.Integer,
-            ]
+            typedefs.Integer,
+            typedefs.Integer,
+            typedefs.Integer,
+            typedefs.Integer,
+            typedefs.Integer,
+            typedefs.Integer,
+            typedefs.Integer,
+            typedefs.Integer,
+            typedefs.Integer,
+            typedefs.Integer,
         ]
     ] = None
 
@@ -1439,7 +1437,7 @@ class VertOriginYAttr(Attr):
 
 class ViewBoxAttr(Attr):
     viewBox: models.Attr[
-        models.Tuple4[
+        models.Tuple[
             typedefs.Number,
             typedefs.Number,
             typedefs.Number,
@@ -1480,7 +1478,7 @@ class WidthsAttr(Attr):
     widths: models.Attr[
         models.List[
             typedefs.Urange
-            | models.Tuple2[typedefs.Urange, typedefs.Number]
+            | models.Tuple[typedefs.Urange, typedefs.Number]
         ]
     ] = None
 
