@@ -3,17 +3,15 @@
 import pydantic
 from typing_extensions import Annotated, Literal, TypeAlias
 
-from svglab import models
-from svglab.attrparse import (
-    angle,
-    color,
-    iri,
-    length,
-    path_data,
-    points,
-    transform,
-)
-from svglab.utils import mathutils
+from svglab.attrparse.angle import AngleType
+from svglab.attrparse.color import ColorType
+from svglab.attrparse.iri import FuncIriType, IriType
+from svglab.attrparse.length import LengthType
+from svglab.attrparse.path_data import PathDataType
+from svglab.attrparse.points import PointsType
+from svglab.attrparse.transform import TransformType
+from svglab.models import List, Tuple
+from svglab.utils.mathutils import clamp
 
 
 Unparsed: TypeAlias = str
@@ -56,21 +54,21 @@ AbsoluteSize: TypeAlias = Literal[
     "x-large",
     "xx-large",
 ]
-Angle: TypeAlias = angle.AngleType
+Angle: TypeAlias = AngleType
 Anything: TypeAlias = str
 Boolean: TypeAlias = bool
 Character: TypeAlias = Annotated[
     str, pydantic.Field(min_length=1, max_length=1)
 ]
-Color: TypeAlias = color.ColorType
-FuncIri: TypeAlias = iri.FuncIriType
+Color: TypeAlias = ColorType
+FuncIri: TypeAlias = FuncIriType
 ImageRendering: TypeAlias = Literal["optimizeSpeed", "optimizeQuality"]
 Integer: TypeAlias = int
-Iri: TypeAlias = iri.IriType
-Length: TypeAlias = length.LengthType
-ListOfPoints: TypeAlias = points.PointsType
+Iri: TypeAlias = IriType
+Length: TypeAlias = LengthType
+ListOfPoints: TypeAlias = PointsType
 Number: TypeAlias = pydantic.FiniteFloat
-PathData: TypeAlias = path_data.PathDataType
+PathData: TypeAlias = PathDataType
 RelativeSize: TypeAlias = Literal["smaller", "larger"]
 ShapeRendering: TypeAlias = Literal[
     "optimizeSpeed", "crispEdges", "geometricPrecision"
@@ -78,7 +76,7 @@ ShapeRendering: TypeAlias = Literal[
 TextRendering: TypeAlias = Literal[
     "optimizeSpeed", "optimizeLegibility", "geometricPrecision"
 ]
-TransformList: TypeAlias = transform.TransformType
+TransformList: TypeAlias = TransformType
 
 
 # composite types
@@ -104,21 +102,19 @@ CursorValue: TypeAlias = (
         "help",
     ]
 )
-ListOfCoordinates: TypeAlias = models.List[Coordinate]
-ListOfExtensions: TypeAlias = models.List[Iri]
-ListOfFeatures: TypeAlias = models.List[Unparsed]
-ListOfLengths: TypeAlias = models.List[Length]
-ListOfNames: TypeAlias = models.List[Name]
-ListOfNumbers: TypeAlias = models.List[Number]
-ListOfStrings: TypeAlias = models.List[Anything]
+ListOfCoordinates: TypeAlias = List[Coordinate]
+ListOfExtensions: TypeAlias = List[Iri]
+ListOfFeatures: TypeAlias = List[Unparsed]
+ListOfLengths: TypeAlias = List[Length]
+ListOfNames: TypeAlias = List[Name]
+ListOfNumbers: TypeAlias = List[Number]
+ListOfStrings: TypeAlias = List[Anything]
 Miterlimit: TypeAlias = Annotated[Number, pydantic.Field(ge=1)]
 NumericValue: TypeAlias = Number
-NumberOptionalNumber: TypeAlias = Number | models.Tuple[Number, Number]
+NumberOptionalNumber: TypeAlias = Number | Tuple[Number, Number]
 OpacityValue: TypeAlias = Annotated[
     Number,
-    pydantic.AfterValidator(
-        lambda x: mathutils.clamp(x, min_value=0, max_value=1)
-    ),
+    pydantic.AfterValidator(lambda x: clamp(x, min_value=0, max_value=1)),
 ]
 Paint: TypeAlias = (
     None_
@@ -137,7 +133,7 @@ _TransformOriginValue: TypeAlias = (
 )
 TransformOrigin: TypeAlias = (
     _TransformOriginValue
-    | models.Tuple[_TransformOriginValue, _TransformOriginValue]
-    | models.Tuple[_TransformOriginValue, _TransformOriginValue, Length]
+    | Tuple[_TransformOriginValue, _TransformOriginValue]
+    | Tuple[_TransformOriginValue, _TransformOriginValue, Length]
 )
-Dasharray: TypeAlias = models.List[Length | Percentage]
+Dasharray: TypeAlias = List[Length | Percentage]

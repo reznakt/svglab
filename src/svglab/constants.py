@@ -3,12 +3,10 @@
 import typing_extensions
 from typing_extensions import Final
 
-from svglab import utiltypes
+from svglab.utiltypes import Xmlns
 
 
-SVG_XMLNS: Final[utiltypes.Xmlns] = typing_extensions.get_args(
-    utiltypes.Xmlns
-)[0]
+SVG_XMLNS: Final[Xmlns] = typing_extensions.get_args(Xmlns)[0]
 """The value of the `xmlns` attribute."""
 
 FLOAT_RELATIVE_TOLERANCE: Final = 1e-9

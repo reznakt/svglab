@@ -6,7 +6,9 @@ import pydantic.dataclasses
 import pytest
 
 import svglab
-from svglab.elements import traits
+from svglab import Circle
+from svglab import Element as BaseElement
+from svglab.elements.traits import Element as ElementTrait
 
 
 def _import_all_modules() -> None:
@@ -71,14 +73,14 @@ def test_dataclass_builds(dataclass: type) -> None:
 
 
 def test_all_models_collected() -> None:
-    assert svglab.Circle in _MODELS
-    assert svglab.Element in _MODELS
+    assert Circle in _MODELS
+    assert BaseElement in _MODELS
     assert _DATACLASSES
 
 
 def test_element_subclass_outside_svglab() -> None:
     # `Entity.parent` refers to `Element`, which is not in scope here
-    class Custom(traits.Element):
+    class Custom(ElementTrait):
         pass
 
     assert Custom().parent is None

@@ -1,7 +1,7 @@
 import pytest
 from typing_extensions import Literal
 
-import svglab
+from svglab import Formatter, PathData
 
 
 @pytest.mark.parametrize(
@@ -12,9 +12,9 @@ import svglab
 def test_consecutive_movetos_survive_a_roundtrip(
     d: str, coordinates: Literal["absolute", "relative"]
 ) -> None:
-    original = svglab.PathData.from_str(d)
+    original = PathData.from_str(d)
 
-    with svglab.Formatter(path_data_coordinates=coordinates):
+    with Formatter(path_data_coordinates=coordinates):
         serialized = original.serialize()
 
-    assert svglab.PathData.from_str(serialized) == original
+    assert PathData.from_str(serialized) == original

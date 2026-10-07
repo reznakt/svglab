@@ -21,39 +21,32 @@ from typing_extensions import (
     override,
 )
 
-from svglab import (
-    errors,
-    mixins,
-    models,
-    protocols,
-    serialize,
-    units,
-    utiltypes,
-)
-from svglab.attrparse import parse
+from svglab.attrparse.parse import FiniteFloat, get_validator, inline_args
+from svglab.errors import SvgUnitConversionError
+from svglab.mixins import AddSub, FloatMulDiv
+from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.protocols import CustomSerializable
+from svglab.serialize import get_current_formatter, serialize
+from svglab.units import Converter, make_converter
+from svglab.utiltypes import LengthUnit
 
 
-_convert: Final[units.Converter[Length, utiltypes.LengthUnit]] = (
-    units.make_converter(
-        conversion_table={
-            ("in", "cm"): 2.54,
-            ("cm", "mm"): 10,
-            ("pc", "px"): 15,
-            ("pt", "px"): 1.25,
-            (None, "px"): 1,
-            ("mm", "Q"): 4,
-        }
-    )
+_convert: Final[Converter[Length, LengthUnit]] = make_converter(
+    conversion_table={
+        ("in", "cm"): 2.54,
+        ("cm", "mm"): 10,
+        ("pc", "px"): 15,
+        ("pt", "px"): 1.25,
+        (None, "px"): 1,
+        ("mm", "Q"): 4,
+    }
 )
 
 
 @final
-@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
+@dataclass(frozen=True, config=DATACLASS_CONFIG)
 class Length(
-    mixins.AddSub["Length"],
-    mixins.FloatMulDiv,
-    SupportsFloat,
-    protocols.CustomSerializable,
+    AddSub["Length"], FloatMulDiv, SupportsFloat, CustomSerializable
 ):
     """Represents the SVG `<length>` type.
 
@@ -81,9 +74,9 @@ class Length(
     """
 
     value: float
-    unit: utiltypes.LengthUnit = None
+    unit: LengthUnit = None
 
-    def to(self, unit: utiltypes.LengthUnit) -> Length:
+    def to(self, unit: LengthUnit) -> Length:
         """Convert the length to a different unit.
 
         Args:
@@ -109,8 +102,8 @@ class Length(
 
     @override
     def serialize(self) -> str:
-        formatter = serialize.get_current_formatter()
-        units: Iterator[utiltypes.LengthUnit | Literal["preserve"]] = (
+        formatter = get_current_formatter()
+        units: Iterator[LengthUnit | Literal["preserve"]] = (
             more_itertools.always_iterable(formatter.length_unit)
         )
         converted = self
@@ -119,13 +112,11 @@ class Length(
             if unit == "preserve":
                 break
 
-            with contextlib.suppress(errors.SvgUnitConversionError):
+            with contextlib.suppress(SvgUnitConversionError):
                 converted = self.to(unit)
                 break
 
-        value = serialize.serialize(
-            converted.value, precision_group="coordinate"
-        )
+        value = serialize(converted.value, precision_group="coordinate")
 
         return f"{value}{converted.unit or ''}"
 
@@ -152,13 +143,13 @@ class Length(
         return self.to(None).value
 
 
-@parse.inline_args
+@inline_args
 class _Transformer(lark.Transformer[object, Length]):
-    number = parse.FiniteFloat
+    number = FiniteFloat
     length = Length
 
 
 LengthType: TypeAlias = Annotated[
     Length,
-    parse.get_validator(grammar="length.lark", transformer=_Transformer()),
+    get_validator(grammar="length.lark", transformer=_Transformer()),
 ]

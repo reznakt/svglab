@@ -22,25 +22,37 @@ from typing_extensions import (
     override,
 )
 
-from svglab import mixins, models, protocols, serialize
-from svglab.attrparse import parse, transform
-from svglab.utils import mathutils, miscutils
+from svglab.attrparse.parse import FiniteFloat, get_validator, inline_args
+from svglab.attrparse.transform import (
+    PointAddSubWithTranslateRMatmul,
+    TransformFunction,
+)
+from svglab.mixins import FloatMulDiv
+from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.protocols import (
+    CustomSerializable,
+    PointLike,
+    SupportsFloatOrIndex,
+)
+from svglab.serialize import serialize_point
+from svglab.utils.mathutils import is_close
+from svglab.utils.miscutils import basic_compare
 
 
-@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
+@dataclass(frozen=True, config=DATACLASS_CONFIG)
 class _Point(
     SupportsComplex,
-    mixins.FloatMulDiv,
-    transform.PointAddSubWithTranslateRMatmul,
-    protocols.PointLike,
-    protocols.CustomSerializable,
+    FloatMulDiv,
+    PointAddSubWithTranslateRMatmul,
+    PointLike,
+    CustomSerializable,
 ):
     x: float
     y: float
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize_point(self)
+        return serialize_point(self)
 
     @classmethod
     def from_complex(cls, value: complex, /) -> Self:
@@ -82,7 +94,7 @@ class _Point(
         return type(self)(self.x * scalar, self.y * scalar)
 
     @override
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+    def __rmatmul__(self, other: TransformFunction) -> Self:
         a, b, c, d, e, f = other.to_matrix().to_tuple()
 
         x = a * self.x + c * self.y + e
@@ -92,12 +104,10 @@ class _Point(
 
     @override
     def __eq__(self, other: object) -> bool:
-        if not miscutils.basic_compare(other, self=self):
+        if not basic_compare(other, self=self):
             return False
 
-        return mathutils.is_close(self.x, other.x) and mathutils.is_close(
-            self.y, other.y
-        )
+        return is_close(self.x, other.x) and is_close(self.y, other.y)
 
     @override
     def __hash__(self) -> int:
@@ -148,21 +158,17 @@ class Point(_Point):
 
     @override
     def __init__(
-        self,
-        x: protocols.SupportsFloatOrIndex,
-        y: protocols.SupportsFloatOrIndex,
-        /,
+        self, x: SupportsFloatOrIndex, y: SupportsFloatOrIndex, /
     ) -> None:
         super().__init__(float(x), float(y))
 
 
-@parse.inline_args
+@inline_args
 class _Transformer(lark.Transformer[object, Point]):
-    number = parse.FiniteFloat
+    number = FiniteFloat
     point = Point
 
 
 PointType: TypeAlias = Annotated[
-    Point,
-    parse.get_validator(grammar="point.lark", transformer=_Transformer()),
+    Point, get_validator(grammar="point.lark", transformer=_Transformer())
 ]

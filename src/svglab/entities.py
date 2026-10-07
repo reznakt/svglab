@@ -32,23 +32,84 @@ from typing_extensions import (
     override,
 )
 
-from svglab import constants, errors, models, serialize
-from svglab.attrparse import iri, length, transform
-from svglab.attrs import attrdefs, attrgroups
-from svglab.attrs import names as attr_names
-from svglab.elements import names
-from svglab.utils import bsutils, iterutils, mathutils, miscutils
+from svglab.attrparse.iri import FuncIri, Iri
+from svglab.attrparse.length import Length
+from svglab.attrparse.transform import (
+    Reifiable,
+    Rotate,
+    Scale,
+    SkewX,
+    SkewY,
+    Transform,
+    TransformFunction,
+    Translate,
+    decompose_matrices,
+)
+from svglab.attrs.attrdefs import (
+    CxAttr,
+    CyAttr,
+    DAttr,
+    DxListOfLengthsAttr,
+    DyListOfLengthsAttr,
+    FontSizeAttr,
+    FxAttr,
+    FyAttr,
+    GradientUnitsAttr,
+    HeightAttr,
+    OffsetNumberPercentageAttr,
+    PathLengthAttr,
+    PatternUnitsAttr,
+    PointsAttr,
+    RAttr,
+    RxAttr,
+    RyAttr,
+    StrokeDasharrayAttr,
+    StrokeDashoffsetAttr,
+    StrokeWidthAttr,
+    TextLengthAttr,
+    VectorEffectAttr,
+    WidthAttr,
+    X1Attr,
+    X2Attr,
+    XCoordinateAttr,
+    XListOfCoordinatesAttr,
+    XNumberAttr,
+    Y1Attr,
+    Y2Attr,
+    YCoordinateAttr,
+    YListOfCoordinatesAttr,
+    YNumberAttr,
+)
+from svglab.attrs.attrgroups import CoreAttrs, PresentationAttrs
+from svglab.attrs.names import ATTR_NAME_TO_NORMALIZED, AttributeName
+from svglab.constants import SVG_XMLNS
+from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED, ElementName
+from svglab.errors import (
+    SvgElementNotFoundError,
+    SvgTransformOriginError,
+    SvgTransformSwapError,
+)
+from svglab.models import BaseModel
+from svglab.serialize import (
+    Formatter,
+    get_current_formatter,
+    serialize_attr,
+)
+from svglab.utils.bsutils import beautifulsoup_to_str
+from svglab.utils.iterutils import search_by_reference, take_last
+from svglab.utils.mathutils import arctan, is_close, tan
+from svglab.utils.miscutils import basic_compare
 
 
 _T = TypeVar("_T")
 _ElementT = TypeVar("_ElementT", bound="Element")
-_TransformT1 = TypeVar("_TransformT1", bound=transform.TransformFunction)
-_TransformT2 = TypeVar("_TransformT2", bound=transform.TransformFunction)
+_TransformT1 = TypeVar("_TransformT1", bound=TransformFunction)
+_TransformT2 = TypeVar("_TransformT2", bound=TransformFunction)
 
 _EMPTY_PARAM: Final = object()
 """A sentinel value for an empty parameter."""
 
-_REFERENCE_ATTR_NAMES: Final[tuple[attr_names.AttributeName, ...]] = (
+_REFERENCE_ATTR_NAMES: Final[tuple[AttributeName, ...]] = (
     "xlink:href",
     "href",
     "fill",
@@ -64,7 +125,7 @@ class StrokeWidthScaled:
 
 
 def _match_element(
-    element: Element, /, *, search: type[Element] | names.ElementName | str
+    element: Element, /, *, search: type[Element] | ElementName | str
 ) -> bool:
     """Check if an element matches the given search criteria.
 
@@ -119,9 +180,9 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
 
     """
     match attr:
-        case length.Length(_, "%"):
+        case Length(_, "%"):
             return attr
-        case int() | float() | length.Length():
+        case int() | float() | Length():
             return cast(_T, attr * by)
         case list() | tuple():
             items = cast(list[object] | tuple[object, ...], attr)
@@ -132,9 +193,7 @@ def _scale_attr(attr: _T, /, by: float) -> _T:
             return attr
 
 
-def _inherited_stroke_width(
-    element: attrdefs.StrokeWidthAttr, /
-) -> length.Length:
+def _inherited_stroke_width(element: StrokeWidthAttr, /) -> Length:
     """Resolve the `stroke-width` that the element inherits.
 
     `stroke-width` is an inherited property. An element that does not
@@ -171,14 +230,12 @@ def _inherited_stroke_width(
             if stroke_width is not None and stroke_width != "inherit":
                 return stroke_width
 
-    return length.Length(1)
+    return Length(1)
 
 
-def _scale_stroke_width(
-    element: attrdefs.StrokeWidthAttr, by: float
-) -> None:
+def _scale_stroke_width(element: StrokeWidthAttr, by: float) -> None:
     if (
-        isinstance(element, attrdefs.VectorEffectAttr)
+        isinstance(element, VectorEffectAttr)
         and element.vector_effect == "non-scaling-stroke"
     ):
         return
@@ -201,12 +258,10 @@ def _scale_stroke_width(
     # if stroke-width was not set and the scaled value is equal to the value
     # the element inherits anyway, remove the attribute
     if (
-        isinstance(inherited, length.Length)
-        and isinstance(element.stroke_width, length.Length)
+        isinstance(inherited, Length)
+        and isinstance(element.stroke_width, Length)
         and element.stroke_width.unit == inherited.unit
-        and mathutils.is_close(
-            float(element.stroke_width), float(inherited)
-        )
+        and is_close(float(element.stroke_width), float(inherited))
     ):
         element.stroke_width = None
 
@@ -223,99 +278,96 @@ def scale_distance_along_a_path_attrs(element: object, by: float) -> None:
         by: The factor by which to scale the attributes.
 
     """
-    if isinstance(element, attrdefs.StrokeDasharrayAttr) and isinstance(
+    if isinstance(element, StrokeDasharrayAttr) and isinstance(
         element.stroke_dasharray, list
     ):
         element.stroke_dasharray = [
             _scale_attr(dash, by) for dash in element.stroke_dasharray
         ]
-    if isinstance(element, attrdefs.StrokeDashoffsetAttr):
+    if isinstance(element, StrokeDashoffsetAttr):
         element.stroke_dashoffset = _scale_attr(
             element.stroke_dashoffset, by
         )
 
 
-def _scale(element: object, scale: transform.Scale) -> None:  # noqa: PLR0915
-    if not mathutils.is_close(scale.sx, scale.sy):
+def _scale(element: object, scale: Scale) -> None:  # noqa: PLR0915
+    if not is_close(scale.sx, scale.sy):
         raise ValueError("Non-uniform scaling is not supported.")
 
     factor = scale.sx
 
-    if mathutils.is_close(factor, 1):
+    if is_close(factor, 1):
         return
 
-    if isinstance(element, attrdefs.WidthAttr):
+    if isinstance(element, WidthAttr):
         element.width = _scale_attr(element.width, factor)
-    if isinstance(element, attrdefs.HeightAttr):
+    if isinstance(element, HeightAttr):
         element.height = _scale_attr(element.height, factor)
-    if isinstance(element, attrdefs.RAttr):
+    if isinstance(element, RAttr):
         element.r = _scale_attr(element.r, factor)
-    if isinstance(element, attrdefs.X1Attr):
+    if isinstance(element, X1Attr):
         element.x1 = _scale_attr(element.x1, factor)
-    if isinstance(element, attrdefs.Y1Attr):
+    if isinstance(element, Y1Attr):
         element.y1 = _scale_attr(element.y1, factor)
-    if isinstance(element, attrdefs.X2Attr):
+    if isinstance(element, X2Attr):
         element.x2 = _scale_attr(element.x2, factor)
-    if isinstance(element, attrdefs.Y2Attr):
+    if isinstance(element, Y2Attr):
         element.y2 = _scale_attr(element.y2, factor)
-    if isinstance(element, attrdefs.RxAttr):
+    if isinstance(element, RxAttr):
         element.rx = _scale_attr(element.rx, factor)
-    if isinstance(element, attrdefs.RyAttr):
+    if isinstance(element, RyAttr):
         element.ry = _scale_attr(element.ry, factor)
-    if isinstance(element, attrdefs.CxAttr):
+    if isinstance(element, CxAttr):
         element.cx = _scale_attr(element.cx, factor)
-    if isinstance(element, attrdefs.CyAttr):
+    if isinstance(element, CyAttr):
         element.cy = _scale_attr(element.cy, factor)
-    if isinstance(element, attrdefs.FxAttr):
+    if isinstance(element, FxAttr):
         element.fx = _scale_attr(element.fx, factor)
-    if isinstance(element, attrdefs.FyAttr):
+    if isinstance(element, FyAttr):
         element.fy = _scale_attr(element.fy, factor)
-    if isinstance(element, attrdefs.FontSizeAttr):
+    if isinstance(element, FontSizeAttr):
         element.font_size = _scale_attr(element.font_size, factor)
-    if isinstance(element, attrdefs.DxListOfLengthsAttr):
+    if isinstance(element, DxListOfLengthsAttr):
         element.dx = _scale_attr(element.dx, factor)
-    if isinstance(element, attrdefs.DyListOfLengthsAttr):
+    if isinstance(element, DyListOfLengthsAttr):
         element.dy = _scale_attr(element.dy, factor)
-    if isinstance(element, attrdefs.TextLengthAttr):
+    if isinstance(element, TextLengthAttr):
         element.textLength = _scale_attr(element.textLength, factor)
-    if (
-        isinstance(element, attrdefs.PointsAttr)
-        and element.points is not None
-    ):
+    if isinstance(element, PointsAttr) and element.points is not None:
         element.points = [scale @ point for point in element.points]
-    if isinstance(element, attrdefs.DAttr) and element.d is not None:
+    if isinstance(element, DAttr) and element.d is not None:
         element.d = scale @ element.d
 
     # these assignments have to be mutually exclusive, because the
     # type checker doesn't know that x being a <number> implies that x is
     # not a <coordinate> and vice versa
-    if isinstance(element, attrdefs.XNumberAttr):  # noqa: SIM114
+    if isinstance(element, XNumberAttr):  # noqa: SIM114
         element.x = _scale_attr(element.x, factor)
-    elif isinstance(element, attrdefs.XCoordinateAttr):  # noqa: SIM114
+    elif isinstance(element, XCoordinateAttr):  # noqa: SIM114
         element.x = _scale_attr(element.x, factor)
-    elif isinstance(element, attrdefs.XListOfCoordinatesAttr):
+    elif isinstance(element, XListOfCoordinatesAttr):
         element.x = _scale_attr(element.x, factor)
 
-    if isinstance(element, attrdefs.YNumberAttr):  # noqa: SIM114
+    if isinstance(element, YNumberAttr):  # noqa: SIM114
         element.y = _scale_attr(element.y, factor)
-    elif isinstance(element, attrdefs.YCoordinateAttr):  # noqa: SIM114
+    elif isinstance(element, YCoordinateAttr):  # noqa: SIM114
         element.y = _scale_attr(element.y, factor)
-    elif isinstance(element, attrdefs.YListOfCoordinatesAttr):
+    elif isinstance(element, YListOfCoordinatesAttr):
         element.y = _scale_attr(element.y, factor)
 
-    if isinstance(element, attrdefs.StrokeWidthAttr):
+    if isinstance(element, StrokeWidthAttr):
         _scale_stroke_width(element, factor)
 
     # no need to scale distance-along-a-path attributes if a custom path
     # length is provided because those attributes and pathLength are
     # proportional
     if (
-        not isinstance(element, attrdefs.PathLengthAttr)
+        not isinstance(element, PathLengthAttr)
         or element.pathLength is None
     ):
         scale_distance_along_a_path_attrs(element, factor)
 
-    if isinstance(element, attrdefs.OffsetNumberPercentageAttr):
+    if isinstance(element, OffsetNumberPercentageAttr):
         element.offset = _scale_attr(element.offset, factor)
 
 
@@ -345,12 +397,12 @@ def _translate_attr(attr: _T, /, by: float) -> _T:
 
     """
     match attr:
-        case length.Length(_, "%"):
+        case Length(_, "%"):
             return attr
         case int() | float():
             return cast(_T, attr + by)
-        case length.Length():
-            return attr + length.Length(by)
+        case Length():
+            return attr + Length(by)
         case list() | tuple():
             items = cast(list[object] | tuple[object, ...], attr)
             return cast(
@@ -363,61 +415,58 @@ def _translate_attr(attr: _T, /, by: float) -> _T:
 
 # pyright goes nuts if `element` is annotated as `Element`... seems like a bug
 # luckily we don't really care
-def _translate(element: object, translate: transform.Translate) -> None:
+def _translate(element: object, translate: Translate) -> None:
     tx, ty = translate.tx, translate.ty
 
-    if mathutils.is_close(tx, 0) and mathutils.is_close(ty, 0):
+    if is_close(tx, 0) and is_close(ty, 0):
         return
 
-    zero = length.Length.zero()
+    zero = Length.zero()
 
     # these attributes are mandatory for the respective elements
-    if isinstance(element, attrdefs.X1Attr):
+    if isinstance(element, X1Attr):
         element.x1 = _translate_attr(element.x1, tx)
-    if isinstance(element, attrdefs.Y1Attr):
+    if isinstance(element, Y1Attr):
         element.y1 = _translate_attr(element.y1, ty)
-    if isinstance(element, attrdefs.X2Attr):
+    if isinstance(element, X2Attr):
         element.x2 = _translate_attr(element.x2, tx)
-    if isinstance(element, attrdefs.Y2Attr):
+    if isinstance(element, Y2Attr):
         element.y2 = _translate_attr(element.y2, ty)
 
     # but these are not, so if they are not present, we initialize them
     # to 0
-    if isinstance(element, attrdefs.CxAttr):
+    if isinstance(element, CxAttr):
         element.cx = _translate_attr(element.cx or zero, tx)
-    if isinstance(element, attrdefs.CyAttr):
+    if isinstance(element, CyAttr):
         element.cy = _translate_attr(element.cy or zero, ty)
 
     # an unset focal point follows the already translated center
-    if isinstance(element, attrdefs.FxAttr):
+    if isinstance(element, FxAttr):
         element.fx = _translate_attr(element.fx, tx)
-    if isinstance(element, attrdefs.FyAttr):
+    if isinstance(element, FyAttr):
         element.fy = _translate_attr(element.fy, ty)
 
-    if isinstance(element, attrdefs.XNumberAttr):
+    if isinstance(element, XNumberAttr):
         element.x = _translate_attr(element.x or 0, tx)
-    elif isinstance(element, attrdefs.XCoordinateAttr):
+    elif isinstance(element, XCoordinateAttr):
         element.x = _translate_attr(element.x or zero, tx)
-    elif isinstance(element, attrdefs.XListOfCoordinatesAttr):
+    elif isinstance(element, XListOfCoordinatesAttr):
         element.x = _translate_attr(element.x, tx)
 
-    if isinstance(element, attrdefs.YNumberAttr):
+    if isinstance(element, YNumberAttr):
         element.y = _translate_attr(element.y or 0, ty)
-    elif isinstance(element, attrdefs.YCoordinateAttr):
+    elif isinstance(element, YCoordinateAttr):
         element.y = _translate_attr(element.y or zero, ty)
-    elif isinstance(element, attrdefs.YListOfCoordinatesAttr):
+    elif isinstance(element, YListOfCoordinatesAttr):
         element.y = _translate_attr(element.y, ty)
 
-    if (
-        isinstance(element, attrdefs.PointsAttr)
-        and element.points is not None
-    ):
+    if isinstance(element, PointsAttr) and element.points is not None:
         element.points = [translate @ point for point in element.points]
 
-    if isinstance(element, attrdefs.DAttr) and element.d is not None:
+    if isinstance(element, DAttr) and element.d is not None:
         element.d = translate @ element.d
 
-    if isinstance(element, attrdefs.OffsetNumberPercentageAttr):
+    if isinstance(element, OffsetNumberPercentageAttr):
         element.offset = _translate_attr(element.offset, tx)
 
 
@@ -448,83 +497,76 @@ def swap_transforms(
     """
     match a, b:
         # transformations of the same type
-        case (transform.Translate(), transform.Translate()) | (
-            transform.Scale(),
-            transform.Scale(),
-        ):
+        case (Translate(), Translate()) | (Scale(), Scale()):
             return b, a
 
         # translate <-> scale
-        case transform.Translate(tx, ty), transform.Scale(sx, sy) as scale:
+        case Translate(tx, ty), Scale(sx, sy) as scale:
             return scale, type(a)(tx / sx, ty / sy)
 
-        case transform.Scale(sx, sy) as scale, transform.Translate(tx, ty):
+        case Scale(sx, sy) as scale, Translate(tx, ty):
             return type(b)(sx * tx, sy * ty), scale
 
         # translate <-> rotate
-        case transform.Rotate(angle, cx, cy), transform.Translate(tx, ty):
+        case Rotate(angle, cx, cy), Translate(tx, ty):
             return type(b)(tx, ty), type(a)(angle, cx - tx, cy - ty)
-        case transform.Translate(tx, ty), transform.Rotate(angle, cx, cy):
+        case Translate(tx, ty), Rotate(angle, cx, cy):
             return type(b)(angle, cx + tx, cy + ty), type(a)(tx, ty)
 
         # scale <-> rotate
-        case transform.Rotate(angle, cx, cy), transform.Scale(
-            sx, sy
-        ) as scale:
+        case Rotate(angle, cx, cy), Scale(sx, sy) as scale:
             return scale, type(a)(angle, cx / sx, cy / sy)
-        case transform.Scale(sx, sy) as scale, transform.Rotate(
-            angle, cx, cy
-        ):
+        case Scale(sx, sy) as scale, Rotate(angle, cx, cy):
             return type(b)(angle, cx * sx, cy * sy), scale
 
         # translate <-> skew
-        case transform.SkewX(angle) as skew_x, transform.Translate(tx, ty):
-            return type(b)(tx + ty * mathutils.tan(angle), ty), skew_x
+        case SkewX(angle) as skew_x, Translate(tx, ty):
+            return type(b)(tx + ty * tan(angle), ty), skew_x
 
-        case transform.Translate(tx, ty), transform.SkewX(angle) as skew_x:
-            return skew_x, type(a)(tx - ty * mathutils.tan(angle), ty)
+        case Translate(tx, ty), SkewX(angle) as skew_x:
+            return skew_x, type(a)(tx - ty * tan(angle), ty)
 
-        case transform.SkewY(angle) as skew_y, transform.Translate(tx, ty):
-            return type(b)(tx, ty + tx * mathutils.tan(angle)), skew_y
+        case SkewY(angle) as skew_y, Translate(tx, ty):
+            return type(b)(tx, ty + tx * tan(angle)), skew_y
 
-        case transform.Translate(tx, ty), transform.SkewY(angle) as skew_y:
-            return skew_y, type(a)(tx, ty - tx * mathutils.tan(angle))
+        case Translate(tx, ty), SkewY(angle) as skew_y:
+            return skew_y, type(a)(tx, ty - tx * tan(angle))
 
         # scale <-> skew
-        case transform.Scale(sx, sy) as scale, transform.SkewX(angle):
-            if mathutils.is_close(sx, sy):
+        case Scale(sx, sy) as scale, SkewX(angle):
+            if is_close(sx, sy):
                 return b, a
 
-            angle = mathutils.arctan(sx / sy * mathutils.tan(angle))
+            angle = arctan(sx / sy * tan(angle))
             return type(b)(angle), scale
 
-        case transform.SkewX(angle), transform.Scale(sx, sy) as scale:
-            if mathutils.is_close(sx, sy):
+        case SkewX(angle), Scale(sx, sy) as scale:
+            if is_close(sx, sy):
                 return b, a
 
-            angle = mathutils.arctan(sy / sx * mathutils.tan(angle))
+            angle = arctan(sy / sx * tan(angle))
             return scale, type(a)(angle)
 
-        case transform.Scale(sx, sy) as scale, transform.SkewY(angle):
-            if mathutils.is_close(sx, sy):
+        case Scale(sx, sy) as scale, SkewY(angle):
+            if is_close(sx, sy):
                 return b, a
 
-            angle = mathutils.arctan(sy / sx * mathutils.tan(angle))
+            angle = arctan(sy / sx * tan(angle))
             return type(b)(angle), scale
 
-        case transform.SkewY(angle), transform.Scale(sx, sy) as scale:
-            if mathutils.is_close(sx, sy):
+        case SkewY(angle), Scale(sx, sy) as scale:
+            if is_close(sx, sy):
                 return b, a
 
-            angle = mathutils.arctan(sx / sy * mathutils.tan(angle))
+            angle = arctan(sx / sy * tan(angle))
 
             return scale, type(a)(angle)
         case _:
-            raise errors.SvgTransformSwapError(a, b)
+            raise SvgTransformSwapError(a, b)
 
 
 def _move_transformation_to_end(
-    transformations: transform.Transform, index: int
+    transformations: Transform, index: int
 ) -> None:
     """Move a transformation to the end of the transform list.
 
@@ -577,19 +619,16 @@ def element_name(element: Element, /) -> str:
     if isinstance(element, UnknownElement):
         return element.element_name
 
-    return names.ELEMENT_NAME_TO_NORMALIZED.inverse[type(element).__name__]
+    return ELEMENT_NAME_TO_NORMALIZED.inverse[type(element).__name__]
 
 
-class Entity(models.BaseModel, metaclass=abc.ABCMeta):
+class Entity(BaseModel, metaclass=abc.ABCMeta):
     """The base class of the SVG element hierarchy."""
 
     parent: Element | None = pydantic.Field(default=None, init=False)
 
     def to_xml(
-        self,
-        *,
-        pretty: bool = True,
-        formatter: serialize.Formatter | None = None,
+        self, *, pretty: bool = True, formatter: Formatter | None = None
     ) -> str:
         """Convert the element to XML.
 
@@ -607,9 +646,9 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
             '<rect id="foo" stroke-linecap="round"/>'
 
         """
-        with formatter or serialize.get_current_formatter():
+        with formatter or get_current_formatter():
             soup = self.to_beautifulsoup_object()
-            return bsutils.beautifulsoup_to_str(soup, pretty=pretty)
+            return beautifulsoup_to_str(soup, pretty=pretty)
 
     @abc.abstractmethod
     def to_beautifulsoup_object(self) -> bs4.PageElement:
@@ -644,7 +683,7 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
 
     @override
     def __eq__(self, other: object) -> bool:
-        if not miscutils.basic_compare(other, self=self):
+        if not basic_compare(other, self=self):
             return False
 
         return self._eq(other)
@@ -668,12 +707,7 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
         self.__pydantic_fields_set__.discard(name)
 
 
-class Element(
-    Entity,
-    attrgroups.CoreAttrs,
-    attrgroups.PresentationAttrs,
-    metaclass=abc.ABCMeta,
-):
+class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
     """An element.
 
     An element is an entity that has a name, a set of attributes,
@@ -690,14 +724,11 @@ class Element(
         extra="allow",
         alias_generator=pydantic.AliasGenerator(
             validation_alias=lambda name: pydantic.AliasChoices(
-                name,
-                attr_names.ATTR_NAME_TO_NORMALIZED.inverse.get(name, name),
+                name, ATTR_NAME_TO_NORMALIZED.inverse.get(name, name)
             ),
             serialization_alias=(
-                lambda name: (
-                    attr_names.ATTR_NAME_TO_NORMALIZED.inverse.get(
-                        name, name
-                    )
+                lambda name: ATTR_NAME_TO_NORMALIZED.inverse.get(
+                    name, name
                 )
             ),
         ),
@@ -741,7 +772,7 @@ class Element(
         assert self.model_extra is not None, "model_extra is None"
         return self.model_extra
 
-    def standard_attrs(self) -> Mapping[attr_names.AttributeName, object]:
+    def standard_attrs(self) -> Mapping[AttributeName, object]:
         """Get the standard attributes of the element.
 
         Standard attributes are attributes that are part of the SVG standard.
@@ -754,8 +785,8 @@ class Element(
         # `model_dump()` would walk the ancestor chain via `parent`
         extra = self.model_extra or {}
         fields = type(self).model_fields
-        normalized = attr_names.ATTR_NAME_TO_NORMALIZED
-        result: dict[attr_names.AttributeName, object] = {}
+        normalized = ATTR_NAME_TO_NORMALIZED
+        result: dict[AttributeName, object] = {}
 
         # only fields that were set can hold a non-`None` value
         for name in sorted(self.__pydantic_fields_set__):
@@ -771,7 +802,7 @@ class Element(
             value = getattr(self, name, None)
 
             if value is not None:
-                result[cast(attr_names.AttributeName, attr)] = value
+                result[cast(AttributeName, attr)] = value
 
         return result
 
@@ -790,9 +821,7 @@ class Element(
 
         return {**standard, **extra}
 
-    def __get_attr_or_default(
-        self, attr_name: attr_names.AttributeName
-    ) -> object:
+    def __get_attr_or_default(self, attr_name: AttributeName) -> object:
         attrs = self.standard_attrs()
 
         if attr_name in attrs:
@@ -989,7 +1018,7 @@ class Element(
             The root ancestor of the element.
 
         """
-        return iterutils.take_last(self.ancestors) or self
+        return take_last(self.ancestors) or self
 
     # endregion
     # region Tree Mutation
@@ -1066,7 +1095,7 @@ class Element(
 
         """
         try:
-            index = iterutils.search_by_reference(self.__children, child)
+            index = search_by_reference(self.__children, child)
         except ValueError as e:
             raise ValueError("Child not found") from e
 
@@ -1163,13 +1192,13 @@ class Element(
     @overload
     def find_all(
         self,
-        *elements: type[Element] | names.ElementName | str,
+        *elements: type[Element] | ElementName | str,
         recursive: bool = True,
     ) -> Generator[Element]: ...
 
     def find_all(
         self,
-        *elements: type[Element] | names.ElementName | str,
+        *elements: type[Element] | ElementName | str,
         recursive: bool = True,
     ) -> Generator[Element]:
         """Find all elements that match the given search criteria.
@@ -1215,7 +1244,7 @@ class Element(
     @overload
     def find(
         self,
-        *elements: type[Element] | names.ElementName | str,
+        *elements: type[Element] | ElementName | str,
         recursive: bool = True,
     ) -> Element: ...
 
@@ -1230,14 +1259,14 @@ class Element(
     @overload
     def find(
         self,
-        *elements: type[Element] | names.ElementName | str,
+        *elements: type[Element] | ElementName | str,
         recursive: bool = True,
         default: _T = _EMPTY_PARAM,
     ) -> Element | _T: ...
 
     def find(
         self,
-        *elements: type[Element] | names.ElementName | str,
+        *elements: type[Element] | ElementName | str,
         recursive: bool = True,
         default: _T = _EMPTY_PARAM,
     ) -> Element | _T:
@@ -1278,9 +1307,9 @@ class Element(
                 return default
 
             msg = f"Unable to find element by search criteria: {elements}"
-            raise errors.SvgElementNotFoundError(msg) from e
+            raise SvgElementNotFoundError(msg) from e
 
-    def resolve_iri(self, iri_: iri.Iri, /) -> Element:
+    def resolve_iri(self, iri_: Iri, /) -> Element:
         """Resolve a local IRI reference to an element in the document.
 
         This method attempts to resolve an IRI reference to an element in the
@@ -1335,7 +1364,7 @@ class Element(
 
             attr = self.__get_attr_or_default(attr_name)
 
-            if not (isinstance(attr, iri.Iri) and attr.is_local):
+            if not (isinstance(attr, Iri) and attr.is_local):
                 continue
 
             try:
@@ -1350,7 +1379,7 @@ class Element(
 
         return False
 
-    def get_iri(self) -> iri.Iri:
+    def get_iri(self) -> Iri:
         """Obtain a local IRI reference to this element.
 
         The reference is constructed based on the element's id. If the element
@@ -1367,9 +1396,9 @@ class Element(
             msg = "Unable to create local IRI reference to element with no id"
             raise RuntimeError(msg)
 
-        return iri.Iri(fragment=self.id)
+        return Iri(fragment=self.id)
 
-    def get_func_iri(self) -> iri.FuncIri:
+    def get_func_iri(self) -> FuncIri:
         """Obtain a local FuncIRI reference to this element.
 
         The reference is constructed based on the element's id. If the element
@@ -1399,16 +1428,16 @@ class Element(
         element.can_be_empty_element = len(self.__children) == 0
 
         for key, value in self.all_attrs().items():
-            element[key] = serialize.serialize_attr(key, value)
+            element[key] = serialize_attr(key, value)
 
         for child in self.children:
             element.append(child.to_beautifulsoup_object())
 
         if element_name(self) == "svg":
-            formatter = serialize.get_current_formatter()
+            formatter = get_current_formatter()
 
             if formatter.xmlns == "always":
-                element["xmlns"] = constants.SVG_XMLNS
+                element["xmlns"] = SVG_XMLNS
             elif formatter.xmlns == "never":
                 del element["xmlns"]
 
@@ -1429,7 +1458,7 @@ class Element(
                 return "transform"
 
     @property
-    def main_transform(self) -> transform.Transform | None:
+    def main_transform(self) -> Transform | None:
         """The main transform attribute of the element.
 
         For most elements, this is the `transform` attribute. However, certain
@@ -1448,12 +1477,12 @@ class Element(
         transform_attr_name = self.__get_main_transform_attribute()
 
         return cast(
-            transform.Transform | None,
+            Transform | None,
             self.__get_attr_or_default(transform_attr_name),
         )
 
     @main_transform.setter
-    def main_transform(self, value: transform.Transform | None) -> None:
+    def main_transform(self, value: Transform | None) -> None:
         transform_attr_name = self.__get_main_transform_attribute()
 
         setattr(self, transform_attr_name, value)
@@ -1486,10 +1515,10 @@ class Element(
 
         if not (
             isinstance(self.transform_origin, tuple)
-            and isinstance(self.transform_origin[0], length.Length)
-            and isinstance(self.transform_origin[1], length.Length)
+            and isinstance(self.transform_origin[0], Length)
+            and isinstance(self.transform_origin[1], Length)
         ):
-            raise errors.SvgTransformOriginError(self.transform_origin)
+            raise SvgTransformOriginError(self.transform_origin)
 
         if not self.main_transform:
             self.main_transform = []
@@ -1497,13 +1526,13 @@ class Element(
         tx = float(self.transform_origin[0])
         ty = float(self.transform_origin[1])
 
-        self.main_transform.insert(0, transform.Translate(tx, ty))
-        self.main_transform.append(transform.Translate(-tx, -ty))
+        self.main_transform.insert(0, Translate(tx, ty))
+        self.main_transform.append(Translate(-tx, -ty))
 
         self.transform_origin = None
 
     def apply_transformation(
-        self, transformation: transform.TransformFunction, /
+        self, transformation: TransformFunction, /
     ) -> None:
         """Apply a transformation to the attributes of the element.
 
@@ -1517,9 +1546,9 @@ class Element(
 
         """
         match transformation:
-            case transform.Translate():
+            case Translate():
                 _translate(self, transformation)
-            case transform.Scale():
+            case Scale():
                 _scale(self, transformation)
             case _:
                 msg = f"Unsupported transformation: {transformation}"
@@ -1534,13 +1563,13 @@ class Element(
         if not self.main_transform:
             return
 
-        transform.decompose_matrices(transform=self.main_transform)
+        decompose_matrices(transform=self.main_transform)
 
         reified = 0
         i = 0
 
         while reified < limit and i < len(self.main_transform):
-            if not isinstance(self.main_transform[i], transform.Reifiable):
+            if not isinstance(self.main_transform[i], Reifiable):
                 i += 1
                 continue
 
@@ -1563,12 +1592,12 @@ class Element(
                 # bounding box paint servers are relative to the referencing
                 # element, so they are transformed along with it
                 if isinstance(
-                    child, attrdefs.GradientUnitsAttr
+                    child, GradientUnitsAttr
                 ) and child.gradientUnits in (None, "objectBoundingBox"):
                     continue
 
                 if isinstance(
-                    child, attrdefs.PatternUnitsAttr
+                    child, PatternUnitsAttr
                 ) and child.patternUnits in (None, "objectBoundingBox"):
                     continue
 

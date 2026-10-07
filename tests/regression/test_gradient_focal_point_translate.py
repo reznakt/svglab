@@ -1,11 +1,11 @@
 import copy
 
-import svglab
-from tests import conftest
+from svglab import Length, RadialGradient, Svg, parse_svg
+from tests.conftest import assert_svg_visually_equal
 
 
-def _svg() -> svglab.Svg:
-    return svglab.parse_svg("""
+def _svg() -> Svg:
+    return parse_svg("""
         <svg width="200" height="200">
             <defs>
                 <radialGradient id="g" gradientUnits="userSpaceOnUse"
@@ -25,11 +25,11 @@ def test_focal_point_is_translated() -> None:
     reified = copy.deepcopy(original)
 
     reified.reify()
-    gradient = reified.find(svglab.RadialGradient)
+    gradient = reified.find(RadialGradient)
 
-    assert gradient.cx == svglab.Length(150)
-    assert gradient.cy == svglab.Length(150)
-    assert gradient.fx == svglab.Length(170)
-    assert gradient.fy == svglab.Length(130)
+    assert gradient.cx == Length(150)
+    assert gradient.cy == Length(150)
+    assert gradient.fx == Length(170)
+    assert gradient.fy == Length(130)
 
-    conftest.assert_svg_visually_equal(original, reified)
+    assert_svg_visually_equal(original, reified)

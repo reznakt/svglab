@@ -1,10 +1,10 @@
 import copy
 
-import svglab
+from svglab import Length, Rect, parse_svg
 
 
 def test_set_viewbox_same_viewbox_is_noop() -> None:
-    svg = svglab.parse_svg("""
+    svg = parse_svg("""
         <svg viewBox="0 0 200 200">
             <rect x="10" y="20" width="30" height="40"/>
         </svg>
@@ -17,7 +17,7 @@ def test_set_viewbox_same_viewbox_is_noop() -> None:
 
 
 def test_set_viewbox_is_idempotent() -> None:
-    svg = svglab.parse_svg("""
+    svg = parse_svg("""
         <svg viewBox="100 0 100 100">
             <rect x="100" y="0" width="100" height="100"/>
         </svg>
@@ -32,15 +32,15 @@ def test_set_viewbox_is_idempotent() -> None:
 
 
 def test_set_viewbox_same_viewbox_from_width_and_height() -> None:
-    svg = svglab.parse_svg("""
+    svg = parse_svg("""
         <svg width="200" height="200">
             <rect x="10" y="20" width="30" height="40"/>
         </svg>
     """)
 
     svg.set_viewbox((0, 0, 200, 200))
-    rect = svg.find(svglab.Rect)
+    rect = svg.find(Rect)
 
     assert svg.viewBox == (0, 0, 200, 200)
     assert rect.transform is None
-    assert (rect.x, rect.y) == (svglab.Length(10), svglab.Length(20))
+    assert (rect.x, rect.y) == (Length(10), Length(20))

@@ -5,13 +5,13 @@ from collections.abc import Iterable
 import bs4
 from typing_extensions import Any, cast, override
 
-from svglab import serialize
-from svglab.elements import names
+from svglab.elements.names import ElementName
+from svglab.serialize import get_current_formatter
 
 
 class _BsFormatter(bs4.formatter.XMLFormatter):
     def __init__(self) -> None:
-        formatter = serialize.get_current_formatter()
+        formatter = get_current_formatter()
         super().__init__(
             # replaces special characters with XML entities (e.g. < -> &lt;)
             entity_substitution=bs4.formatter.EntitySubstitution.substitute_xml,
@@ -20,13 +20,11 @@ class _BsFormatter(bs4.formatter.XMLFormatter):
 
     @override
     def attributes(self, tag: bs4.Tag) -> Iterable[tuple[str, Any]]:
-        formatter = serialize.get_current_formatter()
+        formatter = get_current_formatter()
         order = []
 
         if tag.name in formatter.attribute_order:
-            order = formatter.attribute_order[
-                cast(names.ElementName, tag.name)
-            ]
+            order = formatter.attribute_order[cast(ElementName, tag.name)]
         elif "*" in formatter.attribute_order:
             order = formatter.attribute_order["*"]
 

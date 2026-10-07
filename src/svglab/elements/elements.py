@@ -21,40 +21,236 @@ import pathlib
 import PIL.Image
 from typing_extensions import final, overload, override
 
-from svglab import graphics, models, protocols, resvg, serialize
-from svglab.attrparse import color, length, path_data, point, transform
-from svglab.attrs import attrdefs, attrgroups
-from svglab.elements import traits
-from svglab.utils import mathutils
+from svglab.attrparse.color import Color
+from svglab.attrparse.length import Length
+from svglab.attrparse.path_data import PathData
+from svglab.attrparse.point import Point
+from svglab.attrparse.transform import Scale, Translate
+from svglab.attrs.attrdefs import (
+    AccentHeightAttr,
+    AlphabeticAttr,
+    ArabicFormAttr,
+    AscentAttr,
+    AzimuthAttr,
+    BaseFrequencyAttr,
+    BaseProfileAttr,
+    BboxAttr,
+    BiasAttr,
+    CapHeightAttr,
+    ClassAttr,
+    ClipPathUnitsAttr,
+    ContentScriptTypeAttr,
+    ContentStyleTypeAttr,
+    CxAttr,
+    CyAttr,
+    DAttr,
+    DescentAttr,
+    DiffuseConstantAttr,
+    DivisorAttr,
+    DxListOfLengthsAttr,
+    DxNumberAttr,
+    DyListOfLengthsAttr,
+    DyNumberAttr,
+    ElevationAttr,
+    ExternalResourcesRequiredAttr,
+    FilterResAttr,
+    FilterUnitsAttr,
+    FormatAttr,
+    FrAttr,
+    FxAttr,
+    FyAttr,
+    G1Attr,
+    G2Attr,
+    GlyphNameAttr,
+    GlyphRefAttr,
+    GradientTransformAttr,
+    GradientUnitsAttr,
+    HangingAttr,
+    HeightAttr,
+    HorizAdvXAttr,
+    HorizOriginXAttr,
+    HorizOriginYAttr,
+    IdeographicAttr,
+    In2Attr,
+    InAttr,
+    K1Attr,
+    K2Attr,
+    K3Attr,
+    K4Attr,
+    KAttr,
+    KernelMatrixAttr,
+    KernelUnitLengthAttr,
+    KeyPointsAttr,
+    LangGlyphAttr,
+    LengthAdjustAttr,
+    LimitingConeAngleAttr,
+    LocalAttr,
+    MarkerHeightAttr,
+    MarkerUnitsAttr,
+    MarkerWidthAttr,
+    MaskContentUnitsAttr,
+    MaskUnitsAttr,
+    MathematicalAttr,
+    MediaAttr,
+    MethodAttr,
+    ModeAttr,
+    NameNameAttr,
+    NumOctavesAttr,
+    OffsetNumberPercentageAttr,
+    OperatorFeCompositeAttr,
+    OperatorFeMorphologyAttr,
+    OrderAttr,
+    OrientationAttr,
+    OrientAttr,
+    OriginAttr,
+    OverlinePositionAttr,
+    OverlineThicknessAttr,
+    Panose1Attr,
+    PathAttr,
+    PatternContentUnitsAttr,
+    PatternTransformAttr,
+    PatternUnitsAttr,
+    PointsAttr,
+    PointsAtXAttr,
+    PointsAtYAttr,
+    PointsAtZAttr,
+    PreserveAlphaAttr,
+    PreserveAspectRatioAttr,
+    PrimitiveUnitsAttr,
+    RadiusAttr,
+    RAttr,
+    RefXAttr,
+    RefYAttr,
+    RenderingIntentAttr,
+    RotateListOfNumbersAttr,
+    RotateNumberAutoAutoReverseAttr,
+    RxAttr,
+    RyAttr,
+    ScaleAttr,
+    SeedAttr,
+    SlopeAttr,
+    SpacingAttr,
+    SpecularConstantAttr,
+    SpecularExponentAttr,
+    SpreadMethodAttr,
+    StartOffsetAttr,
+    StdDeviationAttr,
+    StemhAttr,
+    StemvAttr,
+    StitchTilesAttr,
+    StrikethroughPositionAttr,
+    StrikethroughThicknessAttr,
+    StringAttr,
+    StyleAttr,
+    SurfaceScaleAttr,
+    TargetAttr,
+    TargetXAttr,
+    TargetYAttr,
+    TextLengthAttr,
+    TitleAttr,
+    ToAttr,
+    TypeAnimateTransformAttr,
+    TypeContentTypeAttr,
+    TypeFeColorMatrixAttr,
+    TypeFeTurbluenceAttr,
+    U1Attr,
+    U2Attr,
+    UnderlinePositionAttr,
+    UnderlineThicknessAttr,
+    UnicodeAttr,
+    UnicodeRangeAttr,
+    UnitsPerEmAttr,
+    VAlphabeticAttr,
+    ValuesListOfNumbersAttr,
+    VersionAttr,
+    VertAdvYAttr,
+    VertOriginXAttr,
+    VertOriginYAttr,
+    VHangingAttr,
+    VIdeographicAttr,
+    ViewBoxAttr,
+    ViewTargetAttr,
+    VMathematicalAttr,
+    WidthAttr,
+    WidthsAttr,
+    X1Attr,
+    X2Attr,
+    XChannelSelectorAttr,
+    XCoordinateAttr,
+    XHeightAttr,
+    XListOfCoordinatesAttr,
+    XmlnsAttr,
+    XNumberAttr,
+    Y1Attr,
+    Y2Attr,
+    YChannelSelectorAttr,
+    YCoordinateAttr,
+    YListOfCoordinatesAttr,
+    YNumberAttr,
+    ZAttr,
+    ZoomAndPanAttr,
+)
+from svglab.attrs.attrgroups import (
+    AnimationAdditionAttrs,
+    AnimationAttributeTargetAttrs,
+    AnimationValueAttrs,
+    ConditionalProcessingAttrs,
+    DocumentEventsAttrs,
+    TransferFunctionAttrs,
+    XlinkAttrs,
+)
+from svglab.elements.traits import (
+    AnimationElement,
+    BasicShape,
+    ContainerElement,
+    DescriptiveElement,
+    Element,
+    FilterPrimitiveElement,
+    GradientElement,
+    GraphicsElement,
+    GraphicsReferencingElement,
+    LightSourceElement,
+    Shape,
+    StructuralElement,
+    TextContentBlockElement,
+    TextContentChildElement,
+    TextContentElement,
+)
+from svglab.graphics import render
+from svglab.models import convert
+from svglab.protocols import SupportsWrite
+from svglab.resvg import RenderOptions
+from svglab.serialize import MINIMAL_FORMATTER, Formatter
+from svglab.utils.mathutils import is_close
 
 
 # ! WARNING: `Element` and `ContainerElement` must always go last
 
 
-def _length_or_zero(value: length.Length | None, /) -> length.Length:
-    return value if value is not None else length.Length(0)
+def _length_or_zero(value: Length | None, /) -> Length:
+    return value if value is not None else Length(0)
 
 
 @final
 class Path(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.DAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.StyleAttr,
-    traits.Shape,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    DAttr,
+    ExternalResourcesRequiredAttr,
+    StyleAttr,
+    Shape,
+    Element,
 ):
     pass
 
 
-def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
+def _basic_shape_to_path(basic_shape: BasicShape, /) -> Path:
     """Convert a basic shape to a `Path` element."""
     # try to convert to PathData first, so we don't call convert() if the shape
     # is not convertible
     d = basic_shape.to_path_data()
 
-    path = models.convert(basic_shape, Path)
+    path = convert(basic_shape, Path)
     path.d = d
 
     # the resulting path is detached from the tree, so the children have to be
@@ -69,12 +265,10 @@ def _basic_shape_to_path(basic_shape: traits.BasicShape, /) -> Path:
     return path
 
 
-def _points_to_path_data(
-    element: attrdefs.PointsAttr,
-) -> path_data.PathData:
+def _points_to_path_data(element: PointsAttr) -> PathData:
     """Convert element with a `points` attribute to a `PathData` instance."""
     points = element.points if element.points is not None else []
-    d = path_data.PathData()
+    d = PathData()
 
     if points:
         d.move_to(points[0])
@@ -86,12 +280,8 @@ def _points_to_path_data(
 
 
 def _ellipse_to_path_data(
-    *,
-    cx: length.Length,
-    cy: length.Length,
-    rx: length.Length,
-    ry: length.Length,
-) -> path_data.PathData:
+    *, cx: Length, cy: Length, rx: Length, ry: Length
+) -> PathData:
     """Convert an ellipse to a `PathData` instance.
 
     Args:
@@ -109,20 +299,20 @@ def _ellipse_to_path_data(
 
     """
     return (
-        path_data.PathData()
-        .move_to(point.Point(cx - rx, cy))
+        PathData()
+        .move_to(Point(cx - rx, cy))
         .arc_to(
-            point.Point(rx, ry),
+            Point(rx, ry),
             0,
-            point.Point(2 * rx, 0),
+            Point(2 * rx, 0),
             large=True,
             sweep=False,
             relative=True,
         )
         .arc_to(
-            point.Point(rx, ry),
+            Point(rx, ry),
             0,
-            point.Point(-2 * rx, 0),
+            Point(-2 * rx, 0),
             large=True,
             sweep=False,
             relative=True,
@@ -132,121 +322,121 @@ def _ellipse_to_path_data(
 
 @final
 class A(
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.StyleAttr,
-    attrdefs.TargetAttr,
-    traits.ContainerElement,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    StyleAttr,
+    TargetAttr,
+    ContainerElement,
 ):
     pass
 
 
 @final
 class AltGlyph(
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.DxListOfLengthsAttr,
-    attrdefs.DyListOfLengthsAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.FormatAttr,
-    attrdefs.GlyphRefAttr,
-    attrdefs.RotateListOfNumbersAttr,
-    attrdefs.StyleAttr,
-    attrdefs.XListOfCoordinatesAttr,
-    attrdefs.YListOfCoordinatesAttr,
-    traits.TextContentChildElement,
-    traits.TextContentElement,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    ClassAttr,
+    DxListOfLengthsAttr,
+    DyListOfLengthsAttr,
+    ExternalResourcesRequiredAttr,
+    FormatAttr,
+    GlyphRefAttr,
+    RotateListOfNumbersAttr,
+    StyleAttr,
+    XListOfCoordinatesAttr,
+    YListOfCoordinatesAttr,
+    TextContentChildElement,
+    TextContentElement,
+    Element,
 ):
     pass
 
 
 @final
-class AltGlyphDef(traits.Element):
+class AltGlyphDef(Element):
     pass
 
 
 @final
-class AltGlyphItem(traits.Element):
+class AltGlyphItem(Element):
     pass
 
 
 @final
 class Animate(
-    attrgroups.AnimationAdditionAttrs,
-    attrgroups.AnimationAttributeTargetAttrs,
-    attrgroups.AnimationValueAttrs,
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    traits.AnimationElement,
-    traits.Element,
+    AnimationAdditionAttrs,
+    AnimationAttributeTargetAttrs,
+    AnimationValueAttrs,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    AnimationElement,
+    Element,
 ):
     pass
 
 
 @final
 class AnimateColor(
-    attrgroups.AnimationAdditionAttrs,
-    attrgroups.AnimationAttributeTargetAttrs,
-    attrgroups.AnimationValueAttrs,
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ExternalResourcesRequiredAttr,
-    traits.AnimationElement,
-    traits.Element,
+    AnimationAdditionAttrs,
+    AnimationAttributeTargetAttrs,
+    AnimationValueAttrs,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    ExternalResourcesRequiredAttr,
+    AnimationElement,
+    Element,
 ):
     pass
 
 
 @final
 class AnimateMotion(
-    attrgroups.AnimationAdditionAttrs,
-    attrgroups.AnimationValueAttrs,
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.KeyPointsAttr,
-    attrdefs.OriginAttr,
-    attrdefs.PathAttr,
-    attrdefs.RotateNumberAutoAutoReverseAttr,
-    traits.AnimationElement,
-    traits.Element,
+    AnimationAdditionAttrs,
+    AnimationValueAttrs,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    ExternalResourcesRequiredAttr,
+    KeyPointsAttr,
+    OriginAttr,
+    PathAttr,
+    RotateNumberAutoAutoReverseAttr,
+    AnimationElement,
+    Element,
 ):
     pass
 
 
 @final
 class AnimateTransform(
-    attrgroups.AnimationAdditionAttrs,
-    attrgroups.AnimationAttributeTargetAttrs,
-    attrgroups.AnimationValueAttrs,
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.TypeAnimateTransformAttr,
-    traits.AnimationElement,
-    traits.Element,
+    AnimationAdditionAttrs,
+    AnimationAttributeTargetAttrs,
+    AnimationValueAttrs,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    ExternalResourcesRequiredAttr,
+    TypeAnimateTransformAttr,
+    AnimationElement,
+    Element,
 ):
     pass
 
 
 @final
 class Circle(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.CxAttr,
-    attrdefs.CyAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.RAttr,
-    attrdefs.StyleAttr,
-    traits.BasicShape,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    CxAttr,
+    CyAttr,
+    ExternalResourcesRequiredAttr,
+    RAttr,
+    StyleAttr,
+    BasicShape,
+    Element,
 ):
     @override
-    def to_path_data(self) -> path_data.PathData:
+    def to_path_data(self) -> PathData:
         cx = _length_or_zero(self.cx)
         cy = _length_or_zero(self.cy)
         r = _length_or_zero(self.r)
@@ -260,76 +450,67 @@ class Circle(
 
 @final
 class ClipPath(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ClipPathUnitsAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.StyleAttr,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    ClipPathUnitsAttr,
+    ExternalResourcesRequiredAttr,
+    StyleAttr,
+    Element,
 ):
     pass
 
 
 @final
 class ColorProfile(
-    attrgroups.XlinkAttrs,
-    attrdefs.LocalAttr,
-    attrdefs.NameNameAttr,
-    attrdefs.RenderingIntentAttr,
-    traits.Element,
+    XlinkAttrs, LocalAttr, NameNameAttr, RenderingIntentAttr, Element
 ):
     pass
 
 
 @final
 class Cursor(
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.XCoordinateAttr,
-    attrdefs.YCoordinateAttr,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    ExternalResourcesRequiredAttr,
+    XCoordinateAttr,
+    YCoordinateAttr,
+    Element,
 ):
     pass
 
 
 @final
 class Defs(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.StyleAttr,
-    traits.StructuralElement,
-    traits.ContainerElement,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    StyleAttr,
+    StructuralElement,
+    ContainerElement,
 ):
     pass
 
 
 @final
-class Desc(
-    attrdefs.ClassAttr,
-    attrdefs.StyleAttr,
-    traits.DescriptiveElement,
-    traits.Element,
-):
+class Desc(ClassAttr, StyleAttr, DescriptiveElement, Element):
     pass
 
 
 @final
 class Ellipse(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.CxAttr,
-    attrdefs.CyAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.RxAttr,
-    attrdefs.RyAttr,
-    attrdefs.StyleAttr,
-    traits.BasicShape,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    CxAttr,
+    CyAttr,
+    ExternalResourcesRequiredAttr,
+    RxAttr,
+    RyAttr,
+    StyleAttr,
+    BasicShape,
+    Element,
 ):
     @override
-    def to_path_data(self) -> path_data.PathData:
+    def to_path_data(self) -> PathData:
         cx = _length_or_zero(self.cx)
         cy = _length_or_zero(self.cy)
         rx = _length_or_zero(self.rx)
@@ -344,487 +525,451 @@ class Ellipse(
 
 @final
 class FeBlend(
-    attrdefs.ClassAttr,
-    attrdefs.InAttr,
-    attrdefs.In2Attr,
-    attrdefs.ModeAttr,
-    attrdefs.StyleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr,
+    InAttr,
+    In2Attr,
+    ModeAttr,
+    StyleAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class FeColorMatrix(
-    attrdefs.ClassAttr,
-    attrdefs.InAttr,
-    attrdefs.In2Attr,
-    attrdefs.StyleAttr,
-    attrdefs.TypeFeColorMatrixAttr,
-    attrdefs.ValuesListOfNumbersAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr,
+    InAttr,
+    In2Attr,
+    StyleAttr,
+    TypeFeColorMatrixAttr,
+    ValuesListOfNumbersAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class FeComponentTransfer(
-    attrdefs.ClassAttr,
-    attrdefs.InAttr,
-    attrdefs.StyleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr, InAttr, StyleAttr, FilterPrimitiveElement, Element
 ):
     pass
 
 
 @final
 class FeComposite(
-    attrdefs.ClassAttr,
-    attrdefs.InAttr,
-    attrdefs.In2Attr,
-    attrdefs.K1Attr,
-    attrdefs.K2Attr,
-    attrdefs.K3Attr,
-    attrdefs.K4Attr,
-    attrdefs.OperatorFeCompositeAttr,
-    attrdefs.StyleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr,
+    InAttr,
+    In2Attr,
+    K1Attr,
+    K2Attr,
+    K3Attr,
+    K4Attr,
+    OperatorFeCompositeAttr,
+    StyleAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class FeConvolveMatrix(
-    attrdefs.BiasAttr,
-    attrdefs.ClassAttr,
-    attrdefs.DivisorAttr,
-    attrdefs.InAttr,
-    attrdefs.KernelMatrixAttr,
-    attrdefs.KernelUnitLengthAttr,
-    attrdefs.OrderAttr,
-    attrdefs.PreserveAlphaAttr,
-    attrdefs.StyleAttr,
-    attrdefs.TargetXAttr,
-    attrdefs.TargetYAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    BiasAttr,
+    ClassAttr,
+    DivisorAttr,
+    InAttr,
+    KernelMatrixAttr,
+    KernelUnitLengthAttr,
+    OrderAttr,
+    PreserveAlphaAttr,
+    StyleAttr,
+    TargetXAttr,
+    TargetYAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class FeDiffuseLighting(
-    attrdefs.ClassAttr,
-    attrdefs.DiffuseConstantAttr,
-    attrdefs.InAttr,
-    attrdefs.KernelUnitLengthAttr,
-    attrdefs.StyleAttr,
-    attrdefs.SurfaceScaleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr,
+    DiffuseConstantAttr,
+    InAttr,
+    KernelUnitLengthAttr,
+    StyleAttr,
+    SurfaceScaleAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class FeDisplacementMap(
-    attrdefs.ClassAttr,
-    attrdefs.InAttr,
-    attrdefs.In2Attr,
-    attrdefs.ScaleAttr,
-    attrdefs.StyleAttr,
-    attrdefs.XChannelSelectorAttr,
-    attrdefs.YChannelSelectorAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr,
+    InAttr,
+    In2Attr,
+    ScaleAttr,
+    StyleAttr,
+    XChannelSelectorAttr,
+    YChannelSelectorAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class FeDistantLight(
-    attrdefs.AzimuthAttr,
-    attrdefs.ElevationAttr,
-    traits.LightSourceElement,
-    traits.Element,
+    AzimuthAttr, ElevationAttr, LightSourceElement, Element
 ):
     pass
 
 
 @final
-class FeFlood(
-    attrdefs.ClassAttr,
-    attrdefs.StyleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
-):
+class FeFlood(ClassAttr, StyleAttr, FilterPrimitiveElement, Element):
     pass
 
 
 @final
-class FeFuncA(attrgroups.TransferFunctionAttrs, traits.Element):
+class FeFuncA(TransferFunctionAttrs, Element):
     pass
 
 
 @final
-class FeFuncB(attrgroups.TransferFunctionAttrs, traits.Element):
+class FeFuncB(TransferFunctionAttrs, Element):
     pass
 
 
 @final
-class FeFuncG(attrgroups.TransferFunctionAttrs, traits.Element):
+class FeFuncG(TransferFunctionAttrs, Element):
     pass
 
 
 @final
-class FeFuncR(attrgroups.TransferFunctionAttrs, traits.Element):
+class FeFuncR(TransferFunctionAttrs, Element):
     pass
 
 
 @final
 class FeGaussianBlur(
-    attrdefs.ClassAttr,
-    attrdefs.InAttr,
-    attrdefs.StdDeviationAttr,
-    attrdefs.StyleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr,
+    InAttr,
+    StdDeviationAttr,
+    StyleAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class FeImage(
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.PreserveAspectRatioAttr,
-    attrdefs.StyleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    XlinkAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    PreserveAspectRatioAttr,
+    StyleAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
-class FeMerge(
-    attrdefs.ClassAttr,
-    attrdefs.StyleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
-):
+class FeMerge(ClassAttr, StyleAttr, FilterPrimitiveElement, Element):
     pass
 
 
 @final
-class FeMergeNode(attrdefs.InAttr, traits.Element):
+class FeMergeNode(InAttr, Element):
     pass
 
 
 @final
 class FeMorphology(
-    attrdefs.ClassAttr,
-    attrdefs.InAttr,
-    attrdefs.OperatorFeMorphologyAttr,
-    attrdefs.RadiusAttr,
-    attrdefs.StyleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr,
+    InAttr,
+    OperatorFeMorphologyAttr,
+    RadiusAttr,
+    StyleAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class FeOffset(
-    attrdefs.ClassAttr,
-    attrdefs.DxNumberAttr,
-    attrdefs.DyNumberAttr,
-    attrdefs.InAttr,
-    attrdefs.StyleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr,
+    DxNumberAttr,
+    DyNumberAttr,
+    InAttr,
+    StyleAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class FePointLight(
-    attrdefs.XNumberAttr,
-    attrdefs.YNumberAttr,
-    attrdefs.ZAttr,
-    traits.LightSourceElement,
-    traits.Element,
+    XNumberAttr, YNumberAttr, ZAttr, LightSourceElement, Element
 ):
     pass
 
 
 @final
 class FeSpecularLighting(
-    attrdefs.ClassAttr,
-    attrdefs.InAttr,
-    attrdefs.KernelUnitLengthAttr,
-    attrdefs.SpecularConstantAttr,
-    attrdefs.SpecularExponentAttr,
-    attrdefs.StyleAttr,
-    attrdefs.SurfaceScaleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr,
+    InAttr,
+    KernelUnitLengthAttr,
+    SpecularConstantAttr,
+    SpecularExponentAttr,
+    StyleAttr,
+    SurfaceScaleAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class FeSpotLight(
-    attrdefs.LimitingConeAngleAttr,
-    attrdefs.PointsAtXAttr,
-    attrdefs.PointsAtYAttr,
-    attrdefs.PointsAtZAttr,
-    attrdefs.SpecularExponentAttr,
-    attrdefs.XNumberAttr,
-    attrdefs.YNumberAttr,
-    attrdefs.ZAttr,
-    traits.LightSourceElement,
-    traits.Element,
+    LimitingConeAngleAttr,
+    PointsAtXAttr,
+    PointsAtYAttr,
+    PointsAtZAttr,
+    SpecularExponentAttr,
+    XNumberAttr,
+    YNumberAttr,
+    ZAttr,
+    LightSourceElement,
+    Element,
 ):
     pass
 
 
 @final
 class FeTile(
-    attrdefs.ClassAttr,
-    attrdefs.InAttr,
-    attrdefs.StyleAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    ClassAttr, InAttr, StyleAttr, FilterPrimitiveElement, Element
 ):
     pass
 
 
 @final
 class FeTurbulence(
-    attrdefs.BaseFrequencyAttr,
-    attrdefs.ClassAttr,
-    attrdefs.NumOctavesAttr,
-    attrdefs.SeedAttr,
-    attrdefs.StitchTilesAttr,
-    attrdefs.StyleAttr,
-    attrdefs.TypeFeTurbluenceAttr,
-    traits.FilterPrimitiveElement,
-    traits.Element,
+    BaseFrequencyAttr,
+    ClassAttr,
+    NumOctavesAttr,
+    SeedAttr,
+    StitchTilesAttr,
+    StyleAttr,
+    TypeFeTurbluenceAttr,
+    FilterPrimitiveElement,
+    Element,
 ):
     pass
 
 
 @final
 class Filter(
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.FilterResAttr,
-    attrdefs.FilterUnitsAttr,
-    attrdefs.HeightAttr,
-    attrdefs.PrimitiveUnitsAttr,
-    attrdefs.StyleAttr,
-    attrdefs.WidthAttr,
-    attrdefs.XCoordinateAttr,
-    attrdefs.YCoordinateAttr,
-    traits.Element,
+    XlinkAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    FilterResAttr,
+    FilterUnitsAttr,
+    HeightAttr,
+    PrimitiveUnitsAttr,
+    StyleAttr,
+    WidthAttr,
+    XCoordinateAttr,
+    YCoordinateAttr,
+    Element,
 ):
     pass
 
 
 @final
 class Font(
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.HorizAdvXAttr,
-    attrdefs.HorizOriginXAttr,
-    attrdefs.HorizOriginYAttr,
-    attrdefs.StyleAttr,
-    attrdefs.VertAdvYAttr,
-    attrdefs.VertOriginXAttr,
-    attrdefs.VertOriginYAttr,
-    traits.Element,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    HorizAdvXAttr,
+    HorizOriginXAttr,
+    HorizOriginYAttr,
+    StyleAttr,
+    VertAdvYAttr,
+    VertOriginXAttr,
+    VertOriginYAttr,
+    Element,
 ):
     pass
 
 
 @final
 class FontFace(
-    attrdefs.AccentHeightAttr,
-    attrdefs.AlphabeticAttr,
-    attrdefs.AscentAttr,
-    attrdefs.BboxAttr,
-    attrdefs.CapHeightAttr,
-    attrdefs.DescentAttr,
-    attrdefs.HangingAttr,
-    attrdefs.IdeographicAttr,
-    attrdefs.MathematicalAttr,
-    attrdefs.OverlinePositionAttr,
-    attrdefs.OverlineThicknessAttr,
-    attrdefs.Panose1Attr,
-    attrdefs.SlopeAttr,
-    attrdefs.StemhAttr,
-    attrdefs.StemvAttr,
-    attrdefs.StrikethroughPositionAttr,
-    attrdefs.StrikethroughThicknessAttr,
-    attrdefs.UnderlinePositionAttr,
-    attrdefs.UnderlineThicknessAttr,
-    attrdefs.UnicodeRangeAttr,
-    attrdefs.UnitsPerEmAttr,
-    attrdefs.VAlphabeticAttr,
-    attrdefs.VHangingAttr,
-    attrdefs.VIdeographicAttr,
-    attrdefs.VMathematicalAttr,
-    attrdefs.WidthsAttr,
-    attrdefs.XHeightAttr,
-    traits.Element,
+    AccentHeightAttr,
+    AlphabeticAttr,
+    AscentAttr,
+    BboxAttr,
+    CapHeightAttr,
+    DescentAttr,
+    HangingAttr,
+    IdeographicAttr,
+    MathematicalAttr,
+    OverlinePositionAttr,
+    OverlineThicknessAttr,
+    Panose1Attr,
+    SlopeAttr,
+    StemhAttr,
+    StemvAttr,
+    StrikethroughPositionAttr,
+    StrikethroughThicknessAttr,
+    UnderlinePositionAttr,
+    UnderlineThicknessAttr,
+    UnicodeRangeAttr,
+    UnitsPerEmAttr,
+    VAlphabeticAttr,
+    VHangingAttr,
+    VIdeographicAttr,
+    VMathematicalAttr,
+    WidthsAttr,
+    XHeightAttr,
+    Element,
 ):
     pass
 
 
 @final
-class FontFaceFormat(attrdefs.StringAttr, traits.Element):
+class FontFaceFormat(StringAttr, Element):
     pass
 
 
 @final
-class FontFaceName(attrdefs.StringAttr, traits.Element):
+class FontFaceName(StringAttr, Element):
     pass
 
 
 @final
-class FontFaceSrc(traits.Element):
+class FontFaceSrc(Element):
     pass
 
 
 @final
-class FontFaceUri(attrgroups.XlinkAttrs, traits.Element):
+class FontFaceUri(XlinkAttrs, Element):
     pass
 
 
 @final
 class ForeignObject(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.HeightAttr,
-    attrdefs.StyleAttr,
-    attrdefs.WidthAttr,
-    attrdefs.XCoordinateAttr,
-    attrdefs.YCoordinateAttr,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    HeightAttr,
+    StyleAttr,
+    WidthAttr,
+    XCoordinateAttr,
+    YCoordinateAttr,
+    Element,
 ):
     pass
 
 
 @final
 class G(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.StyleAttr,
-    traits.StructuralElement,
-    traits.ContainerElement,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    StyleAttr,
+    StructuralElement,
+    ContainerElement,
 ):
     pass
 
 
 @final
 class Glyph(
-    attrdefs.ArabicFormAttr,
-    attrdefs.ClassAttr,
-    attrdefs.DAttr,
-    attrdefs.GlyphNameAttr,
-    attrdefs.HorizAdvXAttr,
-    attrdefs.LangGlyphAttr,
-    attrdefs.OrientationAttr,
-    attrdefs.StyleAttr,
-    attrdefs.UnicodeAttr,
-    attrdefs.VertAdvYAttr,
-    attrdefs.VertOriginXAttr,
-    attrdefs.VertOriginYAttr,
-    traits.ContainerElement,
+    ArabicFormAttr,
+    ClassAttr,
+    DAttr,
+    GlyphNameAttr,
+    HorizAdvXAttr,
+    LangGlyphAttr,
+    OrientationAttr,
+    StyleAttr,
+    UnicodeAttr,
+    VertAdvYAttr,
+    VertOriginXAttr,
+    VertOriginYAttr,
+    ContainerElement,
 ):
     pass
 
 
 @final
 class GlyphRef(
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.DxNumberAttr,
-    attrdefs.DyNumberAttr,
-    attrdefs.FormatAttr,
-    attrdefs.GlyphRefAttr,
-    attrdefs.StyleAttr,
-    attrdefs.XNumberAttr,
-    attrdefs.YNumberAttr,
-    traits.Element,
+    XlinkAttrs,
+    ClassAttr,
+    DxNumberAttr,
+    DyNumberAttr,
+    FormatAttr,
+    GlyphRefAttr,
+    StyleAttr,
+    XNumberAttr,
+    YNumberAttr,
+    Element,
 ):
     pass
 
 
 @final
-class Hkern(
-    attrdefs.G1Attr,
-    attrdefs.G2Attr,
-    attrdefs.KAttr,
-    attrdefs.U1Attr,
-    attrdefs.U2Attr,
-    traits.Element,
-):
+class Hkern(G1Attr, G2Attr, KAttr, U1Attr, U2Attr, Element):
     pass
 
 
 @final
 class Image(
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.HeightAttr,
-    attrdefs.PreserveAspectRatioAttr,
-    attrdefs.StyleAttr,
-    attrdefs.WidthAttr,
-    attrdefs.XCoordinateAttr,
-    attrdefs.YCoordinateAttr,
-    traits.GraphicsElement,
-    traits.GraphicsReferencingElement,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    HeightAttr,
+    PreserveAspectRatioAttr,
+    StyleAttr,
+    WidthAttr,
+    XCoordinateAttr,
+    YCoordinateAttr,
+    GraphicsElement,
+    GraphicsReferencingElement,
+    Element,
 ):
     pass
 
 
 @final
 class Line(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.StyleAttr,
-    attrdefs.X1Attr,
-    attrdefs.X2Attr,
-    attrdefs.Y1Attr,
-    attrdefs.Y2Attr,
-    traits.BasicShape,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    StyleAttr,
+    X1Attr,
+    X2Attr,
+    Y1Attr,
+    Y2Attr,
+    BasicShape,
+    Element,
 ):
     @override
-    def to_path_data(self) -> path_data.PathData:
+    def to_path_data(self) -> PathData:
         x1 = _length_or_zero(self.x1)
         y1 = _length_or_zero(self.y1)
         x2 = _length_or_zero(self.x2)
         y2 = _length_or_zero(self.y2)
 
-        return (
-            path_data.PathData()
-            .move_to(point.Point(x1, y1))
-            .line_to(point.Point(x2, y2))
-        )
+        return PathData().move_to(Point(x1, y1)).line_to(Point(x2, y2))
 
     @override
     def to_path(self) -> Path:
@@ -833,117 +978,113 @@ class Line(
 
 @final
 class LinearGradient(
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.GradientTransformAttr,
-    attrdefs.GradientUnitsAttr,
-    attrdefs.SpreadMethodAttr,
-    attrdefs.StyleAttr,
-    attrdefs.X1Attr,
-    attrdefs.X2Attr,
-    attrdefs.Y1Attr,
-    attrdefs.Y2Attr,
-    traits.GradientElement,
-    traits.Element,
+    XlinkAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    GradientTransformAttr,
+    GradientUnitsAttr,
+    SpreadMethodAttr,
+    StyleAttr,
+    X1Attr,
+    X2Attr,
+    Y1Attr,
+    Y2Attr,
+    GradientElement,
+    Element,
 ):
     pass
 
 
 @final
 class Marker(
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.MarkerHeightAttr,
-    attrdefs.MarkerUnitsAttr,
-    attrdefs.MarkerWidthAttr,
-    attrdefs.OrientAttr,
-    attrdefs.PreserveAspectRatioAttr,
-    attrdefs.RefXAttr,
-    attrdefs.RefYAttr,
-    attrdefs.StyleAttr,
-    attrdefs.ViewBoxAttr,
-    traits.ContainerElement,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    MarkerHeightAttr,
+    MarkerUnitsAttr,
+    MarkerWidthAttr,
+    OrientAttr,
+    PreserveAspectRatioAttr,
+    RefXAttr,
+    RefYAttr,
+    StyleAttr,
+    ViewBoxAttr,
+    ContainerElement,
 ):
     pass
 
 
 @final
 class Mask(
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.HeightAttr,
-    attrdefs.MaskContentUnitsAttr,
-    attrdefs.MaskUnitsAttr,
-    attrdefs.StyleAttr,
-    attrdefs.WidthAttr,
-    attrdefs.XCoordinateAttr,
-    attrdefs.YCoordinateAttr,
-    traits.ContainerElement,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    HeightAttr,
+    MaskContentUnitsAttr,
+    MaskUnitsAttr,
+    StyleAttr,
+    WidthAttr,
+    XCoordinateAttr,
+    YCoordinateAttr,
+    ContainerElement,
 ):
     pass
 
 
 @final
-class Metadata(traits.DescriptiveElement, traits.Element):
+class Metadata(DescriptiveElement, Element):
     pass
 
 
 @final
 class MissingGlyph(
-    attrdefs.ClassAttr,
-    attrdefs.DAttr,
-    attrdefs.HorizAdvXAttr,
-    attrdefs.StyleAttr,
-    attrdefs.VertAdvYAttr,
-    attrdefs.VertOriginXAttr,
-    attrdefs.VertOriginYAttr,
-    traits.ContainerElement,
+    ClassAttr,
+    DAttr,
+    HorizAdvXAttr,
+    StyleAttr,
+    VertAdvYAttr,
+    VertOriginXAttr,
+    VertOriginYAttr,
+    ContainerElement,
 ):
     pass
 
 
 @final
-class Mpath(
-    attrgroups.XlinkAttrs,
-    attrdefs.ExternalResourcesRequiredAttr,
-    traits.Element,
-):
+class Mpath(XlinkAttrs, ExternalResourcesRequiredAttr, Element):
     pass
 
 
 @final
 class Pattern(
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.HeightAttr,
-    attrdefs.PatternContentUnitsAttr,
-    attrdefs.PatternTransformAttr,
-    attrdefs.PatternUnitsAttr,
-    attrdefs.PreserveAspectRatioAttr,
-    attrdefs.StyleAttr,
-    attrdefs.ViewBoxAttr,
-    attrdefs.WidthAttr,
-    attrdefs.XCoordinateAttr,
-    attrdefs.YCoordinateAttr,
-    traits.ContainerElement,
+    XlinkAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    HeightAttr,
+    PatternContentUnitsAttr,
+    PatternTransformAttr,
+    PatternUnitsAttr,
+    PreserveAspectRatioAttr,
+    StyleAttr,
+    ViewBoxAttr,
+    WidthAttr,
+    XCoordinateAttr,
+    YCoordinateAttr,
+    ContainerElement,
 ):
     pass
 
 
 @final
 class Polygon(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.PointsAttr,
-    attrdefs.StyleAttr,
-    traits.BasicShape,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    PointsAttr,
+    StyleAttr,
+    BasicShape,
+    Element,
 ):
     @override
-    def to_path_data(self) -> path_data.PathData:
+    def to_path_data(self) -> PathData:
         d = _points_to_path_data(self)
 
         return d.close() if d else d
@@ -955,16 +1096,16 @@ class Polygon(
 
 @final
 class Polyline(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.PointsAttr,
-    attrdefs.StyleAttr,
-    traits.BasicShape,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    PointsAttr,
+    StyleAttr,
+    BasicShape,
+    Element,
 ):
     @override
-    def to_path_data(self) -> path_data.PathData:
+    def to_path_data(self) -> PathData:
         return _points_to_path_data(self)
 
     @override
@@ -974,42 +1115,42 @@ class Polyline(
 
 @final
 class RadialGradient(
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.CxAttr,
-    attrdefs.CyAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.FrAttr,
-    attrdefs.FxAttr,
-    attrdefs.FyAttr,
-    attrdefs.GradientTransformAttr,
-    attrdefs.GradientUnitsAttr,
-    attrdefs.RAttr,
-    attrdefs.SpreadMethodAttr,
-    attrdefs.StyleAttr,
-    traits.GradientElement,
-    traits.Element,
+    XlinkAttrs,
+    ClassAttr,
+    CxAttr,
+    CyAttr,
+    ExternalResourcesRequiredAttr,
+    FrAttr,
+    FxAttr,
+    FyAttr,
+    GradientTransformAttr,
+    GradientUnitsAttr,
+    RAttr,
+    SpreadMethodAttr,
+    StyleAttr,
+    GradientElement,
+    Element,
 ):
     pass
 
 
 @final
 class Rect(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.HeightAttr,
-    attrdefs.RxAttr,
-    attrdefs.RyAttr,
-    attrdefs.StyleAttr,
-    attrdefs.WidthAttr,
-    attrdefs.XCoordinateAttr,
-    attrdefs.YCoordinateAttr,
-    traits.BasicShape,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    HeightAttr,
+    RxAttr,
+    RyAttr,
+    StyleAttr,
+    WidthAttr,
+    XCoordinateAttr,
+    YCoordinateAttr,
+    BasicShape,
+    Element,
 ):
     @override
-    def to_path_data(self) -> path_data.PathData:
+    def to_path_data(self) -> PathData:
         x = _length_or_zero(self.x)
         y = _length_or_zero(self.y)
         width = _length_or_zero(self.width)
@@ -1017,12 +1158,12 @@ class Rect(
 
         match self.rx, self.ry:
             case None, None:
-                rx = ry = length.Length(0)
-            case length.Length(), None:
+                rx = ry = Length(0)
+            case Length(), None:
                 rx = ry = self.rx
-            case None, length.Length():
+            case None, Length():
                 rx = ry = self.ry
-            case length.Length(), length.Length():
+            case Length(), Length():
                 rx = self.rx
                 ry = self.ry
 
@@ -1032,8 +1173,8 @@ class Rect(
 
         if not rx or not ry:
             return (
-                path_data.PathData()
-                .move_to(point.Point(x, y))
+                PathData()
+                .move_to(Point(x, y))
                 .horizontal_line_to(x + width)
                 .vertical_line_to(y + height)
                 .horizontal_line_to(x)
@@ -1041,39 +1182,35 @@ class Rect(
             )
 
         return (
-            path_data.PathData()
-            .move_to(point.Point(x + rx, y))
+            PathData()
+            .move_to(Point(x + rx, y))
             .horizontal_line_to(x + width - rx)
             .arc_to(
-                point.Point(rx, ry),
+                Point(rx, ry),
                 0,
-                point.Point(x + width, y + ry),
+                Point(x + width, y + ry),
                 large=False,
                 sweep=True,
             )
             .vertical_line_to(y + height - ry)
             .arc_to(
-                point.Point(rx, ry),
+                Point(rx, ry),
                 0,
-                point.Point(x + width - rx, y + height),
+                Point(x + width - rx, y + height),
                 large=False,
                 sweep=True,
             )
             .horizontal_line_to(x + rx)
             .arc_to(
-                point.Point(rx, ry),
+                Point(rx, ry),
                 0,
-                point.Point(x, y + height - ry),
+                Point(x, y + height - ry),
                 large=False,
                 sweep=True,
             )
             .vertical_line_to(y + ry)
             .arc_to(
-                point.Point(rx, ry),
-                0,
-                point.Point(x + rx, y),
-                large=False,
-                sweep=True,
+                Point(rx, ry), 0, Point(x + rx, y), large=False, sweep=True
             )
             .close()
         )
@@ -1085,67 +1222,54 @@ class Rect(
 
 @final
 class Script(
-    attrgroups.XlinkAttrs,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.TypeContentTypeAttr,
-    traits.Element,
+    XlinkAttrs, ExternalResourcesRequiredAttr, TypeContentTypeAttr, Element
 ):
     pass
 
 
 @final
 class Set(
-    attrgroups.AnimationAttributeTargetAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.ToAttr,
-    traits.AnimationElement,
-    traits.Element,
+    AnimationAttributeTargetAttrs,
+    XlinkAttrs,
+    ExternalResourcesRequiredAttr,
+    ToAttr,
+    AnimationElement,
+    Element,
 ):
     pass
 
 
 @final
-class Stop(
-    attrdefs.ClassAttr,
-    attrdefs.OffsetNumberPercentageAttr,
-    attrdefs.StyleAttr,
-    traits.Element,
-):
+class Stop(ClassAttr, OffsetNumberPercentageAttr, StyleAttr, Element):
     pass
 
 
 @final
-class Style(
-    attrdefs.MediaAttr,
-    attrdefs.TitleAttr,
-    attrdefs.TypeContentTypeAttr,
-    traits.Element,
-):
+class Style(MediaAttr, TitleAttr, TypeContentTypeAttr, Element):
     pass
 
 
 @final
 class Svg(
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.DocumentEventsAttrs,
-    attrdefs.BaseProfileAttr,
-    attrdefs.ClassAttr,
-    attrdefs.ContentScriptTypeAttr,
-    attrdefs.ContentStyleTypeAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.HeightAttr,
-    attrdefs.PreserveAspectRatioAttr,
-    attrdefs.StyleAttr,
-    attrdefs.VersionAttr,
-    attrdefs.ViewBoxAttr,
-    attrdefs.WidthAttr,
-    attrdefs.XCoordinateAttr,
-    attrdefs.XmlnsAttr,
-    attrdefs.YCoordinateAttr,
-    attrdefs.ZoomAndPanAttr,
-    traits.StructuralElement,
-    traits.ContainerElement,
+    ConditionalProcessingAttrs,
+    DocumentEventsAttrs,
+    BaseProfileAttr,
+    ClassAttr,
+    ContentScriptTypeAttr,
+    ContentStyleTypeAttr,
+    ExternalResourcesRequiredAttr,
+    HeightAttr,
+    PreserveAspectRatioAttr,
+    StyleAttr,
+    VersionAttr,
+    ViewBoxAttr,
+    WidthAttr,
+    XCoordinateAttr,
+    XmlnsAttr,
+    YCoordinateAttr,
+    ZoomAndPanAttr,
+    StructuralElement,
+    ContainerElement,
 ):
     """The `<svg>` element.
 
@@ -1164,30 +1288,28 @@ class Svg(
         *,
         pretty: bool = True,
         trailing_newline: bool = True,
-        formatter: serialize.Formatter | None = None,
+        formatter: Formatter | None = None,
     ) -> None: ...
 
     @overload
     def save(
         self,
-        file: protocols.SupportsWrite[str],
+        file: SupportsWrite[str],
         /,
         *,
         pretty: bool = True,
         trailing_newline: bool = True,
-        formatter: serialize.Formatter | None = None,
+        formatter: Formatter | None = None,
     ) -> None: ...
 
     def save(
         self,
-        path_or_file: str
-        | os.PathLike[str]
-        | protocols.SupportsWrite[str],
+        path_or_file: str | os.PathLike[str] | SupportsWrite[str],
         /,
         *,
         pretty: bool = True,
         trailing_newline: bool = True,
-        formatter: serialize.Formatter | None = None,
+        formatter: Formatter | None = None,
     ) -> None:
         """Convert the SVG document fragment to XML and write it to a file.
 
@@ -1202,7 +1324,7 @@ class Svg(
             >>> import sys
             >>> from svglab import Rect, Svg
             >>> svg = Svg(id="foo").add_child(Rect())
-            >>> formatter = serialize.Formatter(indent=4)
+            >>> formatter = Formatter(indent=4)
             >>> svg.save(
             ...     sys.stdout,
             ...     pretty=True,
@@ -1216,14 +1338,14 @@ class Svg(
         """
         with contextlib.ExitStack() as stack:
             output = self.to_xml(pretty=pretty, formatter=formatter)
-            file: protocols.SupportsWrite[str]
+            file: SupportsWrite[str]
 
             match path_or_file:
                 case str() | os.PathLike() as path:
                     file = stack.enter_context(
                         pathlib.Path(path).open("w")
                     )
-                case protocols.SupportsWrite() as file:
+                case SupportsWrite() as file:
                     pass
 
             file.write(output)
@@ -1275,7 +1397,7 @@ class Svg(
             old_viewbox = self.viewBox
 
         if all(
-            mathutils.is_close(old, new)
+            is_close(old, new)
             for old, new in zip(old_viewbox, viewbox, strict=True)
         ):
             self.viewBox = viewbox
@@ -1287,7 +1409,7 @@ class Svg(
         sx = width / old_width
         sy = height / old_height
 
-        if not mathutils.is_close(sx, sy):
+        if not is_close(sx, sy):
             raise ValueError("Aspect ratios of old and new viewBox differ")
 
         tx = min_x - sx * old_min_x
@@ -1301,8 +1423,8 @@ class Svg(
             child.decompose_transform_origin()
 
             child.transform = [
-                transform.Translate(tx, ty),
-                transform.Scale(sx, sy),
+                Translate(tx, ty),
+                Scale(sx, sy),
                 *(child.transform or []),
             ]
 
@@ -1312,9 +1434,9 @@ class Svg(
 
     def render(
         self,
-        options: resvg.RenderOptions | None = None,
+        options: RenderOptions | None = None,
         *,
-        background: color.Color | None = None,
+        background: Color | None = None,
         height: float | None = None,
         width: float | None = None,
         zoom: float = 1,
@@ -1362,11 +1484,11 @@ class Svg(
             >>> svg = Svg(width=Length(20), height=Length(10))
             >>> svg.render().size
             (20, 10)
-            >>> svg.render(resvg.RenderOptions(dpi=300), width=40).size
+            >>> svg.render(RenderOptions(dpi=300), width=40).size
             (40, 20)
 
         """
-        return graphics.render(
+        return render(
             self,
             options,
             background=background,
@@ -1385,7 +1507,7 @@ class Svg(
 
     def to_data_uri(self) -> str:
         """Convert the SVG document fragment to a base64-encoded data URI."""
-        xml = self.to_xml(formatter=serialize.MINIMAL_FORMATTER)
+        xml = self.to_xml(formatter=MINIMAL_FORMATTER)
         b64 = base64.b64encode(xml.encode()).decode()
 
         return f"data:image/svg+xml;base64,{b64}"
@@ -1393,158 +1515,146 @@ class Svg(
 
 @final
 class Switch(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.StyleAttr,
-    traits.ContainerElement,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    StyleAttr,
+    ContainerElement,
 ):
     pass
 
 
 @final
 class Symbol(
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.PreserveAspectRatioAttr,
-    attrdefs.RefXAttr,
-    attrdefs.RefYAttr,
-    attrdefs.StyleAttr,
-    attrdefs.ViewBoxAttr,
-    traits.StructuralElement,
-    traits.ContainerElement,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    PreserveAspectRatioAttr,
+    RefXAttr,
+    RefYAttr,
+    StyleAttr,
+    ViewBoxAttr,
+    StructuralElement,
+    ContainerElement,
 ):
     pass
 
 
 @final
 class Text(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.DxListOfLengthsAttr,
-    attrdefs.DyListOfLengthsAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.LengthAdjustAttr,
-    attrdefs.RotateListOfNumbersAttr,
-    attrdefs.StyleAttr,
-    attrdefs.TextLengthAttr,
-    attrdefs.XListOfCoordinatesAttr,
-    attrdefs.YListOfCoordinatesAttr,
-    traits.TextContentElement,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    DxListOfLengthsAttr,
+    DyListOfLengthsAttr,
+    ExternalResourcesRequiredAttr,
+    LengthAdjustAttr,
+    RotateListOfNumbersAttr,
+    StyleAttr,
+    TextLengthAttr,
+    XListOfCoordinatesAttr,
+    YListOfCoordinatesAttr,
+    TextContentElement,
+    Element,
 ):
     pass
 
 
 @final
 class TextPath(
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.LengthAdjustAttr,
-    attrdefs.MethodAttr,
-    attrdefs.SpacingAttr,
-    attrdefs.StartOffsetAttr,
-    attrdefs.StyleAttr,
-    attrdefs.TextLengthAttr,
-    traits.TextContentChildElement,
-    traits.TextContentElement,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    LengthAdjustAttr,
+    MethodAttr,
+    SpacingAttr,
+    StartOffsetAttr,
+    StyleAttr,
+    TextLengthAttr,
+    TextContentChildElement,
+    TextContentElement,
+    Element,
 ):
     pass
 
 
 @final
-class Title(
-    attrdefs.ClassAttr,
-    attrdefs.StyleAttr,
-    traits.DescriptiveElement,
-    traits.Element,
-):
+class Title(ClassAttr, StyleAttr, DescriptiveElement, Element):
     pass
 
 
 @final
 class Tref(
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.DxListOfLengthsAttr,
-    attrdefs.DyListOfLengthsAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.LengthAdjustAttr,
-    attrdefs.RotateListOfNumbersAttr,
-    attrdefs.StyleAttr,
-    attrdefs.TextLengthAttr,
-    attrdefs.XListOfCoordinatesAttr,
-    attrdefs.YListOfCoordinatesAttr,
-    traits.TextContentChildElement,
-    traits.TextContentElement,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    ClassAttr,
+    DxListOfLengthsAttr,
+    DyListOfLengthsAttr,
+    ExternalResourcesRequiredAttr,
+    LengthAdjustAttr,
+    RotateListOfNumbersAttr,
+    StyleAttr,
+    TextLengthAttr,
+    XListOfCoordinatesAttr,
+    YListOfCoordinatesAttr,
+    TextContentChildElement,
+    TextContentElement,
+    Element,
 ):
     pass
 
 
 @final
 class Tspan(
-    attrgroups.ConditionalProcessingAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.DxListOfLengthsAttr,
-    attrdefs.DyListOfLengthsAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.LengthAdjustAttr,
-    attrdefs.RotateListOfNumbersAttr,
-    attrdefs.StyleAttr,
-    attrdefs.TextLengthAttr,
-    attrdefs.XListOfCoordinatesAttr,
-    attrdefs.YListOfCoordinatesAttr,
-    traits.TextContentBlockElement,
-    traits.TextContentChildElement,
-    traits.TextContentElement,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    ClassAttr,
+    DxListOfLengthsAttr,
+    DyListOfLengthsAttr,
+    ExternalResourcesRequiredAttr,
+    LengthAdjustAttr,
+    RotateListOfNumbersAttr,
+    StyleAttr,
+    TextLengthAttr,
+    XListOfCoordinatesAttr,
+    YListOfCoordinatesAttr,
+    TextContentBlockElement,
+    TextContentChildElement,
+    TextContentElement,
+    Element,
 ):
     pass
 
 
 @final
 class Use(
-    attrgroups.ConditionalProcessingAttrs,
-    attrgroups.XlinkAttrs,
-    attrdefs.ClassAttr,
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.HeightAttr,
-    attrdefs.StyleAttr,
-    attrdefs.WidthAttr,
-    attrdefs.XCoordinateAttr,
-    attrdefs.YCoordinateAttr,
-    traits.GraphicsElement,
-    traits.GraphicsReferencingElement,
-    traits.StructuralElement,
-    traits.Element,
+    ConditionalProcessingAttrs,
+    XlinkAttrs,
+    ClassAttr,
+    ExternalResourcesRequiredAttr,
+    HeightAttr,
+    StyleAttr,
+    WidthAttr,
+    XCoordinateAttr,
+    YCoordinateAttr,
+    GraphicsElement,
+    GraphicsReferencingElement,
+    StructuralElement,
+    Element,
 ):
     pass
 
 
 @final
 class View(
-    attrdefs.ExternalResourcesRequiredAttr,
-    attrdefs.PreserveAspectRatioAttr,
-    attrdefs.ViewBoxAttr,
-    attrdefs.ViewTargetAttr,
-    attrdefs.ZoomAndPanAttr,
-    traits.Element,
+    ExternalResourcesRequiredAttr,
+    PreserveAspectRatioAttr,
+    ViewBoxAttr,
+    ViewTargetAttr,
+    ZoomAndPanAttr,
+    Element,
 ):
     pass
 
 
 @final
-class Vkern(
-    attrdefs.G1Attr,
-    attrdefs.G2Attr,
-    attrdefs.KAttr,
-    attrdefs.U1Attr,
-    attrdefs.U2Attr,
-    traits.Element,
-):
+class Vkern(G1Attr, G2Attr, KAttr, U1Attr, U2Attr, Element):
     pass

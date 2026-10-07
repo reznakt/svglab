@@ -7,16 +7,24 @@ import PIL.Image
 import pydantic
 from typing_extensions import Final, final
 
-from svglab import _resvg, errors, models
-from svglab.attrparse import color
-from svglab.attrs import typedefs
+from svglab._resvg import PanicError, RenderError
+from svglab._resvg import render as _render
+from svglab.attrparse.color import Color
+from svglab.attrs.typedefs import (
+    ImageRendering,
+    Number,
+    ShapeRendering,
+    TextRendering,
+)
+from svglab.errors import SvgRenderError
+from svglab.models import DATACLASS_CONFIG, dataclass
 
 
 @final
-@models.dataclass(
+@dataclass(
     frozen=True,
     kw_only=True,
-    config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
+    config=pydantic.ConfigDict(DATACLASS_CONFIG, strict=False),
 )
 class RenderOptions:
     """The settings a document is rendered with."""
@@ -27,7 +35,7 @@ class RenderOptions:
     the renderer's own default is used.
     """
 
-    default_size: tuple[typedefs.Number, typedefs.Number] = (100.0, 100.0)
+    default_size: tuple[Number, Number] = (100.0, 100.0)
     """
     The viewport, in pixels, to assume when the document has no `viewBox` and
     a relative `width` or `height`. `Svg.render` resolves the size of the
@@ -35,7 +43,7 @@ class RenderOptions:
     `svglab.resvg.render` directly.
     """
 
-    dpi: typedefs.Number = 96.0
+    dpi: Number = 96.0
     """
     The resolution, in dots per inch, used to convert physical units such as
     `cm` and `pt` into pixels.
@@ -62,10 +70,10 @@ class RenderOptions:
     font_files: Sequence[pathlib.Path] = ()
     """Extra font files to load."""
 
-    font_size: typedefs.Number = 12.0
+    font_size: Number = 12.0
     """The font size, in points, to use where the document specifies none."""
 
-    image_rendering: typedefs.ImageRendering = "optimizeQuality"
+    image_rendering: ImageRendering = "optimizeQuality"
     """The image rendering method to use where the document specifies none."""
 
     languages: Sequence[str] = ("en",)
@@ -98,7 +106,7 @@ class RenderOptions:
     renderer's own default is used.
     """
 
-    shape_rendering: typedefs.ShapeRendering = "geometricPrecision"
+    shape_rendering: ShapeRendering = "geometricPrecision"
     """The shape rendering method to use where the document specifies none."""
 
     skip_system_fonts: bool = False
@@ -114,14 +122,14 @@ class RenderOptions:
     document for a single render without editing the tree.
     """
 
-    text_rendering: typedefs.TextRendering = "optimizeLegibility"
+    text_rendering: TextRendering = "optimizeLegibility"
     """The text rendering method to use where the document specifies none."""
 
 
 _DEFAULT_OPTIONS: Final = RenderOptions()
 
 
-def _to_rgba(value: color.Color, /) -> tuple[int, int, int, int]:
+def _to_rgba(value: Color, /) -> tuple[int, int, int, int]:
     """Convert a color into its 8-bit RGBA components.
 
     `as_rgb_tuple` follows the CSS convention, in which the red, green and
@@ -152,7 +160,7 @@ def render(
     svg: str,
     options: RenderOptions | None = None,
     *,
-    background: color.Color | None = None,
+    background: Color | None = None,
     zoom: float = 1,
 ) -> PIL.Image.Image:
     """Rasterize an SVG document into a Pillow image.
@@ -180,7 +188,7 @@ def render(
     options = _DEFAULT_OPTIONS if options is None else options
 
     try:
-        width, height, pixels = _resvg.render(
+        width, height, pixels = _render(
             svg,
             background=_to_rgba(background)
             if background is not None
@@ -205,9 +213,9 @@ def render(
             text_rendering=options.text_rendering,
             zoom=zoom,
         )
-    except _resvg.RenderError as e:
-        raise errors.SvgRenderError(str(e)) from e
-    except _resvg.PanicError as e:
+    except RenderError as e:
+        raise SvgRenderError(str(e)) from e
+    except PanicError as e:
         raise RuntimeError(str(e)) from e
 
     return PIL.Image.frombuffer(

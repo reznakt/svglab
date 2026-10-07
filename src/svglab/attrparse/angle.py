@@ -19,13 +19,17 @@ from typing_extensions import (
     override,
 )
 
-from svglab import mixins, models, protocols, serialize, units
-from svglab.attrparse import parse
+from svglab.attrparse.parse import FiniteFloat, get_validator, inline_args
+from svglab.mixins import AddSub, FloatMulDiv
+from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.protocols import CustomSerializable
+from svglab.serialize import serialize
+from svglab.units import Converter, make_converter
 
 
 AngleUnit: TypeAlias = Literal["deg", "grad", "rad", "turn"] | None
 
-_convert: Final[units.Converter[Angle, AngleUnit]] = units.make_converter(
+_convert: Final[Converter[Angle, AngleUnit]] = make_converter(
     conversion_table={
         ("deg", "grad"): 10 / 9,
         ("rad", "deg"): 180 / math.pi,
@@ -36,12 +40,9 @@ _convert: Final[units.Converter[Angle, AngleUnit]] = units.make_converter(
 
 
 @final
-@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
+@dataclass(frozen=True, config=DATACLASS_CONFIG)
 class Angle(
-    mixins.AddSub["Angle"],
-    mixins.FloatMulDiv,
-    SupportsFloat,
-    protocols.CustomSerializable,
+    AddSub["Angle"], FloatMulDiv, SupportsFloat, CustomSerializable
 ):
     """Represents the SVG `<angle>` type.
 
@@ -78,7 +79,7 @@ class Angle(
 
     @override
     def serialize(self) -> str:
-        value = serialize.serialize(self.value, precision_group="angle")
+        value = serialize(self.value, precision_group="angle")
         return f"{value}{self.unit or ''}"
 
     @override
@@ -96,13 +97,12 @@ class Angle(
         return self.to(None).value
 
 
-@parse.inline_args
+@inline_args
 class _Transformer(lark.Transformer[object, Angle]):
-    number = parse.FiniteFloat
+    number = FiniteFloat
     angle = Angle
 
 
 AngleType: TypeAlias = Annotated[
-    Angle,
-    parse.get_validator(grammar="angle.lark", transformer=_Transformer()),
+    Angle, get_validator(grammar="angle.lark", transformer=_Transformer())
 ]

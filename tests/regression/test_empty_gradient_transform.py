@@ -1,8 +1,8 @@
-import svglab
+from svglab import LinearGradient, parse_svg
 
 
 def test_fully_reified_gradient_transform_is_removed() -> None:
-    svg = svglab.parse_svg("""
+    svg = parse_svg("""
         <svg width="200" height="200">
             <linearGradient id="g" gradientUnits="userSpaceOnUse"
                             x1="0" y1="0" x2="100" y2="0"
@@ -13,7 +13,7 @@ def test_fully_reified_gradient_transform_is_removed() -> None:
     """)
 
     svg.reify()
-    gradient = svg.find(svglab.LinearGradient)
+    gradient = svg.find(LinearGradient)
 
     assert gradient.gradientTransform is None
     assert "gradientTransform" not in gradient.to_xml()

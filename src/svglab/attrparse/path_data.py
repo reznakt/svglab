@@ -26,34 +26,58 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import errors, mixins, models, protocols, serialize
-from svglab.attrparse import parse, point, transform
-from svglab.utils import iterutils, mathutils, miscutils
+from svglab.attrparse.parse import (
+    FiniteFloat,
+    get_validator,
+    inline_args,
+    parse,
+    visit_tokens,
+)
+from svglab.attrparse.point import Point
+from svglab.attrparse.transform import (
+    PointAddSubWithTranslateRMatmul,
+    Rotate,
+    Scale,
+    TransformFunction,
+    Translate,
+)
+from svglab.errors import SvgPathMissingMoveToError
+from svglab.mixins import CustomModel
+from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.protocols import CustomSerializable, SupportsFloatOrIndex
+from svglab.serialize import (
+    get_current_formatter,
+    serialize_path_command,
+    serialize_point,
+)
+from svglab.utils.iterutils import is_first_index, pairwise
+from svglab.utils.mathutils import cos, is_close, sin
+from svglab.utils.miscutils import basic_compare
 
 
 _Flag: TypeAlias = Literal["0", "1"]
 
 
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class _PathCommandBase:
     pass
 
 
 @runtime_checkable
 class _HasEnd(Protocol):
-    end: point.Point
+    end: Point
 
 
 class _PhysicalPathCommand(
     _PathCommandBase,
-    transform.PointAddSubWithTranslateRMatmul,
+    PointAddSubWithTranslateRMatmul,
     metaclass=abc.ABCMeta,
 ):
     pass
 
 
 @final
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class ClosePath(_PathCommandBase):
     """Close the current subpath (Z).
 
@@ -63,19 +87,19 @@ class ClosePath(_PathCommandBase):
     """
 
 
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class LineTo(_HasEnd, _PhysicalPathCommand):
     """Draw a line from the current point to the given end point (L)."""
 
-    end: point.Point
+    end: Point
 
     @override
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+    def __rmatmul__(self, other: TransformFunction) -> Self:
         return type(self)(end=other @ self.end)
 
 
 @final
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class HorizontalLineTo(_PhysicalPathCommand):
     """Draw a horizontal line from the current point (H)."""
 
@@ -83,22 +107,18 @@ class HorizontalLineTo(_PhysicalPathCommand):
 
     def to_line(self) -> LineTo:
         """Convert to a `LineTo` instance."""
-        return LineTo(end=point.Point(self.x, 0))
+        return LineTo(end=Point(self.x, 0))
 
     @overload
-    def __rmatmul__(
-        self, other: transform.Translate | transform.Scale
-    ) -> Self: ...
+    def __rmatmul__(self, other: Translate | Scale) -> Self: ...
 
     @overload
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self: ...
+    def __rmatmul__(self, other: TransformFunction) -> Self: ...
 
     @override
-    def __rmatmul__(
-        self, other: transform.TransformFunction
-    ) -> Self | LineTo:
-        if isinstance(other, transform.Translate | transform.Scale):
-            x, _ = other @ point.Point(self.x, 0)
+    def __rmatmul__(self, other: TransformFunction) -> Self | LineTo:
+        if isinstance(other, Translate | Scale):
+            x, _ = other @ Point(self.x, 0)
 
             return type(self)(x=x)
 
@@ -106,7 +126,7 @@ class HorizontalLineTo(_PhysicalPathCommand):
 
 
 @final
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class VerticalLineTo(_PhysicalPathCommand):
     """Draw a vertical line from the current point (V)."""
 
@@ -114,22 +134,18 @@ class VerticalLineTo(_PhysicalPathCommand):
 
     def to_line(self) -> LineTo:
         """Convert to a `LineTo` instance."""
-        return LineTo(end=point.Point(0, self.y))
+        return LineTo(end=Point(0, self.y))
 
     @overload
-    def __rmatmul__(
-        self, other: transform.Translate | transform.Scale
-    ) -> Self: ...
+    def __rmatmul__(self, other: Translate | Scale) -> Self: ...
 
     @overload
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self: ...
+    def __rmatmul__(self, other: TransformFunction) -> Self: ...
 
     @override
-    def __rmatmul__(
-        self, other: transform.TransformFunction
-    ) -> Self | LineTo:
-        if isinstance(other, transform.Translate | transform.Scale):
-            _, y = other @ point.Point(0, self.y)
+    def __rmatmul__(self, other: TransformFunction) -> Self | LineTo:
+        if isinstance(other, Translate | Scale):
+            _, y = other @ Point(0, self.y)
 
             return type(self)(y=y)
 
@@ -137,7 +153,7 @@ class VerticalLineTo(_PhysicalPathCommand):
 
 
 @final
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class SmoothQuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     """Draw a smooth/shorthand quadratic Bézier curve (T).
 
@@ -146,15 +162,15 @@ class SmoothQuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     previous control point across the end point of the previous command.
     """
 
-    end: point.Point
+    end: Point
 
     @override
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+    def __rmatmul__(self, other: TransformFunction) -> Self:
         return type(self)(end=other @ self.end)
 
 
 @final
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
     """Draw a smooth/shorthand cubic Bézier curve (S).
 
@@ -164,30 +180,30 @@ class SmoothCubicBezierTo(_HasEnd, _PhysicalPathCommand):
     of the previous command. The second control point is given as an argument.
     """
 
-    control2: point.Point
-    end: point.Point
+    control2: Point
+    end: Point
 
     @override
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+    def __rmatmul__(self, other: TransformFunction) -> Self:
         return type(self)(
             control2=other @ self.control2, end=other @ self.end
         )
 
 
 @final
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class MoveTo(_HasEnd, _PhysicalPathCommand):
     """Move the current point to the end point and start a new subpath (M)."""
 
-    end: point.Point
+    end: Point
 
     @override
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+    def __rmatmul__(self, other: TransformFunction) -> Self:
         return type(self)(end=other @ self.end)
 
 
 @final
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class QuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     """Draw a quadratic Bézier curve (Q).
 
@@ -195,18 +211,18 @@ class QuadraticBezierTo(_HasEnd, _PhysicalPathCommand):
     as the control point.
     """
 
-    control: point.Point
-    end: point.Point
+    control: Point
+    end: Point
 
     @override
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+    def __rmatmul__(self, other: TransformFunction) -> Self:
         return type(self)(
             control=other @ self.control, end=other @ self.end
         )
 
 
 @final
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
     """Draw a cubic Bézier curve (C).
 
@@ -214,12 +230,12 @@ class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
     `control1` and `control2` as the control points.
     """
 
-    control1: point.Point
-    control2: point.Point
-    end: point.Point
+    control1: Point
+    control2: Point
+    end: Point
 
     @override
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+    def __rmatmul__(self, other: TransformFunction) -> Self:
         return type(self)(
             control1=other @ self.control1,
             control2=other @ self.control2,
@@ -228,7 +244,7 @@ class CubicBezierTo(_HasEnd, _PhysicalPathCommand):
 
 
 @final
-@models.dataclass(config=models.DATACLASS_CONFIG)
+@dataclass(config=DATACLASS_CONFIG)
 class ArcTo(_HasEnd, _PhysicalPathCommand):
     """Draw an elliptical arc (A).
 
@@ -241,28 +257,28 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
     negative angle direction.
     """
 
-    radii: point.Point
+    radii: Point
     angle: float
     large: bool
     sweep: bool
-    end: point.Point
+    end: Point
 
     @override
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+    def __rmatmul__(self, other: TransformFunction) -> Self:
         radii = self.radii
         angle = self.angle
         sweep = self.sweep
         end = self.end
 
         match other:
-            case transform.Translate():
+            case Translate():
                 end = other @ end
-            case transform.Scale(sx, sy):
+            case Scale(sx, sy):
                 # a tilted ellipse changes shape, not just size, so the new
                 # radii and rotation cannot be expressed in terms of the old
-                if not mathutils.is_close(
-                    abs(sx), abs(sy)
-                ) and not mathutils.is_close(mathutils.sin(2 * angle), 0):
+                if not is_close(abs(sx), abs(sy)) and not is_close(
+                    sin(2 * angle), 0
+                ):
                     msg = (
                         "Unable to scale a tilted arc by differing"
                         f" factors: {other}"
@@ -272,20 +288,18 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
                 # a quarter turn swaps the axes of the ellipse, and with
                 # them the factors that apply to each radius
                 scaled_radii = (
-                    point.Point(radii.x * sy, radii.y * sx)
-                    if mathutils.is_close(mathutils.cos(angle), 0)
+                    Point(radii.x * sy, radii.y * sx)
+                    if is_close(cos(angle), 0)
                     else other @ radii
                 )
-                radii = point.Point(
-                    abs(scaled_radii.x), abs(scaled_radii.y)
-                )
+                radii = Point(abs(scaled_radii.x), abs(scaled_radii.y))
                 end = other @ end
 
                 # a mirroring scale flips the ellipse over
                 if sx * sy < 0:
                     angle = -angle
                     sweep = not sweep
-            case transform.Rotate(a):
+            case Rotate(a):
                 angle += a
                 end = other @ end
             case _:
@@ -326,7 +340,7 @@ def _get_latest_moveto(path_data: PathData, max_idx: int) -> MoveTo:
     raise ValueError(msg)
 
 
-def _get_end_at(path_data: PathData, idx: int) -> point.Point:
+def _get_end_at(path_data: PathData, idx: int) -> Point:
     """Get the end point of the path command at the given index.
 
     For commands that have a set end point, this function returns the end
@@ -363,7 +377,7 @@ def _get_end_at(path_data: PathData, idx: int) -> point.Point:
             msg = f"Path command index out of range ({idx=})"
             raise IndexError(msg)
 
-        end: point.Point | None = None
+        end: Point | None = None
 
         match path_data[idx]:
             case HorizontalLineTo(x=command_x):
@@ -381,10 +395,10 @@ def _get_end_at(path_data: PathData, idx: int) -> point.Point:
 
         idx -= 1
 
-    return point.Point(x, y)
+    return Point(x, y)
 
 
-def _iter_end_points(path_data: PathData, /) -> Generator[point.Point]:
+def _iter_end_points(path_data: PathData, /) -> Generator[Point]:
     """Iterate over the end points of all commands in a path.
 
     This is equivalent to calling `_get_end_at()` for every index, but folds
@@ -403,7 +417,7 @@ def _iter_end_points(path_data: PathData, /) -> Generator[point.Point]:
         [(10.0, 10.0), (100.0, 10.0), (100.0, 100.0), (10.0, 10.0)]
 
     """
-    end = subpath_start = point.Point.zero()
+    end = subpath_start = Point.zero()
 
     for command in path_data:
         match command:
@@ -412,16 +426,16 @@ def _iter_end_points(path_data: PathData, /) -> Generator[point.Point]:
             case ClosePath():
                 end = subpath_start
             case HorizontalLineTo(x=x):
-                end = point.Point(x, end.y)
+                end = Point(x, end.y)
             case VerticalLineTo(y=y):
-                end = point.Point(end.x, y)
+                end = Point(end.x, y)
             case _:
                 end = command.end
 
         yield end
 
 
-def _quadratic_control_at(path_data: PathData, idx: int) -> point.Point:
+def _quadratic_control_at(path_data: PathData, idx: int) -> Point:
     """Compute the control point for a smooth quadratic Bézier command (`T`).
 
     The control point is calculated based on the previous command. If the
@@ -464,7 +478,7 @@ def _quadratic_control_at(path_data: PathData, idx: int) -> point.Point:
     return control.line_reflect(end)
 
 
-def _cubic_control_at(path_data: PathData, idx: int) -> point.Point:
+def _cubic_control_at(path_data: PathData, idx: int) -> Point:
     """Compute the first control point for a smooth cubic Bézier command (`S`).
 
     The control point is calculated based on the previous command. If the
@@ -527,7 +541,7 @@ def _relativize(path_data: PathData) -> PathData:
 
     """
     result = PathData()
-    pos = point.Point.zero()
+    pos = Point.zero()
 
     for command, end in zip(
         path_data, _iter_end_points(path_data), strict=True
@@ -563,23 +577,18 @@ def _can_use_implicit_command(
         `True` if the command can be serialized implicitly, `False` otherwise.
 
     Examples:
-        >>> _can_use_implicit_command(
-        ...     MoveTo(point.Point(10, 10)), prev=None
-        ... )
+        >>> _can_use_implicit_command(MoveTo(Point(10, 10)), prev=None)
         False
         >>> _can_use_implicit_command(
-        ...     LineTo(point.Point(100, 100)),
-        ...     prev=MoveTo(point.Point(10, 10)),
+        ...     LineTo(Point(100, 100)), prev=MoveTo(Point(10, 10))
         ... )
         True
         >>> _can_use_implicit_command(
-        ...     LineTo(point.Point(100, 100)),
-        ...     prev=LineTo(point.Point(10, 10)),
+        ...     LineTo(Point(100, 100)), prev=LineTo(Point(10, 10))
         ... )
         True
         >>> _can_use_implicit_command(
-        ...     MoveTo(point.Point(100, 100)),
-        ...     prev=MoveTo(point.Point(10, 10)),
+        ...     MoveTo(Point(100, 100)), prev=MoveTo(Point(10, 10))
         ... )
         False
 
@@ -604,9 +613,9 @@ def _add_command(
 @final
 class PathData(  # noqa: PLW1641
     MutableSequence[PathCommand],
-    mixins.CustomModel,
-    transform.PointAddSubWithTranslateRMatmul,
-    protocols.CustomSerializable,
+    CustomModel,
+    PointAddSubWithTranslateRMatmul,
+    CustomSerializable,
 ):
     """A class representing the `d` attribute of a path element.
 
@@ -624,8 +633,8 @@ class PathData(  # noqa: PLW1641
     Examples:
         >>> path_data = (
         ...     PathData()
-        ...     .move_to(point.Point(10, 10))
-        ...     .line_to(point.Point(100, 100), relative=True)
+        ...     .move_to(Point(10, 10))
+        ...     .line_to(Point(100, 100), relative=True)
         ... )
         >>> len(path_data)
         2
@@ -652,7 +661,7 @@ class PathData(  # noqa: PLW1641
         iterable: Iterable[PathCommand] = (),
         /,
         *,
-        start: point.Point | None = None,
+        start: Point | None = None,
     ) -> None:
         """Initialize a new `PathData` instance.
 
@@ -674,16 +683,12 @@ class PathData(  # noqa: PLW1641
 
     @override
     def insert(self, index: SupportsIndex, value: PathCommand) -> None:
-        if iterutils.is_first_index(self, index) and not isinstance(
-            value, MoveTo
-        ):
-            raise errors.SvgPathMissingMoveToError
+        if is_first_index(self, index) and not isinstance(value, MoveTo):
+            raise SvgPathMissingMoveToError
 
         self.__commands.insert(index, value)
 
-    def move_to(
-        self, end: point.Point, /, *, relative: bool = False
-    ) -> Self:
+    def move_to(self, end: Point, /, *, relative: bool = False) -> Self:
         """Move the current point to the end point and start a new subpath (M).
 
         Args:
@@ -697,9 +702,7 @@ class PathData(  # noqa: PLW1641
         """
         return self.__add(MoveTo(end=end), relative=relative)
 
-    def line_to(
-        self, end: point.Point, /, *, relative: bool = False
-    ) -> Self:
+    def line_to(self, end: Point, /, *, relative: bool = False) -> Self:
         """Draw a line from the current point to the end point (L).
 
         Args:
@@ -714,11 +717,7 @@ class PathData(  # noqa: PLW1641
         return self.__add(LineTo(end=end), relative=relative)
 
     def horizontal_line_to(
-        self,
-        x: protocols.SupportsFloatOrIndex,
-        /,
-        *,
-        relative: bool = False,
+        self, x: SupportsFloatOrIndex, /, *, relative: bool = False
     ) -> Self:
         """Draw a horizontal line from the current point (H).
 
@@ -734,11 +733,7 @@ class PathData(  # noqa: PLW1641
         return self.__add(HorizontalLineTo(x=float(x)), relative=relative)
 
     def vertical_line_to(
-        self,
-        y: protocols.SupportsFloatOrIndex,
-        /,
-        *,
-        relative: bool = False,
+        self, y: SupportsFloatOrIndex, /, *, relative: bool = False
     ) -> Self:
         """Draw a vertical line from the current point (V).
 
@@ -754,12 +749,7 @@ class PathData(  # noqa: PLW1641
         return self.__add(VerticalLineTo(y=float(y)), relative=relative)
 
     def quadratic_bezier_to(
-        self,
-        control: point.Point,
-        end: point.Point,
-        /,
-        *,
-        relative: bool = False,
+        self, control: Point, end: Point, /, *, relative: bool = False
     ) -> Self:
         """Draw a quadratic Bézier curve (Q).
 
@@ -782,9 +772,9 @@ class PathData(  # noqa: PLW1641
 
     def cubic_bezier_to(
         self,
-        control1: point.Point,
-        control2: point.Point,
-        end: point.Point,
+        control1: Point,
+        control2: Point,
+        end: Point,
         *,
         relative: bool = False,
     ) -> Self:
@@ -811,9 +801,9 @@ class PathData(  # noqa: PLW1641
 
     def arc_to(
         self,
-        radii: point.Point,
+        radii: Point,
         angle: float,
-        end: point.Point,
+        end: Point,
         *,
         large: bool,
         sweep: bool,
@@ -845,7 +835,7 @@ class PathData(  # noqa: PLW1641
         )
 
     def smooth_quadratic_bezier_to(
-        self, end: point.Point, /, *, relative: bool = False
+        self, end: Point, /, *, relative: bool = False
     ) -> Self:
         """Draw a smooth/shorthand quadratic Bézier curve (T).
 
@@ -868,12 +858,7 @@ class PathData(  # noqa: PLW1641
         )
 
     def smooth_cubic_bezier_to(
-        self,
-        control2: point.Point,
-        end: point.Point,
-        /,
-        *,
-        relative: bool = False,
+        self, control2: Point, end: Point, /, *, relative: bool = False
     ) -> Self:
         """Draw a smooth/shorthand cubic Bézier curve (S).
 
@@ -930,7 +915,7 @@ class PathData(  # noqa: PLW1641
             PathData(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
 
         """
-        path_data = parse.parse(
+        path_data = parse(
             text, grammar="path_data.lark", transformer=_Transformer()
         )
 
@@ -957,7 +942,7 @@ class PathData(  # noqa: PLW1641
 
     def __apply_shorthand_formatting(self) -> PathData:
         """Apply shorthand formatting based on the formatter settings."""
-        formatter = serialize.get_current_formatter()
+        formatter = get_current_formatter()
         line = formatter.path_data_shorthand_line_commands
         curve = formatter.path_data_shorthand_curve_commands
 
@@ -976,7 +961,7 @@ class PathData(  # noqa: PLW1641
         return path_data
 
     def __serialize_commands(self) -> Generator[str]:
-        formatter = serialize.get_current_formatter()
+        formatter = get_current_formatter()
         path_data = self.__apply_shorthand_formatting()
 
         if formatter.path_data_coordinates == "relative":
@@ -987,10 +972,10 @@ class PathData(  # noqa: PLW1641
             or formatter.point_separator
         )
 
-        def pt(value: point.Point) -> str:
-            return serialize.serialize_point(value, separator=separator)
+        def pt(value: Point) -> str:
+            return serialize_point(value, separator=separator)
 
-        for prev, command in iterutils.pairwise(path_data):
+        for prev, command in pairwise(path_data):
             implicit = (
                 formatter.path_data_commands == "implicit"
                 and _can_use_implicit_command(command, prev=prev)
@@ -998,31 +983,31 @@ class PathData(  # noqa: PLW1641
 
             match command:
                 case MoveTo(end):
-                    yield serialize.serialize_path_command(
+                    yield serialize_path_command(
                         pt(end), char="M", implicit=implicit
                     )
                 case LineTo(end):
-                    yield serialize.serialize_path_command(
+                    yield serialize_path_command(
                         pt(end), char="L", implicit=implicit
                     )
                 case HorizontalLineTo(x):
-                    yield serialize.serialize_path_command(
+                    yield serialize_path_command(
                         x, char="H", implicit=implicit
                     )
                 case VerticalLineTo(y):
-                    yield serialize.serialize_path_command(
+                    yield serialize_path_command(
                         y, char="V", implicit=implicit
                     )
                 case QuadraticBezierTo(control, end):
-                    yield serialize.serialize_path_command(
+                    yield serialize_path_command(
                         pt(control), pt(end), char="Q", implicit=implicit
                     )
                 case SmoothQuadraticBezierTo(end):
-                    yield serialize.serialize_path_command(
+                    yield serialize_path_command(
                         pt(end), char="T", implicit=implicit
                     )
                 case CubicBezierTo(control1, control2, end):
-                    yield serialize.serialize_path_command(
+                    yield serialize_path_command(
                         pt(control1),
                         pt(control2),
                         pt(end),
@@ -1030,11 +1015,11 @@ class PathData(  # noqa: PLW1641
                         implicit=implicit,
                     )
                 case SmoothCubicBezierTo(control2, end):
-                    yield serialize.serialize_path_command(
+                    yield serialize_path_command(
                         pt(control2), pt(end), char="S", implicit=implicit
                     )
                 case ArcTo(radii, angle, large, sweep, end):
-                    yield serialize.serialize_path_command(
+                    yield serialize_path_command(
                         pt(radii),
                         angle,
                         large,
@@ -1044,7 +1029,7 @@ class PathData(  # noqa: PLW1641
                         implicit=implicit,
                     )
                 case ClosePath():
-                    yield serialize.serialize_path_command(
+                    yield serialize_path_command(
                         char="Z", implicit=implicit
                     )
 
@@ -1088,10 +1073,10 @@ class PathData(  # noqa: PLW1641
                     path_data.cubic_bezier_to(control1, control2, end)
                 case HorizontalLineTo(x=x) if lines:
                     end = _get_end_at(path_data, len(path_data) - 1)
-                    path_data.line_to(point.Point(x, end.y))
+                    path_data.line_to(Point(x, end.y))
                 case VerticalLineTo(y=y) if lines:
                     end = _get_end_at(path_data, len(path_data) - 1)
-                    path_data.line_to(point.Point(end.x, y))
+                    path_data.line_to(Point(end.x, y))
                 case _:
                     path_data.append(command)
         return path_data
@@ -1198,10 +1183,8 @@ class PathData(  # noqa: PLW1641
 
         assert isinstance(values, PathCommand)
 
-        if iterutils.is_first_index(self, index) and not isinstance(
-            values, MoveTo
-        ):
-            raise errors.SvgPathMissingMoveToError
+        if is_first_index(self, index) and not isinstance(values, MoveTo):
+            raise SvgPathMissingMoveToError
 
         self.__commands[index] = values
 
@@ -1219,11 +1202,11 @@ class PathData(  # noqa: PLW1641
             )
 
         if (
-            iterutils.is_first_index(self, index)
+            is_first_index(self, index)
             and len(self) > 1
             and not isinstance(self[int(index) + 1], MoveTo)
         ):
-            raise errors.SvgPathMissingMoveToError
+            raise SvgPathMissingMoveToError
 
         del self.__commands[index]
 
@@ -1232,12 +1215,12 @@ class PathData(  # noqa: PLW1641
         return len(self.__commands)
 
     @override
-    def __rmatmul__(self, other: transform.TransformFunction) -> Self:
+    def __rmatmul__(self, other: TransformFunction) -> Self:
         # a shorthand line command takes the other coordinate from the current
         # point, which only translations and scalings preserve
         path_data = (
             self
-            if isinstance(other, transform.Translate | transform.Scale)
+            if isinstance(other, Translate | Scale)
             else self.resolve_shorthands(lines=True, curves=False)
         )
 
@@ -1250,7 +1233,7 @@ class PathData(  # noqa: PLW1641
 
     @override
     def __eq__(self, other: object) -> bool:
-        if not miscutils.basic_compare(other, self=self):
+        if not basic_compare(other, self=self):
             return False
 
         return len(self) == len(other) and all(
@@ -1268,11 +1251,11 @@ class PathData(  # noqa: PLW1641
         return f"{name}({commands})"
 
 
-@parse.inline_args
-@parse.visit_tokens  # there are a few terminals we want to parse
+@inline_args
+@visit_tokens  # there are a few terminals we want to parse
 class _Transformer(lark.Transformer[object, PathData]):
-    point = point.Point
-    NUMBER = parse.FiniteFloat
+    point = Point
+    NUMBER = FiniteFloat
 
     cubic_bezier = CubicBezierTo
     horizontal_line = HorizontalLineTo
@@ -1289,11 +1272,11 @@ class _Transformer(lark.Transformer[object, PathData]):
 
     def arc(
         self,
-        radii: point.Point,
+        radii: Point,
         angle: float,
         large: bool,  # noqa: FBT001
         sweep: bool,  # noqa: FBT001
-        end: point.Point,
+        end: Point,
     ) -> ArcTo:
         return ArcTo(
             radii=radii, angle=angle, large=large, sweep=sweep, end=end
@@ -1326,7 +1309,5 @@ class _Transformer(lark.Transformer[object, PathData]):
 
 PathDataType: TypeAlias = Annotated[
     PathData,
-    parse.get_validator(
-        grammar="path_data.lark", transformer=_Transformer()
-    ),
+    get_validator(grammar="path_data.lark", transformer=_Transformer()),
 ]

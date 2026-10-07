@@ -8,38 +8,36 @@ import warnings
 import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
 
-from svglab import entities, protocols
-from svglab.elements import elements, names
-from svglab.utils import miscutils
+from svglab.elements.elements import Svg
+from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED, ElementName
+from svglab.entities import (
+    CData,
+    Comment,
+    Element,
+    Entity,
+    RawText,
+    UnknownElement,
+)
+from svglab.protocols import SupportsRead
+from svglab.utils.miscutils import get_all_subclasses
 
 
 warnings.filterwarnings("ignore", category=bs4.XMLParsedAsHTMLWarning)
 
 _Markup: TypeAlias = (
-    str
-    | bytes
-    | protocols.SupportsRead[str]
-    | protocols.SupportsRead[bytes]
-    | pathlib.Path
+    str | bytes | SupportsRead[str] | SupportsRead[bytes] | pathlib.Path
 )
 
 
 _ELEMENT_NAME_TO_CLASS: Final = {
-    names.ELEMENT_NAME_TO_NORMALIZED.inverse[cls.__name__]: cls
-    for cls in miscutils.get_all_subclasses(entities.Element)
-    if cls.__name__ in names.ELEMENT_NAME_TO_NORMALIZED.inverse
+    ELEMENT_NAME_TO_NORMALIZED.inverse[cls.__name__]: cls
+    for cls in get_all_subclasses(Element)
+    if cls.__name__ in ELEMENT_NAME_TO_NORMALIZED.inverse
 }
 
 _BS_TO_TEXT_ELEMENT: Final[
-    dict[
-        type[bs4.NavigableString],
-        type[entities.CData | entities.Comment | entities.RawText],
-    ]
-] = {
-    bs4.CData: entities.CData,
-    bs4.Comment: entities.Comment,
-    bs4.NavigableString: entities.RawText,
-}
+    dict[type[bs4.NavigableString], type[CData | Comment | RawText]]
+] = {bs4.CData: CData, bs4.Comment: Comment, bs4.NavigableString: RawText}
 
 
 def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
@@ -94,7 +92,7 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
+def _convert_element(backend: bs4.PageElement) -> Entity | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
@@ -117,15 +115,14 @@ def _convert_element(backend: bs4.PageElement) -> entities.Entity | None:
             return None if backend.isspace() else cls(backend)
         case bs4.Tag():
             element_class = _ELEMENT_NAME_TO_CLASS.get(
-                cast(names.ElementName, backend.name),
-                entities.UnknownElement,
+                cast(ElementName, backend.name), UnknownElement
             )
 
             attrs = {"prefix": backend.prefix} | {
                 k: str(v).strip() for k, v in backend.attrs.items()
             }
 
-            if element_class is entities.UnknownElement:
+            if element_class is UnknownElement:
                 attrs["element_name"] = backend.name
 
             element = element_class.model_validate(attrs, strict=False)
@@ -150,7 +147,7 @@ def _get_markup_head(markup: _Markup, limit: int = 30) -> str:
             return _get_markup_head(
                 markup.decode(errors="replace"), limit=limit
             )
-        case protocols.SupportsRead():
+        case SupportsRead():
             return _get_markup_head(markup.read(limit + 1), limit=limit)
         case pathlib.Path():
             with markup.open() as file:
@@ -164,7 +161,7 @@ def parse_svg(
     parser: Literal[
         "html.parser", "lxml", "lxml-xml", "html5lib"
     ] = "lxml-xml",
-) -> elements.Svg:
+) -> Svg:
     """Parse an SVG document.
 
     The document must be a valid XML document containing a single SVG
@@ -201,7 +198,7 @@ def parse_svg(
         if isinstance(markup, pathlib.Path):
             markup = stack.push(markup.open())
 
-        if isinstance(markup, protocols.SupportsRead):
+        if isinstance(markup, SupportsRead):
             markup = markup.read()
 
         try:
@@ -230,4 +227,4 @@ def parse_svg(
 
         raise ValueError(msg)
 
-    return cast(elements.Svg, _convert_element(svg_fragments[0]))
+    return cast(Svg, _convert_element(svg_fragments[0]))

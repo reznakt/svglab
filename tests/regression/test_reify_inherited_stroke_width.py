@@ -3,8 +3,8 @@ import copy
 import pytest
 from typing_extensions import Final
 
-import svglab
-from tests import conftest
+from svglab import parse_svg
+from tests.conftest import assert_svg_visually_equal
 
 
 _SVGS: Final = [
@@ -33,8 +33,8 @@ _SVGS: Final = [
 
 @pytest.mark.parametrize("markup", _SVGS)
 def test_reify_preserves_inherited_stroke_width(markup: str) -> None:
-    original = svglab.parse_svg(markup)
+    original = parse_svg(markup)
     reified = copy.deepcopy(original)
     reified.reify()
 
-    conftest.assert_svg_visually_equal(original, reified)
+    assert_svg_visually_equal(original, reified)

@@ -1,6 +1,6 @@
 import pytest
 
-import svglab
+from svglab import Length, LengthUnit
 
 
 @pytest.mark.parametrize(
@@ -18,11 +18,6 @@ import svglab
     ],
 )
 def test_length_conversion_rate(
-    value: float,
-    unit: svglab.LengthUnit,
-    target: svglab.LengthUnit,
-    expected: float,
+    value: float, unit: LengthUnit, target: LengthUnit, expected: float
 ) -> None:
-    assert svglab.Length(value, unit).to(target).value == pytest.approx(
-        expected
-    )
+    assert Length(value, unit).to(target).value == pytest.approx(expected)

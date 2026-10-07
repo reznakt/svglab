@@ -1,24 +1,22 @@
 import copy
 
-import svglab
-from tests import conftest
+from svglab import Length, RawText, Scale, Svg, Text
+from tests.conftest import assert_svg_visually_equal
 
 
-def _svg() -> svglab.Svg:
-    text = svglab.Text(
-        x=[svglab.Length(10)],
-        y=[svglab.Length(40)],
-        dx=[svglab.Length(1), svglab.Length(2)],
-        dy=[svglab.Length(3)],
-        textLength=svglab.Length(50),
-        font_size=svglab.Length(12),
-        transform=[svglab.Scale(2)],
+def _svg() -> Svg:
+    text = Text(
+        x=[Length(10)],
+        y=[Length(40)],
+        dx=[Length(1), Length(2)],
+        dy=[Length(3)],
+        textLength=Length(50),
+        font_size=Length(12),
+        transform=[Scale(2)],
     )
-    text.add_child(svglab.RawText("Hamburgefonstiv"))
+    text.add_child(RawText("Hamburgefonstiv"))
 
-    return svglab.Svg(
-        width=svglab.Length(200), height=svglab.Length(200)
-    ).add_child(text)
+    return Svg(width=Length(200), height=Length(200)).add_child(text)
 
 
 def test_text_offsets_are_scaled() -> None:
@@ -26,13 +24,13 @@ def test_text_offsets_are_scaled() -> None:
     reified = copy.deepcopy(original)
 
     reified.reify()
-    text = reified.find(svglab.Text)
+    text = reified.find(Text)
 
-    assert text.x == [svglab.Length(20)]
-    assert text.y == [svglab.Length(80)]
-    assert text.dx == [svglab.Length(2), svglab.Length(4)]
-    assert text.dy == [svglab.Length(6)]
-    assert text.textLength == svglab.Length(100)
-    assert text.font_size == svglab.Length(24)
+    assert text.x == [Length(20)]
+    assert text.y == [Length(80)]
+    assert text.dx == [Length(2), Length(4)]
+    assert text.dy == [Length(6)]
+    assert text.textLength == Length(100)
+    assert text.font_size == Length(24)
 
-    conftest.assert_svg_visually_equal(original, reified)
+    assert_svg_visually_equal(original, reified)
