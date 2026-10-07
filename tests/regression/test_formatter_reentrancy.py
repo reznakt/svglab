@@ -91,5 +91,7 @@ def test_threads_do_not_share_the_current_formatter() -> None:
     for thread in threads:
         thread.join()
 
-    assert not errors
+    if errors:
+        raise BaseExceptionGroup("a formatter thread failed", errors)
+
     assert seen == {3: 3, 7: 7}
