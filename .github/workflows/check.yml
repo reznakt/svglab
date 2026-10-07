@@ -52,7 +52,6 @@ jobs:
             ~/.cargo/git
             src/svglab-resvg/target
           key: cargo-${{ runner.os }}-${{ hashFiles('src/svglab-resvg/Cargo.lock', 'flake.lock') }}
-          restore-keys: cargo-${{ runner.os }}-
 
       - name: Install tools
         run: uv sync --all-groups --python ${{ matrix.python }}
@@ -99,7 +98,6 @@ jobs:
             ~/.cargo/git
             src/svglab-resvg/target
           key: cargo-${{ runner.os }}-${{ hashFiles('src/svglab-resvg/Cargo.lock', 'flake.lock') }}
-          restore-keys: cargo-${{ runner.os }}-
 
       - name: Install tools
         run: uv sync --all-groups
