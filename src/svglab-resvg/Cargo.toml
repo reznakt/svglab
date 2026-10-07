@@ -21,7 +21,7 @@ pyo3-log = "0.13"
 
 [dependencies.pyo3]
 version = "0.29"
-features = ["abi3-py310"]
+features = ["abi3-py311"]
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }

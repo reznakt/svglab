@@ -2,7 +2,7 @@
 
 ## Requirements
 
-In order to use <span style="font-variant: small-caps;">svglab</span>, **you need to have Python 3.10 or higher installed** on your system. You can download the latest version of Python from the [official website](https://www.python.org/downloads/) or use your system's package manager.
+In order to use <span style="font-variant: small-caps;">svglab</span>, **you need to have Python 3.11 or higher installed** on your system. You can download the latest version of Python from the [official website](https://www.python.org/downloads/) or use your system's package manager.
 
 <span style="font-variant: small-caps;">svglab</span> bundles a small Rust extension module that binds [resvg](https://lib.rs/crates/resvg), the renderer behind `Svg.render()`. Prebuilt wheels are published for Linux (glibc and musl), macOS and Windows on x86-64 and ARM64, so most users need nothing else. On any other platform the package is built from source, which requires a [Rust toolchain](https://rustup.rs/) of version 1.85 or newer.
 

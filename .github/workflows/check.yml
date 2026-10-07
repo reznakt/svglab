@@ -16,12 +16,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - python: "3.10"
-            resolution: locked
-          - python: "3.10"
-            resolution: lowest-direct
           - python: "3.11"
             resolution: locked
+          - python: "3.11"
+            resolution: lowest-direct
           - python: "3.12"
             resolution: locked
           - python: "3.13"
