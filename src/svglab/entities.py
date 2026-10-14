@@ -63,6 +63,7 @@ from svglab.reify import (
     Capability,
     DocumentFragmentRoot,
     Grouping,
+    PercentageDefaults,
     RenderedIndirectly,
     SelectsAChild,
     Stylesheet,
@@ -71,6 +72,7 @@ from svglab.reify import (
     apply,
     geometry_capability,
     has_own_geometry,
+    spell_out_gradient,
     split,
     stretches_content,
     style_capability,
@@ -2339,10 +2341,28 @@ def _stylesheet_capability(root: Element, /) -> Capability:
     return capability
 
 
+def _spell_out_gradients(root: Element, frozen: Container[int], /) -> None:
+    """Write out the geometry of every gradient with a transformation.
+
+    A gradient's coordinates default to percentages, which say nothing a
+    transformation could be folded into until they are written out as
+    fractions of the box, or of the viewport, they refer to.
+    """
+    for element in itertools.chain([root], root.find_all()):
+        if (
+            isinstance(element, PercentageDefaults)
+            and element.main_transform
+            and id(element) not in frozen
+        ):
+            spell_out_gradient(element, viewport=_viewport_size(element))
+
+
 def _build_context(root: Element, /) -> _Context:
     """Gather what reifying part of a tree needs to know about all of it."""
     index = _index_by_id(root)
     frozen = _frozen_elements(root, index)
+
+    _spell_out_gradients(root, frozen)
 
     context = _Context(
         by_id=index,
