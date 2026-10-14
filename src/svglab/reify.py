@@ -284,7 +284,7 @@ class PercentageDefaults:
 
     A gradient whose coordinates are left out is not at the origin: it spans
     the box it is painted onto. Until every coordinate is spelled out there
-    is nothing to fold a transformation into.
+    is nothing to fold a transformation into; see `spell_out_gradient`.
     """
 
 
@@ -588,6 +588,82 @@ def _set_coordinate(
         return
 
     setattr(element, name, _coordinate(value, like))
+
+
+_GRADIENT_DEFAULTS: Final = {
+    "x1": 0.0,
+    "y1": 0.0,
+    "x2": 100.0,
+    "y2": 0.0,
+    "cx": 50.0,
+    "cy": 50.0,
+    "r": 50.0,
+}
+"""The percentage a gradient's unset coordinates default to."""
+
+_VERTICAL: Final = frozenset({"y1", "y2", "cy", "fy"})
+_RADIAL: Final = frozenset({"r", "fr"})
+
+
+def spell_out_gradient(
+    element: object, /, *, viewport: tuple[float, float] | None = None
+) -> None:
+    """Write out a gradient's geometry in numbers, defaults included.
+
+    A gradient's coordinates default to percentages and may be written as
+    such. In bounding box units a percentage is a fraction of the box, so it
+    is written as that fraction. In user space it is a fraction of the
+    viewport, so it can only be written out when the viewport's size is
+    known; otherwise the percentages are left as they are.
+
+    Args:
+        element: The gradient.
+        viewport: The width and height of the nearest viewport, in user
+            units, if known.
+
+    Examples:
+        >>> from svglab import Length, LinearGradient, RadialGradient
+        >>> gradient = LinearGradient(x1=Length(25, "%"))
+        >>> spell_out_gradient(gradient)
+        >>> gradient.x1, gradient.x2
+        (Length(value=0.25, unit=None), Length(value=1.0, unit=None))
+        >>> gradient = RadialGradient(gradientUnits="userSpaceOnUse")
+        >>> spell_out_gradient(gradient, viewport=(200, 100))
+        >>> gradient.cx, gradient.r
+        (Length(value=100.0, unit=None), Length(value=79.056941504, unit=None))
+
+    """
+    in_user_space = _get(element, "gradientUnits") == "userSpaceOnUse"
+
+    if in_user_space and viewport is None:
+        return
+
+    for name in (*_GRADIENT_DEFAULTS, "fx", "fy", "fr"):
+        if not hasattr(element, name):
+            continue
+
+        match _get(element, name):
+            case None if name in _GRADIENT_DEFAULTS:
+                percentage = _GRADIENT_DEFAULTS[name]
+            case Length(value, "%"):
+                percentage = value
+            case _:
+                continue
+
+        if in_user_space:
+            assert viewport is not None
+            width, height = viewport
+            extent = (
+                height
+                if name in _VERTICAL
+                else math.hypot(width, height) / math.sqrt(2)
+                if name in _RADIAL
+                else width
+            )
+        else:
+            extent = 1.0
+
+        setattr(element, name, Length(round(percentage / 100 * extent, 9)))
 
 
 # endregion
