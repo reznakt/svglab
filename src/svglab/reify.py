@@ -23,9 +23,9 @@ from __future__ import annotations
 import enum
 import math
 import re
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Container, Iterator, Mapping
 
-from typing_extensions import Final, TypeAlias, cast
+from typing_extensions import Final, NamedTuple, TypeAlias, cast, override
 
 from svglab.attrparse.length import Length
 from svglab.attrparse.point import Point
@@ -134,6 +134,50 @@ A transformation close to collapsing the plane onto a line cannot be undone
 accurately, and folding one into an element's geometry produces enormous
 coordinates that lose the very precision that was meant to be preserved.
 """
+
+
+class _Everything:
+    """A container that holds every value."""
+
+    def __contains__(self, item: object, /) -> bool:
+        return True
+
+
+class Scope(NamedTuple):
+    """How far an element's inherited properties can be seen.
+
+    An element that something refers to with `use` is rendered twice over:
+    where it sits, with the properties its ancestors pass down, and wherever
+    the `use` is, with the properties the `use` passes down instead. A
+    property that neither the element nor an ancestor up to the referenced
+    one spells out may therefore differ between the two, and reification
+    cannot rely on it.
+    """
+
+    boundary: object | None = None
+    """The referenced ancestor-or-self past which inheritance is unknown."""
+
+    declared: Container[str] = _Everything()
+    """The properties, by their SVG names, declared anywhere in the document.
+
+    A property nothing in the document declares takes its initial value
+    everywhere, so it is known even past the boundary.
+    """
+
+
+class _Unknown:
+    """The value of a property reification cannot determine."""
+
+    @override
+    def __repr__(self) -> str:
+        return "UNKNOWN"
+
+
+UNKNOWN: Final = _Unknown()
+"""The value of an inherited property that lies beyond a `Scope`."""
+
+WHOLE_DOCUMENT: Final = Scope()
+"""The scope of an element nothing refers to: every ancestor can be seen."""
 
 
 # region Traits
@@ -856,7 +900,9 @@ def _translated(attr: object, /, by: float) -> object:
             return attr
 
 
-def _apply_magnitudes(element: object, matrix: Matrix, /) -> None:
+def _apply_magnitudes(
+    element: object, matrix: Matrix, scope: Scope, /
+) -> None:
     """Resize the lengths that describe how a shape is painted, not placed.
 
     These only make sense under a transformation that preserves angles: a
@@ -877,17 +923,20 @@ def _apply_magnitudes(element: object, matrix: Matrix, /) -> None:
 
     if isinstance(element, FontSizeScaled):
         for name in _FONT_MAGNITUDES:
-            _scale_inherited(element, name, factor)
+            _scale_inherited(element, name, factor, scope)
 
     if _strokes_in_host_space(element) or not (
-        isinstance(element, StrokeWidthScaled) and _is_stroked(element)
+        isinstance(element, StrokeWidthScaled)
+        and _is_stroked(element, scope)
     ):
         # the whole stroke -- its width and its dash pattern alike -- is
         # either laid out in a coordinate system this transformation is no
         # part of, or not drawn at all
         return
 
-    _scale_inherited(element, "stroke_width", factor, initial=Length(1))
+    _scale_inherited(
+        element, "stroke_width", factor, scope, initial=Length(1)
+    )
 
     # distance-along-a-path attributes and `pathLength` are proportional, so
     # a shape that declares its own path length needs no adjustment
@@ -895,11 +944,46 @@ def _apply_magnitudes(element: object, matrix: Matrix, /) -> None:
         not isinstance(element, PathLengthAttr)
         or element.pathLength is None
     ):
-        _scale_inherited(element, "stroke_dasharray", factor)
-        _scale_inherited(element, "stroke_dashoffset", factor)
+        _scale_inherited(element, "stroke_dasharray", factor, scope)
+        _scale_inherited(element, "stroke_dashoffset", factor, scope)
 
 
-def inherited_value(element: object, name: str, /) -> object:
+def _is_specified(value: object, /) -> bool:
+    return value is not None and value != "inherit"
+
+
+def _past_the_boundary(name: str, scope: Scope, /) -> object:
+    """Say what an inherited property is where inheritance is unknown."""
+    return UNKNOWN if name.replace("_", "-") in scope.declared else None
+
+
+def _inherited(
+    element: object,
+    name: str,
+    scope: Scope,
+    /,
+    *,
+    read: Callable[[object, str], object],
+) -> object:
+    """Walk the ancestors for a property, stopping at the scope's boundary."""
+    if element is scope.boundary:
+        return _past_the_boundary(name, scope)
+
+    for ancestor in _ancestors(element):
+        value = read(ancestor, name)
+
+        if _is_specified(value):
+            return value
+
+        if ancestor is scope.boundary:
+            return _past_the_boundary(name, scope)
+
+    return None
+
+
+def inherited_value(
+    element: object, name: str, /, *, scope: Scope = WHOLE_DOCUMENT
+) -> object:
     """Resolve the value an element inherits for a property.
 
     An element that does not specify an inherited property uses the value of
@@ -908,9 +992,11 @@ def inherited_value(element: object, name: str, /) -> object:
     Args:
         element: The element whose inherited value to resolve.
         name: The name of the property, as a Python attribute name.
+        scope: How far up the tree inheritance can be seen.
 
     Returns:
-        The inherited value, or `None` if no ancestor specifies one.
+        The inherited value, `None` if no ancestor specifies one, or
+        `UNKNOWN` if the ancestors that could lie beyond the scope.
 
     Examples:
         >>> from svglab import G, Length, Path
@@ -920,19 +1006,22 @@ def inherited_value(element: object, name: str, /) -> object:
         Length(value=5.0, unit=None)
         >>> inherited_value(Path(), "stroke_width") is None
         True
+        >>> inherited_value(
+        ...     path, "stroke_width", scope=Scope(boundary=path)
+        ... )
+        UNKNOWN
 
     """
-    for ancestor in _ancestors(element):
-        value = _get(ancestor, name)
-
-        if value is not None and value != "inherit":
-            return value
-
-    return None
+    return _inherited(element, name, scope, read=_get)
 
 
 def resolved_value(
-    element: object, name: str, /, *, initial: object = None
+    element: object,
+    name: str,
+    /,
+    *,
+    initial: object = None,
+    scope: Scope = WHOLE_DOCUMENT,
 ) -> object:
     """Resolve the value an inherited property has for an element.
 
@@ -940,9 +1029,11 @@ def resolved_value(
         element: The element to resolve the property for.
         name: The name of the property, as a Python attribute name.
         initial: The value the property takes when nothing specifies one.
+        scope: How far up the tree inheritance can be seen.
 
     Returns:
-        The element's own value, the one it inherits, or `initial`.
+        The element's own value, the one it inherits, `initial`, or
+        `UNKNOWN` if the value may come from beyond the scope.
 
     Examples:
         >>> from svglab import G, Length, Path
@@ -956,16 +1047,60 @@ def resolved_value(
     """
     own = _get(element, name)
 
-    if own is not None and own != "inherit":
+    if _is_specified(own):
         return own
 
-    inherited = inherited_value(element, name)
+    inherited = inherited_value(element, name, scope=scope)
 
     return initial if inherited is None else inherited
 
 
+def property_value(
+    element: object, name: str, /, *, scope: Scope = WHOLE_DOCUMENT
+) -> object:
+    """Resolve a property as it is rendered, `style` declarations included.
+
+    A declaration in a `style` attribute beats the presentation attribute of
+    the same name, on the element itself and on every ancestor it inherits
+    from. A declaration is returned as the string it was written as.
+
+    Args:
+        element: The element to resolve the property for.
+        name: The name of the property, as a Python attribute name.
+        scope: How far up the tree inheritance can be seen.
+
+    Returns:
+        The value, `None` if nothing specifies one, or `UNKNOWN` if it may
+        come from beyond the scope.
+
+    Examples:
+        >>> from svglab import Color, G, Path
+        >>> own, inheriting = Path(fill=Color("red")), Path()
+        >>> g = G(style="fill: url(#p)").add_children(own, inheriting)
+        >>> property_value(own, "fill")
+        Color('red')
+        >>> property_value(inheriting, "fill")
+        'url(#p)'
+        >>> property_value(Path(), "fill") is None
+        True
+
+    """
+    own = _property(element, name)
+
+    if _is_specified(own):
+        return own
+
+    return _inherited(element, name, scope, read=_property)
+
+
 def _scale_inherited(
-    element: object, name: str, factor: float, /, *, initial: object = None
+    element: object,
+    name: str,
+    factor: float,
+    scope: Scope,
+    /,
+    *,
+    initial: object = None,
 ) -> None:
     """Resize an inherited magnitude, spelling it out if it was inherited.
 
@@ -974,11 +1109,11 @@ def _scale_inherited(
     transformation does not reach.
     """
     own = _get(element, name)
-    spelled_out = own is not None and own != "inherit"
+    spelled_out = _is_specified(own)
     inherited = (
         None
         if spelled_out
-        else resolved_value(element, name, initial=initial)
+        else resolved_value(element, name, initial=initial, scope=scope)
     )
     value = own if spelled_out else inherited
 
@@ -1036,7 +1171,9 @@ def scale_distance_along_a_path_attrs(element: object, by: float) -> None:
         )
 
 
-def apply(element: object, matrix: Matrix, /) -> None:
+def apply(
+    element: object, matrix: Matrix, /, *, scope: Scope = WHOLE_DOCUMENT
+) -> None:
     """Fold a transformation into the element's geometry attributes.
 
     The caller is responsible for checking that the element can absorb the
@@ -1045,6 +1182,7 @@ def apply(element: object, matrix: Matrix, /) -> None:
     Args:
         element: The element to transform.
         matrix: The transformation to apply.
+        scope: How far up the tree inheritance can be seen.
 
     """
     if is_box(element):
@@ -1064,7 +1202,7 @@ def apply(element: object, matrix: Matrix, /) -> None:
     if isinstance(element, XListOfCoordinatesAttr | StartOffsetAttr):
         _apply_text(element, matrix)
 
-    _apply_magnitudes(element, matrix)
+    _apply_magnitudes(element, matrix, scope)
 
 
 # endregion
@@ -1232,13 +1370,6 @@ def style_capability(element: object, /) -> Capability:
     if _STYLE_OPAQUE & declarations.keys():
         return NOTHING
 
-    if any(
-        "url(" in declarations.get(name, "") for name in ("fill", "stroke")
-    ):
-        # a paint server reification cannot resolve, so it cannot tell
-        # whether the paint travels with the shape
-        return NOTHING
-
     if _STYLE_MAGNITUDES & declarations.keys():
         return TRANSLATION
 
@@ -1312,7 +1443,9 @@ def stylesheet_capability(css: str, /) -> Capability:
     return AFFINE
 
 
-def geometry_capability(element: object, /) -> Capability:
+def geometry_capability(
+    element: object, /, *, scope: Scope = WHOLE_DOCUMENT
+) -> Capability:
     """Determine what transformations an element's attributes can express.
 
     This combines what the element's class is able to describe with facts
@@ -1322,6 +1455,7 @@ def geometry_capability(element: object, /) -> Capability:
 
     Args:
         element: The element to inspect.
+        scope: How far up the tree inheritance can be seen.
 
     Returns:
         The set of features the element can absorb.
@@ -1363,7 +1497,7 @@ def geometry_capability(element: object, /) -> Capability:
         capability -= {Feature.MIRROR, Feature.QUARTER_TURN}
 
     if isinstance(element, FontSizeScaled) and not _is_resizable(
-        resolved_value(element, "font_size")
+        resolved_value(element, "font_size", scope=scope)
     ):
         # the glyphs are drawn at a size reification cannot resolve -- a
         # keyword, or whatever the renderer picks by default -- so the
@@ -1371,22 +1505,24 @@ def geometry_capability(element: object, /) -> Capability:
         capability &= TRANSLATION
 
     if isinstance(element, FontSizeScaled) and not all(
-        _is_spacing_scalable(resolved_value(element, name))
+        _is_spacing_scalable(resolved_value(element, name, scope=scope))
         for name in _GLYPH_SPACING_ATTRS
     ):
         # a spacing relative to the font or the viewport cannot be resized
         # by a factor reification knows
         capability &= TRANSLATION
 
-    if _is_stroked(element):
+    if _is_stroked(element, scope):
         capability &= SIMILARITY
 
         if not _is_resizable(
-            resolved_value(element, "stroke_width", initial=Length(1))
+            resolved_value(
+                element, "stroke_width", initial=Length(1), scope=scope
+            )
         ) or (
-            _is_dashed(element)
+            _is_dashed(element, scope)
             and not all(
-                _is_scalable(resolved_value(element, name))
+                _is_scalable(resolved_value(element, name, scope=scope))
                 for name in ("stroke_dasharray", "stroke_dashoffset")
             )
         ):
@@ -1395,16 +1531,11 @@ def geometry_capability(element: object, /) -> Capability:
             capability &= TRANSLATION
 
         if isinstance(element, ImplicitlyOrientedShape) and _is_dashed(
-            element
+            element, scope
         ):
             # the dash pattern starts at a corner the spec fixes, so moving
             # that corner somewhere else shifts the pattern
             capability &= UNIFORM_SCALING
-
-    if _has_marker(element):
-        # a marker is placed in user space and oriented along the path, so
-        # anything but a move changes its size or its angle
-        capability &= TRANSLATION
 
     return capability
 
@@ -1470,44 +1601,25 @@ def _property(element: object, name: str, /) -> object:
     return _get(element, name) if declared is None else declared
 
 
-def _own_or_inherited(element: object, name: str, /) -> object:
-    value = _property(element, name)
-
-    if value is not None and value != "inherit":
-        return value
-
-    for ancestor in _ancestors(element):
-        value = _property(ancestor, name)
-
-        if value is not None and value != "inherit":
-            return value
-
-    return None
-
-
-def _is_stroked(element: object, /) -> bool:
+def _is_stroked(element: object, scope: Scope, /) -> bool:
+    """Check whether the element is stroked, or might be."""
     if _strokes_in_host_space(element):
         # the stroke ignores the coordinate system, so it constrains nothing
         return False
 
-    stroke = _own_or_inherited(element, "stroke")
+    stroke = property_value(element, "stroke", scope=scope)
 
     return stroke is not None and stroke != "none"
 
 
-def _is_dashed(element: object, /) -> bool:
-    dasharray = _own_or_inherited(element, "stroke_dasharray")
+def _is_dashed(element: object, scope: Scope, /) -> bool:
+    """Check whether the element's stroke is dashed, or might be."""
+    dasharray = property_value(element, "stroke_dasharray", scope=scope)
 
-    return isinstance(dasharray, list) and len(dasharray) > 0
+    return dasharray is UNKNOWN or (
+        isinstance(dasharray, list) and len(dasharray) > 0
+    )
 
-
-_MARKER_ATTRS: Final = (
-    "marker",
-    "marker_start",
-    "marker_mid",
-    "marker_end",
-)
-"""The marker properties, shorthand included."""
 
 GEOMETRIC_ATTR_NAMES: Final[frozenset[str]] = frozenset(
     {
@@ -1562,13 +1674,6 @@ def _has_unreadable_geometry(element: object, /) -> bool:
         return False
 
     return bool(GEOMETRIC_ATTR_NAMES & extra().keys())
-
-
-def _has_marker(element: object, /) -> bool:
-    return any(
-        _own_or_inherited(element, name) is not None
-        for name in _MARKER_ATTRS
-    )
 
 
 # endregion

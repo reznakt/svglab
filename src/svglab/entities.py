@@ -7,6 +7,7 @@ import collections
 import functools
 import itertools
 import operator
+import re
 import reprlib
 import sys
 import warnings
@@ -53,24 +54,30 @@ from svglab.reify import (
     NOTHING,
     TRANSLATION,
     UNIFORM_SCALING,
+    UNKNOWN,
     UPRIGHT,
+    AffineGeometry,
     Animation,
     Capability,
     DocumentFragmentRoot,
     Grouping,
     PercentageDefaults,
     RenderedIndirectly,
+    Scope,
     SelectsAChild,
     Stylesheet,
     TransformInheritedByChildren,
     ViewportEstablishing,
     apply,
+    declared_properties,
     geometry_capability,
     has_own_geometry,
+    property_value,
     spell_out_gradient,
     split,
     stretches_content,
     style_capability,
+    style_declarations,
     stylesheet_capability,
 )
 from svglab.serialize import (
@@ -1500,11 +1507,23 @@ class _Context(NamedTuple):
     move the animation, not the element.
     """
 
+    scopes: Mapping[int, Scope]
+    """How far each element's inherited properties can be seen."""
+
     capabilities: Mapping[int, Capability]
     """What each element of the tree can absorb, by object identity."""
 
     stylesheet: Capability
     """What the document's stylesheets leave reifiable anywhere in it."""
+
+    paint_servers: Capability
+    """What a shape painted by a paint server it cannot name may absorb.
+
+    The least any paint server in the document allows.
+    """
+
+    markers: bool
+    """Whether the document has any `marker` to put on a shape."""
 
 
 def _resolve_reference(
@@ -1679,10 +1698,7 @@ def _paint_server_capability(
 
 
 def _resource_capability(
-    target: Element,
-    attr_name: AttributeName,
-    index: Mapping[str, Element],
-    /,
+    target: Element, attr_name: AttributeName, /
 ) -> Capability:
     """Work out what a referenced resource lets the element absorb.
 
@@ -1695,8 +1711,6 @@ def _resource_capability(
     what reification takes away.
     """
     match attr_name:
-        case "fill" | "stroke":
-            return _paint_server_capability(target, index)
         case "clip-path":
             units = _attr_or_default(target, "clipPathUnits")
         case _:
@@ -1713,24 +1727,79 @@ def _resource_capability(
     return UPRIGHT if units == "objectBoundingBox" else NOTHING
 
 
+_URL_FRAGMENT: Final = re.compile(r"url\(\s*['\"]?#([^'\")\s]+)")
+
+
 def _reference_capability(
-    element: Element, index: Mapping[str, Element], /
+    element: Element, /, *, context: _Context, scope: Scope
 ) -> Capability:
-    """Work out what the element's references let it absorb."""
+    """Work out what the element's references let it absorb.
+
+    The paint and the markers are inherited, so they are resolved the way the
+    element is rendered -- and where they cannot be resolved, the element is
+    held to the worst any paint server or marker in the document could do.
+    """
     capability = AFFINE
 
-    for attr_name in _RESOURCE_ATTR_NAMES:
-        target = _resolve_reference(element, attr_name, index, warn=True)
+    for name in ("fill", "stroke"):
+        paint = property_value(element, name, scope=scope)
+
+        if paint is UNKNOWN:
+            capability &= context.paint_servers
+        elif isinstance(paint, str) and "url(" in paint:
+            # declared in a `style`, so it survives as the string it was
+            # written as
+            match = _URL_FRAGMENT.search(paint)
+            target = context.by_id.get(match.group(1)) if match else None
+            capability &= (
+                NOTHING
+                if target is None
+                else _paint_server_capability(target, context.by_id)
+            )
+        elif isinstance(paint, Iri) and paint.is_local:
+            assert paint.fragment is not None
+            target = context.by_id.get(paint.fragment)
+
+            if target is not None:
+                capability &= _paint_server_capability(
+                    target, context.by_id
+                )
+
+    if isinstance(element, AffineGeometry):
+        # a marker is placed in user space and oriented along the path, so
+        # anything but a move changes its size or its angle
+        for name in _MARKER_ATTRS:
+            marker = property_value(element, name, scope=scope)
+
+            if marker is UNKNOWN:
+                if context.markers:
+                    capability &= TRANSLATION
+            elif marker is not None and marker != "none":
+                capability &= TRANSLATION
+
+    for attr_name in ("mask", "clip-path"):
+        target = _resolve_reference(
+            element, attr_name, context.by_id, warn=True
+        )
 
         if target is not None:
-            capability &= _resource_capability(target, attr_name, index)
+            capability &= _resource_capability(target, attr_name)
 
-    filter_ = _resolve_reference(element, "filter", index)
+    filter_ = _resolve_reference(element, "filter", context.by_id)
 
     if filter_ is not None:
         capability &= _filter_capability(filter_)
 
     return capability
+
+
+_MARKER_ATTRS: Final = (
+    "marker",
+    "marker_start",
+    "marker_mid",
+    "marker_end",
+)
+"""The marker properties, shorthand included."""
 
 
 def _filter_capability(target: Element, /) -> Capability:
@@ -1979,13 +2048,15 @@ def _element_capability(
         # and pushing to only some of the children would tear the group apart
         return NOTHING
 
+    scope = _scope(element, context=context)
+
     if _delegates_transform(element):
         # the element has no geometry of its own, but what it refers to is
         # still resolved where it sits: a clip path, a mask or a filter in
         # user space stays behind when the transformation moves down to the
         # children, and the content slides out from under it
         capability = (
-            _reference_capability(element, context.by_id)
+            _reference_capability(element, context=context, scope=scope)
             & style_capability(element)
             & context.stylesheet
         )
@@ -2000,8 +2071,8 @@ def _element_capability(
         return capability
 
     capability = (
-        geometry_capability(element)
-        & _reference_capability(element, context.by_id)
+        geometry_capability(element, scope=scope)
+        & _reference_capability(element, context=context, scope=scope)
         & context.stylesheet
     )
 
@@ -2049,6 +2120,21 @@ def _capabilities(
         )
 
     return capabilities
+
+
+def _scope(element: Element, /, *, context: _Context) -> Scope:
+    """Look up how far the element's inherited properties can be seen."""
+    scope = context.scopes.get(id(element))
+
+    if scope is not None:
+        return scope
+
+    # the `path` a basic shape was converted into inherits exactly what the
+    # shape did
+    parent = element.parent
+    assert parent is not None
+
+    return context.scopes[id(parent)]
 
 
 def _transform_capability(
@@ -2099,7 +2185,7 @@ def _reify_element(element: Element, /, *, context: _Context) -> None:
         return
 
     if has_own_geometry(element) and not _delegates_transform(element):
-        apply(element, absorbed)
+        apply(element, absorbed, scope=_scope(element, context=context))
 
     if _pushes_transform_to_children(element):
         # the children are placed in the coordinate system the element
@@ -2383,6 +2469,70 @@ def _stylesheets(root: Element, /) -> Iterator[str]:
             )
 
 
+def _declared_properties(root: Element, /) -> frozenset[str]:
+    """List every attribute and property the document declares anywhere."""
+    declared: set[str] = set()
+
+    for element in itertools.chain([root], root.find_all()):
+        declared.update(element.all_attrs())
+        declared.update(style_declarations(element))
+
+    for css in _stylesheets(root):
+        declared.update(declared_properties(css))
+
+    return frozenset(declared)
+
+
+def _scopes(
+    root: Element, index: Mapping[str, Element], /
+) -> Mapping[int, Scope]:
+    """Work out how far each element's inherited properties can be seen.
+
+    An element a `use` refers to is also rendered with whatever the `use`
+    passes down, so inheritance stops being known at it, for it and for
+    everything below it. `feImage` renders what it refers to the same way.
+    """
+    boundaries: set[int] = set()
+
+    for element in itertools.chain([root], root.find_all()):
+        if element_name(element) in {"use", "feImage"}:
+            for attr_name in ("href", "xlink:href"):
+                target = _resolve_reference(element, attr_name, index)
+
+                if target is not None:
+                    boundaries.add(id(target))
+
+    declared = _declared_properties(root)
+    scopes: dict[int, Scope] = {}
+    stack: list[tuple[Element, Scope]] = [(root, Scope(None, declared))]
+
+    while stack:
+        element, scope = stack.pop()
+
+        if id(element) in boundaries:
+            scope = Scope(element, declared)
+
+        scopes[id(element)] = scope
+        stack.extend(
+            (child, scope) for child in element.find_all(recursive=False)
+        )
+
+    return scopes
+
+
+def _paint_servers_capability(
+    root: Element, index: Mapping[str, Element], /
+) -> Capability:
+    """Work out the least any paint server in the document allows."""
+    capability = AFFINE
+
+    for element in itertools.chain([root], root.find_all()):
+        if isinstance(element, PatternUnitsAttr | GradientUnitsAttr):
+            capability &= _paint_server_capability(element, index)
+
+    return capability
+
+
 def _spell_out_gradients(root: Element, frozen: Container[int], /) -> None:
     """Write out the geometry of every gradient with a transformation.
 
@@ -2410,11 +2560,17 @@ def _build_context(root: Element, /) -> _Context:
         by_id=index,
         pinned=_pinned_elements(root, index, frozen),
         frozen=frozen,
+        scopes=_scopes(root, index),
         capabilities={},
         stylesheet=functools.reduce(
             operator.and_,
             map(stylesheet_capability, _stylesheets(root)),
             AFFINE,
+        ),
+        paint_servers=_paint_servers_capability(root, index),
+        markers=any(
+            element_name(element) == "marker"
+            for element in itertools.chain([root], root.find_all())
         ),
     )
 
