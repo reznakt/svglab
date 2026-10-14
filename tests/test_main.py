@@ -1106,7 +1106,9 @@ _REIFY_SVGS: Final = [
 
 @pytest.mark.parametrize("transform", _TRANSFORMS)
 def test_reify_leaves_transform_empty(transform: Transform) -> None:
-    svg = Svg(transform=transform)
+    # the outermost `svg` turns about the center of its viewport, so it has
+    # to have one to turn about
+    svg = Svg(width=Length(100), height=Length(100), transform=transform)
     svg.reify()
 
     assert svg.transform is None
