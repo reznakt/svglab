@@ -737,9 +737,16 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
     prefix: str | None = None
 
     # a lambda is faster with pydantic than `list`
-    __children: list[Entity] = pydantic.PrivateAttr(
+    _children: list[Entity] = pydantic.PrivateAttr(
         default_factory=lambda: []  # noqa: PIE807
     )
+
+    @property
+    def __children(self) -> list[Entity]:
+        # `BaseModel.__getattr__` is an order of magnitude slower than reading
+        # the private attribute from its storage
+        assert self.__pydantic_private__ is not None, "private attrs unset"
+        return self.__pydantic_private__["_children"]
 
     # region Attribute Handling
 
