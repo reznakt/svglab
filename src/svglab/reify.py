@@ -1041,24 +1041,23 @@ def _ancestors(element: object, /) -> Iterator[object]:
     yield from ancestors
 
 
-def stretches_content(element: object, /) -> bool:
-    """Check whether a viewport lets its content be distorted to fill it.
+def stretches_content(preserve_aspect_ratio: object, /) -> bool:
+    """Check whether a `preserveAspectRatio` lets content be distorted.
 
-    A `preserveAspectRatio` of `none` stretches the content to the viewport
-    instead of fitting it, which is what makes a non-uniform scaling of the
-    viewport survive being folded into its attributes.
+    A value of `none` stretches the content to the viewport instead of
+    fitting it, which is what makes a non-uniform scaling of the viewport
+    survive being folded into its attributes.
 
     Examples:
-        >>> from svglab import Svg
-        >>> stretches_content(Svg(preserveAspectRatio="none"))
+        >>> stretches_content("none")
         True
-        >>> stretches_content(Svg())
+        >>> stretches_content("xMidYMid meet")
+        False
+        >>> stretches_content(None)
         False
 
     """
-    align, *_ = str(
-        _get(element, "preserveAspectRatio") or "xMidYMid"
-    ).split()
+    align, *_ = str(preserve_aspect_ratio or "xMidYMid").split()
 
     return align == "none"
 
@@ -1076,7 +1075,7 @@ def _structural_capability(element: object, /) -> Capability:
         return (
             UPRIGHT
             if isinstance(element, ViewportEstablishing)
-            and stretches_content(element)
+            and stretches_content(_get(element, "preserveAspectRatio"))
             else UNIFORM_SCALING
         )
 
@@ -1089,7 +1088,9 @@ def _structural_capability(element: object, /) -> Capability:
             # viewport resizes the content along with it -- and stretches it
             # too, where the aspect ratio is not preserved
             return (
-                UPRIGHT if stretches_content(element) else UNIFORM_SCALING
+                UPRIGHT
+                if stretches_content(_get(element, "preserveAspectRatio"))
+                else UNIFORM_SCALING
             )
 
         return TRANSLATION
