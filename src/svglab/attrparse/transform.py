@@ -27,18 +27,35 @@ from typing_extensions import (
     override,
 )
 
-from svglab import errors, mixins, models, protocols, serialize, utiltypes
-from svglab.attrparse import parse
-from svglab.utils import mathutils, miscutils
+from svglab.attrparse.parse import (
+    FiniteFloat,
+    get_validator,
+    inline_args,
+    v_args_to_list,
+)
+from svglab.errors import SvgSingularMatrixError
+from svglab.mixins import AddSub
+from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.protocols import CustomSerializable, PointLike, SupportsRMatmul
+from svglab.serialize import serialize, serialize_function_call
+from svglab.utils.mathutils import (
+    arctan,
+    cos,
+    degrees,
+    is_close,
+    normalize_zero,
+    sin,
+    tan,
+)
+from svglab.utils.miscutils import basic_compare
+from svglab.utiltypes import NpFloatArray
 
 
 _Vector: TypeAlias = tuple[float, float]
 """A 2D vector."""
 
 
-class _TransformFunctionBase(
-    protocols.CustomSerializable, metaclass=abc.ABCMeta
-):
+class _TransformFunctionBase(CustomSerializable, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def to_matrix(self) -> Matrix:
         """Convert the transformation to a `Matrix` instance.
@@ -61,7 +78,7 @@ class _TransformFunctionBase(
         dtype: npt.DTypeLike | None = None,
         *,
         copy: bool | None = None,
-    ) -> utiltypes.NpFloatArray:
+    ) -> NpFloatArray:
         if copy is False:
             raise ValueError(
                 "copy=False is not supported since the array is dynamically"
@@ -104,7 +121,7 @@ class _TransformFunctionBase(
         )
 
 
-@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
+@dataclass(frozen=True, config=DATACLASS_CONFIG)
 class _Scale(_TransformFunctionBase):
     sx: float
     sy: float
@@ -113,10 +130,10 @@ class _Scale(_TransformFunctionBase):
     def serialize(self) -> str:
         args = [self.sx]
 
-        if not mathutils.is_close(self.sx, self.sy):
+        if not is_close(self.sx, self.sy):
             args.append(self.sy)
 
-        return serialize.serialize_function_call(
+        return serialize_function_call(
             "scale", *args, precision_group="scale"
         )
 
@@ -126,12 +143,10 @@ class _Scale(_TransformFunctionBase):
 
     @override
     def __eq__(self, other: object, /) -> bool:
-        if not miscutils.basic_compare(other, self=self):
+        if not basic_compare(other, self=self):
             return False
 
-        return mathutils.is_close(
-            self.sx, other.sx
-        ) and mathutils.is_close(self.sy, other.sy)
+        return is_close(self.sx, other.sx) and is_close(self.sy, other.sy)
 
     @override
     def __hash__(self) -> int:
@@ -170,7 +185,7 @@ class Scale(_Scale):
         super().__init__(sx, sy if sy is not None else sx)
 
 
-@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
+@dataclass(frozen=True, config=DATACLASS_CONFIG)
 class _Rotate(_TransformFunctionBase):
     angle: float
     cx: float
@@ -178,26 +193,22 @@ class _Rotate(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        angle = serialize.serialize(self.angle, precision_group="angle")
+        angle = serialize(self.angle, precision_group="angle")
         origin: list[float] = []
 
-        if not mathutils.is_close(self.cx, 0) or not mathutils.is_close(
-            self.cy, 0
-        ):
+        if not is_close(self.cx, 0) or not is_close(self.cy, 0):
             origin.extend([self.cx, self.cy])
 
-        return serialize.serialize_function_call("rotate", angle, *origin)
+        return serialize_function_call("rotate", angle, *origin)
 
     @override
     def to_matrix(self) -> Matrix:
-        sin_a = mathutils.sin(self.angle)
-        cos_a = mathutils.cos(self.angle)
+        sin_a = sin(self.angle)
+        cos_a = cos(self.angle)
 
         rot = Matrix(a=cos_a, b=sin_a, c=-sin_a, d=cos_a, e=0, f=0)
 
-        if mathutils.is_close(self.cx, 0) and mathutils.is_close(
-            self.cy, 0
-        ):
+        if is_close(self.cx, 0) and is_close(self.cy, 0):
             return rot
 
         # translate to origin, rotate, translate back
@@ -209,13 +220,13 @@ class _Rotate(_TransformFunctionBase):
 
     @override
     def __eq__(self, other: object, /) -> bool:
-        if not miscutils.basic_compare(other, self=self):
+        if not basic_compare(other, self=self):
             return False
 
         return (
-            mathutils.is_close(self.angle, other.angle)
-            and mathutils.is_close(self.cx, other.cx)
-            and mathutils.is_close(self.cy, other.cy)
+            is_close(self.angle, other.angle)
+            and is_close(self.cx, other.cx)
+            and is_close(self.cy, other.cy)
         )
 
     @override
@@ -251,7 +262,7 @@ class Rotate(_Rotate):
 
 
 @final
-@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
+@dataclass(frozen=True, config=DATACLASS_CONFIG)
 class SkewY(_TransformFunctionBase):
     """A transformation that skews a shape along the y-axis.
 
@@ -262,20 +273,20 @@ class SkewY(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize_function_call(
+        return serialize_function_call(
             "skewY", self.angle, precision_group="angle"
         )
 
     @override
     def to_matrix(self) -> Matrix:
-        return Matrix(a=1, b=mathutils.tan(self.angle), c=0, d=1, e=0, f=0)
+        return Matrix(a=1, b=tan(self.angle), c=0, d=1, e=0, f=0)
 
     @override
     def __eq__(self, other: object, /) -> bool:
-        if not miscutils.basic_compare(other, self=self):
+        if not basic_compare(other, self=self):
             return False
 
-        return mathutils.is_close(self.angle, other.angle)
+        return is_close(self.angle, other.angle)
 
     @override
     def __hash__(self) -> int:
@@ -283,7 +294,7 @@ class SkewY(_TransformFunctionBase):
 
 
 @final
-@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
+@dataclass(frozen=True, config=DATACLASS_CONFIG)
 class SkewX(_TransformFunctionBase):
     """A transformation that skews a shape along the x-axis.
 
@@ -294,20 +305,20 @@ class SkewX(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize_function_call(
+        return serialize_function_call(
             "skewX", self.angle, precision_group="angle"
         )
 
     @override
     def to_matrix(self) -> Matrix:
-        return Matrix(a=1, b=0, c=mathutils.tan(self.angle), d=1, e=0, f=0)
+        return Matrix(a=1, b=0, c=tan(self.angle), d=1, e=0, f=0)
 
     @override
     def __eq__(self, other: object, /) -> bool:
-        if not miscutils.basic_compare(other, self=self):
+        if not basic_compare(other, self=self):
             return False
 
-        return mathutils.is_close(self.angle, other.angle)
+        return is_close(self.angle, other.angle)
 
     @override
     def __hash__(self) -> int:
@@ -329,19 +340,16 @@ def _argument_count(transformation: TransformFunction, /) -> int:
 
     if kind is Translate:
         translate = cast("Translate", transformation)
-        return 1 if mathutils.is_close(translate.ty, 0) else 2
+        return 1 if is_close(translate.ty, 0) else 2
 
     if kind is Scale:
         scale = cast("Scale", transformation)
-        return 1 if mathutils.is_close(scale.sx, scale.sy) else 2
+        return 1 if is_close(scale.sx, scale.sy) else 2
 
     if kind is Rotate:
         rotate = cast("Rotate", transformation)
         return (
-            1
-            if mathutils.is_close(rotate.cx, 0)
-            and mathutils.is_close(rotate.cy, 0)
-            else 3
+            1 if is_close(rotate.cx, 0) and is_close(rotate.cy, 0) else 3
         )
 
     if kind in {SkewX, SkewY}:
@@ -381,7 +389,7 @@ def _transform_cost(
     return sum(map(_argument_count, functions)), len(functions)
 
 
-@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
+@dataclass(frozen=True, config=DATACLASS_CONFIG)
 class _Translate(_TransformFunctionBase):
     tx: float
     ty: float
@@ -390,10 +398,10 @@ class _Translate(_TransformFunctionBase):
     def serialize(self) -> str:
         args = [self.tx]
 
-        if not mathutils.is_close(self.ty, 0):
+        if not is_close(self.ty, 0):
             args.append(self.ty)
 
-        return serialize.serialize_function_call("translate", *args)
+        return serialize_function_call("translate", *args)
 
     @override
     def to_matrix(self) -> Matrix:
@@ -401,12 +409,10 @@ class _Translate(_TransformFunctionBase):
 
     @override
     def __eq__(self, other: object, /) -> bool:
-        if not miscutils.basic_compare(other, self=self):
+        if not basic_compare(other, self=self):
             return False
 
-        return mathutils.is_close(
-            self.tx, other.tx
-        ) and mathutils.is_close(self.ty, other.ty)
+        return is_close(self.tx, other.tx) and is_close(self.ty, other.ty)
 
     @override
     def __hash__(self) -> int:
@@ -450,19 +456,15 @@ def _remove_redundant_transformations(
 
         if kind is Translate:
             translate = cast("Translate", transformation)
-            if mathutils.is_close(translate.tx, 0) and mathutils.is_close(
-                translate.ty, 0
-            ):
+            if is_close(translate.tx, 0) and is_close(translate.ty, 0):
                 continue
         elif kind is Scale:
             scale = cast("Scale", transformation)
-            if mathutils.is_close(scale.sx, 1) and mathutils.is_close(
-                scale.sy, 1
-            ):
+            if is_close(scale.sx, 1) and is_close(scale.sy, 1):
                 continue
         elif kind in {Rotate, SkewX, SkewY}:
             turn = cast("Rotate | SkewX | SkewY", transformation)
-            if mathutils.is_close(turn.angle, 0):
+            if is_close(turn.angle, 0):
                 continue
 
         result.append(transformation)
@@ -471,7 +473,7 @@ def _remove_redundant_transformations(
 
 
 @final
-@models.dataclass(frozen=True, config=models.DATACLASS_CONFIG)
+@dataclass(frozen=True, config=DATACLASS_CONFIG)
 class Matrix(_TransformFunctionBase):
     """An arbitrary affine transformation.
 
@@ -498,7 +500,7 @@ class Matrix(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return serialize.serialize_function_call(
+        return serialize_function_call(
             "matrix", self.a, self.b, self.c, self.d, self.e, self.f
         )
 
@@ -578,7 +580,7 @@ class Matrix(_TransformFunctionBase):
             self.d / magnitude,
         )
 
-        return mathutils.is_close(a * d - b * c, 0)
+        return is_close(a * d - b * c, 0)
 
     def inverse(self) -> Matrix:
         """Compute the inverse of the matrix.
@@ -597,18 +599,18 @@ class Matrix(_TransformFunctionBase):
 
         """
         if self.is_singular():
-            raise errors.SvgSingularMatrixError(self)
+            raise SvgSingularMatrixError(self)
 
         det = self.determinant()
         a, b, c, d, e, f = self.to_tuple()
 
         return Matrix(
-            a=mathutils.normalize_zero(d / det),
-            b=mathutils.normalize_zero(-b / det),
-            c=mathutils.normalize_zero(-c / det),
-            d=mathutils.normalize_zero(a / det),
-            e=mathutils.normalize_zero((c * f - d * e) / det),
-            f=mathutils.normalize_zero((b * e - a * f) / det),
+            a=normalize_zero(d / det),
+            b=normalize_zero(-b / det),
+            c=normalize_zero(-c / det),
+            d=normalize_zero(a / det),
+            e=normalize_zero((c * f - d * e) / det),
+            f=normalize_zero((b * e - a * f) / det),
         )
 
     def linear(self) -> Matrix:
@@ -691,7 +693,7 @@ class Matrix(_TransformFunctionBase):
 
         """
         if self.is_singular():
-            raise errors.SvgSingularMatrixError(self)
+            raise SvgSingularMatrixError(self)
 
         a, b, c, d = self.a, self.b, self.c, self.d
 
@@ -702,7 +704,7 @@ class Matrix(_TransformFunctionBase):
         # the second basis vector is the first one turned a quarter turn, so
         # that `q` is always a rotation and the reflection (if any) ends up in
         # the sign of `r22`
-        q2x = mathutils.normalize_zero(-q1y)
+        q2x = normalize_zero(-q1y)
         q2y = q1x
 
         r12 = q1x * c + q1y * d
@@ -760,10 +762,10 @@ class Matrix(_TransformFunctionBase):
         difference = math.atan2(g, f)
 
         return (
-            mathutils.degrees((sum_of_angles + difference) / 2),
+            degrees((sum_of_angles + difference) / 2),
             q + r,
             q - r,
-            mathutils.degrees((sum_of_angles - difference) / 2),
+            degrees((sum_of_angles - difference) / 2),
         )
 
     def condition_number(self) -> float:
@@ -792,7 +794,7 @@ class Matrix(_TransformFunctionBase):
         """
         _, sx, sy, _pre = self.svd_decompose()
 
-        if mathutils.is_close(sy, 0):
+        if is_close(sy, 0):
             return math.inf
 
         return abs(sx / sy)
@@ -807,7 +809,7 @@ class Matrix(_TransformFunctionBase):
             0.0
 
         """
-        return mathutils.degrees(math.atan2(self.b, self.a))
+        return degrees(math.atan2(self.b, self.a))
 
     def __rotation_centre(self) -> _Vector | None:
         """Find the point a rotation leaves where it is, if this is one.
@@ -820,7 +822,7 @@ class Matrix(_TransformFunctionBase):
         a, b, _, _, e, f = self.to_tuple()
         determinant = (1 - a) ** 2 + b**2
 
-        if mathutils.is_close(determinant, 0):
+        if is_close(determinant, 0):
             # the rotation is by a whole turn, so every point is fixed
             return None
 
@@ -838,28 +840,28 @@ class Matrix(_TransformFunctionBase):
         """
         try:
             rotation, rest = self.qr_decompose()
-        except errors.SvgSingularMatrixError:
+        except SvgSingularMatrixError:
             return None
 
         return [
             *prefix,
             Rotate(rotation.rotation_angle()),
             Scale(rest.a, rest.d),
-            SkewX(mathutils.arctan(rest.c / rest.a)),
+            SkewX(arctan(rest.c / rest.a)),
         ]
 
     def __ldu_candidate(self, prefix: Transform, /) -> Transform | None:
         """Factor as a skew along y, an axis scaling and a skew along x."""
         a, b, c, *_ = self.to_tuple()
 
-        if mathutils.is_close(a, 0):
+        if is_close(a, 0):
             return None
 
         return [
             *prefix,
-            SkewY(mathutils.arctan(b / a)),
+            SkewY(arctan(b / a)),
             Scale(a, self.determinant() / a),
-            SkewX(mathutils.arctan(c / a)),
+            SkewX(arctan(c / a)),
         ]
 
     def __svd_candidate(self, prefix: Transform, /) -> Transform:
@@ -887,36 +889,26 @@ class Matrix(_TransformFunctionBase):
         """
         a, b, c, d, e, f = self.to_tuple()
 
-        moves = not mathutils.is_close(e, 0) or not mathutils.is_close(
-            f, 0
-        )
+        moves = not is_close(e, 0) or not is_close(f, 0)
         # a guess is worth making in one arrangement only: with the move if
         # there is one to make, without it if there is not
         prefix: Transform = [self.translation()] if moves else []
 
         yield [self]
 
-        if mathutils.is_close(b, 0) and mathutils.is_close(c, 0):
+        if is_close(b, 0) and is_close(c, 0):
             yield [*prefix, Scale(a, d)]
 
-        if (
-            mathutils.is_close(a, 1)
-            and mathutils.is_close(d, 1)
-            and mathutils.is_close(b, 0)
-        ):
-            yield [*prefix, SkewX(mathutils.arctan(c))]
+        if is_close(a, 1) and is_close(d, 1) and is_close(b, 0):
+            yield [*prefix, SkewX(arctan(c))]
+
+        if is_close(a, 1) and is_close(d, 1) and is_close(c, 0):
+            yield [*prefix, SkewY(arctan(b))]
 
         if (
-            mathutils.is_close(a, 1)
-            and mathutils.is_close(d, 1)
-            and mathutils.is_close(c, 0)
-        ):
-            yield [*prefix, SkewY(mathutils.arctan(b))]
-
-        if (
-            mathutils.is_close(a, d)
-            and mathutils.is_close(b, -c)
-            and mathutils.is_close(math.hypot(a, b), 1)
+            is_close(a, d)
+            and is_close(b, -c)
+            and is_close(math.hypot(a, b), 1)
         ):
             angle = self.rotation_angle()
 
@@ -999,11 +991,11 @@ class Matrix(_TransformFunctionBase):
 
     @override
     def __eq__(self, other: object, /) -> bool:
-        if not miscutils.basic_compare(other, self=self):
+        if not basic_compare(other, self=self):
             return False
 
         return all(
-            mathutils.is_close(x1, x2)
+            is_close(x1, x2)
             for x1, x2 in zip(
                 self.to_tuple(), other.to_tuple(), strict=True
             )
@@ -1054,20 +1046,18 @@ def compose(transforms: Iterable[TransformFunction], /) -> Matrix:
 
 
 class PointAddSubWithTranslateRMatmul(
-    protocols.SupportsRMatmul["Translate"],
-    mixins.AddSub[protocols.PointLike],
-    metaclass=abc.ABCMeta,
+    SupportsRMatmul["Translate"], AddSub[PointLike], metaclass=abc.ABCMeta
 ):
     """Implement moving by a vector using multiplication with `Translate`."""
 
     @override
-    def __add__(self, other: protocols.PointLike, /) -> Self:
+    def __add__(self, other: PointLike, /) -> Self:
         return Translate(other.x, other.y) @ self
 
 
-@parse.inline_args
+@inline_args
 class _Transformer(lark.Transformer[object, Transform]):
-    number = parse.FiniteFloat
+    number = FiniteFloat
 
     translate = Translate
     scale = Scale
@@ -1076,12 +1066,10 @@ class _Transformer(lark.Transformer[object, Transform]):
     skew_y = SkewY
     matrix = Matrix
 
-    transform_ = parse.v_args_to_list
+    transform_ = v_args_to_list
 
 
 TransformType: TypeAlias = Annotated[
     Transform,
-    parse.get_validator(
-        grammar="transform.lark", transformer=_Transformer()
-    ),
+    get_validator(grammar="transform.lark", transformer=_Transformer()),
 ]

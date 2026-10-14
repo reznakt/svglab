@@ -2,25 +2,25 @@
 
 import pytest
 
-import svglab
-from svglab import errors
-from tests import conftest
+from svglab import ClipPath, Defs, G, Length, Rect, Rotate, Svg, parse_svg
+from svglab.errors import SvgTransformOriginError
+from tests.conftest import assert_svg_visually_equal
 
 
 _VIEWBOX = (-13.25, 27.5, 200, 200)
 
 
-def _parse(content: str) -> svglab.Svg:
+def _parse(content: str) -> Svg:
     # parsed afresh rather than deep-copied, which loses the parent links an
     # animation is resolved through
-    return svglab.parse_svg(
+    return parse_svg(
         '<svg xmlns="http://www.w3.org/2000/svg" '
         'xmlns:xlink="http://www.w3.org/1999/xlink" '
         f'width="100" height="100" viewBox="0 0 100 100">{content}</svg>'
     )
 
 
-def _set_viewbox(content: str) -> tuple[svglab.Svg, svglab.Svg]:
+def _set_viewbox(content: str) -> tuple[Svg, Svg]:
     original = _parse(content)
     changed = _parse(content)
     changed.set_viewbox(_VIEWBOX)
@@ -35,8 +35,8 @@ def test_a_top_level_clip_path_is_left_alone() -> None:
         'clip-path="url(#c)"/>'
     )
 
-    assert changed.find(svglab.ClipPath).transform is None
-    conftest.assert_svg_visually_equal(original, changed)
+    assert changed.find(ClipPath).transform is None
+    assert_svg_visually_equal(original, changed)
 
 
 def test_defs_are_left_alone() -> None:
@@ -45,8 +45,8 @@ def test_defs_are_left_alone() -> None:
         '<use href="#r" x="30" y="30"/>'
     )
 
-    assert changed.find(svglab.Defs).transform is None
-    conftest.assert_svg_visually_equal(original, changed)
+    assert changed.find(Defs).transform is None
+    assert_svg_visually_equal(original, changed)
 
 
 @pytest.mark.parametrize("href", ["href", "xlink:href"])
@@ -56,12 +56,12 @@ def test_an_element_a_use_references_is_wrapped(href: str) -> None:
         'transform="rotate(10)"/>'
         f'<use {href}="#r" x="40" y="30"/>'
     )
-    rect = changed.find(svglab.Rect)
+    rect = changed.find(Rect)
 
-    assert isinstance(rect.parent, svglab.G)
+    assert isinstance(rect.parent, G)
     assert rect.parent.parent is changed
-    assert rect.transform == [svglab.Rotate(10)]
-    conftest.assert_svg_visually_equal(original, changed)
+    assert rect.transform == [Rotate(10)]
+    assert_svg_visually_equal(original, changed)
 
 
 def test_an_animated_element_is_wrapped() -> None:
@@ -70,11 +70,11 @@ def test_an_animated_element_is_wrapped() -> None:
         '<animateTransform attributeName="transform" type="rotate" '
         'from="0" to="360" dur="1s"/></rect>'
     )
-    rect = changed.find(svglab.Rect)
+    rect = changed.find(Rect)
 
-    assert isinstance(rect.parent, svglab.G)
+    assert isinstance(rect.parent, G)
     assert rect.transform is None
-    assert (rect.x, rect.width) == (svglab.Length(10), svglab.Length(20))
+    assert (rect.x, rect.width) == (Length(10), Length(20))
 
 
 @pytest.mark.parametrize(
@@ -87,11 +87,11 @@ def test_an_element_whose_style_sets_its_transform_is_wrapped(
         '<rect x="10" y="10" width="40" height="20" fill="red" '
         f'transform="rotate(30)" style="{style}"/>'
     )
-    rect = changed.find(svglab.Rect)
+    rect = changed.find(Rect)
 
-    assert isinstance(rect.parent, svglab.G)
-    assert rect.transform == [svglab.Rotate(30)]
-    conftest.assert_svg_visually_equal(original, changed)
+    assert isinstance(rect.parent, G)
+    assert rect.transform == [Rotate(30)]
+    assert_svg_visually_equal(original, changed)
 
 
 def test_an_origin_relative_to_the_viewbox_is_refused() -> None:
@@ -102,5 +102,5 @@ def test_an_origin_relative_to_the_viewbox_is_refused() -> None:
         'transform="rotate(30)" transform-origin="center"/>'
     )
 
-    with pytest.raises(errors.SvgTransformOriginError):
+    with pytest.raises(SvgTransformOriginError):
         svg.set_viewbox(_VIEWBOX)

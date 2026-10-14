@@ -4,25 +4,41 @@ import copy
 
 import pytest
 
-import svglab
-from tests import conftest
-
-
-L = svglab.Length
-C = svglab.Color
-
-_BITMAP = svglab.Iri(
-    path=(conftest.ASSETS_DIR / "bitmap.txt").read_text().strip()
+from svglab import (
+    Circle,
+    Color,
+    Element,
+    G,
+    Image,
+    Iri,
+    Length,
+    Rect,
+    Rotate,
+    Scale,
+    Svg,
+    Transform,
+    Translate,
+)
+from tests.conftest import (
+    ASSETS_DIR,
+    assert_svg_visually_equal,
+    transforms_left,
 )
 
 
-def _svg(child: svglab.Element, transform: svglab.Transform) -> svglab.Svg:
-    return svglab.Svg(
+L = Length
+C = Color
+
+_BITMAP = Iri(path=(ASSETS_DIR / "bitmap.txt").read_text().strip())
+
+
+def _svg(child: Element, transform: Transform) -> Svg:
+    return Svg(
         width=L(240), height=L(240), viewBox=(-40, -40, 240, 240)
-    ).add_child(svglab.G(transform=transform).add_child(child))
+    ).add_child(G(transform=transform).add_child(child))
 
 
-def _nested(*, viewbox: bool, stretched: bool = False) -> svglab.Svg:
+def _nested(*, viewbox: bool, stretched: bool = False) -> Svg:
     kwargs: dict[str, object] = {
         "x": L(10),
         "y": L(10),
@@ -35,17 +51,15 @@ def _nested(*, viewbox: bool, stretched: bool = False) -> svglab.Svg:
     if stretched:
         kwargs["preserveAspectRatio"] = "none"
 
-    inner = svglab.Svg(**kwargs)  # type: ignore[arg-type]
+    inner = Svg(**kwargs)  # type: ignore[arg-type]
 
     return inner.add_children(
-        svglab.Rect(
-            x=L(5), y=L(5), width=L(40), height=L(20), fill=C("#c36")
-        ),
-        svglab.Circle(cx=L(70), cy=L(25), r=L(15), fill=C("#3c6")),
+        Rect(x=L(5), y=L(5), width=L(40), height=L(20), fill=C("#c36")),
+        Circle(cx=L(70), cy=L(25), r=L(15), fill=C("#3c6")),
     )
 
 
-def _image(*, stretched: bool = False) -> svglab.Image:
+def _image(*, stretched: bool = False) -> Image:
     kwargs: dict[str, object] = {
         "x": L(10),
         "y": L(10),
@@ -57,11 +71,11 @@ def _image(*, stretched: bool = False) -> svglab.Image:
     if stretched:
         kwargs["preserveAspectRatio"] = "none"
 
-    return svglab.Image(**kwargs)  # type: ignore[arg-type]
+    return Image(**kwargs)  # type: ignore[arg-type]
 
 
-_UNIFORM = [svglab.Scale(1.4)]
-_NON_UNIFORM = [svglab.Scale(1.3, 0.7)]
+_UNIFORM = [Scale(1.4)]
+_NON_UNIFORM = [Scale(1.3, 0.7)]
 
 
 @pytest.mark.parametrize(
@@ -95,36 +109,32 @@ def test_a_viewport_is_resized_only_as_far_as_its_content_follows(
         reified = copy.deepcopy(original)
         reified.reify()
 
-        absorbed = not conftest.transforms_left(reified)
+        absorbed = not transforms_left(reified)
 
         assert absorbed == expected, transform
-        conftest.assert_svg_visually_equal(
-            original, reified, tolerance=1e-6
-        )
+        assert_svg_visually_equal(original, reified, tolerance=1e-6)
 
 
 def test_an_embedded_bitmap_survives_being_moved_and_resized() -> None:
-    original = _svg(
-        _image(), [svglab.Translate(12, -7), svglab.Scale(1.4)]
-    )
+    original = _svg(_image(), [Translate(12, -7), Scale(1.4)])
     reified = copy.deepcopy(original)
 
     reified.reify()
 
-    image = reified.find(svglab.Image)
+    image = reified.find(Image)
 
     assert image.transform is None
     assert image.width == L(98)
 
-    conftest.assert_svg_visually_equal(original, reified)
+    assert_svg_visually_equal(original, reified)
 
 
 def test_an_embedded_bitmap_refuses_to_be_turned() -> None:
     # turning a bitmap means turning its pixels, which no attribute says
-    original = _svg(_image(), [svglab.Rotate(23)])
+    original = _svg(_image(), [Rotate(23)])
     reified = copy.deepcopy(original)
 
     reified.reify()
 
-    assert conftest.transforms_left(reified)
-    conftest.assert_svg_visually_equal(original, reified)
+    assert transforms_left(reified)
+    assert_svg_visually_equal(original, reified)

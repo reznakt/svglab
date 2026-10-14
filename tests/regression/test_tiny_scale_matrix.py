@@ -2,14 +2,14 @@
 
 import pytest
 
-import svglab
-from svglab import errors
-from svglab.attrparse import transform
+from svglab import G, Path, parse_svg
+from svglab.attrparse.transform import Matrix, Scale
+from svglab.errors import SvgSingularMatrixError
 
 
 # an Inkscape drawing in the freesvg corpus carries this on a group: the
 # document is authored in millions of units and scaled back down to fit
-_TINY = transform.Matrix(
+_TINY = Matrix(
     6.9177836e-06, 0.0, 0.0, 6.9177836e-06, 434.119595, 268.24060115
 )
 
@@ -25,21 +25,21 @@ def test_a_uniform_scale_is_never_singular_however_small() -> None:
 @pytest.mark.parametrize(
     "matrix",
     [
-        transform.Matrix(0, 0, 0, 0, 0, 0),
-        transform.Matrix(1, 0, 0, 0, 0, 0),
-        transform.Matrix(0, 0, 0, 2.0440994942599483e-196, 0, 0),
-        transform.Scale(1, 0).to_matrix(),
+        Matrix(0, 0, 0, 0, 0, 0),
+        Matrix(1, 0, 0, 0, 0, 0),
+        Matrix(0, 0, 0, 2.0440994942599483e-196, 0, 0),
+        Scale(1, 0).to_matrix(),
     ],
     ids=["zero", "flat", "subnormal", "collapsed"],
 )
 def test_a_matrix_that_really_collapses_is_still_singular(
-    matrix: transform.Matrix,
+    matrix: Matrix,
 ) -> None:
     assert matrix.is_singular()
 
 
 def test_reifying_a_tiny_scale_does_not_raise() -> None:
-    svg = svglab.parse_svg(
+    svg = parse_svg(
         '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">'
         '<g transform="matrix(6.9177836e-06 0 0 6.9177836e-06 434.1 268.2)">'
         '<path d="M0,0 L1000000,1000000 Z" fill="red"/>'
@@ -48,8 +48,8 @@ def test_reifying_a_tiny_scale_does_not_raise() -> None:
 
     svg.reify()
 
-    assert svg.find(svglab.G).transform is None
-    assert svg.find(svglab.Path).d is not None
+    assert svg.find(G).transform is None
+    assert svg.find(Path).d is not None
 
 
 def test_a_tiny_matrix_can_still_be_inverted() -> None:
@@ -57,20 +57,15 @@ def test_a_tiny_matrix_can_still_be_inverted() -> None:
     # `is_singular`, so fixing one site left the other raising
     inverse = _TINY.inverse()
 
-    assert _TINY @ inverse == transform.Matrix.identity()
-    assert inverse @ _TINY == transform.Matrix.identity()
+    assert _TINY @ inverse == Matrix.identity()
+    assert inverse @ _TINY == Matrix.identity()
 
 
 @pytest.mark.parametrize(
     "matrix",
-    [
-        transform.Matrix(0, 0, 0, 0, 0, 0),
-        transform.Scale(1, 0).to_matrix(),
-    ],
+    [Matrix(0, 0, 0, 0, 0, 0), Scale(1, 0).to_matrix()],
     ids=["zero", "collapsed"],
 )
-def test_inverting_a_collapsed_matrix_still_raises(
-    matrix: transform.Matrix,
-) -> None:
-    with pytest.raises(errors.SvgSingularMatrixError):
+def test_inverting_a_collapsed_matrix_still_raises(matrix: Matrix) -> None:
+    with pytest.raises(SvgSingularMatrixError):
         matrix.inverse()

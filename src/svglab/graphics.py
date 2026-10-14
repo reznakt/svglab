@@ -17,8 +17,13 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import entities, errors, resvg, serialize
-from svglab.attrparse import color, length
+from svglab.attrparse.color import Color
+from svglab.attrparse.length import Length
+from svglab.entities import Element
+from svglab.errors import SvgUnitConversionError
+from svglab.resvg import RenderOptions
+from svglab.resvg import render as resvg_render
+from svglab.serialize import MINIMAL_FORMATTER
 
 
 Mask: TypeAlias = npt.NDArray[np.bool_]
@@ -26,30 +31,30 @@ BBox: TypeAlias = tuple[int, int, int, int]
 
 _ImageArray: TypeAlias = npt.NDArray[np.uint8]
 
-_ElementT = TypeVar("_ElementT", bound=entities.Element)
+_ElementT = TypeVar("_ElementT", bound=Element)
 
 
-_BLACK: Final = color.Color((0, 0, 0))
+_BLACK: Final = Color((0, 0, 0))
 
 
 @runtime_checkable
 class _SvgElementLike(Protocol):
-    width: length.Length | None
-    height: length.Length | None
+    width: Length | None
+    height: Length | None
     viewBox: tuple[float, float, float, float] | None  # noqa: N815
 
     def render(
         self,
-        options: resvg.RenderOptions | None = None,
+        options: RenderOptions | None = None,
         *,
-        background: color.Color | None = None,
+        background: Color | None = None,
         height: float | None = None,
         width: float | None = None,
         zoom: float = 1,
     ) -> PIL.Image.Image: ...
 
 
-def _positive_user_units(value: length.Length | None, /) -> float | None:
+def _positive_user_units(value: Length | None, /) -> float | None:
     """Convert a length to a positive number of user units, if possible.
 
     Args:
@@ -72,7 +77,7 @@ def _positive_user_units(value: length.Length | None, /) -> float | None:
 
     try:
         user_units = float(value)
-    except errors.SvgUnitConversionError:
+    except SvgUnitConversionError:
         return None
 
     return user_units if user_units > 0 else None
@@ -109,7 +114,7 @@ def _viewbox_size(
 
 
 def _compute_render_size(
-    svg: entities.Element,
+    svg: Element,
     *,
     width: float | None = None,
     height: float | None = None,
@@ -237,10 +242,10 @@ def _compute_render_size(
 
 
 def render(  # noqa: D103
-    svg: entities.Element,
-    options: resvg.RenderOptions | None = None,
+    svg: Element,
+    options: RenderOptions | None = None,
     *,
-    background: color.Color | None = None,
+    background: Color | None = None,
     height: float | None = None,
     width: float | None = None,
     zoom: float = 1,
@@ -251,12 +256,12 @@ def render(  # noqa: D103
     render_size = _compute_render_size(svg, width=width, height=height)
     svg = copy.copy(svg)
 
-    svg.width = length.Length(render_size[0])
-    svg.height = length.Length(render_size[1])
+    svg.width = Length(render_size[0])
+    svg.height = Length(render_size[1])
 
-    xml = svg.to_xml(formatter=serialize.MINIMAL_FORMATTER)
+    xml = svg.to_xml(formatter=MINIMAL_FORMATTER)
 
-    return resvg.render(xml, options, background=background, zoom=zoom)
+    return resvg_render(xml, options, background=background, zoom=zoom)
 
 
 def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
@@ -288,12 +293,12 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
     return this, svg
 
 
-def _iter_tree(element: entities.Element, /) -> Iterator[entities.Element]:
+def _iter_tree(element: Element, /) -> Iterator[Element]:
     """Iterate over an element and all of its descendant elements."""
     return itertools.chain([element], element.find_all())
 
 
-def _make_element_visible(element: entities.Element, /) -> None:
+def _make_element_visible(element: Element, /) -> None:
     for elem in _iter_tree(element):
         del elem.display
         elem.fill = _BLACK
@@ -305,14 +310,14 @@ def _make_element_visible(element: entities.Element, /) -> None:
 
 
 def _set_element_visibility(
-    element: entities.Element, visibility: Literal["visible", "hidden"]
+    element: Element, visibility: Literal["visible", "hidden"]
 ) -> None:
     for elem in _iter_tree(element):
         elem.visibility = visibility
 
 
 def _render_tree(
-    element: entities.Element,
+    element: Element,
     *,
     render_this: bool,
     render_other: bool,
@@ -348,7 +353,7 @@ def _render_tree(
         )
 
     element_copy, svg = _copy_tree(element)
-    assert isinstance(svg, entities.Element)
+    assert isinstance(svg, Element)
 
     for t in svg.find_all():
         # do not hide the parents of our element as that would make it
@@ -396,7 +401,7 @@ def _mask_to_image(mask: Mask) -> PIL.Image.Image:
 
 
 def mask(  # noqa: D103
-    element: entities.Element,
+    element: Element,
     *,
     width: float | None = None,
     height: float | None = None,
@@ -415,13 +420,13 @@ def mask(  # noqa: D103
 
 
 def visible_mask(  # noqa: D103
-    element: entities.Element,
+    element: Element,
     *,
     width: float | None = None,
     height: float | None = None,
 ) -> Mask:
     element_copy, svg = _copy_tree(element)
-    assert isinstance(svg, entities.Element)
+    assert isinstance(svg, Element)
 
     for t in svg.find_all():
         t.visibility = "visible"
@@ -441,7 +446,7 @@ def visible_mask(  # noqa: D103
     return diff
 
 
-def bbox(element: entities.Element) -> BBox | None:  # noqa: D103
+def bbox(element: Element) -> BBox | None:  # noqa: D103
     img = _render_tree(
         element,
         render_this=True,
@@ -452,7 +457,7 @@ def bbox(element: entities.Element) -> BBox | None:  # noqa: D103
     return img.getbbox()
 
 
-def visible_bbox(element: entities.Element) -> BBox | None:  # noqa: D103
+def visible_bbox(element: Element) -> BBox | None:  # noqa: D103
     mask = visible_mask(element)
     img = _mask_to_image(mask)
 

@@ -33,12 +33,55 @@ from typing_extensions import (
     override,
 )
 
-from svglab import constants, errors, models, reify, serialize
-from svglab.attrparse import iri, length, transform
-from svglab.attrs import attrdefs, attrgroups
-from svglab.attrs import names as attr_names
-from svglab.elements import names
-from svglab.utils import bsutils, iterutils, miscutils
+from svglab.attrparse.iri import FuncIri, Iri
+from svglab.attrparse.length import Length
+from svglab.attrparse.transform import (
+    Matrix,
+    Transform,
+    Translate,
+    compose,
+)
+from svglab.attrs.attrdefs import GradientUnitsAttr, PatternUnitsAttr
+from svglab.attrs.attrgroups import CoreAttrs, PresentationAttrs
+from svglab.attrs.names import ATTR_NAME_TO_NORMALIZED, AttributeName
+from svglab.constants import SVG_XMLNS
+from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED, ElementName
+from svglab.errors import (
+    SvgElementNotFoundError,
+    SvgTransformOriginError,
+    SvgUnitConversionError,
+)
+from svglab.models import BaseModel
+from svglab.reify import (
+    AFFINE,
+    NOTHING,
+    TRANSLATION,
+    UNIFORM_SCALING,
+    UPRIGHT,
+    Animation,
+    Capability,
+    DocumentFragmentRoot,
+    Grouping,
+    RenderedIndirectly,
+    SelectsAChild,
+    Stylesheet,
+    TransformInheritedByChildren,
+    apply,
+    geometry_capability,
+    has_own_geometry,
+    split,
+    stretches_content,
+    style_capability,
+    stylesheet_capability,
+)
+from svglab.serialize import (
+    Formatter,
+    get_current_formatter,
+    serialize_attr,
+)
+from svglab.utils.bsutils import beautifulsoup_to_str
+from svglab.utils.iterutils import search_by_reference, take_last
+from svglab.utils.miscutils import basic_compare
 
 
 _T = TypeVar("_T")
@@ -47,7 +90,7 @@ _ElementT = TypeVar("_ElementT", bound="Element")
 _EMPTY_PARAM: Final = object()
 """A sentinel value for an empty parameter."""
 
-_REFERENCE_ATTR_NAMES: Final[tuple[attr_names.AttributeName, ...]] = (
+_REFERENCE_ATTR_NAMES: Final[tuple[AttributeName, ...]] = (
     "xlink:href",
     "href",
     "fill",
@@ -92,7 +135,7 @@ _ANIMATABLE_BY_REIFICATION: Final[frozenset[str]] = frozenset(
 )
 """The attributes reification rewrites, and an animation must keep."""
 
-_RESOURCE_ATTR_NAMES: Final[tuple[attr_names.AttributeName, ...]] = (
+_RESOURCE_ATTR_NAMES: Final[tuple[AttributeName, ...]] = (
     "fill",
     "stroke",
     "mask",
@@ -102,7 +145,7 @@ _RESOURCE_ATTR_NAMES: Final[tuple[attr_names.AttributeName, ...]] = (
 
 
 def _match_element(
-    element: Element, /, *, search: type[Element] | names.ElementName | str
+    element: Element, /, *, search: type[Element] | ElementName | str
 ) -> bool:
     """Check if an element matches the given search criteria.
 
@@ -131,9 +174,7 @@ def _match_element(
     return element_name(element) == search
 
 
-def _normalize_transform(
-    matrix: transform.Matrix, /
-) -> transform.Transform | None:
+def _normalize_transform(matrix: Matrix, /) -> Transform | None:
     """Express a matrix in the shortest transform list that serializes it.
 
     Args:
@@ -151,14 +192,14 @@ def _normalize_transform(
         [Translate(tx=10.0, ty=20.0)]
 
     """
-    if matrix == transform.Matrix.identity():
+    if matrix == Matrix.identity():
         return None
 
     return matrix.decompose()
 
 
 def _attr_or_default(
-    element: Element, attr_name: attr_names.AttributeName, /
+    element: Element, attr_name: AttributeName, /
 ) -> object:
     """Read an attribute, falling back to the value the spec says it has.
 
@@ -212,19 +253,16 @@ def element_name(element: Element, /) -> str:
     if isinstance(element, UnknownElement):
         return element.element_name
 
-    return names.ELEMENT_NAME_TO_NORMALIZED.inverse[type(element).__name__]
+    return ELEMENT_NAME_TO_NORMALIZED.inverse[type(element).__name__]
 
 
-class Entity(models.BaseModel, metaclass=abc.ABCMeta):
+class Entity(BaseModel, metaclass=abc.ABCMeta):
     """The base class of the SVG element hierarchy."""
 
     parent: Element | None = pydantic.Field(default=None, init=False)
 
     def to_xml(
-        self,
-        *,
-        pretty: bool = True,
-        formatter: serialize.Formatter | None = None,
+        self, *, pretty: bool = True, formatter: Formatter | None = None
     ) -> str:
         """Convert the element to XML.
 
@@ -242,9 +280,9 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
             '<rect id="foo" stroke-linecap="round"/>'
 
         """
-        with formatter or serialize.get_current_formatter():
+        with formatter or get_current_formatter():
             soup = self.to_beautifulsoup_object()
-            return bsutils.beautifulsoup_to_str(soup, pretty=pretty)
+            return beautifulsoup_to_str(soup, pretty=pretty)
 
     @abc.abstractmethod
     def to_beautifulsoup_object(self) -> bs4.PageElement:
@@ -279,7 +317,7 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
 
     @override
     def __eq__(self, other: object) -> bool:
-        if not miscutils.basic_compare(other, self=self):
+        if not basic_compare(other, self=self):
             return False
 
         return self._eq(other)
@@ -325,12 +363,7 @@ class Entity(models.BaseModel, metaclass=abc.ABCMeta):
                 del memo[id(parent)]
 
 
-class Element(
-    Entity,
-    attrgroups.CoreAttrs,
-    attrgroups.PresentationAttrs,
-    metaclass=abc.ABCMeta,
-):
+class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
     """An element.
 
     An element is an entity that has a name, a set of attributes,
@@ -347,14 +380,11 @@ class Element(
         extra="allow",
         alias_generator=pydantic.AliasGenerator(
             validation_alias=lambda name: pydantic.AliasChoices(
-                name,
-                attr_names.ATTR_NAME_TO_NORMALIZED.inverse.get(name, name),
+                name, ATTR_NAME_TO_NORMALIZED.inverse.get(name, name)
             ),
             serialization_alias=(
-                lambda name: (
-                    attr_names.ATTR_NAME_TO_NORMALIZED.inverse.get(
-                        name, name
-                    )
+                lambda name: ATTR_NAME_TO_NORMALIZED.inverse.get(
+                    name, name
                 )
             ),
         ),
@@ -398,7 +428,7 @@ class Element(
         assert self.model_extra is not None, "model_extra is None"
         return self.model_extra
 
-    def standard_attrs(self) -> Mapping[attr_names.AttributeName, object]:
+    def standard_attrs(self) -> Mapping[AttributeName, object]:
         """Get the standard attributes of the element.
 
         Standard attributes are attributes that are part of the SVG standard.
@@ -411,8 +441,8 @@ class Element(
         # `model_dump()` would walk the ancestor chain via `parent`
         extra = self.model_extra or {}
         fields = type(self).model_fields
-        normalized = attr_names.ATTR_NAME_TO_NORMALIZED
-        result: dict[attr_names.AttributeName, object] = {}
+        normalized = ATTR_NAME_TO_NORMALIZED
+        result: dict[AttributeName, object] = {}
 
         # only fields that were set can hold a non-`None` value
         for name in sorted(self.__pydantic_fields_set__):
@@ -428,7 +458,7 @@ class Element(
             value = getattr(self, name, None)
 
             if value is not None:
-                result[cast(attr_names.AttributeName, attr)] = value
+                result[cast(AttributeName, attr)] = value
 
         return result
 
@@ -630,7 +660,7 @@ class Element(
             The root ancestor of the element.
 
         """
-        return iterutils.take_last(self.ancestors) or self
+        return take_last(self.ancestors) or self
 
     # endregion
     # region Copying
@@ -722,7 +752,7 @@ class Element(
 
         """
         try:
-            index = iterutils.search_by_reference(self.__children, child)
+            index = search_by_reference(self.__children, child)
         except ValueError as e:
             raise ValueError("Child not found") from e
 
@@ -819,13 +849,13 @@ class Element(
     @overload
     def find_all(
         self,
-        *elements: type[Element] | names.ElementName | str,
+        *elements: type[Element] | ElementName | str,
         recursive: bool = True,
     ) -> Generator[Element]: ...
 
     def find_all(
         self,
-        *elements: type[Element] | names.ElementName | str,
+        *elements: type[Element] | ElementName | str,
         recursive: bool = True,
     ) -> Generator[Element]:
         """Find all elements that match the given search criteria.
@@ -871,7 +901,7 @@ class Element(
     @overload
     def find(
         self,
-        *elements: type[Element] | names.ElementName | str,
+        *elements: type[Element] | ElementName | str,
         recursive: bool = True,
     ) -> Element: ...
 
@@ -886,14 +916,14 @@ class Element(
     @overload
     def find(
         self,
-        *elements: type[Element] | names.ElementName | str,
+        *elements: type[Element] | ElementName | str,
         recursive: bool = True,
         default: _T = _EMPTY_PARAM,
     ) -> Element | _T: ...
 
     def find(
         self,
-        *elements: type[Element] | names.ElementName | str,
+        *elements: type[Element] | ElementName | str,
         recursive: bool = True,
         default: _T = _EMPTY_PARAM,
     ) -> Element | _T:
@@ -934,9 +964,9 @@ class Element(
                 return default
 
             msg = f"Unable to find element by search criteria: {elements}"
-            raise errors.SvgElementNotFoundError(msg) from e
+            raise SvgElementNotFoundError(msg) from e
 
-    def resolve_iri(self, iri_: iri.Iri, /) -> Element:
+    def resolve_iri(self, iri_: Iri, /) -> Element:
         """Resolve a local IRI reference to an element in the document.
 
         This method attempts to resolve an IRI reference to an element in the
@@ -991,7 +1021,7 @@ class Element(
 
             attr = _attr_or_default(self, attr_name)
 
-            if not (isinstance(attr, iri.Iri) and attr.is_local):
+            if not (isinstance(attr, Iri) and attr.is_local):
                 continue
 
             try:
@@ -1006,7 +1036,7 @@ class Element(
 
         return False
 
-    def get_iri(self) -> iri.Iri:
+    def get_iri(self) -> Iri:
         """Obtain a local IRI reference to this element.
 
         The reference is constructed based on the element's id. If the element
@@ -1023,9 +1053,9 @@ class Element(
             msg = "Unable to create local IRI reference to element with no id"
             raise RuntimeError(msg)
 
-        return iri.Iri(fragment=self.id)
+        return Iri(fragment=self.id)
 
-    def get_func_iri(self) -> iri.FuncIri:
+    def get_func_iri(self) -> FuncIri:
         """Obtain a local FuncIRI reference to this element.
 
         The reference is constructed based on the element's id. If the element
@@ -1055,16 +1085,16 @@ class Element(
         element.can_be_empty_element = len(self.__children) == 0
 
         for key, value in self.all_attrs().items():
-            element[key] = serialize.serialize_attr(key, value)
+            element[key] = serialize_attr(key, value)
 
         for child in self.children:
             element.append(child.to_beautifulsoup_object())
 
         if element_name(self) == "svg":
-            formatter = serialize.get_current_formatter()
+            formatter = get_current_formatter()
 
             if formatter.xmlns == "always":
-                element["xmlns"] = constants.SVG_XMLNS
+                element["xmlns"] = SVG_XMLNS
             elif formatter.xmlns == "never":
                 del element["xmlns"]
 
@@ -1085,7 +1115,7 @@ class Element(
                 return "transform"
 
     @property
-    def main_transform(self) -> transform.Transform | None:
+    def main_transform(self) -> Transform | None:
         """The main transform attribute of the element.
 
         For most elements, this is the `transform` attribute. However, certain
@@ -1104,12 +1134,11 @@ class Element(
         transform_attr_name = self.__get_main_transform_attribute()
 
         return cast(
-            transform.Transform | None,
-            _attr_or_default(self, transform_attr_name),
+            Transform | None, _attr_or_default(self, transform_attr_name)
         )
 
     @main_transform.setter
-    def main_transform(self, value: transform.Transform | None) -> None:
+    def main_transform(self, value: Transform | None) -> None:
         transform_attr_name = self.__get_main_transform_attribute()
 
         setattr(self, transform_attr_name, value)
@@ -1142,10 +1171,10 @@ class Element(
 
         if not (
             isinstance(self.transform_origin, tuple)
-            and isinstance(self.transform_origin[0], length.Length)
-            and isinstance(self.transform_origin[1], length.Length)
+            and isinstance(self.transform_origin[0], Length)
+            and isinstance(self.transform_origin[1], Length)
         ):
-            raise errors.SvgTransformOriginError(self.transform_origin)
+            raise SvgTransformOriginError(self.transform_origin)
 
         if not self.main_transform:
             self.main_transform = []
@@ -1153,8 +1182,8 @@ class Element(
         tx = float(self.transform_origin[0])
         ty = float(self.transform_origin[1])
 
-        self.main_transform.insert(0, transform.Translate(tx, ty))
-        self.main_transform.append(transform.Translate(-tx, -ty))
+        self.main_transform.insert(0, Translate(tx, ty))
+        self.main_transform.append(Translate(-tx, -ty))
 
         self.transform_origin = None
 
@@ -1418,16 +1447,16 @@ class _Context(NamedTuple):
     move the animation, not the element.
     """
 
-    capabilities: Mapping[int, reify.Capability]
+    capabilities: Mapping[int, Capability]
     """What each element of the tree can absorb, by object identity."""
 
-    stylesheet: reify.Capability
+    stylesheet: Capability
     """What the document's stylesheets leave reifiable anywhere in it."""
 
 
 def _resolve_reference(
     element: Element,
-    attr_name: attr_names.AttributeName,
+    attr_name: AttributeName,
     index: Mapping[str, Element],
     /,
     *,
@@ -1440,7 +1469,7 @@ def _resolve_reference(
     """
     attr = _attr_or_default(element, attr_name)
 
-    if not (isinstance(attr, iri.Iri) and attr.is_local):
+    if not (isinstance(attr, Iri) and attr.is_local):
         return None
 
     assert attr.fragment is not None
@@ -1455,7 +1484,7 @@ def _resolve_reference(
     return target
 
 
-def _pattern_transform_capability(target: Element, /) -> reify.Capability:
+def _pattern_transform_capability(target: Element, /) -> Capability:
     """Work out what survives a pattern's own `patternTransform`.
 
     The tiling is laid out in the bounding box of the element and the pattern
@@ -1470,24 +1499,22 @@ def _pattern_transform_capability(target: Element, /) -> reify.Capability:
     corner of the box where it is. Nothing else is safe.
     """
     pattern_transform = _attr_or_default(target, "patternTransform")
-    matrix = transform.compose(
-        cast("transform.Transform | None", pattern_transform) or []
-    )
-    identity = transform.Matrix.identity()
+    matrix = compose(cast("Transform | None", pattern_transform) or [])
+    identity = Matrix.identity()
 
     if matrix == identity:
-        return reify.AFFINE
+        return AFFINE
 
     if matrix.linear() == identity:
-        return reify.TRANSLATION
+        return TRANSLATION
 
-    if matrix.translation() == transform.Translate(0, 0):
-        return reify.UNIFORM_SCALING - reify.TRANSLATION
+    if matrix.translation() == Translate(0, 0):
+        return UNIFORM_SCALING - TRANSLATION
 
-    return reify.NOTHING
+    return NOTHING
 
 
-def _pattern_capability(target: Element, /) -> reify.Capability:
+def _pattern_capability(target: Element, /) -> Capability:
     """Work out what a pattern lets the element it paints absorb.
 
     The tile is placed relative to the bounding box, so it moves and resizes
@@ -1500,54 +1527,46 @@ def _pattern_capability(target: Element, /) -> reify.Capability:
     `patternTransform`, which the tiling has to keep in step with.
     """
     if _attr_or_default(target, "patternUnits") != "objectBoundingBox":
-        return reify.NOTHING
+        return NOTHING
 
     return _pattern_tile_capability(
         target
     ) & _pattern_transform_capability(target)
 
 
-def _pattern_tile_capability(target: Element, /) -> reify.Capability:
+def _pattern_tile_capability(target: Element, /) -> Capability:
     """Work out how far the content of a pattern follows its tile."""
     if _attr_or_default(target, "viewBox") is not None:
-        return (
-            reify.UPRIGHT
-            if reify.stretches_content(target)
-            else reify.UNIFORM_SCALING
-        )
+        return UPRIGHT if stretches_content(target) else UNIFORM_SCALING
 
     if (
         _attr_or_default(target, "patternContentUnits")
         == "objectBoundingBox"
     ):
-        return reify.UPRIGHT
+        return UPRIGHT
 
-    return reify.TRANSLATION
+    return TRANSLATION
 
 
-def _paint_server_capability(target: Element, /) -> reify.Capability:
+def _paint_server_capability(target: Element, /) -> Capability:
     """Work out what a paint server lets the element it paints absorb."""
-    if isinstance(target, attrdefs.PatternUnitsAttr):
+    if isinstance(target, PatternUnitsAttr):
         return _pattern_capability(target)
 
-    if isinstance(target, attrdefs.GradientUnitsAttr):
+    if isinstance(target, GradientUnitsAttr):
         # a gradient is a ramp across whatever space it is defined in, so it
         # is carried along by anything that leaves the box upright
         units = _attr_or_default(target, "gradientUnits")
 
-        return (
-            reify.UPRIGHT
-            if units == "objectBoundingBox"
-            else reify.NOTHING
-        )
+        return UPRIGHT if units == "objectBoundingBox" else NOTHING
 
     # not a paint server at all; nothing to keep in step with
-    return reify.AFFINE
+    return AFFINE
 
 
 def _resource_capability(
-    target: Element, attr_name: attr_names.AttributeName, /
-) -> reify.Capability:
+    target: Element, attr_name: AttributeName, /
+) -> Capability:
     """Work out what a referenced resource lets the element absorb.
 
     A resource described as a fraction of the box of whatever refers to it
@@ -1574,14 +1593,14 @@ def _resource_capability(
                 else "userSpaceOnUse"
             )
 
-    return reify.UPRIGHT if units == "objectBoundingBox" else reify.NOTHING
+    return UPRIGHT if units == "objectBoundingBox" else NOTHING
 
 
 def _reference_capability(
     element: Element, index: Mapping[str, Element], /
-) -> reify.Capability:
+) -> Capability:
     """Work out what the element's references let it absorb."""
-    capability = reify.AFFINE
+    capability = AFFINE
 
     for attr_name in _RESOURCE_ATTR_NAMES:
         target = _resolve_reference(element, attr_name, index, warn=True)
@@ -1597,21 +1616,21 @@ def _reference_capability(
     return capability
 
 
-def _filter_capability(target: Element, /) -> reify.Capability:
+def _filter_capability(target: Element, /) -> Capability:
     """Work out what a filter lets the element it is attached to absorb."""
     if _attr_or_default(target, "filterUnits") != "objectBoundingBox":
         # the filter region is pinned to the coordinate system the element
         # renders in, so moving the element would leave the region behind
-        return reify.NOTHING
+        return NOTHING
 
     # the region follows the bounding box, but the primitives are
     # parametrized in user space, so the element may only move
-    return reify.TRANSLATION
+    return TRANSLATION
 
 
 def _is_outermost_viewport(element: Element, /) -> bool:
     return (
-        isinstance(element, reify.DocumentFragmentRoot)
+        isinstance(element, DocumentFragmentRoot)
         and element.parent is None
     )
 
@@ -1624,7 +1643,7 @@ def _pushes_transform_to_children(element: Element, /) -> bool:
     carry one down the tree to elements that can absorb it.
     """
     return isinstance(
-        element, reify.TransformInheritedByChildren
+        element, TransformInheritedByChildren
     ) or _is_outermost_viewport(element)
 
 
@@ -1638,8 +1657,7 @@ def _delegates_transform(element: Element, /) -> bool:
     transformation applies to its content.
     """
     return _pushes_transform_to_children(element) and (
-        _is_outermost_viewport(element)
-        or not reify.has_own_geometry(element)
+        _is_outermost_viewport(element) or not has_own_geometry(element)
     )
 
 
@@ -1648,7 +1666,7 @@ def _children_inheriting_transform(element: Element, /) -> list[Element]:
     return [
         child
         for child in element.find_all(recursive=False)
-        if not isinstance(child, reify.RenderedIndirectly)
+        if not isinstance(child, RenderedIndirectly)
     ]
 
 
@@ -1669,14 +1687,14 @@ def _has_unusable_transform_origin(element: Element, /) -> bool:
     if not (
         isinstance(origin, tuple)
         and len(origin) == 2  # noqa: PLR2004
-        and all(isinstance(value, length.Length) for value in origin)
+        and all(isinstance(value, Length) for value in origin)
     ):
         return True
 
     try:
         float(origin[0])
         float(origin[1])
-    except errors.SvgUnitConversionError:
+    except SvgUnitConversionError:
         return True
 
     return False
@@ -1687,8 +1705,8 @@ def _element_capability(
     /,
     *,
     context: _Context,
-    children: Mapping[int, reify.Capability],
-) -> reify.Capability:
+    children: Mapping[int, Capability],
+) -> Capability:
     """Work out how much of a transformation an element can take on.
 
     `children` holds the capability of every element below this one, so that
@@ -1697,7 +1715,7 @@ def _element_capability(
     if id(element) in context.frozen or _has_unusable_transform_origin(
         element
     ):
-        return reify.NOTHING
+        return NOTHING
 
     inheriting = _children_inheriting_transform(element)
 
@@ -1708,7 +1726,7 @@ def _element_capability(
         # a child that something else in the document points at has to keep
         # rendering the way it does now, so nothing may be pushed into it --
         # and pushing to only some of the children would tear the group apart
-        return reify.NOTHING
+        return NOTHING
 
     if _delegates_transform(element):
         # the element has no geometry of its own, but what it refers to is
@@ -1717,7 +1735,7 @@ def _element_capability(
         # children, and the content slides out from under it
         capability = (
             _reference_capability(element, context.by_id)
-            & reify.style_capability(element)
+            & style_capability(element)
             & context.stylesheet
         )
 
@@ -1731,7 +1749,7 @@ def _element_capability(
         return capability
 
     capability = (
-        reify.geometry_capability(element)
+        geometry_capability(element)
         & _reference_capability(element, context.by_id)
         & context.stylesheet
     )
@@ -1746,7 +1764,7 @@ def _element_capability(
     # applied to it twice
     for child in inheriting:
         if child.main_transform:
-            return reify.NOTHING
+            return NOTHING
 
         capability &= children[id(child)]
 
@@ -1755,7 +1773,7 @@ def _element_capability(
 
 def _capabilities(
     root: Element, /, *, context: _Context
-) -> dict[int, reify.Capability]:
+) -> dict[int, Capability]:
     """Work out what every element of a tree can absorb, leaves first.
 
     A container can only take on what its children can, so the tree has to be
@@ -1770,7 +1788,7 @@ def _capabilities(
         order.append(element)
         stack.extend(element.find_all(recursive=False))
 
-    capabilities: dict[int, reify.Capability] = {}
+    capabilities: dict[int, Capability] = {}
 
     # a parent always comes before its children in the order above, so
     # reversing it puts every child before its parent
@@ -1784,7 +1802,7 @@ def _capabilities(
 
 def _transform_capability(
     element: Element, /, *, context: _Context
-) -> reify.Capability:
+) -> Capability:
     """Look up how much of a transformation an element can take on."""
     capability = context.capabilities.get(id(element))
 
@@ -1803,7 +1821,7 @@ def _reify_element(element: Element, /, *, context: _Context) -> None:
     """Fold as much of the element's transformation into it as will go."""
     try:
         element.decompose_transform_origin()
-    except (errors.SvgTransformOriginError, errors.SvgUnitConversionError):
+    except (SvgTransformOriginError, SvgUnitConversionError):
         # the origin is a keyword or a percentage of a box reification
         # cannot see, so the transformation has to stay where it is
         return
@@ -1812,10 +1830,10 @@ def _reify_element(element: Element, /, *, context: _Context) -> None:
         element.main_transform = None
         return
 
-    identity = transform.Matrix.identity()
-    matrix = transform.compose(element.main_transform)
+    identity = Matrix.identity()
+    matrix = compose(element.main_transform)
     capability = _transform_capability(element, context=context)
-    residue, absorbed = reify.split(matrix, capability)
+    residue, absorbed = split(matrix, capability)
 
     if absorbed == identity:
         if matrix == identity:
@@ -1825,10 +1843,8 @@ def _reify_element(element: Element, /, *, context: _Context) -> None:
         # nothing was folded in; the list is left exactly as written
         return
 
-    if reify.has_own_geometry(element) and not _delegates_transform(
-        element
-    ):
-        reify.apply(element, absorbed)
+    if has_own_geometry(element) and not _delegates_transform(element):
+        apply(element, absorbed)
 
     if _pushes_transform_to_children(element):
         # the children are placed in the coordinate system the element
@@ -1862,7 +1878,7 @@ def _convert_to_path(
 
     try:
         path = cast(Element, to_path())
-    except errors.SvgUnitConversionError:
+    except SvgUnitConversionError:
         # a shape sized in percentages has no path equivalent that does not
         # need to know the viewport
         return
@@ -1911,7 +1927,7 @@ def _reify_tree(
         for child in list(parent.find_all(recursive=False)):
             grouping = (
                 unwrap_groups
-                and isinstance(child, reify.Grouping)
+                and isinstance(child, Grouping)
                 and child.main_transform is not None
             )
             _reify_element(child, context=context)
@@ -1938,7 +1954,7 @@ def _reify_tree(
 
 def _has_stylesheet(root: Element, /) -> bool:
     return any(
-        isinstance(element, reify.Stylesheet)
+        isinstance(element, Stylesheet)
         for element in itertools.chain([root], root.find_all())
     )
 
@@ -1947,7 +1963,7 @@ def _is_bare_group(group: Element, /) -> bool:
     """Check that lifting the group's children would not change a thing."""
     return (
         group.parent is not None
-        and not isinstance(group.parent, reify.SelectsAChild)
+        and not isinstance(group.parent, SelectsAChild)
         and not group.all_attrs()
     )
 
@@ -2005,7 +2021,7 @@ def _frozen_elements(
     frozen: set[int] = set()
 
     for element in itertools.chain([root], root.find_all()):
-        if not isinstance(element, reify.Animation):
+        if not isinstance(element, Animation):
             continue
 
         attr_name = _attr_or_default(element, "attributeName")
@@ -2086,12 +2102,12 @@ def referenced_elements(root: Element, /) -> Container[int]:
     }
 
 
-def _stylesheet_capability(root: Element, /) -> reify.Capability:
+def _stylesheet_capability(root: Element, /) -> Capability:
     """Work out what the document's stylesheets leave reifiable."""
-    capability = reify.AFFINE
+    capability = AFFINE
 
     for element in itertools.chain([root], root.find_all()):
-        if not isinstance(element, reify.Stylesheet):
+        if not isinstance(element, Stylesheet):
             continue
 
         css = "".join(
@@ -2099,7 +2115,7 @@ def _stylesheet_capability(root: Element, /) -> reify.Capability:
             for child in element.children
             if isinstance(child, CharacterData)
         )
-        capability &= reify.stylesheet_capability(css)
+        capability &= stylesheet_capability(css)
 
     return capability
 

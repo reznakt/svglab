@@ -2,27 +2,24 @@ import copy
 
 import pytest
 
-import svglab
-from svglab import entities
-from tests import conftest
+from svglab import Element, G, Svg, parse_svg
+from svglab.entities import element_name
+from tests.conftest import assert_svg_visually_equal
 
 
-def _reify(markup: str, *, unwrap_groups: bool = True) -> svglab.Svg:
-    original = svglab.parse_svg(
-        f'<svg width="20" height="20">{markup}</svg>'
-    )
+def _reify(markup: str, *, unwrap_groups: bool = True) -> Svg:
+    original = parse_svg(f'<svg width="20" height="20">{markup}</svg>')
     reified = copy.deepcopy(original)
     reified.reify(unwrap_groups=unwrap_groups)
 
-    conftest.assert_svg_visually_equal(original, reified)
+    assert_svg_visually_equal(original, reified)
 
     return reified
 
 
-def _names(element: svglab.Element) -> list[str]:
+def _names(element: Element) -> list[str]:
     return [
-        entities.element_name(child)
-        for child in element.find_all(recursive=False)
+        element_name(child) for child in element.find_all(recursive=False)
     ]
 
 
@@ -66,7 +63,7 @@ def test_emptied_groups_are_replaced_by_their_children() -> None:
 def test_groups_that_matter_are_kept(markup: str) -> None:
     svg = _reify(markup)
 
-    assert list(svg.find_all(svglab.G))
+    assert list(svg.find_all(G))
 
 
 def test_groups_are_kept_by_default() -> None:
@@ -79,11 +76,11 @@ def test_groups_are_kept_by_default() -> None:
 
 
 def test_the_group_reified_is_kept() -> None:
-    svg = svglab.parse_svg(
+    svg = parse_svg(
         '<svg><g transform="translate(5 5)">'
         '<rect width="1" height="1"/></g></svg>'
     )
-    group = svg.find(svglab.G)
+    group = svg.find(G)
 
     group.reify(unwrap_groups=True)
 

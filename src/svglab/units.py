@@ -21,7 +21,7 @@ from typing_extensions import (
     runtime_checkable,
 )
 
-from svglab import errors
+from svglab.errors import SvgUnitConversionError
 
 
 _Unit: TypeAlias = LiteralString | None
@@ -124,7 +124,7 @@ def make_converter(
         conversion_rate: float | None = get_conversion_rate(obj.unit, unit)
 
         if conversion_rate is None:
-            raise errors.SvgUnitConversionError(
+            raise SvgUnitConversionError(
                 original_unit=obj.unit, target_unit=unit
             )
 

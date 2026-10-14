@@ -1,11 +1,9 @@
 import pytest
 
-import svglab
+from svglab import Angle, Length, Point
 
 
-@pytest.mark.parametrize(
-    "value", [svglab.Point(1, 4), svglab.Length(4), svglab.Angle(4)]
-)
+@pytest.mark.parametrize("value", [Point(1, 4), Length(4), Angle(4)])
 def test_number_divided_by_value_type_is_unsupported(
     value: object,
 ) -> None:

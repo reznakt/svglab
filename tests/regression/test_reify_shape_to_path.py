@@ -4,49 +4,67 @@ import copy
 
 import pytest
 
-import svglab
-from tests import conftest
+from svglab import (
+    Animate,
+    Circle,
+    ClipPath,
+    Color,
+    Defs,
+    Element,
+    Ellipse,
+    Length,
+    Matrix,
+    Path,
+    RawText,
+    Rect,
+    Rotate,
+    Scale,
+    SkewX,
+    SkewY,
+    Svg,
+    Title,
+    Transform,
+)
+from tests.conftest import assert_svg_visually_equal
 
 
 _TOLERANCE = 5e-5
 
 
-def _svg(child: svglab.Element) -> svglab.Svg:
-    return svglab.Svg(
-        width=svglab.Length(200), height=svglab.Length(200)
-    ).add_child(child)
+def _svg(child: Element) -> Svg:
+    return Svg(width=Length(200), height=Length(200)).add_child(child)
 
 
-def _shapes() -> dict[str, svglab.Element]:
+def _shapes() -> dict[str, Element]:
     return {
-        "rect": svglab.Rect(
-            x=svglab.Length(20),
-            y=svglab.Length(20),
-            width=svglab.Length(60),
-            height=svglab.Length(40),
-            fill=svglab.Color("#3366cc"),
+        "rect": Rect(
+            x=Length(20),
+            y=Length(20),
+            width=Length(60),
+            height=Length(40),
+            fill=Color("#3366cc"),
         ),
-        "rect-rounded": svglab.Rect(
-            x=svglab.Length(20),
-            y=svglab.Length(20),
-            width=svglab.Length(60),
-            height=svglab.Length(40),
-            rx=svglab.Length(10),
-            ry=svglab.Length(6),
-            fill=svglab.Color("#3366cc"),
+        "rect-rounded": Rect(
+            x=Length(20),
+            y=Length(20),
+            width=Length(60),
+            height=Length(40),
+            rx=Length(10),
+            ry=Length(6),
+            fill=Color("#3366cc"),
         ),
-        "circle": svglab.Circle(
-            cx=svglab.Length(60),
-            cy=svglab.Length(60),
-            r=svglab.Length(30),
-            fill=svglab.Color("#cc3366"),
+        "circle": Circle(
+            cx=Length(60),
+            cy=Length(60),
+            r=Length(30),
+            fill=Color("#cc3366"),
         ),
-        "ellipse": svglab.Ellipse(
-            cx=svglab.Length(60),
-            cy=svglab.Length(60),
-            rx=svglab.Length(40),
-            ry=svglab.Length(20),
-            fill=svglab.Color("#33cc66"),
+        "ellipse": Ellipse(
+            cx=Length(60),
+            cy=Length(60),
+            rx=Length(40),
+            ry=Length(20),
+            fill=Color("#33cc66"),
         ),
     }
 
@@ -54,17 +72,17 @@ def _shapes() -> dict[str, svglab.Element]:
 # transformations no basic shape can express, whichever one it is: a circle
 # can still be rotated, and a rectangle can still be scaled along its axes
 _BEYOND_EVERY_SHAPE = [
-    [svglab.SkewX(20)],
-    [svglab.SkewY(-15)],
-    [svglab.Matrix(1.1, 0.2, -0.15, 0.9, 6, 4)],
-    [svglab.Rotate(25), svglab.Scale(1.6, 0.7)],
+    [SkewX(20)],
+    [SkewY(-15)],
+    [Matrix(1.1, 0.2, -0.15, 0.9, 6, 4)],
+    [Rotate(25), Scale(1.6, 0.7)],
 ]
 
 
 @pytest.mark.parametrize("name", sorted(_shapes()))
 @pytest.mark.parametrize("transform", _BEYOND_EVERY_SHAPE)
 def test_a_shape_that_becomes_a_path_absorbs_everything(
-    name: str, transform: svglab.Transform
+    name: str, transform: Transform
 ) -> None:
     shape = _shapes()[name]
     shape.transform = transform
@@ -73,16 +91,14 @@ def test_a_shape_that_becomes_a_path_absorbs_everything(
     reified = _svg(shape)
     reified.reify(convert_shapes_to_paths=True)
 
-    assert reified.find(svglab.Path).transform is None
-    conftest.assert_svg_visually_equal(
-        original, reified, tolerance=_TOLERANCE
-    )
+    assert reified.find(Path).transform is None
+    assert_svg_visually_equal(original, reified, tolerance=_TOLERANCE)
 
 
 @pytest.mark.parametrize("name", sorted(_shapes()))
 @pytest.mark.parametrize("transform", _BEYOND_EVERY_SHAPE)
 def test_a_shape_keeps_its_type_when_the_flag_is_off(
-    name: str, transform: svglab.Transform
+    name: str, transform: Transform
 ) -> None:
     shape = _shapes()[name]
     shape.transform = copy.deepcopy(transform)
@@ -90,7 +106,7 @@ def test_a_shape_keeps_its_type_when_the_flag_is_off(
     reified = _svg(shape)
     reified.reify()
 
-    assert reified.find(svglab.Path, default=None) is None
+    assert reified.find(Path, default=None) is None
     assert shape.transform
 
 
@@ -99,90 +115,86 @@ def test_a_shape_is_left_alone_when_the_path_would_not_help_either() -> (
 ):
     # the clipping path is resolved in user space, so neither the rectangle
     # nor the path it would become may absorb anything
-    clip = svglab.ClipPath(id="c").add_child(
-        svglab.Circle(
-            cx=svglab.Length(50), cy=svglab.Length(40), r=svglab.Length(25)
-        )
+    clip = ClipPath(id="c").add_child(
+        Circle(cx=Length(50), cy=Length(40), r=Length(25))
     )
-    rect = svglab.Rect(
-        x=svglab.Length(20),
-        y=svglab.Length(20),
-        width=svglab.Length(60),
-        height=svglab.Length(40),
+    rect = Rect(
+        x=Length(20),
+        y=Length(20),
+        width=Length(60),
+        height=Length(40),
         clip_path=clip.get_func_iri(),
-        transform=[svglab.Rotate(25)],
+        transform=[Rotate(25)],
     )
-    svg = svglab.Svg(
-        width=svglab.Length(200), height=svglab.Length(200)
-    ).add_children(svglab.Defs().add_child(clip), rect)
+    svg = Svg(width=Length(200), height=Length(200)).add_children(
+        Defs().add_child(clip), rect
+    )
 
     svg.reify(convert_shapes_to_paths=True)
 
-    assert svg.find(svglab.Rect) is rect
-    assert rect.transform == [svglab.Rotate(25)]
+    assert svg.find(Rect) is rect
+    assert rect.transform == [Rotate(25)]
 
 
 def test_a_shape_that_becomes_a_path_keeps_its_presentation_attrs() -> (
     None
 ):
-    rect = svglab.Rect(
+    rect = Rect(
         id="box",
-        x=svglab.Length(20),
-        y=svglab.Length(20),
-        width=svglab.Length(60),
-        height=svglab.Length(40),
-        fill=svglab.Color("red"),
-        stroke=svglab.Color("black"),
-        stroke_width=svglab.Length(3),
-        transform=[svglab.Rotate(25)],
+        x=Length(20),
+        y=Length(20),
+        width=Length(60),
+        height=Length(40),
+        fill=Color("red"),
+        stroke=Color("black"),
+        stroke_width=Length(3),
+        transform=[Rotate(25)],
     )
     original = _svg(copy.deepcopy(rect))
 
     reified = _svg(rect)
     reified.reify(convert_shapes_to_paths=True)
 
-    path = reified.find(svglab.Path)
+    path = reified.find(Path)
 
     assert path.id == "box"
-    assert path.fill == svglab.Color("red")
-    assert path.stroke_width == svglab.Length(3)
+    assert path.fill == Color("red")
+    assert path.stroke_width == Length(3)
 
-    conftest.assert_svg_visually_equal(
-        original, reified, tolerance=_TOLERANCE
-    )
+    assert_svg_visually_equal(original, reified, tolerance=_TOLERANCE)
 
 
 def test_an_animated_shape_stays_a_shape() -> None:
     # a path has no `x` for the animation to animate
-    rect = svglab.Rect(
-        x=svglab.Length(20),
-        y=svglab.Length(20),
-        width=svglab.Length(60),
-        height=svglab.Length(40),
-        transform=[svglab.Rotate(25)],
-    ).add_child(svglab.Animate(attributeName="x", to="50", dur="1s"))
+    rect = Rect(
+        x=Length(20),
+        y=Length(20),
+        width=Length(60),
+        height=Length(40),
+        transform=[Rotate(25)],
+    ).add_child(Animate(attributeName="x", to="50", dur="1s"))
     svg = _svg(rect)
 
     svg.reify(convert_shapes_to_paths=True)
 
-    assert svg.find(svglab.Rect) is rect
-    assert rect.transform == [svglab.Rotate(25)]
+    assert svg.find(Rect) is rect
+    assert rect.transform == [Rotate(25)]
 
 
 def test_a_shape_that_becomes_a_path_keeps_its_children() -> None:
-    rect = svglab.Rect(
-        x=svglab.Length(20),
-        y=svglab.Length(20),
-        width=svglab.Length(60),
-        height=svglab.Length(40),
-        transform=[svglab.Rotate(25)],
-    ).add_child(svglab.Title().add_child(svglab.RawText("a box")))
+    rect = Rect(
+        x=Length(20),
+        y=Length(20),
+        width=Length(60),
+        height=Length(40),
+        transform=[Rotate(25)],
+    ).add_child(Title().add_child(RawText("a box")))
     svg = _svg(rect)
 
     svg.reify(convert_shapes_to_paths=True)
-    path = svg.find(svglab.Path)
-    title = path.find(svglab.Title)
+    path = svg.find(Path)
+    title = path.find(Title)
 
     assert path.transform is None
     assert title.parent is path
-    assert list(svg.find_all(svglab.Rect)) == []
+    assert list(svg.find_all(Rect)) == []

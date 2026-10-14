@@ -1,18 +1,18 @@
 import pytest
 
-import svglab
-from tests import conftest
+from svglab import Color, Element, Length, Rect, Svg
+from tests.conftest import assert_svg_visually_equal
 
 
-def _rect(rx: float, ry: float) -> svglab.Rect:
-    return svglab.Rect(
-        x=svglab.Length(20),
-        y=svglab.Length(20),
-        width=svglab.Length(100),
-        height=svglab.Length(60),
-        rx=svglab.Length(rx),
-        ry=svglab.Length(ry),
-        fill=svglab.Color("blue"),
+def _rect(rx: float, ry: float) -> Rect:
+    return Rect(
+        x=Length(20),
+        y=Length(20),
+        width=Length(100),
+        height=Length(60),
+        rx=Length(rx),
+        ry=Length(ry),
+        fill=Color("blue"),
     )
 
 
@@ -23,12 +23,10 @@ def test_oversized_radii_are_clamped(rx: float, ry: float) -> None:
 
 @pytest.mark.parametrize(("rx", "ry"), [(200, 200), (10, 10), (100, 20)])
 def test_rect_and_path_are_visually_equal(rx: float, ry: float) -> None:
-    def svg(shape: svglab.Element) -> svglab.Svg:
-        return svglab.Svg(
-            width=svglab.Length(200), height=svglab.Length(200)
-        ).add_child(shape)
+    def svg(shape: Element) -> Svg:
+        return Svg(width=Length(200), height=Length(200)).add_child(shape)
 
     rect = _rect(rx, ry)
     path = rect.to_path()
 
-    conftest.assert_svg_visually_equal(svg(rect), svg(path))
+    assert_svg_visually_equal(svg(rect), svg(path))

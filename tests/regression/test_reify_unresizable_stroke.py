@@ -2,12 +2,12 @@
 
 import pytest
 
-import svglab
-from tests import conftest
+from svglab import Path, Scale, Svg, parse_svg
+from tests.conftest import assert_svg_visually_equal
 
 
-def _parse(content: str) -> svglab.Svg:
-    return svglab.parse_svg(
+def _parse(content: str) -> Svg:
+    return parse_svg(
         '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">'
         f"{content}</svg>"
     )
@@ -32,5 +32,5 @@ def test_an_inherited_stroke_it_cannot_resize_leaves_only_a_move(
 
     reified.reify()
 
-    assert reified.find(svglab.Path).transform == [svglab.Scale(2)]
-    conftest.assert_svg_visually_equal(original, reified)
+    assert reified.find(Path).transform == [Scale(2)]
+    assert_svg_visually_equal(original, reified)

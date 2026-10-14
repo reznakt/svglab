@@ -1,11 +1,11 @@
 import copy
 
-import svglab
-from tests import conftest
+from svglab import LinearGradient, Pattern, Svg, parse_svg
+from tests.conftest import assert_svg_visually_equal
 
 
-def _reify(markup: str) -> tuple[svglab.Svg, svglab.Svg]:
-    original = svglab.parse_svg(markup)
+def _reify(markup: str) -> tuple[Svg, Svg]:
+    original = parse_svg(markup)
     reified = copy.deepcopy(original)
 
     reified.reify()
@@ -26,8 +26,8 @@ def test_bounding_box_gradient_is_left_alone() -> None:
         </svg>
     """)
 
-    assert reified.find(svglab.LinearGradient).gradientTransform is None
-    conftest.assert_svg_visually_equal(original, reified)
+    assert reified.find(LinearGradient).gradientTransform is None
+    assert_svg_visually_equal(original, reified)
 
 
 def test_bounding_box_pattern_is_left_alone() -> None:
@@ -44,5 +44,5 @@ def test_bounding_box_pattern_is_left_alone() -> None:
         </svg>
     """)
 
-    assert reified.find(svglab.Pattern).patternTransform is None
-    conftest.assert_svg_visually_equal(original, reified)
+    assert reified.find(Pattern).patternTransform is None
+    assert_svg_visually_equal(original, reified)

@@ -34,10 +34,14 @@ from typing_extensions import (
     override,
 )
 
-from svglab import constants, models, protocols, utiltypes
-from svglab.attrs import names as attrs_names
-from svglab.elements import names as elements_names
-from svglab.utils import iterutils, miscutils
+from svglab.attrs.names import AttributeName
+from svglab.constants import FLOAT_ABSOLUTE_TOLERANCE
+from svglab.elements.names import ElementName
+from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.protocols import CustomSerializable, PointLike
+from svglab.utils.iterutils import pairwise
+from svglab.utils.miscutils import extract_function_name_and_args
+from svglab.utiltypes import LengthUnit
 
 
 AlphaChannelMode: TypeAlias = Literal["percentage", "float"]
@@ -47,7 +51,7 @@ _ColorMode: TypeAlias = Literal[
     "named", "hex-short", "hex-long", "rgb", "hsl", "auto", "original"
 ]
 _PathDataShorthandMode: TypeAlias = Literal["always", "never", "original"]
-_LengthUnitMode: TypeAlias = Literal["preserve"] | utiltypes.LengthUnit
+_LengthUnitMode: TypeAlias = Literal["preserve"] | LengthUnit
 _Separator: TypeAlias = Literal[", ", ",", " "]
 
 _T = TypeVar("_T")
@@ -64,9 +68,8 @@ _PrecisionGroup: TypeAlias = Literal[
 ]
 
 
-@models.dataclass(
-    frozen=True,
-    config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
+@dataclass(
+    frozen=True, config=pydantic.ConfigDict(DATACLASS_CONFIG, strict=False)
 )
 class PrecisionInterval:
     """An object mapping a number interval to a precision setting."""
@@ -88,10 +91,10 @@ class PrecisionInterval:
         return self
 
 
-@models.dataclass(
+@dataclass(
     frozen=True,
     kw_only=True,
-    config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
+    config=pydantic.ConfigDict(DATACLASS_CONFIG, strict=False),
 )
 class FloatPrecisionSettings:
     """Settings regarding float precision.
@@ -128,14 +131,14 @@ class FloatPrecisionSettings:
     """
 
     fallback: _Precision = math.ceil(
-        math.log10(1 / constants.FLOAT_ABSOLUTE_TOLERANCE)
+        math.log10(1 / FLOAT_ABSOLUTE_TOLERANCE)
     )
     """The fallback precision setting to use when the value
     does not fall within any of the specified intervals."""
 
     @pydantic.model_validator(mode="after")
     def __validate_precision_table(self) -> Self:
-        for fst, snd in iterutils.pairwise(self.__sorted_precision_table):
+        for fst, snd in pairwise(self.__sorted_precision_table):
             if fst is not None and fst.end > snd.start:
                 msg = f"Overlapping intervals: {fst} and {snd}"
                 raise ValueError(msg)
@@ -181,10 +184,10 @@ _FloatPrecisionSettingsType: TypeAlias = Annotated[
 
 
 @final
-@models.dataclass(
+@dataclass(
     frozen=True,
     kw_only=True,
-    config=pydantic.ConfigDict(models.DATACLASS_CONFIG, strict=False),
+    config=pydantic.ConfigDict(DATACLASS_CONFIG, strict=False),
 )
 class Formatter:
     """Formatter for serializing SVG elements.
@@ -384,12 +387,10 @@ class Formatter:
     """
 
     attribute_order: Mapping[
-        elements_names.ElementName | Literal["*"],
-        Sequence[attrs_names.AttributeName | str],
+        ElementName | Literal["*"], Sequence[AttributeName | str]
     ] = pydantic.Field(
         default_factory=dict[
-            elements_names.ElementName | Literal["*"],
-            Sequence[attrs_names.AttributeName | str],
+            ElementName | Literal["*"], Sequence[AttributeName | str]
         ]
     )
     """
@@ -576,7 +577,8 @@ def _serialize_number(
         exponent = math.floor(math.log10(abs_value))
         number = abs_value / 10**exponent
 
-    result = str(number)
+    # `z` is `str()` except that it drops the sign of a negative zero
+    result = format(number, "z")
 
     if not formatter.show_decimal_part_if_int:
         result = result.removesuffix(".0")
@@ -641,15 +643,11 @@ def _serialize(
     match value:
         # `isinstance()` on a runtime-checkable Protocol is slow
         case _ if callable(getattr(value, "serialize", None)):
-            result = cast(protocols.CustomSerializable, value).serialize()
+            result = cast(CustomSerializable, value).serialize()
 
             if (
                 formatter.spaces_around_function_args
-                and (
-                    fn_call := miscutils.extract_function_name_and_args(
-                        result
-                    )
-                )
+                and (fn_call := extract_function_name_and_args(result))
                 is not None
             ):
                 fn, args = fn_call
@@ -719,7 +717,7 @@ def serialize(
 
 
 def _get_attr_precision_group(
-    name: attrs_names.AttributeName | str,
+    name: AttributeName | str,
 ) -> _PrecisionGroup:
     match name:
         case (
@@ -821,7 +819,7 @@ def serialize_function_call(
 
 
 def serialize_point(
-    point: protocols.PointLike, /, *, separator: str | None = None
+    point: PointLike, /, *, separator: str | None = None
 ) -> str:
     """Serialize a point into its SVG representation.
 

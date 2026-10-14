@@ -2,24 +2,33 @@
 
 import pytest
 
-import svglab
-from svglab import reify
+from svglab import (
+    Element,
+    Length,
+    RawText,
+    Rect,
+    Scale,
+    Style,
+    Svg,
+    Translate,
+)
+from svglab.reify import style_declarations
 
 
-L = svglab.Length
+L = Length
 
 
-def _rect(**kwargs: object) -> svglab.Rect:
+def _rect(**kwargs: object) -> Rect:
     kwargs.setdefault("x", L(10))
     kwargs.setdefault("y", L(10))
     kwargs.setdefault("width", L(40))
     kwargs.setdefault("height", L(30))
 
-    return svglab.Rect(**kwargs)  # type: ignore[arg-type]
+    return Rect(**kwargs)  # type: ignore[arg-type]
 
 
-def _svg(*children: svglab.Element) -> svglab.Svg:
-    return svglab.Svg(width=L(200), height=L(200)).add_children(*children)
+def _svg(*children: Element) -> Svg:
+    return Svg(width=L(200), height=L(200)).add_children(*children)
 
 
 @pytest.mark.parametrize(
@@ -37,12 +46,12 @@ def _svg(*children: svglab.Element) -> svglab.Svg:
 def test_a_style_that_decides_the_geometry_stops_reification(
     style: str,
 ) -> None:
-    rect = _rect(style=style, transform=[svglab.Translate(5, 5)])
+    rect = _rect(style=style, transform=[Translate(5, 5)])
     _svg(rect)
 
     rect.reify()
 
-    assert rect.transform == [svglab.Translate(5, 5)]
+    assert rect.transform == [Translate(5, 5)]
     assert rect.x == L(10)
 
 
@@ -63,14 +72,14 @@ def test_a_style_that_decides_the_geometry_stops_reification(
 def test_a_magnitude_in_a_style_leaves_only_a_move(style: str) -> None:
     # reification cannot resize what it cannot rewrite, so it does not resize
     # the geometry either
-    scaled = _rect(style=style, transform=[svglab.Scale(2)])
-    moved = _rect(style=style, transform=[svglab.Translate(5, 5)])
+    scaled = _rect(style=style, transform=[Scale(2)])
+    moved = _rect(style=style, transform=[Translate(5, 5)])
     _svg(scaled, moved)
 
     scaled.reify()
     moved.reify()
 
-    assert scaled.transform == [svglab.Scale(2)]
+    assert scaled.transform == [Scale(2)]
     assert scaled.width == L(40)
 
     assert moved.transform is None
@@ -80,7 +89,7 @@ def test_a_magnitude_in_a_style_leaves_only_a_move(style: str) -> None:
 def test_an_ordinary_style_does_not_stop_reification() -> None:
     rect = _rect(
         style="fill:#3366cc;fill-opacity:0.8;stroke:none",
-        transform=[svglab.Scale(2)],
+        transform=[Scale(2)],
     )
     _svg(rect)
 
@@ -93,33 +102,33 @@ def test_an_ordinary_style_does_not_stop_reification() -> None:
 def test_a_stroke_declared_in_a_style_still_counts_as_a_stroke() -> None:
     # `style` wins over the presentation attribute, so the checks that decide
     # what is safe have to read it too
-    rect = _rect(style="stroke: black", transform=[svglab.Scale(2, 3)])
+    rect = _rect(style="stroke: black", transform=[Scale(2, 3)])
     _svg(rect)
 
     rect.reify()
 
-    assert rect.transform == [svglab.Scale(2, 3)]
+    assert rect.transform == [Scale(2, 3)]
 
 
 def test_a_stylesheet_that_could_set_a_transform_stops_reification() -> (
     None
 ):
-    stylesheet = svglab.Style()
-    stylesheet.add_child(svglab.RawText(".a { transform: rotate(30deg) }"))
+    stylesheet = Style()
+    stylesheet.add_child(RawText(".a { transform: rotate(30deg) }"))
 
-    rect = _rect(class_=["a"], transform=[svglab.Translate(5, 5)])
+    rect = _rect(class_=["a"], transform=[Translate(5, 5)])
     svg = _svg(stylesheet, rect)
 
     svg.reify()
 
-    assert rect.transform == [svglab.Translate(5, 5)]
+    assert rect.transform == [Translate(5, 5)]
 
 
 def test_a_stylesheet_that_sets_nothing_geometric_is_harmless() -> None:
-    stylesheet = svglab.Style()
-    stylesheet.add_child(svglab.RawText(".a { fill: red; opacity: 0.5 }"))
+    stylesheet = Style()
+    stylesheet.add_child(RawText(".a { fill: red; opacity: 0.5 }"))
 
-    rect = _rect(class_=["a"], transform=[svglab.Translate(5, 5)])
+    rect = _rect(class_=["a"], transform=[Translate(5, 5)])
     svg = _svg(stylesheet, rect)
 
     svg.reify()
@@ -131,7 +140,7 @@ def test_a_stylesheet_that_sets_nothing_geometric_is_harmless() -> None:
 def test_style_declarations_are_read_as_written() -> None:
     rect = _rect(style="fill: red; stroke-width: 4 !important;;")
 
-    assert dict(reify.style_declarations(rect)) == {
+    assert dict(style_declarations(rect)) == {
         "fill": "red",
         "stroke-width": "4",
     }

@@ -11,21 +11,32 @@ import pydantic
 import pydantic_core
 from typing_extensions import Any, Literal, Self, TypeVar, override
 
-from svglab import protocols
+from svglab.protocols import (
+    PydanticCompatible,
+    SupportsAdd,
+    SupportsMul,
+    SupportsNeg,
+    SupportsRAdd,
+    SupportsRMul,
+    SupportsRSub,
+    SupportsRTrueDiv,
+    SupportsSub,
+    SupportsTrueDiv,
+)
 
 
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _SupportsNegT_contra = TypeVar(
-    "_SupportsNegT_contra", bound=protocols.SupportsNeg, contravariant=True
+    "_SupportsNegT_contra", bound=SupportsNeg, contravariant=True
 )
 _SupportsRTrueDivT_contra = TypeVar(
     "_SupportsRTrueDivT_contra",
-    bound=protocols.SupportsRTrueDiv[Any],
+    bound=SupportsRTrueDiv[Any],
     contravariant=True,
 )
 
 
-class CustomModel(protocols.PydanticCompatible, metaclass=abc.ABCMeta):
+class CustomModel(PydanticCompatible, metaclass=abc.ABCMeta):
     """A mixin for easy creation of custom pydantic-compatible classes.
 
     This class is a mixin for classes that need to be pydantic-compatible,
@@ -59,8 +70,8 @@ class CustomModel(protocols.PydanticCompatible, metaclass=abc.ABCMeta):
 
 
 class SubWithNeg(
-    protocols.SupportsAdd[_SupportsNegT_contra],
-    protocols.SupportsSub[_SupportsNegT_contra],
+    SupportsAdd[_SupportsNegT_contra],
+    SupportsSub[_SupportsNegT_contra],
     metaclass=abc.ABCMeta,
 ):
     """Implement subtraction using negation and addition."""
@@ -71,9 +82,7 @@ class SubWithNeg(
 
 
 class RAddWithAdd(
-    protocols.SupportsRAdd[_T_contra],
-    protocols.SupportsAdd[_T_contra],
-    metaclass=abc.ABCMeta,
+    SupportsRAdd[_T_contra], SupportsAdd[_T_contra], metaclass=abc.ABCMeta
 ):
     """Implement right addition using addition."""
 
@@ -83,9 +92,7 @@ class RAddWithAdd(
 
 
 class RSubWithSub(
-    protocols.SupportsRSub[_T_contra],
-    protocols.SupportsSub[_T_contra],
-    metaclass=abc.ABCMeta,
+    SupportsRSub[_T_contra], SupportsSub[_T_contra], metaclass=abc.ABCMeta
 ):
     """Implement right subtraction using subtraction."""
 
@@ -95,9 +102,7 @@ class RSubWithSub(
 
 
 class RMulWithMul(
-    protocols.SupportsRMul[_T_contra],
-    protocols.SupportsMul[_T_contra],
-    metaclass=abc.ABCMeta,
+    SupportsRMul[_T_contra], SupportsMul[_T_contra], metaclass=abc.ABCMeta
 ):
     """Implement right multiplication using multiplication."""
 
@@ -107,8 +112,8 @@ class RMulWithMul(
 
 
 class RTruedivWithTrueDiv(
-    protocols.SupportsRTrueDiv[_T_contra],
-    protocols.SupportsTrueDiv[_T_contra],
+    SupportsRTrueDiv[_T_contra],
+    SupportsTrueDiv[_T_contra],
     metaclass=abc.ABCMeta,
 ):
     """Implement right true division using true division."""
@@ -119,9 +124,7 @@ class RTruedivWithTrueDiv(
 
 
 class NegWithMul(
-    protocols.SupportsNeg,
-    protocols.SupportsMul[Literal[-1]],
-    metaclass=abc.ABCMeta,
+    SupportsNeg, SupportsMul[Literal[-1]], metaclass=abc.ABCMeta
 ):
     """Implement negation using multiplication by -1."""
 
@@ -131,8 +134,8 @@ class NegWithMul(
 
 
 class TrueDivWithMul(
-    protocols.SupportsTrueDiv[_SupportsRTrueDivT_contra],
-    protocols.SupportsMul[_SupportsRTrueDivT_contra],
+    SupportsTrueDiv[_SupportsRTrueDivT_contra],
+    SupportsMul[_SupportsRTrueDivT_contra],
     metaclass=abc.ABCMeta,
 ):
     """Implement true division using multiplication by the reciprocal."""

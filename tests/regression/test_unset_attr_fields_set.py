@@ -1,5 +1,4 @@
-import svglab
-from svglab import Length, Rect
+from svglab import Length, Rect, parse_svg
 
 
 def test_setting_an_attribute_to_none_unsets_it() -> None:
@@ -19,7 +18,7 @@ def test_deleting_an_attribute_unsets_it() -> None:
 
 
 def test_reify_unsets_the_transform_it_removes() -> None:
-    svg = svglab.parse_svg(
+    svg = parse_svg(
         '<svg xmlns="http://www.w3.org/2000/svg">'
         '<g transform="translate(5 5)"><rect width="1" height="1"/></g>'
         "</svg>"

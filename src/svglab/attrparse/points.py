@@ -7,21 +7,27 @@ import lark
 import lark.visitors
 from typing_extensions import Annotated, TypeAlias
 
-from svglab.attrparse import parse, point
+from svglab.attrparse.parse import (
+    FiniteFloat,
+    get_validator,
+    inline_args,
+    v_args_to_list,
+)
+from svglab.attrparse.point import Point
 
 
-Points: TypeAlias = list[point.Point]
+Points: TypeAlias = list[Point]
 
 
-@parse.inline_args
+@inline_args
 class _Transformer(lark.Transformer[object, Points]):
-    number = parse.FiniteFloat
-    point = point.Point
+    number = FiniteFloat
+    point = Point
 
-    points = parse.v_args_to_list
+    points = v_args_to_list
 
 
 PointsType: TypeAlias = Annotated[
     Points,
-    parse.get_validator(grammar="points.lark", transformer=_Transformer()),
+    get_validator(grammar="points.lark", transformer=_Transformer()),
 ]

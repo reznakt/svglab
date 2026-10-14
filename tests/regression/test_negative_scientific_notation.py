@@ -1,6 +1,6 @@
 import pytest
 
-import svglab
+from svglab import Length, Rect
 
 
 @pytest.mark.parametrize(
@@ -16,6 +16,6 @@ import svglab
 def test_scientific_notation_keeps_sign(
     value: float, expected: str
 ) -> None:
-    rect = svglab.Rect(x=svglab.Length(value))
+    rect = Rect(x=Length(value))
 
     assert rect.to_xml() == f'<rect x="{expected}"/>'

@@ -26,10 +26,41 @@ from collections.abc import Iterator, Mapping
 
 from typing_extensions import Final, TypeAlias, cast
 
-from svglab import errors
-from svglab.attrparse import length, point, transform
-from svglab.attrs import attrdefs
-from svglab.utils import mathutils
+from svglab.attrparse.length import Length
+from svglab.attrparse.point import Point
+from svglab.attrparse.transform import Matrix
+from svglab.attrs.attrdefs import (
+    CxAttr,
+    CyAttr,
+    DAttr,
+    DxListOfLengthsAttr,
+    DyListOfLengthsAttr,
+    FrAttr,
+    FxAttr,
+    FyAttr,
+    HeightAttr,
+    PathLengthAttr,
+    PointsAttr,
+    RAttr,
+    RxAttr,
+    RyAttr,
+    StartOffsetAttr,
+    StrokeDasharrayAttr,
+    StrokeDashoffsetAttr,
+    TextLengthAttr,
+    VectorEffectAttr,
+    WidthAttr,
+    X1Attr,
+    X2Attr,
+    XCoordinateAttr,
+    XListOfCoordinatesAttr,
+    Y1Attr,
+    Y2Attr,
+    YCoordinateAttr,
+    YListOfCoordinatesAttr,
+)
+from svglab.errors import SvgUnitConversionError
+from svglab.utils.mathutils import is_close
 
 
 @enum.unique
@@ -297,12 +328,10 @@ class StrokeWidthScaled:
 def _is_quarter_turn(angle: float, /) -> bool:
     remainder = angle % 90
 
-    return mathutils.is_close(remainder, 0) or mathutils.is_close(
-        remainder, 90
-    )
+    return is_close(remainder, 0) or is_close(remainder, 90)
 
 
-def features(matrix: transform.Matrix, /) -> Capability:
+def features(matrix: Matrix, /) -> Capability:
     """Determine what a transformation matrix actually does.
 
     Args:
@@ -330,15 +359,13 @@ def features(matrix: transform.Matrix, /) -> Capability:
     """
     result: set[Feature] = set()
 
-    if not mathutils.is_close(matrix.e, 0) or not mathutils.is_close(
-        matrix.f, 0
-    ):
+    if not is_close(matrix.e, 0) or not is_close(matrix.f, 0):
         result.add(Feature.TRANSLATE)
 
     rotation, rest = matrix.qr_decompose()
     angle = rotation.rotation_angle()
 
-    if not mathutils.is_close(angle, 0):
+    if not is_close(angle, 0):
         result.add(
             Feature.QUARTER_TURN
             if _is_quarter_turn(angle)
@@ -347,24 +374,22 @@ def features(matrix: transform.Matrix, /) -> Capability:
 
     # `rest` is upper triangular: its diagonal holds the scale factors along
     # the two axes and its off-diagonal entry is the shear
-    if not mathutils.is_close(rest.c, 0):
+    if not is_close(rest.c, 0):
         result.add(Feature.SKEW)
 
     if rest.d < 0:
         result.add(Feature.MIRROR)
 
-    if not mathutils.is_close(rest.a, abs(rest.d)):
+    if not is_close(rest.a, abs(rest.d)):
         result.add(Feature.NON_UNIFORM_SCALE)
 
-    if not mathutils.is_close(rest.a, 1) or not mathutils.is_close(
-        abs(rest.d), 1
-    ):
+    if not is_close(rest.a, 1) or not is_close(abs(rest.d), 1):
         result.add(Feature.SCALE)
 
     return frozenset(result)
 
 
-def is_similarity(matrix: transform.Matrix, /) -> bool:
+def is_similarity(matrix: Matrix, /) -> bool:
     """Check whether a transformation preserves angles.
 
     A similarity is the most a stroked shape can absorb: anything more turns
@@ -381,7 +406,7 @@ def is_similarity(matrix: transform.Matrix, /) -> bool:
     return not matrix.is_singular() and features(matrix) <= SIMILARITY
 
 
-def uniform_scale_factor(matrix: transform.Matrix, /) -> float:
+def uniform_scale_factor(matrix: Matrix, /) -> float:
     """Compute the factor by which a similarity resizes lengths.
 
     Examples:
@@ -396,8 +421,8 @@ def uniform_scale_factor(matrix: transform.Matrix, /) -> float:
 
 
 def split(
-    matrix: transform.Matrix, capability: Capability, /
-) -> tuple[transform.Matrix, transform.Matrix]:
+    matrix: Matrix, capability: Capability, /
+) -> tuple[Matrix, Matrix]:
     """Split a transformation into a part to keep and a part to absorb.
 
     The matrix is factored as `residue @ absorbed`, with `absorbed` the
@@ -429,7 +454,7 @@ def split(
         True
 
     """
-    identity = transform.Matrix.identity()
+    identity = Matrix.identity()
 
     if matrix.condition_number() > MAX_CONDITION_NUMBER:
         # a transformation this lopsided cannot be factored accurately, and
@@ -459,10 +484,10 @@ def _is_convertible(attr: object, /) -> bool:
     them cannot be rewritten.
     """
     match attr:
-        case length.Length():
+        case Length():
             try:
                 float(attr)
-            except errors.SvgUnitConversionError:
+            except SvgUnitConversionError:
                 return False
             else:
                 return True
@@ -481,7 +506,7 @@ def _is_scalable(attr: object, /) -> bool:
     match attr:
         case None:
             return True
-        case length.Length():
+        case Length():
             return _is_convertible(attr)
         case int() | float():
             return True
@@ -518,9 +543,9 @@ def _get(element: object, name: str, /) -> object:
 def _scaled(attr: object, /, by: float) -> object:
     """Resize a magnitude-valued attribute, leaving anything else alone."""
     match attr:
-        case length.Length(_, "%"):
+        case Length(_, "%"):
             return attr
-        case int() | float() | length.Length():
+        case int() | float() | Length():
             return attr * by
         case list() | tuple():
             return type(attr)(_scaled(item, by) for item in attr)
@@ -528,17 +553,15 @@ def _scaled(attr: object, /, by: float) -> object:
             return attr
 
 
-def _transform_point(
-    matrix: transform.Matrix, x: object, y: object, /
-) -> point.Point:
-    return matrix @ point.Point(_number(x), _number(y))
+def _transform_point(matrix: Matrix, x: object, y: object, /) -> Point:
+    return matrix @ Point(_number(x), _number(y))
 
 
 def _number(attr: object, /) -> float:
     match attr:
         case None:
             return 0.0
-        case length.Length():
+        case Length():
             return float(attr)
         case int() | float():
             return float(attr)
@@ -549,7 +572,7 @@ def _number(attr: object, /) -> float:
 
 def _coordinate(value: float, like: object, /) -> object:
     """Produce a value of the same flavour as an existing attribute."""
-    return value if isinstance(like, int | float) else length.Length(value)
+    return value if isinstance(like, int | float) else Length(value)
 
 
 def _set_coordinate(
@@ -560,7 +583,7 @@ def _set_coordinate(
     Every coordinate this is used for defaults to zero, so an unset one that
     ends up at the origin already says what it has to.
     """
-    if like is None and mathutils.is_close(value, 0):
+    if like is None and is_close(value, 0):
         return
 
     setattr(element, name, _coordinate(value, like))
@@ -570,39 +593,33 @@ def _set_coordinate(
 # region Applying a matrix to attributes
 
 
-def _swaps_axes(matrix: transform.Matrix, /) -> bool:
-    return mathutils.is_close(matrix.a, 0) and mathutils.is_close(
-        matrix.d, 0
-    )
+def _swaps_axes(matrix: Matrix, /) -> bool:
+    return is_close(matrix.a, 0) and is_close(matrix.d, 0)
 
 
 def is_box(element: object, /) -> bool:
     """Check whether the element's geometry is a position and two extents."""
     return (
-        isinstance(element, attrdefs.WidthAttr)
-        and isinstance(element, attrdefs.HeightAttr)
-        and isinstance(element, attrdefs.XCoordinateAttr)
-        and isinstance(element, attrdefs.YCoordinateAttr)
+        isinstance(element, WidthAttr)
+        and isinstance(element, HeightAttr)
+        and isinstance(element, XCoordinateAttr)
+        and isinstance(element, YCoordinateAttr)
     )
 
 
-def _apply_box(element: object, matrix: transform.Matrix, /) -> None:
-    assert isinstance(element, attrdefs.WidthAttr)
-    assert isinstance(element, attrdefs.HeightAttr)
-    assert isinstance(element, attrdefs.XCoordinateAttr)
-    assert isinstance(element, attrdefs.YCoordinateAttr)
+def _apply_box(element: object, matrix: Matrix, /) -> None:
+    assert isinstance(element, WidthAttr)
+    assert isinstance(element, HeightAttr)
+    assert isinstance(element, XCoordinateAttr)
+    assert isinstance(element, YCoordinateAttr)
 
     if features(matrix) <= TRANSLATION:
         # moving a box leaves its extents alone, which is the only thing that
         # can be done to one whose extents are a percentage of a viewport
-        if element.x is not None or not mathutils.is_close(matrix.e, 0):
-            element.x = _translated(
-                element.x or length.Length(0), matrix.e
-            )  # type: ignore[assignment]
-        if element.y is not None or not mathutils.is_close(matrix.f, 0):
-            element.y = _translated(
-                element.y or length.Length(0), matrix.f
-            )  # type: ignore[assignment]
+        if element.x is not None or not is_close(matrix.e, 0):
+            element.x = _translated(element.x or Length(0), matrix.e)  # type: ignore[assignment]
+        if element.y is not None or not is_close(matrix.f, 0):
+            element.y = _translated(element.y or Length(0), matrix.f)  # type: ignore[assignment]
 
         return
 
@@ -626,20 +643,20 @@ def _apply_box(element: object, matrix: transform.Matrix, /) -> None:
     )
 
     if element.width is not None:
-        element.width = length.Length(abs(end_corner.x - start_corner.x))
+        element.width = Length(abs(end_corner.x - start_corner.x))
     if element.height is not None:
-        element.height = length.Length(abs(end_corner.y - start_corner.y))
+        element.height = Length(abs(end_corner.y - start_corner.y))
 
     _apply_radii(element, matrix)
 
 
-def _apply_radii(element: object, matrix: transform.Matrix, /) -> None:
+def _apply_radii(element: object, matrix: Matrix, /) -> None:
     """Resize the pair of radii an element carries.
 
     These are the corner radii of a `rect` and the semi-axes of an `ellipse`;
     both are extents along the two axes and both travel with them.
     """
-    if not isinstance(element, attrdefs.RxAttr | attrdefs.RyAttr):
+    if not isinstance(element, RxAttr | RyAttr):
         return
 
     rx = _get(element, "rx")
@@ -662,9 +679,9 @@ def _apply_radii(element: object, matrix: transform.Matrix, /) -> None:
     element.ry = ry  # type: ignore[reportAttributeAccessIssue]
 
 
-def _apply_centre(element: object, matrix: transform.Matrix, /) -> None:
-    assert isinstance(element, attrdefs.CxAttr)
-    assert isinstance(element, attrdefs.CyAttr)
+def _apply_centre(element: object, matrix: Matrix, /) -> None:
+    assert isinstance(element, CxAttr)
+    assert isinstance(element, CyAttr)
 
     cx, cy = element.cx, element.cy
     centre = _transform_point(matrix, cx, cy)
@@ -672,7 +689,7 @@ def _apply_centre(element: object, matrix: transform.Matrix, /) -> None:
     _set_coordinate(element, "cx", centre.x, cx)
     _set_coordinate(element, "cy", centre.y, cy)
 
-    if isinstance(element, attrdefs.FxAttr | attrdefs.FyAttr):
+    if isinstance(element, FxAttr | FyAttr):
         fx = _get(element, "fx")
         fy = _get(element, "fy")
 
@@ -685,25 +702,23 @@ def _apply_centre(element: object, matrix: transform.Matrix, /) -> None:
                 fy if fy is not None else cy,
             )
 
-            element.fx = length.Length(focus.x)  # type: ignore[reportAttributeAccessIssue]
-            element.fy = length.Length(focus.y)  # type: ignore[reportAttributeAccessIssue]
+            element.fx = Length(focus.x)  # type: ignore[reportAttributeAccessIssue]
+            element.fy = Length(focus.y)  # type: ignore[reportAttributeAccessIssue]
 
     factor = uniform_scale_factor(matrix)
 
-    if isinstance(element, attrdefs.RAttr):
+    if isinstance(element, RAttr):
         element.r = _scaled(element.r, factor)  # type: ignore[reportAttributeAccessIssue]
-    if isinstance(element, attrdefs.FrAttr):
+    if isinstance(element, FrAttr):
         element.fr = _scaled(element.fr, factor)  # type: ignore[reportAttributeAccessIssue]
     _apply_radii(element, matrix)
 
 
-def _apply_end_points(
-    element: object, matrix: transform.Matrix, /
-) -> None:
-    assert isinstance(element, attrdefs.X1Attr)
-    assert isinstance(element, attrdefs.Y1Attr)
-    assert isinstance(element, attrdefs.X2Attr)
-    assert isinstance(element, attrdefs.Y2Attr)
+def _apply_end_points(element: object, matrix: Matrix, /) -> None:
+    assert isinstance(element, X1Attr)
+    assert isinstance(element, Y1Attr)
+    assert isinstance(element, X2Attr)
+    assert isinstance(element, Y2Attr)
 
     start = _transform_point(matrix, element.x1, element.y1)
     end = _transform_point(matrix, element.x2, element.y2)
@@ -714,7 +729,7 @@ def _apply_end_points(
     _set_coordinate(element, "y2", end.y, element.y2)
 
 
-def _apply_text(element: object, matrix: transform.Matrix, /) -> None:
+def _apply_text(element: object, matrix: Matrix, /) -> None:
     """Move and resize the layout attributes of a text content element.
 
     Only translations and uniform scalings reach this, so every coordinate
@@ -722,19 +737,19 @@ def _apply_text(element: object, matrix: transform.Matrix, /) -> None:
     """
     factor = uniform_scale_factor(matrix)
 
-    if isinstance(element, attrdefs.XListOfCoordinatesAttr):
+    if isinstance(element, XListOfCoordinatesAttr):
         x = _text_position(element, element.x, matrix.e)
         element.x = _translated(_scaled(x, factor), matrix.e)  # type: ignore[assignment]
-    if isinstance(element, attrdefs.YListOfCoordinatesAttr):
+    if isinstance(element, YListOfCoordinatesAttr):
         y = _text_position(element, element.y, matrix.f)
         element.y = _translated(_scaled(y, factor), matrix.f)  # type: ignore[assignment]
 
     # a delta is a distance, so it is resized but never moved
-    if isinstance(element, attrdefs.DxListOfLengthsAttr):
+    if isinstance(element, DxListOfLengthsAttr):
         element.dx = _scaled(element.dx, factor)  # type: ignore[reportAttributeAccessIssue]
-    if isinstance(element, attrdefs.DyListOfLengthsAttr):
+    if isinstance(element, DyListOfLengthsAttr):
         element.dy = _scaled(element.dy, factor)  # type: ignore[reportAttributeAccessIssue]
-    if isinstance(element, attrdefs.TextLengthAttr):
+    if isinstance(element, TextLengthAttr):
         element.textLength = _scaled(element.textLength, factor)  # type: ignore[reportAttributeAccessIssue]
 
 
@@ -743,30 +758,28 @@ def _text_position(element: object, attr: object, by: float, /) -> object:
     if (
         attr is None
         and isinstance(element, PositionDefaultsToOrigin)
-        and not mathutils.is_close(by, 0)
+        and not is_close(by, 0)
     ):
-        return [length.Length(0)]
+        return [Length(0)]
 
     return attr
 
 
 def _translated(attr: object, /, by: float) -> object:
     match attr:
-        case length.Length(_, "%"):
+        case Length(_, "%"):
             return attr
         case int() | float():
             return attr + by
-        case length.Length():
-            return attr + length.Length(by)
+        case Length():
+            return attr + Length(by)
         case list() | tuple():
             return type(attr)(_translated(item, by) for item in attr)
         case _:
             return attr
 
 
-def _apply_magnitudes(
-    element: object, matrix: transform.Matrix, /
-) -> None:
+def _apply_magnitudes(element: object, matrix: Matrix, /) -> None:
     """Resize the lengths that describe how a shape is painted, not placed.
 
     These only make sense under a transformation that preserves angles: a
@@ -782,7 +795,7 @@ def _apply_magnitudes(
 
     factor = uniform_scale_factor(matrix)
 
-    if mathutils.is_close(factor, 1):
+    if is_close(factor, 1):
         return
 
     if isinstance(element, FontSizeScaled):
@@ -797,14 +810,12 @@ def _apply_magnitudes(
         # part of, or not drawn at all
         return
 
-    _scale_inherited(
-        element, "stroke_width", factor, initial=length.Length(1)
-    )
+    _scale_inherited(element, "stroke_width", factor, initial=Length(1))
 
     # distance-along-a-path attributes and `pathLength` are proportional, so
     # a shape that declares its own path length needs no adjustment
     if (
-        not isinstance(element, attrdefs.PathLengthAttr)
+        not isinstance(element, PathLengthAttr)
         or element.pathLength is None
     ):
         _scale_inherited(element, "stroke_dasharray", factor)
@@ -894,7 +905,7 @@ def _scale_inherited(
     )
     value = own if spelled_out else inherited
 
-    if not isinstance(value, length.Length | list | int | float):
+    if not isinstance(value, Length | list | int | float):
         # a keyword, or nothing at all; there is no magnitude to resize
         return
 
@@ -904,10 +915,10 @@ def _scale_inherited(
     # if the value was not spelled out and the scaled one is what the element
     # inherits anyway, there is no need to start spelling it out now
     if (
-        isinstance(inherited, length.Length)
-        and isinstance(scaled, length.Length)
+        isinstance(inherited, Length)
+        and isinstance(scaled, Length)
         and scaled.unit == inherited.unit
-        and mathutils.is_close(float(scaled), float(inherited))
+        and is_close(float(scaled), float(inherited))
     ):
         setattr(element, name, own)
 
@@ -920,7 +931,7 @@ def _strokes_in_host_space(element: object, /) -> bool:
     geometry leaves the stroke exactly as it was.
     """
     return (
-        isinstance(element, attrdefs.VectorEffectAttr)
+        isinstance(element, VectorEffectAttr)
         and element.vector_effect == "non-scaling-stroke"
     )
 
@@ -937,18 +948,18 @@ def scale_distance_along_a_path_attrs(element: object, by: float) -> None:
         by: The factor by which to scale the attributes.
 
     """
-    if isinstance(element, attrdefs.StrokeDasharrayAttr) and isinstance(
+    if isinstance(element, StrokeDasharrayAttr) and isinstance(
         element.stroke_dasharray, list
     ):
         dashes = [_scaled(dash, by) for dash in element.stroke_dasharray]
-        element.stroke_dasharray = cast("list[length.Length]", dashes)
-    if isinstance(element, attrdefs.StrokeDashoffsetAttr):
+        element.stroke_dasharray = cast("list[Length]", dashes)
+    if isinstance(element, StrokeDashoffsetAttr):
         element.stroke_dashoffset = _scaled(  # type: ignore[reportAttributeAccessIssue]
             element.stroke_dashoffset, by
         )
 
 
-def apply(element: object, matrix: transform.Matrix, /) -> None:
+def apply(element: object, matrix: Matrix, /) -> None:
     """Fold a transformation into the element's geometry attributes.
 
     The caller is responsible for checking that the element can absorb the
@@ -961,24 +972,19 @@ def apply(element: object, matrix: transform.Matrix, /) -> None:
     """
     if is_box(element):
         _apply_box(element, matrix)
-    elif isinstance(element, attrdefs.CxAttr | attrdefs.CyAttr):
+    elif isinstance(element, CxAttr | CyAttr):
         _apply_centre(element, matrix)
 
-    if isinstance(element, attrdefs.X1Attr):
+    if isinstance(element, X1Attr):
         _apply_end_points(element, matrix)
 
-    if (
-        isinstance(element, attrdefs.PointsAttr)
-        and element.points is not None
-    ):
+    if isinstance(element, PointsAttr) and element.points is not None:
         element.points = [matrix @ p for p in element.points]
 
-    if isinstance(element, attrdefs.DAttr) and element.d is not None:
+    if isinstance(element, DAttr) and element.d is not None:
         element.d = matrix @ element.d
 
-    if isinstance(
-        element, attrdefs.XListOfCoordinatesAttr | attrdefs.StartOffsetAttr
-    ):
+    if isinstance(element, XListOfCoordinatesAttr | StartOffsetAttr):
         _apply_text(element, matrix)
 
     _apply_magnitudes(element, matrix)
@@ -1272,9 +1278,7 @@ def geometry_capability(element: object, /) -> Capability:
         capability &= SIMILARITY
 
         if not _is_resizable(
-            resolved_value(
-                element, "stroke_width", initial=length.Length(1)
-            )
+            resolved_value(element, "stroke_width", initial=Length(1))
         ) or (
             _is_dashed(element)
             and not all(
@@ -1303,9 +1307,9 @@ def geometry_capability(element: object, /) -> Capability:
 
 def _geometry_is_explicit(element: object, /) -> bool:
     """Check that none of the element's defining coordinates are left out."""
-    if isinstance(element, attrdefs.X1Attr):
+    if isinstance(element, X1Attr):
         names = ("x1", "y1", "x2", "y2")
-    elif isinstance(element, attrdefs.CxAttr):
+    elif isinstance(element, CxAttr):
         names = ("cx", "cy", "r")
     else:
         return True

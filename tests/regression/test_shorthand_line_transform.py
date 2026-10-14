@@ -1,19 +1,31 @@
 import pytest
 from typing_extensions import Final
 
-import svglab
-from tests import conftest
+from svglab import (
+    Length,
+    Matrix,
+    Path,
+    PathData,
+    Rotate,
+    Scale,
+    SkewX,
+    SkewY,
+    Svg,
+    TransformFunction,
+    Translate,
+)
+from tests.conftest import assert_svg_visually_equal
 
 
 _D: Final = "M 60,60 H 140 V 140 H 60 Z"
 
 
-def _svg(path: svglab.Path) -> svglab.Svg:
+def _svg(path: Path) -> Svg:
     # the viewBox is centered on the origin so that rotated and skewed
     # paths stay inside the viewport
-    return svglab.Svg(
-        width=svglab.Length(400),
-        height=svglab.Length(400),
+    return Svg(
+        width=Length(400),
+        height=Length(400),
         viewBox=(-200, -200, 400, 400),
     ).add_child(path)
 
@@ -21,25 +33,21 @@ def _svg(path: svglab.Path) -> svglab.Svg:
 @pytest.mark.parametrize(
     "transformation",
     [
-        svglab.Rotate(45),
-        svglab.Rotate(90),
-        svglab.SkewX(20),
-        svglab.SkewY(-20),
-        svglab.Matrix(1, 0.3, -0.3, 1, 5, -5),
-        svglab.Translate(10, 20),
-        svglab.Scale(0.5, 1.5),
+        Rotate(45),
+        Rotate(90),
+        SkewX(20),
+        SkewY(-20),
+        Matrix(1, 0.3, -0.3, 1, 5, -5),
+        Translate(10, 20),
+        Scale(0.5, 1.5),
     ],
 )
 def test_transformed_shorthand_lines_are_visually_equal(
-    transformation: svglab.TransformFunction,
+    transformation: TransformFunction,
 ) -> None:
     original = _svg(
-        svglab.Path(
-            d=svglab.PathData.from_str(_D), transform=[transformation]
-        )
+        Path(d=PathData.from_str(_D), transform=[transformation])
     )
-    transformed = _svg(
-        svglab.Path(d=transformation @ svglab.PathData.from_str(_D))
-    )
+    transformed = _svg(Path(d=transformation @ PathData.from_str(_D)))
 
-    conftest.assert_svg_visually_equal(original, transformed)
+    assert_svg_visually_equal(original, transformed)

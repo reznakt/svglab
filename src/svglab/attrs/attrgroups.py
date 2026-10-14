@@ -1,15 +1,144 @@
 """Groups of attributes that are commonly used together."""
 
-from svglab.attrs import attrdefs
+from svglab.attrs.attrdefs import (
+    AccumulateAttr,
+    AdditiveAttr,
+    AlignmentBaselineAttr,
+    AmplitudeAttr,
+    AttributeNameAttr,
+    AttributeTypeAttr,
+    BaselineShiftAttr,
+    BeginAttr,
+    ByAttr,
+    CalcModeAttr,
+    ClipAttr,
+    ClipPathAttr,
+    ClipRuleAttr,
+    ColorAttr,
+    ColorInterpolationAttr,
+    ColorInterpolationFiltersAttr,
+    ColorProfileAttr,
+    ColorRenderingAttr,
+    CursorAttr,
+    DirectionAttr,
+    DisplayAttr,
+    DominantBaselineAttr,
+    DurAttr,
+    EnableBackgroundAttr,
+    EndAttr,
+    ExponentAttr,
+    FillAttr,
+    FillOpacityAttr,
+    FillRuleAttr,
+    FilterAttr,
+    FloodColorAttr,
+    FloodOpacityAttr,
+    FontFamilyAttr,
+    FontSizeAdjustAttr,
+    FontSizeAttr,
+    FontStretchAttr,
+    FontStyleAttr,
+    FontVariantAttr,
+    FontWeightAttr,
+    FromAttr,
+    GlyphOrientationHorizontalAttr,
+    GlyphOrientationVerticalAttr,
+    HeightAttr,
+    HrefAttr,
+    IdAttr,
+    ImageRenderingAttr,
+    InterceptAttr,
+    KerningAttr,
+    KeySplinesAttr,
+    KeyTimesAttr,
+    LangAttr,
+    LetterSpacingAttr,
+    LightingColorAttr,
+    MarkerEndAttr,
+    MarkerMidAttr,
+    MarkerStartAttr,
+    MaskAttr,
+    MaxAttr,
+    MinAttr,
+    OffsetNumberAttr,
+    OnAbortAttr,
+    OnActivateAttr,
+    OnBeginAttr,
+    OnClickAttr,
+    OnEndAttr,
+    OnErrorAttr,
+    OnFocusInAttr,
+    OnFocusOutAttr,
+    OnLoadAttr,
+    OnMouseDownAttr,
+    OnMouseMoveAttr,
+    OnMouseOutAttr,
+    OnMouseOverAttr,
+    OnMouseUpAttr,
+    OnRepeatAttr,
+    OnResizeAttr,
+    OnScrollAttr,
+    OnUnloadAttr,
+    OnZoomAttr,
+    OpacityAttr,
+    OverflowAttr,
+    PaintOrderAttr,
+    PointerEventsAttr,
+    RepeatCountAttr,
+    RepeatDurAttr,
+    RequiredExtensionsAttr,
+    RequiredFeaturesAttr,
+    RestartAttr,
+    ResultAttr,
+    ShapeRenderingAttr,
+    SlopeAttr,
+    StopColorAttr,
+    StopOpacityAttr,
+    StrokeAttr,
+    StrokeDasharrayAttr,
+    StrokeDashoffsetAttr,
+    StrokeLinecapAttr,
+    StrokeLinejoinAttr,
+    StrokeMiterlimitAttr,
+    StrokeOpacityAttr,
+    StrokeWidthAttr,
+    SystemLanguageAttr,
+    TableValuesAttr,
+    TextAlignAllAttr,
+    TextAlignAttr,
+    TextAlignLastAttr,
+    TextAnchorAttr,
+    TextDecorationAttr,
+    TextIndentAttr,
+    TextRenderingAttr,
+    ToAttr,
+    TransformAttr,
+    TransformOriginAttr,
+    TypeFeFuncAttr,
+    UnicodeBidiAttr,
+    ValuesListAttr,
+    VectorEffectAttr,
+    VisibilityAttr,
+    WhiteSpaceAttr,
+    WidthAttr,
+    WordSpacingAttr,
+    WritingModeAttr,
+    XCoordinateAttr,
+    XlinkActuateOnLoadAttr,
+    XlinkArcroleAttr,
+    XlinkHrefAttr,
+    XlinkRoleAttr,
+    XlinkShowAttr,
+    XlinkTitleAttr,
+    XlinkTypeAttr,
+    XmlBaseAttr,
+    XmlLangAttr,
+    XmlSpaceAttr,
+    YCoordinateAttr,
+)
 
 
-class CoreAttrs(
-    attrdefs.IdAttr,
-    attrdefs.LangAttr,
-    attrdefs.XmlBaseAttr,
-    attrdefs.XmlLangAttr,
-    attrdefs.XmlSpaceAttr,
-):
+class CoreAttrs(IdAttr, LangAttr, XmlBaseAttr, XmlLangAttr, XmlSpaceAttr):
     """The core attributes.
 
     From the SVG 1.1 specification:
@@ -19,74 +148,74 @@ class CoreAttrs(
 
 
 class PresentationAttrs(
-    attrdefs.AlignmentBaselineAttr,
-    attrdefs.BaselineShiftAttr,
-    attrdefs.ClipAttr,
-    attrdefs.ClipPathAttr,
-    attrdefs.ClipRuleAttr,
-    attrdefs.ColorAttr,
-    attrdefs.ColorInterpolationAttr,
-    attrdefs.ColorInterpolationFiltersAttr,
-    attrdefs.ColorProfileAttr,
-    attrdefs.ColorRenderingAttr,
-    attrdefs.CursorAttr,
-    attrdefs.DirectionAttr,
-    attrdefs.DisplayAttr,
-    attrdefs.DominantBaselineAttr,
-    attrdefs.EnableBackgroundAttr,
-    attrdefs.FillAttr,
-    attrdefs.FillOpacityAttr,
-    attrdefs.FillRuleAttr,
-    attrdefs.FilterAttr,
-    attrdefs.FloodColorAttr,
-    attrdefs.FloodOpacityAttr,
-    attrdefs.FontFamilyAttr,
-    attrdefs.FontSizeAdjustAttr,
-    attrdefs.FontSizeAttr,
-    attrdefs.FontStretchAttr,
-    attrdefs.FontStyleAttr,
-    attrdefs.FontVariantAttr,
-    attrdefs.FontWeightAttr,
-    attrdefs.GlyphOrientationHorizontalAttr,
-    attrdefs.GlyphOrientationVerticalAttr,
-    attrdefs.ImageRenderingAttr,
-    attrdefs.KerningAttr,
-    attrdefs.LetterSpacingAttr,
-    attrdefs.LightingColorAttr,
-    attrdefs.MarkerEndAttr,
-    attrdefs.MarkerMidAttr,
-    attrdefs.MarkerStartAttr,
-    attrdefs.MaskAttr,
-    attrdefs.OpacityAttr,
-    attrdefs.OverflowAttr,
-    attrdefs.PaintOrderAttr,
-    attrdefs.PointerEventsAttr,
-    attrdefs.ShapeRenderingAttr,
-    attrdefs.StopColorAttr,
-    attrdefs.StopOpacityAttr,
-    attrdefs.StrokeAttr,
-    attrdefs.StrokeDasharrayAttr,
-    attrdefs.StrokeDashoffsetAttr,
-    attrdefs.StrokeLinecapAttr,
-    attrdefs.StrokeLinejoinAttr,
-    attrdefs.StrokeMiterlimitAttr,
-    attrdefs.StrokeOpacityAttr,
-    attrdefs.StrokeWidthAttr,
-    attrdefs.TextAlignAllAttr,
-    attrdefs.TextAlignAttr,
-    attrdefs.TextAlignLastAttr,
-    attrdefs.TextAnchorAttr,
-    attrdefs.TextDecorationAttr,
-    attrdefs.TextIndentAttr,
-    attrdefs.TextRenderingAttr,
-    attrdefs.TransformAttr,
-    attrdefs.TransformOriginAttr,
-    attrdefs.UnicodeBidiAttr,
-    attrdefs.VectorEffectAttr,
-    attrdefs.VisibilityAttr,
-    attrdefs.WhiteSpaceAttr,
-    attrdefs.WordSpacingAttr,
-    attrdefs.WritingModeAttr,
+    AlignmentBaselineAttr,
+    BaselineShiftAttr,
+    ClipAttr,
+    ClipPathAttr,
+    ClipRuleAttr,
+    ColorAttr,
+    ColorInterpolationAttr,
+    ColorInterpolationFiltersAttr,
+    ColorProfileAttr,
+    ColorRenderingAttr,
+    CursorAttr,
+    DirectionAttr,
+    DisplayAttr,
+    DominantBaselineAttr,
+    EnableBackgroundAttr,
+    FillAttr,
+    FillOpacityAttr,
+    FillRuleAttr,
+    FilterAttr,
+    FloodColorAttr,
+    FloodOpacityAttr,
+    FontFamilyAttr,
+    FontSizeAdjustAttr,
+    FontSizeAttr,
+    FontStretchAttr,
+    FontStyleAttr,
+    FontVariantAttr,
+    FontWeightAttr,
+    GlyphOrientationHorizontalAttr,
+    GlyphOrientationVerticalAttr,
+    ImageRenderingAttr,
+    KerningAttr,
+    LetterSpacingAttr,
+    LightingColorAttr,
+    MarkerEndAttr,
+    MarkerMidAttr,
+    MarkerStartAttr,
+    MaskAttr,
+    OpacityAttr,
+    OverflowAttr,
+    PaintOrderAttr,
+    PointerEventsAttr,
+    ShapeRenderingAttr,
+    StopColorAttr,
+    StopOpacityAttr,
+    StrokeAttr,
+    StrokeDasharrayAttr,
+    StrokeDashoffsetAttr,
+    StrokeLinecapAttr,
+    StrokeLinejoinAttr,
+    StrokeMiterlimitAttr,
+    StrokeOpacityAttr,
+    StrokeWidthAttr,
+    TextAlignAllAttr,
+    TextAlignAttr,
+    TextAlignLastAttr,
+    TextAnchorAttr,
+    TextDecorationAttr,
+    TextIndentAttr,
+    TextRenderingAttr,
+    TransformAttr,
+    TransformOriginAttr,
+    UnicodeBidiAttr,
+    VectorEffectAttr,
+    VisibilityAttr,
+    WhiteSpaceAttr,
+    WordSpacingAttr,
+    WritingModeAttr,
 ):
     """The presentation attributes.
 
@@ -97,10 +226,7 @@ class PresentationAttrs(
 
 
 class AnimationEventsAttrs(
-    attrdefs.OnBeginAttr,
-    attrdefs.OnEndAttr,
-    attrdefs.OnLoadAttr,
-    attrdefs.OnRepeatAttr,
+    OnBeginAttr, OnEndAttr, OnLoadAttr, OnRepeatAttr
 ):
     """The animation event attributes.
 
@@ -110,9 +236,7 @@ class AnimationEventsAttrs(
     """
 
 
-class AnimationAttributeTargetAttrs(
-    attrdefs.AttributeNameAttr, attrdefs.AttributeTypeAttr
-):
+class AnimationAttributeTargetAttrs(AttributeNameAttr, AttributeTypeAttr):
     """The animation attribute target attributes.
 
     From the SVG 1.1 specification:
@@ -123,15 +247,15 @@ class AnimationAttributeTargetAttrs(
 
 
 class AnimationTimingAttrs(
-    attrdefs.BeginAttr,
-    attrdefs.DurAttr,
-    attrdefs.EndAttr,
-    attrdefs.FillAttr,
-    attrdefs.MaxAttr,
-    attrdefs.MinAttr,
-    attrdefs.RepeatCountAttr,
-    attrdefs.RepeatDurAttr,
-    attrdefs.RestartAttr,
+    BeginAttr,
+    DurAttr,
+    EndAttr,
+    FillAttr,
+    MaxAttr,
+    MinAttr,
+    RepeatCountAttr,
+    RepeatDurAttr,
+    RestartAttr,
 ):
     """The animation timing attributes.
 
@@ -144,13 +268,13 @@ class AnimationTimingAttrs(
 
 
 class AnimationValueAttrs(
-    attrdefs.ByAttr,
-    attrdefs.CalcModeAttr,
-    attrdefs.FromAttr,
-    attrdefs.KeySplinesAttr,
-    attrdefs.KeyTimesAttr,
-    attrdefs.ToAttr,
-    attrdefs.ValuesListAttr,
+    ByAttr,
+    CalcModeAttr,
+    FromAttr,
+    KeySplinesAttr,
+    KeyTimesAttr,
+    ToAttr,
+    ValuesListAttr,
 ):
     """The animation value attributes.
 
@@ -163,9 +287,7 @@ class AnimationValueAttrs(
     """
 
 
-class AnimationAdditionAttrs(
-    attrdefs.AccumulateAttr, attrdefs.AdditiveAttr
-):
+class AnimationAdditionAttrs(AccumulateAttr, AdditiveAttr):
     """The animation addition attributes.
 
     From the SVG 1.1 specification:
@@ -175,9 +297,7 @@ class AnimationAdditionAttrs(
 
 
 class ConditionalProcessingAttrs(
-    attrdefs.RequiredFeaturesAttr,
-    attrdefs.RequiredExtensionsAttr,
-    attrdefs.SystemLanguageAttr,
+    RequiredFeaturesAttr, RequiredExtensionsAttr, SystemLanguageAttr
 ):
     """The conditional processing attributes.
 
@@ -189,12 +309,12 @@ class ConditionalProcessingAttrs(
 
 
 class DocumentEventsAttrs(
-    attrdefs.OnAbortAttr,
-    attrdefs.OnErrorAttr,
-    attrdefs.OnResizeAttr,
-    attrdefs.OnScrollAttr,
-    attrdefs.OnUnloadAttr,
-    attrdefs.OnZoomAttr,
+    OnAbortAttr,
+    OnErrorAttr,
+    OnResizeAttr,
+    OnScrollAttr,
+    OnUnloadAttr,
+    OnZoomAttr,
 ):
     """The document event attributes.
 
@@ -205,16 +325,16 @@ class DocumentEventsAttrs(
 
 
 class GraphicalEventsAttrs(
-    attrdefs.OnActivateAttr,
-    attrdefs.OnClickAttr,
-    attrdefs.OnFocusInAttr,
-    attrdefs.OnFocusOutAttr,
-    attrdefs.OnLoadAttr,
-    attrdefs.OnMouseDownAttr,
-    attrdefs.OnMouseMoveAttr,
-    attrdefs.OnMouseOutAttr,
-    attrdefs.OnMouseOverAttr,
-    attrdefs.OnMouseUpAttr,
+    OnActivateAttr,
+    OnClickAttr,
+    OnFocusInAttr,
+    OnFocusOutAttr,
+    OnLoadAttr,
+    OnMouseDownAttr,
+    OnMouseMoveAttr,
+    OnMouseOutAttr,
+    OnMouseOverAttr,
+    OnMouseUpAttr,
 ):
     """The graphical event attributes.
 
@@ -231,11 +351,7 @@ class EventAttrs(
 
 
 class FilterPrimitivesAttrs(
-    attrdefs.XCoordinateAttr,
-    attrdefs.YCoordinateAttr,
-    attrdefs.WidthAttr,
-    attrdefs.HeightAttr,
-    attrdefs.ResultAttr,
+    XCoordinateAttr, YCoordinateAttr, WidthAttr, HeightAttr, ResultAttr
 ):
     """The filter primitive attributes.
 
@@ -246,14 +362,14 @@ class FilterPrimitivesAttrs(
 
 
 class XlinkAttrs(
-    attrdefs.HrefAttr,
-    attrdefs.XlinkActuateOnLoadAttr,
-    attrdefs.XlinkArcroleAttr,
-    attrdefs.XlinkHrefAttr,
-    attrdefs.XlinkRoleAttr,
-    attrdefs.XlinkShowAttr,
-    attrdefs.XlinkTitleAttr,
-    attrdefs.XlinkTypeAttr,
+    HrefAttr,
+    XlinkActuateOnLoadAttr,
+    XlinkArcroleAttr,
+    XlinkHrefAttr,
+    XlinkRoleAttr,
+    XlinkShowAttr,
+    XlinkTitleAttr,
+    XlinkTypeAttr,
 ):
     """The XLink attributes.
 
@@ -265,13 +381,13 @@ class XlinkAttrs(
 
 
 class TransferFunctionAttrs(
-    attrdefs.AmplitudeAttr,
-    attrdefs.ExponentAttr,
-    attrdefs.InterceptAttr,
-    attrdefs.OffsetNumberAttr,
-    attrdefs.SlopeAttr,
-    attrdefs.TableValuesAttr,
-    attrdefs.TypeFeFuncAttr,
+    AmplitudeAttr,
+    ExponentAttr,
+    InterceptAttr,
+    OffsetNumberAttr,
+    SlopeAttr,
+    TableValuesAttr,
+    TypeFeFuncAttr,
 ):
     """The transfer function attributes.
 

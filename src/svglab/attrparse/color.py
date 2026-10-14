@@ -6,8 +6,13 @@ Use `Color` to represent colors in SVG. Use `ColorType` in Pydantic fields.
 import pydantic_extra_types.color
 from typing_extensions import TypeAlias, override
 
-from svglab import protocols, serialize
-from svglab.utils import miscutils
+from svglab.protocols import CustomSerializable
+from svglab.serialize import (
+    AlphaChannelMode,
+    get_current_formatter,
+    serialize_function_call,
+)
+from svglab.utils.miscutils import extract_function_name_and_args
 
 
 def _alpha_channel_as_percentage(original: str) -> str:
@@ -27,7 +32,7 @@ def _alpha_channel_as_percentage(original: str) -> str:
         'hsla(0, 0%, 0%, 75%)'
 
     """
-    name_and_args = miscutils.extract_function_name_and_args(original)
+    name_and_args = extract_function_name_and_args(original)
 
     if name_and_args is None:
         msg = f"Invalid color string: {original!r}"
@@ -41,18 +46,14 @@ def _alpha_channel_as_percentage(original: str) -> str:
     return f"{func}({', '.join(values)})"
 
 
-class Color(
-    pydantic_extra_types.color.Color, protocols.CustomSerializable
-):
+class Color(pydantic_extra_types.color.Color, CustomSerializable):
     """Represents the SVG `<color>` type.
 
     This class is used to represent colors in SVG.
     """
 
     @override
-    def as_rgb(
-        self, *, alpha_channel: serialize.AlphaChannelMode = "float"
-    ) -> str:
+    def as_rgb(self, *, alpha_channel: AlphaChannelMode = "float") -> str:
         result = super().as_rgb()
 
         if self._rgba.alpha is not None and alpha_channel == "percentage":
@@ -61,9 +62,7 @@ class Color(
         return result
 
     @override
-    def as_hsl(
-        self, *, alpha_channel: serialize.AlphaChannelMode = "float"
-    ) -> str:
+    def as_hsl(self, *, alpha_channel: AlphaChannelMode = "float") -> str:
         result = super().as_hsl()
 
         if self._rgba.alpha is not None and alpha_channel == "percentage":
@@ -73,7 +72,7 @@ class Color(
 
     @override
     def serialize(self) -> str:
-        formatter = serialize.get_current_formatter()
+        formatter = get_current_formatter()
         result: str
         verbatim = False
 
@@ -107,15 +106,13 @@ class Color(
             result = result.upper()
 
         if result.endswith(")"):  # just to make this a bit faster
-            name_and_args = miscutils.extract_function_name_and_args(
-                result
-            )
+            name_and_args = extract_function_name_and_args(result)
             assert name_and_args is not None
 
             func, args_str = name_and_args
             args = args_str.split(", ")
 
-            result = serialize.serialize_function_call(func, *args)
+            result = serialize_function_call(func, *args)
 
         return result
 

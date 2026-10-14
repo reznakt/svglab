@@ -5,7 +5,10 @@ import math
 from typing_extensions import SupportsFloat, SupportsIndex
 from useful_types import SupportsRichComparisonT
 
-from svglab import constants
+from svglab.constants import (
+    FLOAT_ABSOLUTE_TOLERANCE,
+    FLOAT_RELATIVE_TOLERANCE,
+)
 
 
 def is_close(
@@ -35,8 +38,8 @@ def is_close(
     return math.isclose(
         a,
         b,
-        rel_tol=constants.FLOAT_RELATIVE_TOLERANCE,
-        abs_tol=constants.FLOAT_ABSOLUTE_TOLERANCE,
+        rel_tol=FLOAT_RELATIVE_TOLERANCE,
+        abs_tol=FLOAT_ABSOLUTE_TOLERANCE,
     )
 
 

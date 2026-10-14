@@ -2,8 +2,8 @@ from xml.sax import saxutils
 
 import pytest
 
-import svglab
-from svglab import serialize
+from svglab import Text, parse_svg
+from svglab.serialize import serialize_attr
 
 
 @pytest.mark.parametrize(
@@ -30,20 +30,17 @@ from svglab import serialize
 def test_font_family_is_separated_by_commas_only(
     text: str, families: list[str], serialized: str
 ) -> None:
-    doc = svglab.parse_svg(
+    doc = parse_svg(
         f"<svg><text font-family={saxutils.quoteattr(text)}>a</text></svg>"
     )
-    element = doc.find(svglab.Text)
+    element = doc.find(Text)
 
     assert element.font_family == families
-    assert (
-        serialize.serialize_attr("font-family", element.font_family)
-        == serialized
-    )
+    assert serialize_attr("font-family", element.font_family) == serialized
 
 
 def test_assigned_font_family_serializes_with_commas() -> None:
-    text = svglab.Text(font_family=["Times New Roman", "serif"])
+    text = Text(font_family=["Times New Roman", "serif"])
 
     assert 'font-family="Times New Roman, serif"' in text.to_xml()
 
@@ -69,7 +66,7 @@ def test_assigned_font_family_serializes_with_commas() -> None:
 def test_comma_separated_attribute_round_trips(
     element: str, attr: str, value: str
 ) -> None:
-    doc = svglab.parse_svg(f'<svg><{element} {attr}="{value}"/></svg>')
+    doc = parse_svg(f'<svg><{element} {attr}="{value}"/></svg>')
 
     assert f'{attr}="{value}"' in doc.to_xml()
 
@@ -81,8 +78,8 @@ def test_comma_separated_attribute_round_trips(
 def test_a_single_font_face_value_stays_a_string(
     attr: str, value: str
 ) -> None:
-    doc = svglab.parse_svg(
+    doc = parse_svg(
         f'<svg><text {attr.replace("_", "-")}="{value}">a</text></svg>'
     )
 
-    assert getattr(doc.find(svglab.Text), attr) == value
+    assert getattr(doc.find(Text), attr) == value

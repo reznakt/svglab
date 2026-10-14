@@ -2,18 +2,16 @@ import copy
 
 import pytest
 
-import svglab
-from tests import conftest
+from svglab import Circle, Length, Line, Rect, Svg, parse_svg
+from tests.conftest import assert_svg_visually_equal
 
 
-def _reify(markup: str) -> svglab.Svg:
-    original = svglab.parse_svg(
-        f'<svg width="20" height="20">{markup}</svg>'
-    )
+def _reify(markup: str) -> Svg:
+    original = parse_svg(f'<svg width="20" height="20">{markup}</svg>')
     reified = copy.deepcopy(original)
     reified.reify()
 
-    conftest.assert_svg_visually_equal(original, reified)
+    assert_svg_visually_equal(original, reified)
 
     return reified
 
@@ -38,9 +36,7 @@ def _reify(markup: str) -> svglab.Svg:
 def test_coordinates_left_at_the_origin_stay_unset(
     markup: str, names: tuple[str, ...]
 ) -> None:
-    element = next(
-        _reify(markup).find_all(svglab.Rect, svglab.Circle, svglab.Line)
-    )
+    element = next(_reify(markup).find_all(Rect, Circle, Line))
 
     for name in names:
         assert getattr(element, name) is None
@@ -50,16 +46,16 @@ def test_coordinates_left_at_the_origin_stay_unset(
 def test_translation_along_one_axis_sets_only_that_axis() -> None:
     rect = _reify(
         '<rect width="5" height="5" transform="translate(0 5)"/>'
-    ).find(svglab.Rect)
+    ).find(Rect)
 
     assert rect.x is None
-    assert rect.y == svglab.Length(5)
+    assert rect.y == Length(5)
 
 
 def test_coordinates_that_move_are_written() -> None:
     circle = _reify('<circle r="3" transform="translate(4 5)"/>').find(
-        svglab.Circle
+        Circle
     )
 
-    assert circle.cx == svglab.Length(4)
-    assert circle.cy == svglab.Length(5)
+    assert circle.cx == Length(4)
+    assert circle.cy == Length(5)

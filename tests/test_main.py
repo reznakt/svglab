@@ -14,9 +14,57 @@ import pytest
 from typing_extensions import Final, Literal, Protocol
 
 import svglab
-from svglab import entities
-from svglab.elements import elements, names, traits
-from tests import conftest
+from svglab import (
+    ArcTo,
+    CData,
+    Circle,
+    ClosePath,
+    Color,
+    Comment,
+    Element,
+    Ellipse,
+    Entity,
+    FloatPrecisionSettings,
+    Formatter,
+    G,
+    Iri,
+    Length,
+    LengthUnit,
+    Line,
+    LinearGradient,
+    LineTo,
+    Matrix,
+    Path,
+    PathCommand,
+    PathData,
+    Point,
+    Polygon,
+    Polyline,
+    PrecisionInterval,
+    RawText,
+    Rect,
+    Rotate,
+    Scale,
+    SkewX,
+    SkewY,
+    Svg,
+    SvgElementNotFoundError,
+    SvgPathMissingMoveToError,
+    Transform,
+    Translate,
+    UnknownElement,
+    compose,
+    parse_svg,
+)
+from svglab.elements import elements, traits
+from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED
+from svglab.entities import element_name as get_element_name
+from tests.conftest import (
+    ASSETS_DIR,
+    assert_svg_visually_equal,
+    complex_svg,
+    nested_svg,
+)
 
 
 class _SupportsSerialize(Protocol):
@@ -25,14 +73,7 @@ class _SupportsSerialize(Protocol):
 
 numbers: Final = st.floats(allow_nan=False, allow_infinity=False)
 MarkupInput = str | bytes | io.StringIO | io.BytesIO
-ShapeWithPath = (
-    svglab.Circle
-    | svglab.Ellipse
-    | svglab.Line
-    | svglab.Polygon
-    | svglab.Polyline
-    | svglab.Rect
-)
+ShapeWithPath = Circle | Ellipse | Line | Polygon | Polyline | Rect
 
 
 def _to_bytes_buffer(xml: str) -> io.BytesIO:
@@ -41,7 +82,7 @@ def _to_bytes_buffer(xml: str) -> io.BytesIO:
 
 @hypothesis.given(numbers)
 def test_valid_length(value: float) -> None:
-    units: list[svglab.LengthUnit | None] = [
+    units: list[LengthUnit | None] = [
         "px",
         "cm",
         "mm",
@@ -54,14 +95,14 @@ def test_valid_length(value: float) -> None:
 
     for unit in units:
         xml = f"<svg><rect width='{value}{unit or ''}'/></svg>"
-        svg = svglab.parse_svg(xml)
+        svg = parse_svg(xml)
 
-        assert isinstance(svg, svglab.Svg)
+        assert isinstance(svg, Svg)
 
         rect = next(iter(svg.children))
-        assert isinstance(rect, svglab.Rect)
+        assert isinstance(rect, Rect)
 
-        assert rect.width == svglab.Length(value, unit)
+        assert rect.width == Length(value, unit)
 
 
 @pytest.mark.parametrize("value", ["", "foo", "px", "1.2."])
@@ -72,7 +113,7 @@ def test_invalid_length(value: str) -> None:
         ValueError,
         match=r"Failed to parse text with grammar 'length.lark'",
     ):
-        svglab.parse_svg(xml)
+        parse_svg(xml)
 
 
 @pytest.mark.parametrize(
@@ -81,24 +122,24 @@ def test_invalid_length(value: str) -> None:
 def test_parse_svg_accepts_multiple_input_types(
     factory: Callable[[str], MarkupInput], tmp_path: pathlib.Path
 ) -> None:
-    svg = conftest.complex_svg()
+    svg = complex_svg()
     xml = svg.to_xml(pretty=False)
-    baseline = svglab.parse_svg(xml)
+    baseline = parse_svg(xml)
 
     path = tmp_path / "input.svg"
     path.write_text(xml)
 
-    assert svglab.parse_svg(factory(xml)) == baseline
-    assert svglab.parse_svg(path) == baseline
+    assert parse_svg(factory(xml)) == baseline
+    assert parse_svg(path) == baseline
 
 
 def test_parse_svg_html_parser_finds_wrapped_fragment() -> None:
-    svg = svglab.parse_svg(
+    svg = parse_svg(
         "<html><body><svg><rect width='10'/></svg></body></html>",
         parser="html.parser",
     )
 
-    assert isinstance(svg.find(svglab.Rect), svglab.Rect)
+    assert isinstance(svg.find(Rect), Rect)
 
 
 @pytest.mark.parametrize(
@@ -114,7 +155,7 @@ def test_parse_svg_requires_exactly_one_svg(
     with pytest.raises(
         ValueError, match=rf"Expected one <svg> element, found {count}"
     ):
-        svglab.parse_svg(markup, parser="html.parser")
+        parse_svg(markup, parser="html.parser")
 
 
 @pytest.mark.skipif(
@@ -123,18 +164,18 @@ def test_parse_svg_requires_exactly_one_svg(
 )
 def test_parse_svg_html5lib_without_extra() -> None:
     with pytest.raises(ImportError, match=r"svglab\[html5lib\]"):
-        svglab.parse_svg("<svg/>", parser="html5lib")
+        parse_svg("<svg/>", parser="html5lib")
 
 
 def test_parse_svg_unknown_element_roundtrip() -> None:
     xml = "<svg><custom-element data-extra='value'/></svg>"
 
-    svg = svglab.parse_svg(xml)
-    unknown = svg.find(svglab.UnknownElement)
+    svg = parse_svg(xml)
+    unknown = svg.find(UnknownElement)
 
     assert unknown.element_name == "custom-element"
     assert unknown.extra_attrs() == {"data-extra": "value"}
-    assert svglab.parse_svg(svg.to_xml(pretty=False)) == svg
+    assert parse_svg(svg.to_xml(pretty=False)) == svg
 
 
 @pytest.mark.parametrize(
@@ -154,7 +195,7 @@ def test_parse_svg_error_message_truncates_markup_head(
     markup: str | bytes | io.StringIO | io.BytesIO,
 ) -> None:
     with pytest.raises(ValueError, match=r"markup: .+\.\.\."):
-        svglab.parse_svg(markup, parser="html.parser")
+        parse_svg(markup, parser="html.parser")
 
 
 def test_parse_svg_path_error_message_truncates_markup_head(
@@ -165,17 +206,17 @@ def test_parse_svg_path_error_message_truncates_markup_head(
     path.write_text(markup)
 
     with pytest.raises(ValueError, match=r"markup: .+\.\.\."):
-        svglab.parse_svg(path, parser="html.parser")
+        parse_svg(path, parser="html.parser")
 
 
-def util_test_transform(text: str, parsed: svglab.Transform) -> None:
+def util_test_transform(text: str, parsed: Transform) -> None:
     xml = f"<svg><rect transform='{text}'/></svg>"
-    svg = svglab.parse_svg(xml)
+    svg = parse_svg(xml)
 
-    assert isinstance(svg, svglab.Svg)
+    assert isinstance(svg, Svg)
 
     rect = next(iter(svg.children))
-    assert isinstance(rect, svglab.Rect)
+    assert isinstance(rect, Rect)
 
     assert rect.transform == parsed
 
@@ -184,7 +225,7 @@ def util_test_transform(text: str, parsed: svglab.Transform) -> None:
 def test_valid_scale(x: float, y: float | None) -> None:
     util_test_transform(
         f"scale({x}, {y})" if y is not None else f"scale({x})",
-        [svglab.Scale(x) if y is None else svglab.Scale(x, y)],
+        [Scale(x) if y is None else Scale(x, y)],
     )
 
 
@@ -192,23 +233,23 @@ def test_valid_scale(x: float, y: float | None) -> None:
 def test_valid_translate(x: float, y: float | None) -> None:
     util_test_transform(
         f"translate({x}, {y})" if y is not None else f"translate({x})",
-        [svglab.Translate(x) if y is None else svglab.Translate(x, y)],
+        [Translate(x) if y is None else Translate(x, y)],
     )
 
 
 @hypothesis.given(numbers)
 def test_valid_rotate(angle: float) -> None:
-    util_test_transform(f"rotate({angle})", [svglab.Rotate(angle)])
+    util_test_transform(f"rotate({angle})", [Rotate(angle)])
 
 
 @hypothesis.given(numbers)
 def test_valid_skew_x(angle: float) -> None:
-    util_test_transform(f"skewX({angle})", [svglab.SkewX(angle)])
+    util_test_transform(f"skewX({angle})", [SkewX(angle)])
 
 
 @hypothesis.given(numbers)
 def test_valid_skew_y(angle: float) -> None:
-    util_test_transform(f"skewY({angle})", [svglab.SkewY(angle)])
+    util_test_transform(f"skewY({angle})", [SkewY(angle)])
 
 
 @hypothesis.given(numbers, numbers, numbers, numbers, numbers, numbers)
@@ -216,24 +257,23 @@ def test_valid_matrix(
     a: float, b: float, c: float, d: float, e: float, f: float
 ) -> None:
     util_test_transform(
-        f"matrix({a}, {b}, {c}, {d}, {e}, {f})",
-        [svglab.Matrix(a, b, c, d, e, f)],
+        f"matrix({a}, {b}, {c}, {d}, {e}, {f})", [Matrix(a, b, c, d, e, f)]
     )
 
 
 def test_valid_transform_sequence() -> None:
     transforms = {
-        "scale(1.5, 2)": svglab.Scale(1.5, 2),
-        "scale(1.5)": svglab.Scale(1.5),
-        "translate(1, 2)": svglab.Translate(1, 2),
-        "translate(.1)": svglab.Translate(0.1),
-        "rotate(45)": svglab.Rotate(45),
-        "rotate(45, 1, 2.)": svglab.Rotate(45, 1, 2.0),
-        "skewX(45)": svglab.SkewX(45),
-        "skewY(45)": svglab.SkewY(45),
-        "matrix(1, 0, 0, 1, 0, 0)": svglab.Matrix(1, 0, 0, 1, 0, 0),
-        "skewX(1e+04)": svglab.SkewX(1e4),
-        "skewX(1e-04)": svglab.SkewX(1e-4),
+        "scale(1.5, 2)": Scale(1.5, 2),
+        "scale(1.5)": Scale(1.5),
+        "translate(1, 2)": Translate(1, 2),
+        "translate(.1)": Translate(0.1),
+        "rotate(45)": Rotate(45),
+        "rotate(45, 1, 2.)": Rotate(45, 1, 2.0),
+        "skewX(45)": SkewX(45),
+        "skewY(45)": SkewY(45),
+        "matrix(1, 0, 0, 1, 0, 0)": Matrix(1, 0, 0, 1, 0, 0),
+        "skewX(1e+04)": SkewX(1e4),
+        "skewX(1e-04)": SkewX(1e-4),
     }
 
     for sep in ",", " ":
@@ -260,53 +300,43 @@ def test_invalid_transform(text: str) -> None:
         ValueError,
         match=r"Failed to parse text with grammar 'transform.lark'",
     ):
-        svglab.parse_svg(f"<svg><rect transform='{text}'/></svg>")
+        parse_svg(f"<svg><rect transform='{text}'/></svg>")
 
 
 def test_attribute_normalization_native() -> None:
-    rect = svglab.Rect(
-        stroke_dasharray=[
-            svglab.Length(1),
-            svglab.Length(2),
-            svglab.Length(3),
-        ],
-        stroke_dashoffset=svglab.Length(1),
+    rect = Rect(
+        stroke_dasharray=[Length(1), Length(2), Length(3)],
+        stroke_dashoffset=Length(1),
         stroke_linecap="round",
         stroke_linejoin="round",
-        stroke_width=svglab.Length(1),
+        stroke_width=Length(1),
         stroke_opacity=0.9,
-        xml_base=svglab.Iri(scheme="https", authority="example.com"),
+        xml_base=Iri(scheme="https", authority="example.com"),
         xml_lang="en",
         xml_space="preserve",
     )
 
     assert rect.extra_attrs() == {}
 
-    assert rect.stroke_dasharray == [
-        svglab.Length(1),
-        svglab.Length(2),
-        svglab.Length(3),
-    ]
-    assert rect.stroke_dashoffset == svglab.Length(1)
+    assert rect.stroke_dasharray == [Length(1), Length(2), Length(3)]
+    assert rect.stroke_dashoffset == Length(1)
     assert rect.stroke_linecap == "round"
     assert rect.stroke_linejoin == "round"
-    assert rect.stroke_width == svglab.Length(1)
+    assert rect.stroke_width == Length(1)
     assert rect.stroke_opacity == 0.9
-    assert rect.xml_base == svglab.Iri(
-        scheme="https", authority="example.com"
-    )
+    assert rect.xml_base == Iri(scheme="https", authority="example.com")
     assert rect.xml_lang == "en"
     assert rect.xml_space == "preserve"
 
 
 def test_attribute_normalization_validate() -> None:
-    rect = svglab.Rect.model_validate(
+    rect = Rect.model_validate(
         {
             "stroke-dasharray": "1 2 3",
-            "stroke-dashoffset": svglab.Length(1),
+            "stroke-dashoffset": Length(1),
             "stroke-linecap": "round",
             "stroke-linejoin": "round",
-            "stroke-width": svglab.Length(1),
+            "stroke-width": Length(1),
             "stroke-opacity": 0.9,
             "xml:base": "http://example.com",
             "xml:lang": "en",
@@ -316,36 +346,26 @@ def test_attribute_normalization_validate() -> None:
 
     assert rect.extra_attrs() == {}
 
-    assert rect.stroke_dasharray == [
-        svglab.Length(1),
-        svglab.Length(2),
-        svglab.Length(3),
-    ]
-    assert rect.stroke_dashoffset == svglab.Length(1)
+    assert rect.stroke_dasharray == [Length(1), Length(2), Length(3)]
+    assert rect.stroke_dashoffset == Length(1)
     assert rect.stroke_linecap == "round"
     assert rect.stroke_linejoin == "round"
-    assert rect.stroke_width == svglab.Length(1)
+    assert rect.stroke_width == Length(1)
     assert rect.stroke_opacity == 0.9
-    assert rect.xml_base == svglab.Iri(
-        scheme="http", authority="example.com"
-    )
+    assert rect.xml_base == Iri(scheme="http", authority="example.com")
     assert rect.xml_lang == "en"
     assert rect.xml_space == "preserve"
 
 
 def test_attribute_normalization_serialize() -> None:
-    rect = svglab.Rect(
-        stroke_dasharray=[
-            svglab.Length(1),
-            svglab.Length(2),
-            svglab.Length(3),
-        ],
-        stroke_dashoffset=svglab.Length(1),
+    rect = Rect(
+        stroke_dasharray=[Length(1), Length(2), Length(3)],
+        stroke_dashoffset=Length(1),
         stroke_linecap="round",
         stroke_linejoin="round",
-        stroke_width=svglab.Length(1),
+        stroke_width=Length(1),
         stroke_opacity=0.9,
-        xml_base=svglab.Iri(scheme="https", authority="example.com"),
+        xml_base=Iri(scheme="https", authority="example.com"),
         xml_lang="en",
         xml_space="preserve",
     )
@@ -372,7 +392,7 @@ def test_attribute_normalization_serialize() -> None:
 
 
 def test_svg_save_roundtrip_path_and_file(tmp_path: pathlib.Path) -> None:
-    svg = conftest.nested_svg()
+    svg = nested_svg()
     path = tmp_path / "saved.svg"
 
     svg.save(path, pretty=False)
@@ -382,11 +402,11 @@ def test_svg_save_roundtrip_path_and_file(tmp_path: pathlib.Path) -> None:
     svg.save(buffer, pretty=False, trailing_newline=False)
 
     assert not buffer.getvalue().endswith("\n")
-    assert svglab.parse_svg(path) == svglab.parse_svg(buffer.getvalue())
+    assert parse_svg(path) == parse_svg(buffer.getvalue())
 
 
 def test_svg_to_data_uri_roundtrip() -> None:
-    svg = conftest.complex_svg()
+    svg = complex_svg()
 
     data_uri = svg.to_data_uri()
     prefix = "data:image/svg+xml;base64,"
@@ -395,122 +415,122 @@ def test_svg_to_data_uri_roundtrip() -> None:
 
     decoded = base64.b64decode(data_uri.removeprefix(prefix)).decode()
 
-    assert svglab.parse_svg(decoded).to_data_uri() == data_uri
+    assert parse_svg(decoded).to_data_uri() == data_uri
 
 
 @pytest.mark.parametrize(
     ("shape", "expected_num_commands", "last_command_type"),
     [
         pytest.param(
-            svglab.Circle(
-                cx=svglab.Length(40),
-                cy=svglab.Length(50),
-                r=svglab.Length(20),
-                fill=svglab.Color("red"),
-                stroke=svglab.Color("black"),
+            Circle(
+                cx=Length(40),
+                cy=Length(50),
+                r=Length(20),
+                fill=Color("red"),
+                stroke=Color("black"),
             ),
             3,
-            svglab.ArcTo,
+            ArcTo,
             id="circle",
         ),
         pytest.param(
-            svglab.Ellipse(
-                cx=svglab.Length(60),
-                cy=svglab.Length(45),
-                rx=svglab.Length(30),
-                ry=svglab.Length(10),
-                fill=svglab.Color("green"),
-                stroke=svglab.Color("black"),
+            Ellipse(
+                cx=Length(60),
+                cy=Length(45),
+                rx=Length(30),
+                ry=Length(10),
+                fill=Color("green"),
+                stroke=Color("black"),
             ),
             3,
-            svglab.ArcTo,
+            ArcTo,
             id="ellipse",
         ),
         pytest.param(
-            svglab.Line(
-                x1=svglab.Length(10),
-                y1=svglab.Length(15),
-                x2=svglab.Length(90),
-                y2=svglab.Length(70),
-                stroke=svglab.Color("blue"),
-                stroke_width=svglab.Length(4),
+            Line(
+                x1=Length(10),
+                y1=Length(15),
+                x2=Length(90),
+                y2=Length(70),
+                stroke=Color("blue"),
+                stroke_width=Length(4),
             ),
             2,
-            svglab.LineTo,
+            LineTo,
             id="line",
         ),
         pytest.param(
-            svglab.Polygon(
+            Polygon(
                 points=[
-                    svglab.Point(10, 10),
-                    svglab.Point(90, 10),
-                    svglab.Point(75, 70),
-                    svglab.Point(25, 70),
+                    Point(10, 10),
+                    Point(90, 10),
+                    Point(75, 70),
+                    Point(25, 70),
                 ],
-                fill=svglab.Color("yellow"),
-                stroke=svglab.Color("black"),
+                fill=Color("yellow"),
+                stroke=Color("black"),
             ),
             5,
-            svglab.ClosePath,
+            ClosePath,
             id="polygon",
         ),
         pytest.param(
-            svglab.Polyline(
+            Polyline(
                 points=[
-                    svglab.Point(10, 50),
-                    svglab.Point(30, 20),
-                    svglab.Point(60, 60),
-                    svglab.Point(90, 25),
+                    Point(10, 50),
+                    Point(30, 20),
+                    Point(60, 60),
+                    Point(90, 25),
                 ],
                 fill="none",
-                stroke=svglab.Color("purple"),
-                stroke_width=svglab.Length(3),
+                stroke=Color("purple"),
+                stroke_width=Length(3),
             ),
             4,
-            svglab.LineTo,
+            LineTo,
             id="polyline",
         ),
         pytest.param(
-            svglab.Rect(
-                x=svglab.Length(20),
-                y=svglab.Length(15),
-                width=svglab.Length(60),
-                height=svglab.Length(40),
-                rx=svglab.Length(8),
-                fill=svglab.Color("orange"),
-                stroke=svglab.Color("black"),
+            Rect(
+                x=Length(20),
+                y=Length(15),
+                width=Length(60),
+                height=Length(40),
+                rx=Length(8),
+                fill=Color("orange"),
+                stroke=Color("black"),
             ),
             10,
-            svglab.ClosePath,
+            ClosePath,
             id="rect-rx-only",
         ),
         pytest.param(
-            svglab.Rect(
-                x=svglab.Length(15),
-                y=svglab.Length(20),
-                width=svglab.Length(70),
-                height=svglab.Length(35),
-                ry=svglab.Length(6),
-                fill=svglab.Color("cyan"),
-                stroke=svglab.Color("black"),
+            Rect(
+                x=Length(15),
+                y=Length(20),
+                width=Length(70),
+                height=Length(35),
+                ry=Length(6),
+                fill=Color("cyan"),
+                stroke=Color("black"),
             ),
             10,
-            svglab.ClosePath,
+            ClosePath,
             id="rect-ry-only",
         ),
         pytest.param(
-            svglab.Rect(
-                x=svglab.Length(10),
-                y=svglab.Length(10),
-                width=svglab.Length(80),
-                height=svglab.Length(50),
-                rx=svglab.Length(12),
-                ry=svglab.Length(4),
-                fill=svglab.Color("pink"),
-                stroke=svglab.Color("black"),
+            Rect(
+                x=Length(10),
+                y=Length(10),
+                width=Length(80),
+                height=Length(50),
+                rx=Length(12),
+                ry=Length(4),
+                fill=Color("pink"),
+                stroke=Color("black"),
             ),
             10,
-            svglab.ClosePath,
+            ClosePath,
             id="rect-rx-ry",
         ),
     ],
@@ -518,48 +538,43 @@ def test_svg_to_data_uri_roundtrip() -> None:
 def test_basic_shape_to_path_is_visually_equivalent(
     shape: ShapeWithPath,
     expected_num_commands: int,
-    last_command_type: type[svglab.PathCommand],
+    last_command_type: type[PathCommand],
 ) -> None:
-    original = svglab.Svg(
-        width=svglab.Length(100), height=svglab.Length(100)
-    ).add_child(copy.deepcopy(shape))
+    original = Svg(width=Length(100), height=Length(100)).add_child(
+        copy.deepcopy(shape)
+    )
     path = copy.deepcopy(shape).to_path()
-    converted = svglab.Svg(
-        width=svglab.Length(100), height=svglab.Length(100)
-    ).add_child(path)
+    converted = Svg(width=Length(100), height=Length(100)).add_child(path)
 
     assert path.d is not None
     assert len(path.d) == expected_num_commands
     assert isinstance(path.d[-1], last_command_type)
-    conftest.assert_svg_visually_equal(original, converted)
+    assert_svg_visually_equal(original, converted)
 
 
 def test_shape_set_path_length_scales_non_percentage_attrs() -> None:
-    path = svglab.Path(
+    path = Path(
         pathLength=100,
-        stroke_dasharray=[svglab.Length(10), svglab.Length(5, "%")],
-        stroke_dashoffset=svglab.Length(4),
+        stroke_dasharray=[Length(10), Length(5, "%")],
+        stroke_dashoffset=Length(4),
     )
 
     path.set_path_length(250)
 
     assert path.pathLength == 250
-    assert path.stroke_dasharray == [
-        svglab.Length(25),
-        svglab.Length(5, "%"),
-    ]
-    assert path.stroke_dashoffset == svglab.Length(10)
+    assert path.stroke_dasharray == [Length(25), Length(5, "%")]
+    assert path.stroke_dashoffset == Length(10)
 
 
 def test_shape_set_path_length_requires_positive_value() -> None:
-    path = svglab.Path(pathLength=100)
+    path = Path(pathLength=100)
 
     with pytest.raises(ValueError, match="Path length must be positive"):
         path.set_path_length(0)
 
 
 def test_shape_set_path_length_requires_existing_path_length() -> None:
-    path = svglab.Path()
+    path = Path()
 
     with pytest.raises(
         RuntimeError, match="Current pathLength must not be None"
@@ -567,11 +582,9 @@ def test_shape_set_path_length_requires_existing_path_length() -> None:
         path.set_path_length(100)
 
 
-@pytest.mark.parametrize(
-    "element", [svglab.RawText, svglab.Comment, svglab.CData]
-)
+@pytest.mark.parametrize("element", [RawText, Comment, CData])
 def test_text_elements_min_str_length_invalid(
-    element: type[svglab.RawText | svglab.Comment | svglab.CData],
+    element: type[RawText | Comment | CData],
 ) -> None:
     with pytest.raises(pydantic.ValidationError):
         element("")
@@ -579,61 +592,59 @@ def test_text_elements_min_str_length_invalid(
 
 @hypothesis.given(st.text(min_size=1))
 def test_text_elements_min_str_length_valid(test: str) -> None:
-    svglab.RawText(test)
-    svglab.Comment(test)
-    svglab.CData(test)
+    RawText(test)
+    Comment(test)
+    CData(test)
 
 
 @hypothesis.given(st.text(min_size=1))
 def test_eq_text(text: str) -> None:
-    assert svglab.RawText(text) == svglab.RawText(text)
-    assert svglab.Comment(text) == svglab.Comment(text)
-    assert svglab.CData(text) == svglab.CData(text)
+    assert RawText(text) == RawText(text)
+    assert Comment(text) == Comment(text)
+    assert CData(text) == CData(text)
 
-    assert svglab.RawText(text) != svglab.Comment(text)
-    assert svglab.RawText(text) != svglab.CData(text)
-    assert svglab.Comment(text) != svglab.CData(text)
+    assert RawText(text) != Comment(text)
+    assert RawText(text) != CData(text)
+    assert Comment(text) != CData(text)
 
 
 def test_eq_element_simple() -> None:
-    assert svglab.Rect() == svglab.Rect()
-    assert svglab.Rect() != svglab.Circle()
+    assert Rect() == Rect()
+    assert Rect() != Circle()
 
-    stroke_width = svglab.Length(1, "px")
+    stroke_width = Length(1, "px")
 
-    assert svglab.Rect(stroke_width=stroke_width) == svglab.Rect(
+    assert Rect(stroke_width=stroke_width) == Rect(
         stroke_width=stroke_width
     )
-    assert svglab.Rect(stroke_width=stroke_width) != svglab.Rect()
-    assert svglab.Rect(stroke_width=stroke_width) != svglab.Rect(
-        stroke_width=svglab.Length(2, "px")
+    assert Rect(stroke_width=stroke_width) != Rect()
+    assert Rect(stroke_width=stroke_width) != Rect(
+        stroke_width=Length(2, "px")
     )
-    assert svglab.Rect(stroke_width=stroke_width) != svglab.Circle(
+    assert Rect(stroke_width=stroke_width) != Circle(
         stroke_width=stroke_width
     )
 
-    assert svglab.Rect(stroke_width=stroke_width) != svglab.Rect(
-        stroke_width=stroke_width, stroke=svglab.Color("red")
+    assert Rect(stroke_width=stroke_width) != Rect(
+        stroke_width=stroke_width, stroke=Color("red")
     )
 
 
 def test_eq_element_group() -> None:
-    assert svglab.G().add_child(svglab.Rect()) == svglab.G().add_child(
-        svglab.Rect()
-    )
+    assert G().add_child(Rect()) == G().add_child(Rect())
 
 
 @hypothesis.given(st.text())
 def test_eq_element_prefix(prefix: str) -> None:
-    assert svglab.Rect(prefix=prefix) == svglab.Rect(prefix=prefix)
+    assert Rect(prefix=prefix) == Rect(prefix=prefix)
 
 
 def test_tree_navigation_search_and_mutation() -> None:
-    root = svglab.Svg()
-    group = svglab.G(id="group")
-    rect = svglab.Rect(id="rect")
-    circle = svglab.Circle(id="circle")
-    line = svglab.Line(id="line")
+    root = Svg()
+    group = G(id="group")
+    rect = Rect(id="rect")
+    circle = Circle(id="circle")
+    line = Line(id="line")
 
     root.add_child(group)
     group.add_children(rect, circle, line)
@@ -645,10 +656,10 @@ def test_tree_navigation_search_and_mutation() -> None:
     assert circle.get_root() is root
 
     assert group.find("circle", recursive=False) is circle
-    assert list(group.find_all(svglab.Circle, recursive=False)) == [circle]
+    assert list(group.find_all(Circle, recursive=False)) == [circle]
     assert group.find("ellipse", default=None) is None
 
-    with pytest.raises(svglab.SvgElementNotFoundError):
+    with pytest.raises(SvgElementNotFoundError):
         group.find("ellipse")
 
     assert group.get_child_index(circle) == 1
@@ -673,120 +684,87 @@ def test_tree_navigation_search_and_mutation() -> None:
 
 
 def test_resolve_iri_and_reference_detection() -> None:
-    gradient = svglab.LinearGradient(id="paint")
-    rect = svglab.Rect(fill=gradient.get_func_iri())
-    svg = svglab.Svg().add_children(gradient, rect)
+    gradient = LinearGradient(id="paint")
+    rect = Rect(fill=gradient.get_func_iri())
+    svg = Svg().add_children(gradient, rect)
 
-    assert svg.resolve_iri(svglab.Iri(fragment="paint")) is gradient
+    assert svg.resolve_iri(Iri(fragment="paint")) is gradient
     assert rect.references_other_element() is True
 
-    rect.fill = svglab.Iri(fragment="missing").to_func_iri()
+    rect.fill = Iri(fragment="missing").to_func_iri()
 
     with pytest.warns(UserWarning, match=r"Dangling IRI reference"):
         assert rect.references_other_element() is False
 
     with pytest.raises(ValueError, match="non-local IRI reference"):
-        svg.resolve_iri(
-            svglab.Iri(scheme="https", authority="example.com")
-        )
+        svg.resolve_iri(Iri(scheme="https", authority="example.com"))
 
 
 @pytest.mark.parametrize(
     ("text", "expected"),
     [
-        ("", svglab.PathData()),
-        ("M 10,10", svglab.PathData().move_to(svglab.Point(10, 10))),
+        ("", PathData()),
+        ("M 10,10", PathData().move_to(Point(10, 10))),
         (
             "M0,0L 10,10",
-            svglab.PathData()
-            .move_to(svglab.Point(0, 0))
-            .line_to(svglab.Point(10, 10)),
+            PathData().move_to(Point(0, 0)).line_to(Point(10, 10)),
         ),
         (
             "M0,0H 10",
-            svglab.PathData()
-            .move_to(svglab.Point(0, 0))
-            .horizontal_line_to(10),
+            PathData().move_to(Point(0, 0)).horizontal_line_to(10),
         ),
-        (
-            "M0,0V 10",
-            svglab.PathData()
-            .move_to(svglab.Point(0, 0))
-            .vertical_line_to(10),
-        ),
+        ("M0,0V 10", PathData().move_to(Point(0, 0)).vertical_line_to(10)),
         (
             # https://github.com/mathandy/svgpathtools/issues/185
             "M12 22a10 10 0 110-20 10 10 0 010 20z",
-            svglab.PathData()
-            .move_to(svglab.Point(12, 22))
+            PathData()
+            .move_to(Point(12, 22))
+            .arc_to(Point(10, 10), 0, Point(12, 2), large=True, sweep=True)
             .arc_to(
-                svglab.Point(10, 10),
-                0,
-                svglab.Point(12, 2),
-                large=True,
-                sweep=True,
-            )
-            .arc_to(
-                svglab.Point(10, 10),
-                0,
-                svglab.Point(12, 22),
-                large=False,
-                sweep=True,
+                Point(10, 10), 0, Point(12, 22), large=False, sweep=True
             )
             .close(),
         ),
         (
             "M1 1 2 2 3 3 4 4",
-            svglab.PathData()
-            .move_to(svglab.Point(1, 1))
-            .line_to(svglab.Point(2, 2))
-            .line_to(svglab.Point(3, 3))
-            .line_to(svglab.Point(4, 4)),
+            PathData()
+            .move_to(Point(1, 1))
+            .line_to(Point(2, 2))
+            .line_to(Point(3, 3))
+            .line_to(Point(4, 4)),
         ),
         (
             (
                 "M0,0C 10,10 20,20 30,30S 40,40 50,50Q 60,60 70,70T 80,80"
                 "A 90,90 0 1 0 100,100T 110,110ZH 120V 130L 140,140Z"
             ),
-            svglab.PathData()
-            .move_to(svglab.Point(0, 0))
-            .cubic_bezier_to(
-                svglab.Point(10, 10),
-                svglab.Point(20, 20),
-                svglab.Point(30, 30),
-            )
-            .smooth_cubic_bezier_to(
-                svglab.Point(40, 40), svglab.Point(50, 50)
-            )
-            .quadratic_bezier_to(
-                svglab.Point(60, 60), svglab.Point(70, 70)
-            )
-            .smooth_quadratic_bezier_to(svglab.Point(80, 80))
+            PathData()
+            .move_to(Point(0, 0))
+            .cubic_bezier_to(Point(10, 10), Point(20, 20), Point(30, 30))
+            .smooth_cubic_bezier_to(Point(40, 40), Point(50, 50))
+            .quadratic_bezier_to(Point(60, 60), Point(70, 70))
+            .smooth_quadratic_bezier_to(Point(80, 80))
             .arc_to(
-                svglab.Point(90, 90),
-                0,
-                svglab.Point(100, 100),
-                large=True,
-                sweep=False,
+                Point(90, 90), 0, Point(100, 100), large=True, sweep=False
             )
-            .smooth_quadratic_bezier_to(svglab.Point(110, 110))
+            .smooth_quadratic_bezier_to(Point(110, 110))
             .close()
             .horizontal_line_to(120)
             .vertical_line_to(130)
-            .line_to(svglab.Point(140, 140))
+            .line_to(Point(140, 140))
             .close(),
         ),
         (
             "M0,0 Z H100",  # no moveto after closepath
-            svglab.PathData()
-            .move_to(svglab.Point(0, 0))
+            PathData()
+            .move_to(Point(0, 0))
             .close()
             .horizontal_line_to(100),
         ),
     ],
 )
 def test_path_data_parse(text: str, expected: str) -> None:
-    assert svglab.PathData.from_str(text) == expected
+    assert PathData.from_str(text) == expected
 
 
 def test_path_data_parse_moveto_must_be_first() -> None:
@@ -794,81 +772,60 @@ def test_path_data_parse_moveto_must_be_first() -> None:
         ValueError,
         match=r"Failed to parse text with grammar 'path_data.lark'",
     ):
-        svglab.PathData.from_str("L 10,10")
+        PathData.from_str("L 10,10")
 
 
 SHORTHAND_TESTS: Final = [
-    (svglab.PathData(), svglab.PathData()),
+    (PathData(), PathData()),
+    (PathData().move_to(Point(10, 10)), PathData().move_to(Point(10, 10))),
     (
-        svglab.PathData().move_to(svglab.Point(10, 10)),
-        svglab.PathData().move_to(svglab.Point(10, 10)),
+        PathData().move_to(Point.zero()).line_to(Point(0, 10)),
+        PathData().move_to(Point.zero()).vertical_line_to(10),
     ),
     (
-        svglab.PathData()
-        .move_to(svglab.Point.zero())
-        .line_to(svglab.Point(0, 10)),
-        svglab.PathData()
-        .move_to(svglab.Point.zero())
-        .vertical_line_to(10),
+        PathData().move_to(Point.zero()).line_to(Point(10, 0)),
+        PathData().move_to(Point.zero()).horizontal_line_to(10),
     ),
     (
-        svglab.PathData()
-        .move_to(svglab.Point.zero())
-        .line_to(svglab.Point(10, 0)),
-        svglab.PathData()
-        .move_to(svglab.Point.zero())
-        .horizontal_line_to(10),
+        PathData()
+        .move_to(Point.zero())
+        .quadratic_bezier_to(Point(20, 0), Point(20, 20))
+        .quadratic_bezier_to(Point(20, 40), Point(40, 40)),
+        PathData()
+        .move_to(Point.zero())
+        .quadratic_bezier_to(Point(20, 0), Point(20, 20))
+        .smooth_quadratic_bezier_to(Point(40, 40)),
     ),
     (
-        svglab.PathData()
-        .move_to(svglab.Point.zero())
-        .quadratic_bezier_to(svglab.Point(20, 0), svglab.Point(20, 20))
-        .quadratic_bezier_to(svglab.Point(20, 40), svglab.Point(40, 40)),
-        svglab.PathData()
-        .move_to(svglab.Point.zero())
-        .quadratic_bezier_to(svglab.Point(20, 0), svglab.Point(20, 20))
-        .smooth_quadratic_bezier_to(svglab.Point(40, 40)),
-    ),
-    (
-        svglab.PathData()
-        .move_to(svglab.Point.zero())
-        .cubic_bezier_to(
-            svglab.Point(20, 0), svglab.Point(40, 0), svglab.Point(40, 20)
-        )
-        .cubic_bezier_to(
-            svglab.Point(40, 40),
-            svglab.Point(20, 40),
-            svglab.Point(20, 20),
-        ),
-        svglab.PathData()
-        .move_to(svglab.Point.zero())
-        .cubic_bezier_to(
-            svglab.Point(20, 0), svglab.Point(40, 0), svglab.Point(40, 20)
-        )
-        .smooth_cubic_bezier_to(
-            svglab.Point(20, 40), svglab.Point(20, 20)
-        ),
+        PathData()
+        .move_to(Point.zero())
+        .cubic_bezier_to(Point(20, 0), Point(40, 0), Point(40, 20))
+        .cubic_bezier_to(Point(40, 40), Point(20, 40), Point(20, 20)),
+        PathData()
+        .move_to(Point.zero())
+        .cubic_bezier_to(Point(20, 0), Point(40, 0), Point(40, 20))
+        .smooth_cubic_bezier_to(Point(20, 40), Point(20, 20)),
     ),
 ]
 
 
 @pytest.mark.parametrize(("before", "after"), SHORTHAND_TESTS)
 def test_path_data_apply_shorthands(
-    before: svglab.PathData, after: svglab.PathData
+    before: PathData, after: PathData
 ) -> None:
     assert before.apply_shorthands() == after
 
 
 @pytest.mark.parametrize(("after", "before"), SHORTHAND_TESTS)
 def test_path_data_resolve_shorthands(
-    after: svglab.PathData, before: svglab.PathData
+    after: PathData, before: PathData
 ) -> None:
     assert before.resolve_shorthands() == after
 
 
 @pytest.mark.parametrize(("before", "after"), SHORTHAND_TESTS)
 def test_path_data_shorthands_cancel(
-    before: svglab.PathData, after: svglab.PathData
+    before: PathData, after: PathData
 ) -> None:
     assert before.apply_shorthands().resolve_shorthands() == before
     assert after.resolve_shorthands().apply_shorthands() == after
@@ -876,7 +833,7 @@ def test_path_data_shorthands_cancel(
 
 @pytest.mark.parametrize(("before", "after"), SHORTHAND_TESTS)
 def test_path_data_shorthands_idempotent(
-    before: svglab.PathData, after: svglab.PathData
+    before: PathData, after: PathData
 ) -> None:
     assert (
         before.apply_shorthands()
@@ -905,70 +862,52 @@ def test_path_data_shorthands_idempotent(
     ],
 )
 def test_path_data_parse_serialize(text: str, expected: str) -> None:
-    assert svglab.PathData.from_str(text).serialize() == expected
+    assert PathData.from_str(text).serialize() == expected
 
 
 def test_path_data_first_command_is_move_to() -> None:
-    with pytest.raises(svglab.SvgPathMissingMoveToError):
-        svglab.PathData().line_to(svglab.Point(0, 0))
+    with pytest.raises(SvgPathMissingMoveToError):
+        PathData().line_to(Point(0, 0))
 
-    path = (
-        svglab.PathData()
-        .move_to(svglab.Point(0, 0))
-        .line_to(svglab.Point(0, 0))
-    )
+    path = PathData().move_to(Point(0, 0)).line_to(Point(0, 0))
     line_to = path[1]
 
-    with pytest.raises(svglab.SvgPathMissingMoveToError):
+    with pytest.raises(SvgPathMissingMoveToError):
         del path[0]
 
-    with pytest.raises(svglab.SvgPathMissingMoveToError):
+    with pytest.raises(SvgPathMissingMoveToError):
         path[0] = line_to
 
-    with pytest.raises(svglab.SvgPathMissingMoveToError):
-        svglab.PathData().insert(0, line_to)
+    with pytest.raises(SvgPathMissingMoveToError):
+        PathData().insert(0, line_to)
 
-    with pytest.raises(svglab.SvgPathMissingMoveToError):
-        svglab.PathData().append(line_to)
+    with pytest.raises(SvgPathMissingMoveToError):
+        PathData().append(line_to)
 
 
 @pytest.mark.parametrize(
     ("transforms", "before", "after"),
     [
-        ([svglab.Translate(1, 2)], svglab.Point(1, 2), svglab.Point(2, 4)),
-        ([svglab.Scale(2)], svglab.Point(1, 2), svglab.Point(2, 4)),
-        (
-            [svglab.Rotate(45, 1, 1)],
-            svglab.Point(1, 1),
-            svglab.Point(1, 1),
-        ),
-        (
-            [svglab.Rotate(90, 2, 2)],
-            svglab.Point(1, 1),
-            svglab.Point(3, 1),
-        ),
-        ([svglab.Rotate(90)], svglab.Point(1, 2), svglab.Point(-2, 1)),
-        ([svglab.SkewX(45)], svglab.Point(1, 2), svglab.Point(3, 2)),
-        ([svglab.SkewY(45)], svglab.Point(1, 2), svglab.Point(1, 3)),
+        ([Translate(1, 2)], Point(1, 2), Point(2, 4)),
+        ([Scale(2)], Point(1, 2), Point(2, 4)),
+        ([Rotate(45, 1, 1)], Point(1, 1), Point(1, 1)),
+        ([Rotate(90, 2, 2)], Point(1, 1), Point(3, 1)),
+        ([Rotate(90)], Point(1, 2), Point(-2, 1)),
+        ([SkewX(45)], Point(1, 2), Point(3, 2)),
+        ([SkewY(45)], Point(1, 2), Point(1, 3)),
     ],
 )
 def test_matrix_multiplication(
-    transforms: svglab.Transform, before: svglab.Point, after: svglab.Point
+    transforms: Transform, before: Point, after: Point
 ) -> None:
-    transformed = svglab.compose(transforms) @ before
+    transformed = compose(transforms) @ before
 
     assert transformed == after
 
 
 def test_render_preserves_aspect_ratio_for_single_dimension() -> None:
-    svg = svglab.Svg(
-        width=svglab.Length(100), height=svglab.Length(200)
-    ).add_child(
-        svglab.Rect(
-            width=svglab.Length(100),
-            height=svglab.Length(200),
-            fill=svglab.Color("red"),
-        )
+    svg = Svg(width=Length(100), height=Length(200)).add_child(
+        Rect(width=Length(100), height=Length(200), fill=Color("red"))
     )
 
     assert svg.render(width=50).size == (50, 100)
@@ -976,14 +915,8 @@ def test_render_preserves_aspect_ratio_for_single_dimension() -> None:
 
 
 def test_render_requires_resolvable_dimensions() -> None:
-    svg = svglab.Svg(
-        width=svglab.Length(100, "%"), height=svglab.Length(100, "%")
-    ).add_child(
-        svglab.Rect(
-            width=svglab.Length(100),
-            height=svglab.Length(100),
-            fill=svglab.Color("red"),
-        )
+    svg = Svg(width=Length(100, "%"), height=Length(100, "%")).add_child(
+        Rect(width=Length(100), height=Length(100), fill=Color("red"))
     )
 
     with pytest.raises(
@@ -1000,14 +933,8 @@ def test_render_requires_resolvable_dimensions() -> None:
 def test_render_preserves_aspect_ratio_with_both_dimensions(
     width: int, height: int, target_size: int
 ) -> None:
-    svg = svglab.Svg(
-        width=svglab.Length(width), height=svglab.Length(height)
-    ).add_child(
-        svglab.Rect(
-            width=svglab.Length(width),
-            height=svglab.Length(height),
-            fill=svglab.Color("red"),
-        )
+    svg = Svg(width=Length(width), height=Length(height)).add_child(
+        Rect(width=Length(width), height=Length(height), fill=Color("red"))
     )
 
     (img_width, img_height) = svg.render(
@@ -1022,18 +949,16 @@ def test_render_preserves_aspect_ratio_with_both_dimensions(
 
 
 def test_bbox_matches_mask_bounds() -> None:
-    svg = svglab.Svg(
-        width=svglab.Length(40), height=svglab.Length(30)
-    ).add_child(
-        svglab.Rect(
-            x=svglab.Length(5),
-            y=svglab.Length(6),
-            width=svglab.Length(10),
-            height=svglab.Length(8),
-            fill=svglab.Color("black"),
+    svg = Svg(width=Length(40), height=Length(30)).add_child(
+        Rect(
+            x=Length(5),
+            y=Length(6),
+            width=Length(10),
+            height=Length(8),
+            fill=Color("black"),
         )
     )
-    rect = svg.find(svglab.Rect)
+    rect = svg.find(Rect)
     mask = rect.get_mask()
     rows, cols = mask.nonzero()
 
@@ -1050,20 +975,18 @@ def test_bbox_matches_mask_bounds() -> None:
 def test_visible_only_mask_and_bbox_ignore_fully_transparent_geometry() -> (
     None
 ):
-    svg = svglab.Svg(
-        width=svglab.Length(40), height=svglab.Length(30)
-    ).add_child(
-        svglab.Rect(
-            x=svglab.Length(5),
-            y=svglab.Length(6),
-            width=svglab.Length(10),
-            height=svglab.Length(8),
-            fill=svglab.Color("black"),
+    svg = Svg(width=Length(40), height=Length(30)).add_child(
+        Rect(
+            x=Length(5),
+            y=Length(6),
+            width=Length(10),
+            height=Length(8),
+            fill=Color("black"),
             fill_opacity=0,
             stroke="none",
         )
     )
-    rect = svg.find(svglab.Rect)
+    rect = svg.find(Rect)
 
     assert rect.get_bbox() is not None
     assert rect.get_bbox(visible_only=True) is None
@@ -1072,122 +995,108 @@ def test_visible_only_mask_and_bbox_ignore_fully_transparent_geometry() -> (
 
 
 _TRANSFORMS: Final = [
-    [svglab.Translate(10, 20)],
-    [svglab.Translate(1, 5), svglab.Scale(0.5)],
-    [svglab.Translate(2, 1)] * 10,
-    [svglab.Scale(1.01)] * 10,
+    [Translate(10, 20)],
+    [Translate(1, 5), Scale(0.5)],
+    [Translate(2, 1)] * 10,
+    [Scale(1.01)] * 10,
     [
-        svglab.Scale(0.5),
-        svglab.Translate(5, 0),
-        svglab.Scale(1.5),
-        svglab.Translate(-10, -10),
-        svglab.Scale(0.75),
-        svglab.Translate(0, 10),
+        Scale(0.5),
+        Translate(5, 0),
+        Scale(1.5),
+        Translate(-10, -10),
+        Scale(0.75),
+        Translate(0, 10),
     ],
-    [svglab.Scale(1), svglab.Translate(0)],
+    [Scale(1), Translate(0)],
 ]
 
 _REIFY_SVGS: Final = [
-    conftest.complex_svg(),
-    conftest.nested_svg(),
-    svglab.Svg(
-        width=svglab.Length(1000), height=svglab.Length(1000)
-    ).add_child(
-        svglab.Rect(
-            x=svglab.Length(200),
-            y=svglab.Length(200),
-            width=svglab.Length(100),
-            height=svglab.Length(100),
-            stroke_width=svglab.Length(1),
-            fill=svglab.Color("red"),
-            stroke=svglab.Color("blue"),
+    complex_svg(),
+    nested_svg(),
+    Svg(width=Length(1000), height=Length(1000)).add_child(
+        Rect(
+            x=Length(200),
+            y=Length(200),
+            width=Length(100),
+            height=Length(100),
+            stroke_width=Length(1),
+            fill=Color("red"),
+            stroke=Color("blue"),
         )
     ),
-    svglab.Svg(
-        width=svglab.Length(1000), height=svglab.Length(1000)
-    ).add_child(
-        svglab.Rect(
-            x=svglab.Length(200),
-            y=svglab.Length(200),
-            width=svglab.Length(100),
-            height=svglab.Length(100),
-            stroke_width=svglab.Length(1),
-            fill=svglab.Color("red"),
-            stroke=svglab.Color("blue"),
-            transform=[svglab.Translate(10, 20), svglab.Scale(2)],
-            transform_origin=(svglab.Length(5), svglab.Length(0)),
+    Svg(width=Length(1000), height=Length(1000)).add_child(
+        Rect(
+            x=Length(200),
+            y=Length(200),
+            width=Length(100),
+            height=Length(100),
+            stroke_width=Length(1),
+            fill=Color("red"),
+            stroke=Color("blue"),
+            transform=[Translate(10, 20), Scale(2)],
+            transform_origin=(Length(5), Length(0)),
         )
     ),
-    svglab.Svg(
-        width=svglab.Length(1000), height=svglab.Length(1000)
-    ).add_child(
-        svglab.Rect(
-            x=svglab.Length(200),
-            y=svglab.Length(200),
-            width=svglab.Length(100),
-            height=svglab.Length(100),
-            fill=svglab.Color("red"),
-            stroke=svglab.Color("blue"),
-            transform_origin=(svglab.Length(10), svglab.Length(20)),
+    Svg(width=Length(1000), height=Length(1000)).add_child(
+        Rect(
+            x=Length(200),
+            y=Length(200),
+            width=Length(100),
+            height=Length(100),
+            fill=Color("red"),
+            stroke=Color("blue"),
+            transform_origin=(Length(10), Length(20)),
             transform=[
-                svglab.Translate(10, 20),
-                svglab.Scale(2),
-                svglab.Rotate(45),
-                svglab.Translate(250, -300),
-                svglab.SkewX(-45),
-                svglab.SkewY(-20),
+                Translate(10, 20),
+                Scale(2),
+                Rotate(45),
+                Translate(250, -300),
+                SkewX(-45),
+                SkewY(-20),
             ],
         )
     ),
-    svglab.Svg(
-        width=svglab.Length(1000), height=svglab.Length(1000)
-    ).add_child(
-        svglab.Rect(
-            width=svglab.Length(100),
-            height=svglab.Length(100),
-            fill=svglab.Color("red"),
-            stroke=svglab.Color("blue"),
+    Svg(width=Length(1000), height=Length(1000)).add_child(
+        Rect(
+            width=Length(100),
+            height=Length(100),
+            fill=Color("red"),
+            stroke=Color("blue"),
         )
     ),
-    svglab.Svg(
-        width=svglab.Length(1000), height=svglab.Length(1000)
-    ).add_child(
-        svglab.Path(
-            d=svglab.PathData()
-            .move_to(svglab.Point(100, 100))
-            .line_to(svglab.Point(200, 200))
+    Svg(width=Length(1000), height=Length(1000)).add_child(
+        Path(
+            d=PathData()
+            .move_to(Point(100, 100))
+            .line_to(Point(200, 200))
             .cubic_bezier_to(
-                svglab.Point(300, 200),
-                svglab.Point(400, 300),
-                svglab.Point(500, 300),
+                Point(300, 200), Point(400, 300), Point(500, 300)
             ),
-            stroke=svglab.Color("blue"),
-            fill=svglab.Color("red"),
-            transform=[svglab.SkewX(30)],
+            stroke=Color("blue"),
+            fill=Color("red"),
+            transform=[SkewX(30)],
         )
     ),
-    svglab.Svg(
-        width=svglab.Length(1000), height=svglab.Length(1000)
-    ).add_child(
-        svglab.G(transform=[svglab.Translate(100, 700)]).add_children(
-            svglab.Circle(
-                cx=svglab.Length(50),
-                cy=svglab.Length(50),
-                r=svglab.Length(30),
-                stroke=svglab.Color("black"),
+    Svg(width=Length(1000), height=Length(1000)).add_child(
+        G(transform=[Translate(100, 700)]).add_children(
+            Circle(
+                cx=Length(50),
+                cy=Length(50),
+                r=Length(30),
+                stroke=Color("black"),
             ),
-            svglab.Circle(
-                cx=svglab.Length(150),
-                cy=svglab.Length(50),
-                r=svglab.Length(30),
-                stroke=svglab.Color("black"),
+            Circle(
+                cx=Length(150),
+                cy=Length(50),
+                r=Length(30),
+                stroke=Color("black"),
             ),
-            svglab.Line(
-                x1=svglab.Length(50),
-                y1=svglab.Length(50),
-                x2=svglab.Length(150),
-                y2=svglab.Length(50),
-                stroke=svglab.Color("black"),
+            Line(
+                x1=Length(50),
+                y1=Length(50),
+                x2=Length(150),
+                y2=Length(50),
+                stroke=Color("black"),
             ),
         )
     ),
@@ -1195,8 +1104,8 @@ _REIFY_SVGS: Final = [
 
 
 @pytest.mark.parametrize("transform", _TRANSFORMS)
-def test_reify_leaves_transform_empty(transform: svglab.Transform) -> None:
-    svg = svglab.Svg(transform=transform)
+def test_reify_leaves_transform_empty(transform: Transform) -> None:
+    svg = Svg(transform=transform)
     svg.reify()
 
     assert svg.transform is None
@@ -1204,17 +1113,15 @@ def test_reify_leaves_transform_empty(transform: svglab.Transform) -> None:
 
 @pytest.mark.parametrize("transform", _TRANSFORMS)
 def test_reify_produces_visually_equal_svg_simple(
-    transform: svglab.Transform,
+    transform: Transform,
 ) -> None:
-    original = svglab.Svg(
-        width=svglab.Length(1000), height=svglab.Length(1000)
-    ).add_child(
-        svglab.Rect(
-            x=svglab.Length(200),
-            y=svglab.Length(200),
-            width=svglab.Length(100),
-            height=svglab.Length(100),
-            fill=svglab.Color("red"),
+    original = Svg(width=Length(1000), height=Length(1000)).add_child(
+        Rect(
+            x=Length(200),
+            y=Length(200),
+            width=Length(100),
+            height=Length(100),
+            fill=Color("red"),
             transform=transform,
         )
     )
@@ -1222,25 +1129,21 @@ def test_reify_produces_visually_equal_svg_simple(
     reified = copy.deepcopy(original)
     reified.reify()
 
-    conftest.assert_svg_visually_equal(original, reified)
+    assert_svg_visually_equal(original, reified)
 
 
 @pytest.mark.parametrize("svg", _REIFY_SVGS)
-def test_reify_produces_visually_equal_svg_complex(
-    svg: svglab.Svg,
-) -> None:
+def test_reify_produces_visually_equal_svg_complex(svg: Svg) -> None:
     reified = copy.deepcopy(svg)
     reified.reify()
 
-    conftest.assert_svg_visually_equal(svg, reified)
+    assert_svg_visually_equal(svg, reified)
 
 
 def test_set_viewbox_sets_viewbox_attr() -> None:
     viewbox = (0, 0, 100, 100)
 
-    svg = svglab.Svg(
-        width=svglab.Length(25), height=svglab.Length(value=25)
-    )
+    svg = Svg(width=Length(25), height=Length(value=25))
     svg.set_viewbox(viewbox)
 
     assert svg.viewBox == viewbox
@@ -1251,30 +1154,30 @@ def test_set_viewbox_sets_viewbox_attr() -> None:
     [
         *_REIFY_SVGS,
         pytest.param(
-            svglab.Svg(
-                width=svglab.Length(1000),
-                height=svglab.Length(1000),
-                transform=[svglab.Scale(0.5)],
+            Svg(
+                width=Length(1000),
+                height=Length(1000),
+                transform=[Scale(0.5)],
             ).add_child(
-                svglab.G().add_children(
-                    svglab.Circle(
-                        cx=svglab.Length(50),
-                        cy=svglab.Length(50),
-                        r=svglab.Length(30),
-                        stroke=svglab.Color("black"),
+                G().add_children(
+                    Circle(
+                        cx=Length(50),
+                        cy=Length(50),
+                        r=Length(30),
+                        stroke=Color("black"),
                     ),
-                    svglab.Circle(
-                        cx=svglab.Length(150),
-                        cy=svglab.Length(50),
-                        r=svglab.Length(30),
-                        stroke=svglab.Color("black"),
+                    Circle(
+                        cx=Length(150),
+                        cy=Length(50),
+                        r=Length(30),
+                        stroke=Color("black"),
                     ),
-                    svglab.Line(
-                        x1=svglab.Length(50),
-                        y1=svglab.Length(50),
-                        x2=svglab.Length(150),
-                        y2=svglab.Length(50),
-                        stroke=svglab.Color("black"),
+                    Line(
+                        x1=Length(50),
+                        y1=Length(50),
+                        x2=Length(150),
+                        y2=Length(50),
+                        stroke=Color("black"),
                     ),
                 )
             ),
@@ -1282,50 +1185,48 @@ def test_set_viewbox_sets_viewbox_attr() -> None:
                 reason="Transform/viewBox bug in resvg"
             ),
         ),
-        svglab.Svg(
-            width=svglab.Length(1000), height=svglab.Length(1000)
-        ).add_child(
-            svglab.Rect(
-                x=svglab.Length(200),
-                y=svglab.Length(200),
-                width=svglab.Length(100),
-                height=svglab.Length(100),
-                fill=svglab.Color("red"),
-                stroke=svglab.Color("blue"),
+        Svg(width=Length(1000), height=Length(1000)).add_child(
+            Rect(
+                x=Length(200),
+                y=Length(200),
+                width=Length(100),
+                height=Length(100),
+                fill=Color("red"),
+                stroke=Color("blue"),
                 transform=[
-                    svglab.compose(
+                    compose(
                         [
-                            svglab.Translate(10, 20),
-                            svglab.Scale(2),
-                            svglab.Rotate(45),
-                            svglab.Translate(250, -300),
-                            svglab.SkewX(-45),
-                            svglab.SkewY(-20),
+                            Translate(10, 20),
+                            Scale(2),
+                            Rotate(45),
+                            Translate(250, -300),
+                            SkewX(-45),
+                            SkewY(-20),
                         ]
                     )
                 ],
             )
         ),
-        svglab.Svg(
-            width=svglab.Length(100),
-            height=svglab.Length(100),
+        Svg(
+            width=Length(100),
+            height=Length(100),
             viewBox=(50, 50, 200, 200),
         ).add_child(
-            svglab.Rect(
-                x=svglab.Length(100),
-                y=svglab.Length(100),
-                width=svglab.Length(50),
-                height=svglab.Length(50),
-                fill=svglab.Color("blue"),
+            Rect(
+                x=Length(100),
+                y=Length(100),
+                width=Length(50),
+                height=Length(50),
+                fill=Color("blue"),
             )
         ),
     ],
 )
-def test_set_viewbox_produces_visually_equal_svg(svg: svglab.Svg) -> None:
+def test_set_viewbox_produces_visually_equal_svg(svg: Svg) -> None:
     transformed = copy.deepcopy(svg)
     transformed.set_viewbox((5, 5, 100, 100))
 
-    conftest.assert_svg_visually_equal(svg, transformed)
+    assert_svg_visually_equal(svg, transformed)
 
 
 @pytest.mark.parametrize(
@@ -1333,72 +1234,68 @@ def test_set_viewbox_produces_visually_equal_svg(svg: svglab.Svg) -> None:
     [
         *_TRANSFORMS,
         [
-            svglab.Scale(2),
-            svglab.Translate(1, 2),
-            svglab.Rotate(15),
-            svglab.Rotate(30),
-            svglab.Translate(2, 4),
-            svglab.Rotate(10, 15, 30),
+            Scale(2),
+            Translate(1, 2),
+            Rotate(15),
+            Rotate(30),
+            Translate(2, 4),
+            Rotate(10, 15, 30),
         ],
-        [svglab.SkewX(45), svglab.SkewY(45)],
-        [svglab.Scale(0)],
-        [svglab.Rotate(45, 10, 10)],
+        [SkewX(45), SkewY(45)],
+        [Scale(0)],
+        [Rotate(45, 10, 10)],
         [
-            svglab.Scale(1, 2),
-            svglab.Translate(1, 2),
-            svglab.Scale(2, 1),
-            svglab.Rotate(10),
-            svglab.Scale(0.5),
+            Scale(1, 2),
+            Translate(1, 2),
+            Scale(2, 1),
+            Rotate(10),
+            Scale(0.5),
         ],
-        [svglab.SkewX(30)],
-        [svglab.SkewY(30)],
+        [SkewX(30)],
+        [SkewY(30)],
     ],
 )
-def test_composed_decompose_equals_compose(
-    transform: svglab.Transform,
-) -> None:
-    matrix = svglab.compose(transform)
+def test_composed_decompose_equals_compose(transform: Transform) -> None:
+    matrix = compose(transform)
     decomposed = matrix.decompose()
 
-    assert svglab.compose(decomposed) == matrix, (
-        f"{list(decomposed)=}, {matrix=}"
-    )
+    assert compose(decomposed) == matrix, f"{list(decomposed)=}, {matrix=}"
 
 
 @pytest.mark.parametrize(
     "transform",
     [
-        [svglab.Translate(1, 2)],
-        [svglab.Scale(2)],
-        [svglab.Rotate(50)],
-        [svglab.SkewX(-10)],
-        [svglab.SkewY(15)],
-        [svglab.Scale(0, 1)],
-        [svglab.Scale(0)],
+        [Translate(1, 2)],
+        [Scale(2)],
+        [Rotate(50)],
+        [SkewX(-10)],
+        [SkewY(15)],
+        [Scale(0, 1)],
+        [Scale(0)],
     ],
 )
-def test_decompose_simple(transform: svglab.Transform) -> None:
-    assert svglab.compose(transform).decompose() == transform
+def test_decompose_simple(transform: Transform) -> None:
+    assert compose(transform).decompose() == transform
 
 
 def test_entity_substitution() -> None:
-    assert svglab.RawText(">").to_xml() == "&gt;"
+    assert RawText(">").to_xml() == "&gt;"
 
 
 @pytest.mark.parametrize(
     ("value", "serialized"),
     [
-        (svglab.Length(1.123456), "1"),
-        (svglab.Rotate(1.123456), "rotate(1.1)"),
-        (svglab.SkewX(1.123456), "skewX(1.1)"),
-        (svglab.Translate(1.123456), "translate(1.123456)"),
-        (svglab.Scale(1.123456), "scale(0)"),
+        (Length(1.123456), "1"),
+        (Rotate(1.123456), "rotate(1.1)"),
+        (SkewX(1.123456), "skewX(1.1)"),
+        (Translate(1.123456), "translate(1.123456)"),
+        (Scale(1.123456), "scale(0)"),
     ],
 )
 def test_float_precision_settings(
     value: _SupportsSerialize, serialized: str
 ) -> None:
-    formatter = svglab.Formatter(
+    formatter = Formatter(
         general_precision=10,
         angle_precision=1,
         coordinate_precision=0,
@@ -1412,23 +1309,23 @@ def test_float_precision_settings(
 @pytest.mark.parametrize(
     ("value", "serialized"),
     [
-        (svglab.Length(0.123456), ".123"),
-        (svglab.Rotate(1.123456), "rotate(1.12)"),
-        (svglab.SkewX(10.123456), "skewX(10.1)"),
-        (svglab.Translate(100.123456), "translate(100)"),
-        (svglab.Scale(1000.123456), "scale(1000.123456)"),
+        (Length(0.123456), ".123"),
+        (Rotate(1.123456), "rotate(1.12)"),
+        (SkewX(10.123456), "skewX(10.1)"),
+        (Translate(100.123456), "translate(100)"),
+        (Scale(1000.123456), "scale(1000.123456)"),
     ],
 )
 def test_precision_table(
     value: _SupportsSerialize, serialized: str
 ) -> None:
-    formatter = svglab.Formatter(
-        general_precision=svglab.FloatPrecisionSettings(
+    formatter = Formatter(
+        general_precision=FloatPrecisionSettings(
             precision_table={
-                svglab.PrecisionInterval(0, 1, 3),
-                svglab.PrecisionInterval(1, 10, 2),
-                svglab.PrecisionInterval(10, 100, 1),
-                svglab.PrecisionInterval(100, 1000, 0),
+                PrecisionInterval(0, 1, 3),
+                PrecisionInterval(1, 10, 2),
+                PrecisionInterval(10, 100, 1),
+                PrecisionInterval(100, 1000, 0),
             },
             fallback=15,
         )
@@ -1439,19 +1336,19 @@ def test_precision_table(
 
 
 def test_path_data_point_separator() -> None:
-    svg = svglab.parse_svg(
+    svg = parse_svg(
         '<svg><path d="M1 2L3 4A5 6 0 0 1 7 8"/>'
         '<polygon points="1 2 3 4"/></svg>'
     )
-    formatter = svglab.Formatter(
+    formatter = Formatter(
         point_separator=",",
         path_data_point_separator=" ",
         path_data_space_before_args=True,
         path_data_commands="explicit",
     )
 
-    path = svg.find(svglab.Path).to_xml(formatter=formatter)
-    polygon = svg.find(svglab.Polygon).to_xml(formatter=formatter)
+    path = svg.find(Path).to_xml(formatter=formatter)
+    polygon = svg.find(Polygon).to_xml(formatter=formatter)
 
     assert path == '<path d="M 1 2 L 3 4 A 5 6 0 0 1 7 8"/>'
     assert polygon == '<polygon points="1,2 3,4"/>'
@@ -1470,14 +1367,14 @@ def test_color_case(
     color_mode: Literal["hex-long", "hex-short", "rgb", "original"],
     serialized: str,
 ) -> None:
-    formatter = svglab.Formatter(color_mode=color_mode, color_case="upper")
+    formatter = Formatter(color_mode=color_mode, color_case="upper")
 
     with formatter:
-        assert svglab.Color("#ffaa00").serialize() == serialized
+        assert Color("#ffaa00").serialize() == serialized
 
 
 def test_invalid_add_child_direct_circular_reference() -> None:
-    g = svglab.G()
+    g = G()
 
     with pytest.raises(
         ValueError, match=r"Cannot add an element as a child of itself."
@@ -1487,106 +1384,85 @@ def test_invalid_add_child_direct_circular_reference() -> None:
 
 def test_large_float_results_in_error() -> None:
     with pytest.raises(ValueError, match=r".*Value must be finite.*"):
-        svglab.parse_svg("<svg><rect x='1e9999'/></svg>")
+        parse_svg("<svg><rect x='1e9999'/></svg>")
 
 
 @pytest.mark.parametrize(
     ("a", "b"),
     [
-        (svglab.Rect(), svglab.Rect()),
+        (Rect(), Rect()),
+        (Rect(stroke_width=Length(1)), Rect(stroke_width=Length(1))),
+        (G().add_child(Rect()), G().add_child(Rect())),
+        (RawText("test"), RawText("test")),
+        (Comment("test"), Comment("test")),
+        (CData("test"), CData("test")),
         (
-            svglab.Rect(stroke_width=svglab.Length(1)),
-            svglab.Rect(stroke_width=svglab.Length(1)),
-        ),
-        (
-            svglab.G().add_child(svglab.Rect()),
-            svglab.G().add_child(svglab.Rect()),
-        ),
-        (svglab.RawText("test"), svglab.RawText("test")),
-        (svglab.Comment("test"), svglab.Comment("test")),
-        (svglab.CData("test"), svglab.CData("test")),
-        (
-            svglab.Svg(
-                width=svglab.Length(100), height=svglab.Length(100)
-            ).add_children(
-                svglab.Rect(x=svglab.Length(10), y=svglab.Length(10))
+            Svg(width=Length(100), height=Length(100)).add_children(
+                Rect(x=Length(10), y=Length(10))
             ),
-            svglab.Svg(
-                width=svglab.Length(100), height=svglab.Length(100)
-            ).add_children(
-                svglab.Rect(x=svglab.Length(10), y=svglab.Length(10))
+            Svg(width=Length(100), height=Length(100)).add_children(
+                Rect(x=Length(10), y=Length(10))
             ),
         ),
     ],
 )
-def test_hashes_equal(a: svglab.Entity, b: svglab.Entity) -> None:
+def test_hashes_equal(a: Entity, b: Entity) -> None:
     assert hash(a) == hash(b)
 
 
 @pytest.mark.parametrize(
     ("a", "b"),
     [
-        (svglab.Rect(), svglab.Circle()),
-        (svglab.Rect(stroke_width=svglab.Length(1)), svglab.Rect()),
-        (
-            svglab.Rect(stroke_width=svglab.Length(1)),
-            svglab.Rect(stroke_width=svglab.Length(2)),
-        ),
-        (
-            svglab.Rect(stroke_width=svglab.Length(1)),
-            svglab.Circle(stroke_width=svglab.Length(1)),
-        ),
-        (
-            svglab.G().add_child(svglab.Rect()),
-            svglab.G().add_child(svglab.Circle()),
-        ),
-        (svglab.RawText("test"), svglab.RawText("test2")),
-        (svglab.RawText("test"), svglab.Comment("test")),
-        (svglab.RawText("test"), svglab.CData("test")),
-        (svglab.Comment("test"), svglab.Comment("test2")),
-        (svglab.Comment("test"), svglab.CData("test")),
-        (svglab.CData("test"), svglab.CData("test2")),
+        (Rect(), Circle()),
+        (Rect(stroke_width=Length(1)), Rect()),
+        (Rect(stroke_width=Length(1)), Rect(stroke_width=Length(2))),
+        (Rect(stroke_width=Length(1)), Circle(stroke_width=Length(1))),
+        (G().add_child(Rect()), G().add_child(Circle())),
+        (RawText("test"), RawText("test2")),
+        (RawText("test"), Comment("test")),
+        (RawText("test"), CData("test")),
+        (Comment("test"), Comment("test2")),
+        (Comment("test"), CData("test")),
+        (CData("test"), CData("test2")),
     ],
 )
-def test_hashes_unequal(a: svglab.Entity, b: svglab.Entity) -> None:
+def test_hashes_unequal(a: Entity, b: Entity) -> None:
     assert hash(a) != hash(b)
 
 
 def test_points_accepts_empty_list() -> None:
-    svg = svglab.parse_svg("<svg><polyline points=''/></svg>")
-    polyline = svg.find(svglab.Polyline)
+    svg = parse_svg("<svg><polyline points=''/></svg>")
+    polyline = svg.find(Polyline)
 
     assert polyline.points == []
 
 
 def test_transform_accepts_empty_list() -> None:
-    svg = svglab.parse_svg("<svg><rect transform=''/></svg>")
-    rect = svg.find(svglab.Rect)
+    svg = parse_svg("<svg><rect transform=''/></svg>")
+    rect = svg.find(Rect)
 
     assert rect.transform == []
 
 
 def test_path_data_accepts_empty_list() -> None:
-    svg = svglab.parse_svg("<svg><path d=''/></svg>")
-    path = svg.find(svglab.Path)
+    svg = parse_svg("<svg><path d=''/></svg>")
+    path = svg.find(Path)
 
-    assert path.d == svglab.PathData()
+    assert path.d == PathData()
 
 
 def test_closepath_ends_at_start_of_subpath() -> None:
-    svg = svglab.Svg().add_child(
-        svglab.Path(d=svglab.PathData.from_str("M10,10 L20,20 Z H30"))
-    )
+    svg = Svg().add_child(Path(d=PathData.from_str("M10,10 L20,20 Z H30")))
 
     assert "h20" in svg.to_xml(
-        formatter=svglab.Formatter(path_data_coordinates="relative")
+        formatter=Formatter(path_data_coordinates="relative")
     )
 
 
 def test_parse_svg_with_path() -> None:
-    path = conftest.ASSETS_DIR / "dummy.svg"
+    path = ASSETS_DIR / "dummy.svg"
 
-    svglab.parse_svg(path)
+    parse_svg(path)
 
 
 def _public_classes(module: types.ModuleType) -> set[str]:
@@ -1608,13 +1484,13 @@ def test_public_classes_are_exported(module: types.ModuleType) -> None:
 
 def test_element_classes_match_element_names() -> None:
     assert _public_classes(elements) == set(
-        names.ELEMENT_NAME_TO_NORMALIZED.values()
+        ELEMENT_NAME_TO_NORMALIZED.values()
     )
 
 
 @pytest.mark.parametrize(
     ("element_name", "class_name"),
-    sorted(names.ELEMENT_NAME_TO_NORMALIZED.items()),
+    sorted(ELEMENT_NAME_TO_NORMALIZED.items()),
 )
 def test_every_element_is_exported(
     element_name: str, class_name: str
@@ -1623,8 +1499,8 @@ def test_every_element_is_exported(
 
     cls = getattr(svglab, class_name)
 
-    assert issubclass(cls, svglab.Element)
-    assert entities.element_name(cls.model_construct()) == element_name
+    assert issubclass(cls, Element)
+    assert get_element_name(cls.model_construct()) == element_name
 
 
 def test_all_is_importable() -> None:

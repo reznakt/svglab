@@ -18,20 +18,44 @@ import abc
 
 from typing_extensions import Protocol
 
-from svglab import entities, graphics, models, reify
-from svglab.attrparse import path_data
-from svglab.attrs import attrdefs, attrgroups
+from svglab.attrparse.path_data import PathData
+from svglab.attrs.attrdefs import PathLengthAttr
+from svglab.attrs.attrgroups import (
+    AnimationEventsAttrs,
+    AnimationTimingAttrs,
+    FilterPrimitivesAttrs,
+    GraphicalEventsAttrs,
+)
+from svglab.entities import Element as BaseElement
+from svglab.graphics import (
+    BBox,
+    Mask,
+    bbox,
+    mask,
+    visible_bbox,
+    visible_mask,
+)
+from svglab.models import Attr
+from svglab.reify import (
+    Animation,
+    FontSizeScaled,
+    PercentageDefaults,
+    RenderedIndirectly,
+    SimilarityGeometry,
+    StrokeWidthScaled,
+    TransformInheritedByChildren,
+    UniformlyScalableGeometry,
+    scale_distance_along_a_path_attrs,
+)
 
 
 # common attributes are defined directly on the Element class
-class Element(entities.Element):
+class Element(BaseElement):
     """An SVG element."""
 
 
 class _GraphicalOperations(Element):
-    def get_bbox(
-        self, *, visible_only: bool = False
-    ) -> graphics.BBox | None:
+    def get_bbox(self, *, visible_only: bool = False) -> BBox | None:
         """Compute the bounding box of this element.
 
         The bounding box is the smallest rectangle that contains the entire
@@ -49,11 +73,7 @@ class _GraphicalOperations(Element):
             x_max, y_max)`.
 
         """
-        return (
-            graphics.visible_bbox(self)
-            if visible_only
-            else graphics.bbox(self)
-        )
+        return visible_bbox(self) if visible_only else bbox(self)
 
     def get_mask(
         self,
@@ -61,7 +81,7 @@ class _GraphicalOperations(Element):
         visible_only: bool = False,
         width: float | None = None,
         height: float | None = None,
-    ) -> graphics.Mask:
+    ) -> Mask:
         """Create a mask of this element.
 
         A mask is a 2D boolean array with `True` values where the element is
@@ -82,17 +102,14 @@ class _GraphicalOperations(Element):
 
         """
         return (
-            graphics.visible_mask(self, width=width, height=height)
+            visible_mask(self, width=width, height=height)
             if visible_only
-            else graphics.mask(self, width=width, height=height)
+            else mask(self, width=width, height=height)
         )
 
 
 class GraphicsElement(
-    _GraphicalOperations,
-    attrgroups.GraphicalEventsAttrs,
-    reify.StrokeWidthScaled,
-    Element,
+    _GraphicalOperations, GraphicalEventsAttrs, StrokeWidthScaled, Element
 ):
     """A graphics element.
 
@@ -102,7 +119,7 @@ class GraphicsElement(
     """
 
 
-class Shape(attrdefs.PathLengthAttr, GraphicsElement):
+class Shape(PathLengthAttr, GraphicsElement):
     """A shape.
 
     From the SVG 1.1 specification:
@@ -139,13 +156,13 @@ class Shape(attrdefs.PathLengthAttr, GraphicsElement):
             raise RuntimeError("Current pathLength must not be None")
 
         ratio = value / self.pathLength
-        reify.scale_distance_along_a_path_attrs(self, ratio)
+        scale_distance_along_a_path_attrs(self, ratio)
 
         self.pathLength = value
 
 
 class _PathLike(Protocol):
-    d: models.Attr[path_data.PathData]
+    d: Attr[PathData]
 
 
 class BasicShape(Shape, metaclass=abc.ABCMeta):
@@ -157,7 +174,7 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def to_path_data(self) -> path_data.PathData:
+    def to_path_data(self) -> PathData:
         """Convert this basic shape into path data.
 
         The resulting path data produce the same visual result as the original
@@ -188,10 +205,10 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
 
 
 class AnimationElement(
-    attrgroups.AnimationEventsAttrs,
-    attrgroups.AnimationTimingAttrs,
-    reify.Animation,
-    reify.RenderedIndirectly,
+    AnimationEventsAttrs,
+    AnimationTimingAttrs,
+    Animation,
+    RenderedIndirectly,
     Element,
 ):
     """An animation element.
@@ -203,7 +220,7 @@ class AnimationElement(
 
 
 class ContainerElement(
-    _GraphicalOperations, attrgroups.GraphicalEventsAttrs, Element
+    _GraphicalOperations, GraphicalEventsAttrs, Element
 ):
     """A container element.
 
@@ -213,7 +230,7 @@ class ContainerElement(
     """
 
 
-class DescriptiveElement(reify.RenderedIndirectly, Element):
+class DescriptiveElement(RenderedIndirectly, Element):
     """A descriptive element.
 
     From the SVG 1.1 specification:
@@ -223,7 +240,7 @@ class DescriptiveElement(reify.RenderedIndirectly, Element):
 
 
 class FilterPrimitiveElement(
-    attrgroups.FilterPrimitivesAttrs, reify.RenderedIndirectly, Element
+    FilterPrimitivesAttrs, RenderedIndirectly, Element
 ):
     """A filter primitive element.
 
@@ -234,10 +251,7 @@ class FilterPrimitiveElement(
 
 
 class GradientElement(
-    reify.SimilarityGeometry,
-    reify.PercentageDefaults,
-    reify.RenderedIndirectly,
-    Element,
+    SimilarityGeometry, PercentageDefaults, RenderedIndirectly, Element
 ):
     """A gradient element.
 
@@ -255,7 +269,7 @@ class GraphicsReferencingElement(Element):
     """
 
 
-class LightSourceElement(reify.RenderedIndirectly, Element):
+class LightSourceElement(RenderedIndirectly, Element):
     """A light source element.
 
     From the SVG 1.1 specification:
@@ -274,9 +288,9 @@ class StructuralElement(Element):
 
 
 class TextContentElement(
-    reify.UniformlyScalableGeometry,
-    reify.TransformInheritedByChildren,
-    reify.FontSizeScaled,
+    UniformlyScalableGeometry,
+    TransformInheritedByChildren,
+    FontSizeScaled,
     GraphicsElement,
 ):
     """A text content element.
