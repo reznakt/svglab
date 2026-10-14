@@ -24,6 +24,7 @@ from collections.abc import Container, Generator, Iterator, Mapping
 import bs4
 import pydantic
 from typing_extensions import (
+    Any,
     Final,
     Literal,
     NamedTuple,
@@ -77,6 +78,7 @@ from svglab.reify import (
     ViewportEstablishing,
     apply,
     declared_properties,
+    features,
     geometry_capability,
     has_own_geometry,
     property_value,
@@ -1288,9 +1290,11 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         """
         _reify_tree(
             self,
-            context=_build_context(self.get_root()),
+            context=_build_context(
+                self.get_root(),
+                convert_shapes_to_paths=convert_shapes_to_paths,
+            ),
             recursive=recursive,
-            convert_shapes_to_paths=convert_shapes_to_paths,
             unwrap_groups=unwrap_groups,
         )
 
@@ -1479,6 +1483,9 @@ class _Context(NamedTuple):
 
     markers: bool
     """Whether the document has any `marker` to put on a shape."""
+
+    convert_shapes: bool
+    """Whether a basic shape may be replaced by the `path` it draws."""
 
 
 def _resolve_reference(
@@ -1975,6 +1982,31 @@ def _has_unusable_transform_origin(element: Element, /) -> bool:
     return False
 
 
+def _is_convertible_shape(
+    element: Element, /, *, context: _Context
+) -> bool:
+    """Check whether the element may be replaced by the path it draws."""
+    to_path_data = getattr(element, "to_path_data", None)
+
+    if (
+        not context.convert_shapes
+        or to_path_data is None
+        or id(element) in context.frozen
+    ):
+        # an animation of the shape's own attributes would have nothing left
+        # to animate on a path
+        return False
+
+    try:
+        to_path_data()
+    except SvgUnitConversionError:
+        # a shape sized in percentages has no path equivalent that does not
+        # need to know the viewport
+        return False
+
+    return True
+
+
 def _element_capability(
     element: Element,
     /,
@@ -2003,7 +2035,7 @@ def _element_capability(
         # and pushing to only some of the children would tear the group apart
         return NOTHING
 
-    scope = _scope(element, context=context)
+    scope = context.scopes[id(element)]
 
     if _delegates_transform(element):
         # the element has no geometry of its own, but what it refers to is
@@ -2026,7 +2058,11 @@ def _element_capability(
         return capability
 
     capability = (
-        geometry_capability(element, scope=scope)
+        geometry_capability(
+            element,
+            scope=scope,
+            as_path=_is_convertible_shape(element, context=context),
+        )
         & _reference_capability(element, context=context, scope=scope)
         & context.stylesheet
     )
@@ -2077,42 +2113,22 @@ def _capabilities(
     return capabilities
 
 
-def _scope(element: Element, /, *, context: _Context) -> Scope:
-    """Look up how far the element's inherited properties can be seen."""
-    scope = context.scopes.get(id(element))
+def _reify_element(
+    element: Element, /, *, context: _Context, as_descendant: bool = True
+) -> Element:
+    """Fold as much of the element's transformation into it as will go.
 
-    if scope is not None:
-        return scope
+    A basic shape that is asked to absorb more than its attributes can
+    express is replaced by the `path` drawing the same shape, which absorbs
+    anything -- unless it is the element reification was called on, which
+    keeps its type.
 
-    # the `path` a basic shape was converted into inherits exactly what the
-    # shape did
-    parent = element.parent
-    assert parent is not None
+    Returns:
+        The element, or the `path` that replaced it.
 
-    return context.scopes[id(parent)]
-
-
-def _transform_capability(
-    element: Element, /, *, context: _Context
-) -> Capability:
-    """Look up how much of a transformation an element can take on."""
-    capability = context.capabilities.get(id(element))
-
-    if capability is not None:
-        return capability
-
-    # an element made during the walk rather than read from the document --
-    # the `path` a basic shape is converted into. It draws the shape itself
-    # and has no children, so there is nothing below it to work out first
-    return _element_capability(
-        element, context=context, children=context.capabilities
-    )
-
-
-def _reify_element(element: Element, /, *, context: _Context) -> None:
-    """Fold as much of the element's transformation into it as will go."""
+    """
     if id(element) in context.frozen:
-        return
+        return element
 
     identity = Matrix.identity()
 
@@ -2122,25 +2138,43 @@ def _reify_element(element: Element, /, *, context: _Context) -> None:
     ):
         # the list does nothing, about any origin, so the attribute can go
         element.main_transform = None
-        return
+        return element
 
     try:
         element.decompose_transform_origin()
     except (SvgTransformOriginError, SvgUnitConversionError):
         # the origin is a keyword or a percentage of a box reification
         # cannot see, so the transformation has to stay where it is
-        return
+        return element
 
     matrix = compose(element.main_transform)
-    capability = _transform_capability(element, context=context)
+    scope = context.scopes[id(element)]
+    convertible = as_descendant and _is_convertible_shape(
+        element, context=context
+    )
+    capability = (
+        context.capabilities[id(element)]
+        if convertible
+        or not _is_convertible_shape(element, context=context)
+        # the element reification was called on keeps its type, so it is
+        # judged as the shape it is rather than the path it could become
+        else _element_capability(
+            element, context=context, children=context.capabilities
+        )
+    )
     residue, absorbed = split(matrix, capability)
 
     if absorbed == identity:
         # nothing was folded in; the list is left exactly as written
-        return
+        return element
 
     if has_own_geometry(element) and not _delegates_transform(element):
-        apply(element, absorbed, scope=_scope(element, context=context))
+        if convertible and not features(absorbed) <= geometry_capability(
+            element, scope=scope
+        ):
+            element = _convert_to_path(element)
+
+        apply(element, absorbed, scope=scope)
 
     if _pushes_transform_to_children(element):
         # the children are placed in the coordinate system the element
@@ -2158,40 +2192,21 @@ def _reify_element(element: Element, /, *, context: _Context) -> None:
 
     element.main_transform = _normalize_transform(residue)
 
+    return element
 
-def _convert_to_path(
-    parent: Element, child: Element, /, *, context: _Context
-) -> None:
-    """Replace a basic shape with an equivalent `path`, if that helps.
 
-    A `rect` cannot be rotated, but the path that draws the same rectangle
-    can. If the conversion does not get rid of the transformation after all,
-    the original element is put back.
-    """
-    to_path = getattr(child, "to_path", None)
+def _convert_to_path(shape: Element, /) -> Element:
+    """Replace a basic shape with the `path` drawing the same shape."""
+    parent = shape.parent
+    assert parent is not None
 
-    if to_path is None or id(child) in context.frozen:
-        # an animation of the shape's own attributes would have nothing left
-        # to animate on a path
-        return
-
-    try:
-        path = cast(Element, to_path())
-    except SvgUnitConversionError:
-        # a shape sized in percentages has no path equivalent that does not
-        # need to know the viewport
-        return
-
-    position = parent.get_child_index(child)
+    path = cast(Element, cast("Any", shape).to_path())
+    position = parent.get_child_index(shape)
 
     parent.pop_child(position)
     parent.add_child(path, index=position)
 
-    _reify_element(path, context=context)
-
-    if path.main_transform is not None:
-        parent.pop_child(position)
-        parent.add_child(child, index=position)
+    return path
 
 
 def _reify_tree(
@@ -2200,7 +2215,6 @@ def _reify_tree(
     *,
     context: _Context,
     recursive: bool,
-    convert_shapes_to_paths: bool,
     unwrap_groups: bool,
 ) -> None:
     """Reify an element and, if asked, everything below it.
@@ -2209,13 +2223,12 @@ def _reify_tree(
     a recursive walk would run out of Python frames long before the document
     runs out of elements.
     """
-    _reify_element(element, context=context)
+    _reify_element(element, context=context, as_descendant=False)
 
     if not recursive:
         return
 
-    # each entry is a parent whose children still have to be visited, so that
-    # a shape can be replaced in place once its own subtree is done
+    # each entry is a parent whose children still have to be visited
     pending: list[Element] = [element]
     # groups whose transformation was taken off in full, parents first
     emptied: list[Element] = []
@@ -2229,11 +2242,11 @@ def _reify_tree(
                 and isinstance(child, Grouping)
                 and child.main_transform is not None
             )
-            _reify_element(child, context=context)
-            pending.append(child)
+            reified = _reify_element(child, context=context)
+            pending.append(reified)
 
-            if grouping and child.main_transform is None:
-                emptied.append(child)
+            if grouping and reified.main_transform is None:
+                emptied.append(reified)
 
     if emptied and not _has_stylesheet(element.get_root()):
         # children first, so that each group is spliced into a parent that is
@@ -2241,16 +2254,6 @@ def _reify_tree(
         for group in reversed(emptied):
             if _is_bare_group(group):
                 _unwrap(group)
-
-    if not convert_shapes_to_paths or _has_stylesheet(element.get_root()):
-        # a selector may pick a shape out by its name, which a path no
-        # longer answers to
-        return
-
-    for parent in [element, *element.find_all()]:
-        for child in list(parent.find_all(recursive=False)):
-            if child.main_transform is not None:
-                _convert_to_path(parent, child, context=context)
 
 
 def _has_stylesheet(root: Element, /) -> bool:
@@ -2504,7 +2507,9 @@ def _spell_out_gradients(root: Element, frozen: Container[int], /) -> None:
             spell_out_gradient(element, viewport=_viewport_size(element))
 
 
-def _build_context(root: Element, /) -> _Context:
+def _build_context(
+    root: Element, /, *, convert_shapes_to_paths: bool
+) -> _Context:
     """Gather what reifying part of a tree needs to know about all of it."""
     index = _index_by_id(root)
     frozen = _frozen_elements(root, index)
@@ -2527,6 +2532,10 @@ def _build_context(root: Element, /) -> _Context:
             element_name(element) == "marker"
             for element in itertools.chain([root], root.find_all())
         ),
+        # a selector may pick a shape out by its name, which a path no
+        # longer answers to
+        convert_shapes=convert_shapes_to_paths
+        and not _has_stylesheet(root),
     )
 
     return context._replace(
