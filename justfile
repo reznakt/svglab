@@ -61,6 +61,12 @@ lint-fix:
     typos
     editorconfig-checker
 
+# validate the config files that GitHub, Codecov and the CFF tooling read
+schemacheck:
+    uv run check-jsonschema --schemafile https://citation-file-format.github.io/1.2.0/schema.json CITATION.cff
+    uv run check-jsonschema --builtin-schema vendor.dependabot .github/dependabot.yml
+    uv run check-jsonschema --schemafile https://json.schemastore.org/codecov.json codecov.yml
+
 # scan the git history, or with `--pre-commit --staged` just the index, for secrets
 secretcheck *args:
     gitleaks git --redact --no-banner --verbose {{ args }}

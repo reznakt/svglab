@@ -121,5 +121,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }} # lets zizmor run its online audits
 
+      - name: Run schema check
+        run: just schemacheck
+
       - name: Run secret scan
         run: just secretcheck

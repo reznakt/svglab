@@ -55,6 +55,7 @@ html5lib = ["html5lib>=1.1"]
 
 [dependency-groups]
 dev = [
+  "check-jsonschema>=0.38.2",
   "deptry>=0.25.1",
   "licensecheck>=2025.1.0",
   "pyright>=1.1.414",

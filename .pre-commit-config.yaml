@@ -47,6 +47,12 @@ repos:
         entry: just secretcheck --pre-commit --staged
         language: system
         pass_filenames: false
+      - id: schemacheck
+        name: schemacheck
+        entry: just schemacheck
+        language: system
+        files: ^(CITATION\.cff|\.github/dependabot\.yml|codecov\.yml)$
+        pass_filenames: false
       - id: workflowcheck
         name: workflowcheck
         entry: just workflowcheck
