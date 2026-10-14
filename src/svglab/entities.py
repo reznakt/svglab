@@ -1484,7 +1484,51 @@ def _resolve_reference(
     return target
 
 
-def _pattern_transform_capability(target: Element, /) -> Capability:
+def _paint_server_attr(
+    target: Element,
+    attr_name: AttributeName,
+    index: Mapping[str, Element],
+    /,
+) -> object:
+    """Read an attribute of a gradient or pattern, following its `href`.
+
+    A gradient or pattern takes every attribute it leaves out from the one
+    it refers to, which may in turn refer to another.
+    """
+    seen: set[int] = set()
+    element: Element | None = target
+
+    while element is not None and id(element) not in seen:
+        seen.add(id(element))
+        attrs = element.standard_attrs()
+
+        if attr_name in attrs:
+            return attrs[attr_name]
+
+        element = _paint_server_template(element, index)
+
+    return _attr_or_default(target, attr_name)
+
+
+def _paint_server_template(
+    element: Element, index: Mapping[str, Element], /
+) -> Element | None:
+    """Find the gradient or pattern the element inherits attributes from."""
+    if not isinstance(element, PatternUnitsAttr | GradientUnitsAttr):
+        return None
+
+    for attr_name in ("href", "xlink:href"):
+        template = _resolve_reference(element, attr_name, index)
+
+        if isinstance(template, PatternUnitsAttr | GradientUnitsAttr):
+            return template
+
+    return None
+
+
+def _pattern_transform_capability(
+    target: Element, index: Mapping[str, Element], /
+) -> Capability:
     """Work out what survives a pattern's own `patternTransform`.
 
     The tiling is laid out in the bounding box of the element and the pattern
@@ -1498,7 +1542,9 @@ def _pattern_transform_capability(target: Element, /) -> Capability:
     element about the origin, which is the one resizing that leaves the
     corner of the box where it is. Nothing else is safe.
     """
-    pattern_transform = _attr_or_default(target, "patternTransform")
+    pattern_transform = _paint_server_attr(
+        target, "patternTransform", index
+    )
     matrix = compose(cast("Transform | None", pattern_transform) or [])
     identity = Matrix.identity()
 
@@ -1514,7 +1560,9 @@ def _pattern_transform_capability(target: Element, /) -> Capability:
     return NOTHING
 
 
-def _pattern_capability(target: Element, /) -> Capability:
+def _pattern_capability(
+    target: Element, index: Mapping[str, Element], /
+) -> Capability:
     """Work out what a pattern lets the element it paints absorb.
 
     The tile is placed relative to the bounding box, so it moves and resizes
@@ -1526,21 +1574,32 @@ def _pattern_capability(target: Element, /) -> Capability:
     Whatever the tile allows is then narrowed by the pattern's own
     `patternTransform`, which the tiling has to keep in step with.
     """
-    if _attr_or_default(target, "patternUnits") != "objectBoundingBox":
+    if (
+        _paint_server_attr(target, "patternUnits", index)
+        != "objectBoundingBox"
+    ):
         return NOTHING
 
     return _pattern_tile_capability(
-        target
-    ) & _pattern_transform_capability(target)
+        target, index
+    ) & _pattern_transform_capability(target, index)
 
 
-def _pattern_tile_capability(target: Element, /) -> Capability:
+def _pattern_tile_capability(
+    target: Element, index: Mapping[str, Element], /
+) -> Capability:
     """Work out how far the content of a pattern follows its tile."""
-    if _attr_or_default(target, "viewBox") is not None:
-        return UPRIGHT if stretches_content(target) else UNIFORM_SCALING
+    if _paint_server_attr(target, "viewBox", index) is not None:
+        return (
+            UPRIGHT
+            if stretches_content(
+                _paint_server_attr(target, "preserveAspectRatio", index)
+            )
+            else UNIFORM_SCALING
+        )
 
     if (
-        _attr_or_default(target, "patternContentUnits")
+        _paint_server_attr(target, "patternContentUnits", index)
         == "objectBoundingBox"
     ):
         return UPRIGHT
@@ -1548,15 +1607,17 @@ def _pattern_tile_capability(target: Element, /) -> Capability:
     return TRANSLATION
 
 
-def _paint_server_capability(target: Element, /) -> Capability:
+def _paint_server_capability(
+    target: Element, index: Mapping[str, Element], /
+) -> Capability:
     """Work out what a paint server lets the element it paints absorb."""
     if isinstance(target, PatternUnitsAttr):
-        return _pattern_capability(target)
+        return _pattern_capability(target, index)
 
     if isinstance(target, GradientUnitsAttr):
         # a gradient is a ramp across whatever space it is defined in, so it
         # is carried along by anything that leaves the box upright
-        units = _attr_or_default(target, "gradientUnits")
+        units = _paint_server_attr(target, "gradientUnits", index)
 
         return UPRIGHT if units == "objectBoundingBox" else NOTHING
 
@@ -1565,7 +1626,10 @@ def _paint_server_capability(target: Element, /) -> Capability:
 
 
 def _resource_capability(
-    target: Element, attr_name: AttributeName, /
+    target: Element,
+    attr_name: AttributeName,
+    index: Mapping[str, Element],
+    /,
 ) -> Capability:
     """Work out what a referenced resource lets the element absorb.
 
@@ -1579,7 +1643,7 @@ def _resource_capability(
     """
     match attr_name:
         case "fill" | "stroke":
-            return _paint_server_capability(target)
+            return _paint_server_capability(target, index)
         case "clip-path":
             units = _attr_or_default(target, "clipPathUnits")
         case _:
@@ -1606,7 +1670,7 @@ def _reference_capability(
         target = _resolve_reference(element, attr_name, index, warn=True)
 
         if target is not None:
-            capability &= _resource_capability(target, attr_name)
+            capability &= _resource_capability(target, attr_name, index)
 
     filter_ = _resolve_reference(element, "filter", index)
 
@@ -1848,6 +1912,9 @@ def _transform_capability(
 
 def _reify_element(element: Element, /, *, context: _Context) -> None:
     """Fold as much of the element's transformation into it as will go."""
+    if id(element) in context.frozen:
+        return
+
     try:
         element.decompose_transform_origin()
     except (SvgTransformOriginError, SvgUnitConversionError):
@@ -2046,10 +2113,20 @@ def _frozen_elements(
     document was written in. Reification rewrites that system, so an animated
     attribute it would touch has to be left exactly where it is -- and so
     does the element carrying it.
+
+    A gradient or pattern that refers to another inherits every attribute it
+    leaves out, its transformation included, and even an identity
+    transformation of its own overrides the inherited one. Both ends of such
+    a reference are left as written.
     """
     frozen: set[int] = set()
 
     for element in itertools.chain([root], root.find_all()):
+        template = _paint_server_template(element, index)
+
+        if template is not None:
+            frozen.update((id(element), id(template)))
+
         if not isinstance(element, Animation):
             continue
 
