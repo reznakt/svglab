@@ -4,7 +4,6 @@ Use `Points` to represent points in SVG. Use `PointsType` in Pydantic fields.
 """
 
 import lark
-import lark.visitors
 from typing_extensions import Annotated, TypeAlias
 
 from svglab.attrparse.parse import (
