@@ -3,7 +3,6 @@
 import pytest
 
 from svglab import ClipPath, Defs, G, Length, Rect, Rotate, Svg, parse_svg
-from svglab.errors import SvgTransformOriginError
 from tests.conftest import assert_svg_visually_equal
 
 
@@ -94,13 +93,13 @@ def test_an_element_whose_style_sets_its_transform_is_wrapped(
     assert_svg_visually_equal(original, changed)
 
 
-def test_an_origin_relative_to_the_viewbox_is_refused() -> None:
-    # `center` is the middle of the viewBox being replaced, so no
-    # transformation of the element alone keeps it where it was
-    svg = _parse(
+def test_an_origin_relative_to_the_viewbox_is_resolved_first() -> None:
+    # `center` is the middle of the viewBox being replaced, so it is spelled
+    # out against that viewBox before the mapping to the new one is applied
+    original, changed = _set_viewbox(
         '<rect x="10" y="10" width="40" height="20" fill="red" '
         'transform="rotate(30)" transform-origin="center"/>'
     )
 
-    with pytest.raises(SvgTransformOriginError):
-        svg.set_viewbox(_VIEWBOX)
+    assert changed.find(Rect).transform_origin is None
+    assert_svg_visually_equal(original, changed)
