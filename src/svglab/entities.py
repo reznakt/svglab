@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import abc
 import collections
+import functools
 import itertools
+import operator
 import reprlib
 import sys
 import warnings
@@ -2154,7 +2156,9 @@ def _reify_tree(
             if _is_bare_group(group):
                 _unwrap(group)
 
-    if not convert_shapes_to_paths:
+    if not convert_shapes_to_paths or _has_stylesheet(element.get_root()):
+        # a selector may pick a shape out by its name, which a path no
+        # longer answers to
         return
 
     for parent in [element, *element.find_all()]:
@@ -2323,22 +2327,15 @@ def referenced_elements(root: Element, /) -> Container[int]:
     }
 
 
-def _stylesheet_capability(root: Element, /) -> Capability:
-    """Work out what the document's stylesheets leave reifiable."""
-    capability = AFFINE
-
+def _stylesheets(root: Element, /) -> Iterator[str]:
+    """Read the text of every stylesheet in the document."""
     for element in itertools.chain([root], root.find_all()):
-        if not isinstance(element, Stylesheet):
-            continue
-
-        css = "".join(
-            child.content
-            for child in element.children
-            if isinstance(child, CharacterData)
-        )
-        capability &= stylesheet_capability(css)
-
-    return capability
+        if isinstance(element, Stylesheet):
+            yield "".join(
+                child.content
+                for child in element.children
+                if isinstance(child, CharacterData)
+            )
 
 
 def _spell_out_gradients(root: Element, frozen: Container[int], /) -> None:
@@ -2369,7 +2366,11 @@ def _build_context(root: Element, /) -> _Context:
         pinned=_pinned_elements(root, index, frozen),
         frozen=frozen,
         capabilities={},
-        stylesheet=_stylesheet_capability(root),
+        stylesheet=functools.reduce(
+            operator.and_,
+            map(stylesheet_capability, _stylesheets(root)),
+            AFFINE,
+        ),
     )
 
     return context._replace(
