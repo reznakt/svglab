@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import enum
 import math
+import re
 from collections.abc import Iterator, Mapping
 
 from typing_extensions import Final, TypeAlias, cast
@@ -1244,12 +1245,36 @@ def style_capability(element: object, /) -> Capability:
     return AFFINE
 
 
+def declared_properties(css: str, /) -> frozenset[str]:
+    """List the properties a stylesheet declares, whatever it declares them on.
+
+    Examples:
+        >>> sorted(declared_properties(".a { fill: red; stroke: blue }"))
+        ['fill', 'stroke']
+
+    """
+    # a property name is only interesting where it is declared, which is
+    # after a brace and before a colon
+    return frozenset(
+        name.strip().lower()
+        for block in css.split("{")[1:]
+        for declaration in block.split("}")[0].split(";")
+        for name, separator, _ in [declaration.partition(":")]
+        if separator
+    )
+
+
+_ATTRIBUTE_SELECTOR: Final = re.compile(r"\[\s*([\w:-]+)")
+
+
 def stylesheet_capability(css: str, /) -> Capability:
     """Work out what a stylesheet leaves reifiable anywhere in the document.
 
     Which elements a selector picks out is not something reification can
     work out, so a rule mentioning a property it would have to rewrite costs
-    that property everywhere.
+    that property everywhere. A selector that picks elements out by a
+    geometric attribute would stop matching once that attribute is
+    rewritten, so it costs everything.
 
     Args:
         css: The text of a stylesheet.
@@ -1264,17 +1289,19 @@ def stylesheet_capability(css: str, /) -> Capability:
         ...     ".a { transform: rotate(3deg) }"
         ... ) == NOTHING
         True
+        >>> stylesheet_capability('[transform="scale(2)"] {}') == NOTHING
+        True
 
     """
-    # a property name is only interesting where it is declared, which is
-    # after a brace and before a colon
-    declared = {
-        name.strip().lower()
-        for block in css.split("{")[1:]
-        for declaration in block.split("}")[0].split(";")
-        for name, separator, _ in [declaration.partition(":")]
-        if separator
-    }
+    # a selector is everything before a brace that is not inside a block
+    selectors = " ".join(
+        part.rsplit("}", 1)[-1] for part in css.split("{")[:-1]
+    )
+
+    if GEOMETRIC_ATTR_NAMES & set(_ATTRIBUTE_SELECTOR.findall(selectors)):
+        return NOTHING
+
+    declared = declared_properties(css)
 
     if _STYLE_OPAQUE & declared:
         return NOTHING
