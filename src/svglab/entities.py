@@ -35,6 +35,7 @@ from typing_extensions import (
 
 from svglab.attrparse.iri import FuncIri, Iri
 from svglab.attrparse.length import Length
+from svglab.attrparse.point import Point
 from svglab.attrparse.transform import (
     Matrix,
     Transform,
@@ -66,6 +67,7 @@ from svglab.reify import (
     SelectsAChild,
     Stylesheet,
     TransformInheritedByChildren,
+    ViewportEstablishing,
     apply,
     geometry_capability,
     has_own_geometry,
@@ -81,6 +83,7 @@ from svglab.serialize import (
 )
 from svglab.utils.bsutils import beautifulsoup_to_str
 from svglab.utils.iterutils import search_by_reference, take_last
+from svglab.utils.mathutils import is_close
 from svglab.utils.miscutils import basic_compare
 
 
@@ -1158,32 +1161,33 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         ]
         ```
 
+        A keyword such as `center` and a percentage are resolved against the
+        nearest viewport, as `transform-box: view-box` prescribes for SVG
+        elements. The outermost `svg` has a CSS box of its own and turns
+        about its center unless told otherwise, so it is treated as if it
+        said `transform-origin="50% 50%"`.
+
         If the `transform-origin` attribute is not set, this function does
         nothing.
 
         Raises:
             SvgTransformOriginError: If the value of the `transform-origin`
-                attribute cannot be decomposed.
+                attribute cannot be decomposed: it has a depth, or it is
+                relative to a viewport whose size is not known.
+            SvgUnitConversionError: If an offset cannot be converted to user
+                units.
 
         """
-        if self.transform_origin is None:
-            return
+        origin = _transform_origin(self)
 
-        if not (
-            isinstance(self.transform_origin, tuple)
-            and isinstance(self.transform_origin[0], Length)
-            and isinstance(self.transform_origin[1], Length)
-        ):
-            raise SvgTransformOriginError(self.transform_origin)
+        if origin is None:
+            return
 
         if not self.main_transform:
             self.main_transform = []
 
-        tx = float(self.transform_origin[0])
-        ty = float(self.transform_origin[1])
-
-        self.main_transform.insert(0, Translate(tx, ty))
-        self.main_transform.append(Translate(-tx, -ty))
+        self.main_transform.insert(0, Translate(origin.x, origin.y))
+        self.main_transform.append(Translate(-origin.x, -origin.y))
 
         self.transform_origin = None
 
@@ -1763,31 +1767,136 @@ def _children_inheriting_transform(element: Element, /) -> list[Element]:
     ]
 
 
-def _has_unusable_transform_origin(element: Element, /) -> bool:
-    """Check whether `transform-origin` is something reification can fold in.
+_HORIZONTAL_KEYWORDS: Final = {"left": 0.0, "center": 50.0, "right": 100.0}
+_VERTICAL_KEYWORDS: Final = {"top": 0.0, "center": 50.0, "bottom": 100.0}
+_CSS_INITIAL_ORIGIN: Final = (Length(50, "%"), Length(50, "%"))
 
-    Only a pair of absolute lengths can be turned into the two translations
-    that carry a transformation around the origin. A keyword such as
-    `center`, or a percentage of a box reification cannot see, cannot -- and
-    an element that cannot take its own origin apart cannot be handed a
-    transformation by its parent either.
+
+def _transform_origin(element: Element, /) -> Point | None:
+    """Resolve the point the element's `transform-origin` turns about.
+
+    Returns `None` when the element has no origin to speak of. The outermost
+    `svg` with a transformation has one even when it says nothing: a CSS box
+    turns about its center.
+
+    Raises:
+        SvgTransformOriginError: If the origin has a depth, names a side
+            that cannot be told apart from the other axis, or is relative to
+            a viewport whose size is not known.
+        SvgUnitConversionError: If an offset cannot be converted.
+
     """
     origin = _attr_or_default(element, "transform-origin")
 
     if origin is None:
+        if not (
+            _is_outermost_viewport(element) and element.main_transform
+        ):
+            return None
+
+        origin = _CSS_INITIAL_ORIGIN
+
+    match origin:
+        case (first, second):
+            pass
+        case (first, second, depth):
+            if not (
+                isinstance(depth, Length) and is_close(float(depth), 0)
+            ):
+                raise SvgTransformOriginError(origin)
+        case "top" | "bottom":
+            first, second = "center", origin
+        case _:
+            first, second = origin, "center"
+
+    if first in ("top", "bottom") or second in ("left", "right"):
+        # two keywords may be written in either order
+        first, second = second, first
+
+    offsets: list[float] = []
+
+    for value, keywords, axis in (
+        (first, _HORIZONTAL_KEYWORDS, 0),
+        (second, _VERTICAL_KEYWORDS, 1),
+    ):
+        if isinstance(value, str):
+            if value not in keywords:
+                raise SvgTransformOriginError(origin)
+
+            value = Length(keywords[value], "%")  # noqa: PLW2901
+
+        if not isinstance(value, Length):
+            raise SvgTransformOriginError(origin)
+
+        if value.unit == "%":
+            # `transform-box` is `view-box` for SVG elements, so a percentage
+            # is of the nearest viewport
+            viewport = _viewport_size(element)
+
+            if viewport is None:
+                raise SvgTransformOriginError(origin)
+
+            offsets.append(value.value / 100 * viewport[axis])
+        else:
+            offsets.append(float(value))
+
+    return Point(*offsets)
+
+
+def _viewport_size(element: Element, /) -> tuple[float, float] | None:
+    """Measure the viewport the element's percentages are resolved against.
+
+    The nearest viewport is the one established by the closest ancestor
+    that establishes one; for the outermost `svg` it is its own. Its size is
+    that of its `viewBox`, or for an `svg` without one, its `width` and
+    `height`.
+    """
+    start = element if _is_outermost_viewport(element) else element.parent
+
+    if start is None:
+        return None
+
+    for candidate in itertools.chain([start], start.ancestors):
+        if not isinstance(candidate, ViewportEstablishing):
+            continue
+
+        view_box = _attr_or_default(candidate, "viewBox")
+
+        if isinstance(view_box, tuple):
+            _, _, width, height = cast("tuple[float, ...]", view_box)
+            return width, height
+
+        if element_name(candidate) != "svg":
+            return None
+
+        width = _attr_or_default(candidate, "width")
+        height = _attr_or_default(candidate, "height")
+
+        try:
+            if isinstance(width, Length) and isinstance(height, Length):
+                return float(width), float(height)
+        except SvgUnitConversionError:
+            return None
+
+        return None
+
+    return None
+
+
+def _has_unusable_transform_origin(element: Element, /) -> bool:
+    """Check whether `transform-origin` keeps the element where it is.
+
+    An element whose origin cannot be taken apart cannot have its
+    transformation reified, nor be handed one by its parent. An origin on an
+    element with no transformation does nothing at all, and is simply dropped
+    when a transformation arrives.
+    """
+    if not element.main_transform:
         return False
 
-    if not (
-        isinstance(origin, tuple)
-        and len(origin) == 2  # noqa: PLR2004
-        and all(isinstance(value, Length) for value in origin)
-    ):
-        return True
-
     try:
-        float(origin[0])
-        float(origin[1])
-    except SvgUnitConversionError:
+        _transform_origin(element)
+    except (SvgTransformOriginError, SvgUnitConversionError):
         return True
 
     return False
@@ -1915,6 +2024,16 @@ def _reify_element(element: Element, /, *, context: _Context) -> None:
     if id(element) in context.frozen:
         return
 
+    identity = Matrix.identity()
+
+    if (
+        not element.main_transform
+        or compose(element.main_transform) == identity
+    ):
+        # the list does nothing, about any origin, so the attribute can go
+        element.main_transform = None
+        return
+
     try:
         element.decompose_transform_origin()
     except (SvgTransformOriginError, SvgUnitConversionError):
@@ -1922,20 +2041,11 @@ def _reify_element(element: Element, /, *, context: _Context) -> None:
         # cannot see, so the transformation has to stay where it is
         return
 
-    if not element.main_transform:
-        element.main_transform = None
-        return
-
-    identity = Matrix.identity()
     matrix = compose(element.main_transform)
     capability = _transform_capability(element, context=context)
     residue, absorbed = split(matrix, capability)
 
     if absorbed == identity:
-        if matrix == identity:
-            # the list does nothing, so the attribute can simply go
-            element.main_transform = None
-
         # nothing was folded in; the list is left exactly as written
         return
 
@@ -1946,9 +2056,12 @@ def _reify_element(element: Element, /, *, context: _Context) -> None:
         # the children are placed in the coordinate system the element
         # establishes, so they have to be given back what was taken out of it
         for child in _children_inheriting_transform(element):
-            child.decompose_transform_origin()
-
-            if child.main_transform is None:
+            if child.main_transform:
+                child.decompose_transform_origin()
+            else:
+                # an origin without a transformation did nothing, and must
+                # not start doing something now
+                child.transform_origin = None
                 child.main_transform = []
 
             child.main_transform.insert(0, absorbed)
