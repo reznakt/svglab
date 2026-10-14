@@ -1668,9 +1668,32 @@ def _filter_capability(target: Element, /) -> Capability:
         # renders in, so moving the element would leave the region behind
         return NOTHING
 
+    if _attr_or_default(
+        target, "primitiveUnits"
+    ) == "userSpaceOnUse" and any(
+        element_name(primitive) == "feTurbulence"
+        or any(
+            _attr_or_default(primitive, name) is not None
+            for name in _PRIMITIVE_POSITION_ATTRS
+        )
+        for primitive in target.find_all()
+    ):
+        # a primitive placed at a point of the user space, or noise sampled
+        # from it, stays where it is when the element moves out from under it
+        return NOTHING
+
     # the region follows the bounding box, but the primitives are
     # parametrized in user space, so the element may only move
     return TRANSLATION
+
+
+_PRIMITIVE_POSITION_ATTRS: Final[tuple[AttributeName, ...]] = (
+    "x",
+    "y",
+    "pointsAtX",
+    "pointsAtY",
+)
+"""Attributes that place a filter primitive, or its light, in user space."""
 
 
 def _is_outermost_viewport(element: Element, /) -> bool:
