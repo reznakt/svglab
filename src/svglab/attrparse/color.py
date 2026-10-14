@@ -25,6 +25,9 @@ def _alpha_channel_as_percentage(original: str) -> str:
     Returns:
         The color string with the alpha channel as a percentage.
 
+    Raises:
+        ValueError: If `original` is not a function call.
+
     Examples:
         >>> _alpha_channel_as_percentage("rgba(0, 0, 0, 0.5)")
         'rgba(0, 0, 0, 50%)'

@@ -154,6 +154,18 @@ line-length = 75  # formatter
 [tool.ruff.lint]
 select = ["ALL"]
 fixable = ["ALL"]
+# the `DOC` rules are still in preview; keep `ALL` from pulling in the rest
+preview = true
+explicit-preview-rules = true
+extend-select = [
+  "DOC102",  # Documented parameter is not in the function's signature
+  "DOC201",  # `return` is not documented in docstring
+  "DOC202",  # Docstring should not have a returns section
+  "DOC402",  # `yield` is not documented in docstring
+  "DOC403",  # Docstring should not have a yields section
+  "DOC501",  # Raised exception missing from docstring
+  "DOC502",  # Raised exception is not explicitly raised
+]
 ignore = [
   # conflicts
   "D211",  # No blank lines allowed before class docstring
@@ -165,6 +177,9 @@ ignore = [
 
   # missing docstrings
   "D105",  # Missing docstring in magic method
+
+  # docstring contents
+  "DOC502",  # Raised exception is not explicitly raised (callees raise it)
 
   # exceptions
   "TRY003",  # Avoid specifying long messages outside the exception class
@@ -193,6 +208,7 @@ ignore = [
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*" = [
   "D",  # pydocstyle
+  "DOC",  # pydoclint
   "PLR2004",  # Magic value used in comparison
   "PLR0913",  # Too many arguments in function definition
   "S311",  # Standard pseudo-random generators are not suitable for security/cryptographic purposes
@@ -200,6 +216,9 @@ ignore = [
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 79  # linter
+
+[tool.ruff.lint.pydoclint]
+ignore-one-line-docstrings = true
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

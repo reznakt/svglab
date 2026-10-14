@@ -419,6 +419,10 @@ class Formatter:
         Returns:
             The number of decimal places to use when serializing the number.
 
+        Raises:
+            TypeError: If neither the group's nor the general precision
+                is set.
+
         """
         settings: _FloatPrecisionSettingsType = None
 

@@ -1210,8 +1210,8 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             recursive: If `False`, only search the direct children of the
                 element, otherwise search all descendants.
 
-        Returns:
-            An iterator over all elements that match the search criteria.
+        Yields:
+            The elements that match the search criteria.
 
         Examples:
             >>> from svglab import G, Rect

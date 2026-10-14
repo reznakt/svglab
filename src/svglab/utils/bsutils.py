@@ -62,6 +62,9 @@ def beautifulsoup_to_str(
     Returns:
         The string representation of the PageElement.
 
+    Raises:
+        TypeError: If `element` is neither a `Tag` nor a `NavigableString`.
+
     """
     result: str
 
