@@ -1,6 +1,7 @@
 name: svg-preview
 
-on:
+# the fork's code is never checked out and the job is gated on the author
+on: # zizmor: ignore[dangerous-triggers]
   push:
     branches: [main]
     paths:

@@ -42,6 +42,12 @@ repos:
         entry: just format-fix
         language: system
         pass_filenames: false
+      - id: workflowcheck
+        name: workflowcheck
+        entry: just workflowcheck
+        language: system
+        files: ^\.github/
+        pass_filenames: false
       - id: versioncheck
         name: versioncheck
         entry: just versioncheck

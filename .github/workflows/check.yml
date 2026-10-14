@@ -118,3 +118,8 @@ jobs:
 
       - name: Run license check
         run: just licensecheck
+
+      - name: Run workflow check
+        run: just workflowcheck
+        env:
+          GH_TOKEN: ${{ github.token }} # lets zizmor run its online audits

@@ -34,6 +34,7 @@
           packages =
             with pkgs;
             [
+              actionlint
               cargo
               cargo-deny
               clippy
@@ -54,6 +55,7 @@
               typos
               uv
               yamlfmt
+              zizmor
             ]
             ++ systemLibs;
 

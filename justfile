@@ -65,3 +65,8 @@ typecheck *args:
 
 versioncheck *args:
     uv run vermin . {{ args }}
+
+# lint the GitHub Actions workflows and audit them for security issues
+workflowcheck:
+    actionlint
+    zizmor .github
