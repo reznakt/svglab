@@ -13,6 +13,7 @@ build *args:
 
 depcheck:
     uv run deptry src tests
+    cargo machete src/svglab-resvg
 
 docs *args:
     SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" uv run properdocs build {{ args }}

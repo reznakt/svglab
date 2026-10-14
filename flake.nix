@@ -37,6 +37,7 @@
               actionlint
               cargo
               cargo-deny
+              cargo-machete
               clippy
               deadnix
               editorconfig-checker
