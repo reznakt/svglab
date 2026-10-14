@@ -37,15 +37,23 @@
               cargo
               cargo-deny
               clippy
+              deadnix
+              editorconfig-checker
               just
               maturin
+              nixfmt
               pngquant
               prek
               python
+              rumdl
               rust-analyzer
               rustc
               rustfmt
+              statix
+              tombi
+              typos
               uv
+              yamlfmt
             ]
             ++ systemLibs;
 

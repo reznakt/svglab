@@ -36,13 +36,11 @@ repos:
         name: lint
         entry: just lint-fix
         language: system
-        files: &code ^(.*\.(py|pyi|rs)|src/svglab-resvg/Cargo\.(toml|lock))$
         pass_filenames: false
       - id: format
         name: format
         entry: just format-fix
         language: system
-        files: *code
         pass_filenames: false
       - id: versioncheck
         name: versioncheck

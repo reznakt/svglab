@@ -8,6 +8,6 @@
     "ms-python.vscode-pylance",
     "rust-lang.rust-analyzer",
     "SanaAjani.taskrunnercode",
-    "tamasfe.even-better-toml",
+    "tombi-toml.tombi",
   ]
 }

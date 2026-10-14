@@ -36,16 +36,16 @@
 - Support for special XML entities (`CDATA`, comments, text)
 - Attributes are parsed into native Python types for easy manipulation
 - Highly configurable formatting options:
-  - indentation level
-  - maximum precision for floating-point numbers
-  - color mode (`rgb`, `rgba`, `hsl`, `hex`, `named`)
-  - relative/absolute path commands
-  - scientific notation for small/large numbers
-  - and many more...
+    - indentation level
+    - maximum precision for floating-point numbers
+    - color mode (`rgb`, `rgba`, `hsl`, `hex`, `named`)
+    - relative/absolute path commands
+    - scientific notation for small/large numbers
+    - and many more...
 - Strong type safety:
-  - one class per distinct SVG element
-  - typed attributes
-  - runtime validation thanks to [pydantic](https://pypi.org/project/pydantic/)
+    - one class per distinct SVG element
+    - typed attributes
+    - runtime validation thanks to [pydantic](https://pypi.org/project/pydantic/)
 - Support for all [beautifulsoup4](https://pypi.org/project/beautifulsoup4/) parsers (e.g., `html.parser`, `lxml`, `html5lib` via the `html5lib` extra)
 - SVG can be rendered into a raster image using [resvg](https://lib.rs/crates/resvg), through bindings that ship with the library
 - Support for calculating the bounding box and mask of an element
