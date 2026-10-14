@@ -42,6 +42,11 @@ repos:
         entry: just format-fix
         language: system
         pass_filenames: false
+      - id: secretcheck
+        name: secretcheck
+        entry: just secretcheck --pre-commit --staged
+        language: system
+        pass_filenames: false
       - id: workflowcheck
         name: workflowcheck
         entry: just workflowcheck

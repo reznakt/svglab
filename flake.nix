@@ -40,6 +40,7 @@
               clippy
               deadnix
               editorconfig-checker
+              gitleaks
               just
               maturin
               nixfmt

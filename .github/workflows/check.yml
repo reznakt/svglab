@@ -120,3 +120,6 @@ jobs:
         run: just workflowcheck
         env:
           GH_TOKEN: ${{ github.token }} # lets zizmor run its online audits
+
+      - name: Run secret scan
+        run: just secretcheck

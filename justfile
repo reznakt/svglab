@@ -60,6 +60,10 @@ lint-fix:
     typos
     editorconfig-checker
 
+# scan the git history, or with `--pre-commit --staged` just the index, for secrets
+secretcheck *args:
+    gitleaks git --redact --no-banner --verbose {{ args }}
+
 test *args:
     uv run pytest {{ args }}
 
