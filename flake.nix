@@ -40,7 +40,7 @@
               just
               maturin
               pngquant
-              pre-commit
+              prek
               python
               rust-analyzer
               rustc
@@ -62,8 +62,8 @@
           shellHook = ''
             unset PYTHONPATH
 
-            if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
-              pre-commit install
+            if [ -d .git ] && ! grep -qs prek .git/hooks/pre-commit; then
+              prek install
             fi
           '';
         };

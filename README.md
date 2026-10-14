@@ -231,8 +231,8 @@ uv sync
 # Activate the virtual environment
 source .venv/bin/activate
 
-# Optional: Install pre-commit hooks
-pre-commit install
+# Optional: Install the pre-commit hooks
+prek install
 ```
 
 ### Common tasks
