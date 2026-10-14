@@ -82,6 +82,7 @@ test = [
   "pytest-cov>=7.0.0",
   "pytest-randomly>=5.0.0",
   "pytest-sugar>=1.1.1",
+  "pytest-xdist>=3.8.0",
 ]
 types = ["types-beautifulsoup4>=4.12.0.20250516"]
 
@@ -142,7 +143,12 @@ strictSetInference = true
 typeCheckingMode = "strict"
 
 [tool.pytest.ini_options]
-addopts = ["--cov", "--doctest-continue-on-failure", "--doctest-modules"]
+addopts = [
+  "--cov",
+  "--doctest-continue-on-failure",
+  "--doctest-modules",
+  "--numprocesses=auto",
+]
 filterwarnings = [
   # https://bugs.launchpad.net/beautifulsoup/+bug/2076897
   "ignore:The 'strip_cdata' option of HTMLParser\\(\\) has never done anything and will eventually be removed.",
