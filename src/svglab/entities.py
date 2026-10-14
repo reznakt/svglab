@@ -822,10 +822,13 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         return {**standard, **extra}
 
     def __get_attr_or_default(self, attr_name: AttributeName) -> object:
-        attrs = self.standard_attrs()
+        name = ATTR_NAME_TO_NORMALIZED[attr_name]
 
-        if attr_name in attrs:
-            return attrs[attr_name]
+        if name in type(self).model_fields:
+            value = getattr(self, name, None)
+
+            if value is not None:
+                return value
 
         match attr_name:
             case "gradientUnits" | "patternUnits":
