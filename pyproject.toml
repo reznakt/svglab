@@ -78,10 +78,9 @@ test = [
   "hypothesis>=6.168.3",
   "pytest>=9.0.2",
   "pytest-accept>=0.2.3",
-  "pytest-clarity>=1.0.1",
   "pytest-cov>=7.0.0",
+  "pytest-pretty>=1.3.0",
   "pytest-randomly>=5.0.0",
-  "pytest-sugar>=1.1.1",
   "pytest-xdist>=3.8.0",
 ]
 types = ["types-beautifulsoup4>=4.12.0.20250516"]
