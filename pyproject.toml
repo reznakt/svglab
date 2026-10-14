@@ -90,6 +90,8 @@ requires = ["maturin>=1.15.0,<2.0"]
 build-backend = "maturin"
 
 [tool.coverage.run]
+# `sys.monitoring` costs next to nothing; older Pythons fall back to the tracer
+core = "sysmon"
 omit = ["tests/*"]
 
 [tool.deptry.per_rule_ignores]
