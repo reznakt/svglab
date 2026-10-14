@@ -12,6 +12,7 @@ from svglab import (
     Defs,
     Element,
     Ellipse,
+    G,
     Length,
     Matrix,
     Path,
@@ -25,7 +26,7 @@ from svglab import (
     Title,
     Transform,
 )
-from tests.conftest import assert_svg_visually_equal
+from tests.conftest import assert_svg_visually_equal, transforms_left
 
 
 _TOLERANCE = 5e-5
@@ -198,3 +199,49 @@ def test_a_shape_that_becomes_a_path_keeps_its_children() -> None:
     assert path.transform is None
     assert title.parent is path
     assert list(svg.find_all(Rect)) == []
+
+
+def test_a_shape_handed_a_transformation_by_a_group_becomes_a_path() -> (
+    None
+):
+    # the group has no geometry of its own, so the rotation has nowhere to go
+    # but into the shapes; the rect can only take it as a path, the circle
+    # takes it as it is
+    rect = Rect(
+        x=Length(80),
+        y=Length(-60),
+        width=Length(120),
+        height=Length(120),
+        fill=Color("green"),
+    )
+    circle = Circle(cx=Length(100), cy=Length(0), r=Length(20))
+    original = _svg(G(transform=[Rotate(45)]).add_children(rect, circle))
+    reified = copy.deepcopy(original)
+
+    reified.reify(convert_shapes_to_paths=True)
+
+    assert not transforms_left(reified)
+    assert reified.find(Rect, default=None) is None
+    assert isinstance(reified.find(Circle), Circle)
+    assert isinstance(reified.find(Path), Path)
+    assert_svg_visually_equal(original, reified, tolerance=_TOLERANCE)
+
+
+def test_a_shape_that_can_take_what_the_group_hands_down_stays_a_shape() -> (
+    None
+):
+    rect = Rect(
+        x=Length(20),
+        y=Length(20),
+        width=Length(60),
+        height=Length(40),
+        fill=Color("green"),
+    )
+    original = _svg(G(transform=[Scale(2, 1.5)]).add_child(rect))
+    reified = copy.deepcopy(original)
+
+    reified.reify(convert_shapes_to_paths=True)
+
+    assert not transforms_left(reified)
+    assert isinstance(reified.find(Rect), Rect)
+    assert_svg_visually_equal(original, reified)

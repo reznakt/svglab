@@ -1445,7 +1445,11 @@ def stylesheet_capability(css: str, /) -> Capability:
 
 
 def geometry_capability(
-    element: object, /, *, scope: Scope = WHOLE_DOCUMENT
+    element: object,
+    /,
+    *,
+    scope: Scope = WHOLE_DOCUMENT,
+    as_path: bool = False,
 ) -> Capability:
     """Determine what transformations an element's attributes can express.
 
@@ -1457,14 +1461,15 @@ def geometry_capability(
     Args:
         element: The element to inspect.
         scope: How far up the tree inheritance can be seen.
+        as_path: Whether to judge a basic shape as the `path` it can be
+            converted into, whose geometry survives anything.
 
     Returns:
         The set of features the element can absorb.
 
     """
-    capability = _structural_capability(element) & style_capability(
-        element
-    )
+    structural = AFFINE if as_path else _structural_capability(element)
+    capability = structural & style_capability(element)
 
     if (
         not capability
@@ -1531,11 +1536,14 @@ def geometry_capability(
             # the element may be moved but not resized
             capability &= TRANSLATION
 
-        if isinstance(element, ImplicitlyOrientedShape) and _is_dashed(
-            element, scope
+        if (
+            isinstance(element, ImplicitlyOrientedShape)
+            and not as_path
+            and _is_dashed(element, scope)
         ):
             # the dash pattern starts at a corner the spec fixes, so moving
-            # that corner somewhere else shifts the pattern
+            # that corner somewhere else shifts the pattern; the path the
+            # shape converts into spells its corners out in order
             capability &= UNIFORM_SCALING
 
     return capability
