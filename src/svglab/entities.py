@@ -1642,6 +1642,12 @@ def _pushes_transform_to_children(element: Element, /) -> bool:
     transformation on each of its children, which is what lets reification
     carry one down the tree to elements that can absorb it.
     """
+    if _attr_or_default(element, "clipPathUnits") == "objectBoundingBox":
+        # the content is drawn in the bounding box of whatever the clip path
+        # is applied to, and the transformation is applied on top of that
+        # mapping, so it cannot be handed down past it
+        return False
+
     return isinstance(
         element, TransformInheritedByChildren
     ) or _is_outermost_viewport(element)
