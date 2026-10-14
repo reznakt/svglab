@@ -1358,6 +1358,16 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             element in the document, `False` otherwise.
 
         """
+        return self.__references_element_in(self.__document_ids())
+
+    def __document_ids(self) -> frozenset[str]:
+        return frozenset(
+            element.id
+            for element in self.get_root().find_all()
+            if element.id is not None
+        )
+
+    def __references_element_in(self, ids: frozenset[str]) -> bool:
         for attr_name in _REFERENCE_ATTR_NAMES:
             if not hasattr(self, attr_name):
                 continue
@@ -1367,15 +1377,13 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             if not (isinstance(attr, Iri) and attr.is_local):
                 continue
 
-            try:
-                self.get_root().resolve_iri(attr)
-            except ValueError:
-                warnings.warn(
-                    f"Dangling IRI reference {attr_name}={attr.serialize()!r}",
-                    stacklevel=2,
-                )
-            else:
+            if attr.fragment in ids:
                 return True
+
+            warnings.warn(
+                f"Dangling IRI reference {attr_name}={attr.serialize()!r}",
+                stacklevel=3,
+            )
 
         return False
 
@@ -1554,7 +1562,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
                 msg = f"Unsupported transformation: {transformation}"
                 raise ValueError(msg)
 
-    def __reify_this(self, *, limit: int = sys.maxsize) -> None:
+    def __reify_this(self, *, limit: int, ids: frozenset[str]) -> None:
         if limit < 0:
             raise ValueError("Limit must be a positive integer")
 
@@ -1608,15 +1616,16 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
                 child.decompose_transform_origin()
                 child.main_transform.insert(0, transformation)
 
-                child.reify(
+                child.__reify(  # noqa: SLF001
                     limit=1,
                     recursive=False,
                     remove_transform_list_if_empty=False,
+                    ids=ids,
                 )
 
             reified += 1
 
-    def __can_reify(self) -> bool:
+    def __can_reify(self, ids: frozenset[str]) -> bool:
         # transformations on <use> elements cannot be reified.
         # reification would only work if all usages of the referenced element
         # via <use> have equal transform attributes (f.e. if the referenced
@@ -1650,7 +1659,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
         # TODO: this is overly general; find out in which cases this is
         # actually needed
-        return not self.references_other_element()
+        return not self.__references_element_in(ids)
 
     def reify(
         self,
@@ -1734,20 +1743,36 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             Length(value=20.0, unit=None)
 
         """
-        if not self.__can_reify():
+        self.__reify(
+            limit=limit,
+            recursive=recursive,
+            remove_transform_list_if_empty=remove_transform_list_if_empty,
+            ids=self.__document_ids(),
+        )
+
+    def __reify(
+        self,
+        *,
+        limit: int,
+        recursive: bool,
+        remove_transform_list_if_empty: bool,
+        ids: frozenset[str],
+    ) -> None:
+        if not self.__can_reify(ids):
             return
 
-        self.__reify_this(limit=limit)
+        self.__reify_this(limit=limit, ids=ids)
 
         if remove_transform_list_if_empty and not self.main_transform:
             self.main_transform = None
 
         if recursive:
             for child in self.find_all(recursive=False):
-                child.reify(
+                child.__reify(  # noqa: SLF001
                     limit=limit,
                     recursive=True,
                     remove_transform_list_if_empty=remove_transform_list_if_empty,
+                    ids=ids,
                 )
 
     # endregion
