@@ -11,6 +11,9 @@ default:
 build *args:
     uv sync --reinstall-package svglab {{ args }}
 
+depcheck:
+    uv run deptry src tests
+
 docs *args:
     SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" uv run properdocs build {{ args }}
 

@@ -48,6 +48,12 @@ repos:
         language: system
         files: ^\.github/
         pass_filenames: false
+      - id: depcheck
+        name: depcheck
+        entry: just depcheck
+        language: system
+        files: ^(.*\.(py|rs)|pyproject\.toml|uv\.lock|src/svglab-resvg/Cargo\.(toml|lock))$
+        pass_filenames: false
       - id: versioncheck
         name: versioncheck
         entry: just versioncheck

@@ -113,6 +113,9 @@ jobs:
       - name: Run license check
         run: just licensecheck
 
+      - name: Run dependency check
+        run: just depcheck
+
       - name: Run workflow check
         run: just workflowcheck
         env:

@@ -55,6 +55,7 @@ html5lib = ["html5lib>=1.1"]
 
 [dependency-groups]
 dev = [
+  "deptry>=0.25.1",
   "licensecheck>=2025.1.0",
   "pyright>=1.1.414",
   "ruff>=0.16.9",
@@ -90,6 +91,10 @@ build-backend = "maturin"
 
 [tool.coverage.run]
 omit = ["tests/*"]
+
+[tool.deptry.per_rule_ignores]
+DEP002 = ["lxml", "html5lib"]  # parser backends that BeautifulSoup loads by name
+DEP003 = ["pydantic_core"]  # pinned exactly by pydantic
 
 [tool.licensecheck]
 format = "ansi"
