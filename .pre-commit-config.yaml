@@ -53,6 +53,12 @@ repos:
         language: system
         files: ^(CITATION\.cff|\.github/dependabot\.yml|codecov\.yml)$
         pass_filenames: false
+      - id: docs
+        name: docs
+        entry: just docs --strict
+        language: system
+        files: ^(docs/|properdocs\.yml$)
+        pass_filenames: false
       - id: workflowcheck
         name: workflowcheck
         entry: just workflowcheck

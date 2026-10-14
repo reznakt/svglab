@@ -90,6 +90,7 @@ plugins:
       enable_creation_date: true
 
   - git-committers:
+      enabled: !ENV [CI, false] # needs a GitHub token, which only CI has
       repository: reznakt/svglab
       branch: main
       exclude_committers:

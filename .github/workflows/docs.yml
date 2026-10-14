@@ -32,7 +32,7 @@ jobs:
         run: nix develop --command uv sync --group docs
 
       - name: Build docs
-        run: nix develop --command just docs
+        run: nix develop --command just docs --strict
         env:
           MKDOCS_GIT_COMMITTERS_APIKEY: ${{ secrets.GITHUB_TOKEN }}
 
