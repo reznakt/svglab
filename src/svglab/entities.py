@@ -1362,7 +1362,7 @@ Element.model_rebuild()
 
 
 @final
-class UnknownElement(Element):
+class UnknownElement(RenderedIndirectly, Element):
     """Represents an unknown element that is not part of the SVG specification.
 
     This element has no standard parsed attributes. All attributes are treated
@@ -1373,6 +1373,10 @@ class UnknownElement(Element):
     intended as a last-resort fallback so we don't lose information about
     elements the library does not know about.
 
+    A renderer draws nothing it does not know, so reification treats an
+    unknown element like one that is not drawn where it sits: a
+    transformation handed down from above neither reaches it nor is held up
+    by it.
     """
 
     element_name: str = pydantic.Field(frozen=True, min_length=1)
@@ -2193,6 +2197,8 @@ def _reify_element(
         element.main_transform = None
         return element
 
+    written = list(element.main_transform), element.transform_origin
+
     try:
         element.decompose_transform_origin()
     except (SvgTransformOriginError, SvgUnitConversionError):
@@ -2218,7 +2224,11 @@ def _reify_element(
     residue, absorbed = split(matrix, capability)
 
     if absorbed == identity:
-        # nothing was folded in; the list is left exactly as written
+        # nothing was folded in; the list is left exactly as written, with
+        # the origin it was written with
+        if written[1] is not None or element.main_transform != written[0]:
+            element.main_transform, element.transform_origin = written
+
         return element
 
     if has_own_geometry(element) and not _delegates_transform(element):
