@@ -2255,6 +2255,19 @@ def _is_convertible_shape(
         # need to know the viewport
         return False
 
+    # browsers put markers on paths but not on rects and circles, so a shape
+    # that may carry a marker would gain some as a path
+    for name in _MARKER_ATTRS:
+        marker = property_value(
+            element, name, scope=context.scopes[id(element)]
+        )
+
+        if marker is UNKNOWN:
+            if context.markers:
+                return False
+        elif marker is not None and marker != "none":
+            return False
+
     return True
 
 
@@ -2655,7 +2668,8 @@ def _frozen_elements(
     A gradient or pattern that refers to another inherits every attribute it
     leaves out, its transformation included, and even an identity
     transformation of its own overrides the inherited one. Both ends of such
-    a reference are left as written.
+    a reference are left as written, and so is a path a motion animation
+    follows, since the motion follows its data as written.
 
     Returns:
         The `id()`s of the elements.
