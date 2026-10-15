@@ -25,7 +25,13 @@ from svglab.attrparse.color import Color
 from svglab.attrparse.length import Length
 from svglab.attrparse.path_data import PathData
 from svglab.attrparse.point import Point
-from svglab.attrparse.transform import Scale, Transform, Translate
+from svglab.attrparse.transform import (
+    Matrix,
+    Scale,
+    Transform,
+    Translate,
+    compose,
+)
 from svglab.attrs.attrdefs import (
     AccentHeightAttr,
     AlphabeticAttr,
@@ -216,7 +222,8 @@ from svglab.elements.traits import (
     TextContentChildElement,
     TextContentElement,
 )
-from svglab.entities import referenced_elements
+from svglab.entities import element_name, referenced_elements
+from svglab.errors import SvgUnitConversionError
 from svglab.graphics import render
 from svglab.models import convert
 from svglab.protocols import SupportsWrite
@@ -237,6 +244,7 @@ from svglab.reify import (
     TranslatableGeometry,
     UniformlyScalableGeometry,
     ViewportEstablishing,
+    spell_out_gradient,
     style_declarations,
 )
 from svglab.resvg import RenderOptions
@@ -1344,6 +1352,84 @@ class Style(
 _STYLED_TRANSFORM: Final = frozenset({"transform", "transform-origin"})
 """Style properties that override what prepending to `transform` would do."""
 
+_NOT_OF_THE_VIEWPORT: Final = frozenset(
+    {"font-size", "offset", "startOffset", "baseline-shift", "opacity"}
+)
+"""Attributes whose percentages are of something other than the viewport."""
+
+
+def _normalize(transform: Transform, /) -> Transform | None:
+    """Write a transform list in its shortest equivalent form.
+
+    Returns:
+        The list, or `None` if it does nothing.
+
+    """
+    matrix = compose(transform)
+
+    return None if matrix == Matrix.identity() else matrix.decompose()
+
+
+def _is_viewport_percentage(value: object, /) -> bool:
+    match value:
+        case Length(_, "%"):
+            return True
+        case list() | tuple():
+            return any(_is_viewport_percentage(item) for item in value)
+        case _:
+            return False
+
+
+def _refuse_viewport_percentages(svg: Svg, /) -> None:
+    """Refuse a document whose lengths are percentages of the viewport.
+
+    Raises:
+        SvgUnitConversionError: If any element below the svg has one.
+
+    """
+    for element in svg.find_all():
+        for name, value in element.standard_attrs().items():
+            if (
+                name not in _NOT_OF_THE_VIEWPORT
+                and _is_viewport_percentage(value)
+            ):
+                # a percentage of the viewport cannot be converted to the
+                # user units the mapping is expressed in
+                raise SvgUnitConversionError(
+                    original_unit=f"{name}={value!r}", target_unit=None
+                )
+
+
+def _spell_out_user_space_gradients(
+    svg: Svg, viewport: tuple[float, float], /
+) -> None:
+    """Write out the percentages of every user-space gradient.
+
+    Raises:
+        SvgUnitConversionError: If the document has viewports of its own,
+            against which the percentages of a gradient painting something
+            inside them would resolve instead.
+
+    """
+    gradients = [
+        element
+        for element in svg.find_all()
+        if isinstance(element, GradientUnitsAttr)
+        and element.gradientUnits == "userSpaceOnUse"
+    ]
+
+    if gradients and any(
+        isinstance(element, ViewportEstablishing)
+        and element_name(element) not in {"image", "foreignObject"}
+        for element in svg.find_all()
+    ):
+        # the percentages resolve against whichever viewport a painted
+        # shape sits in
+        raise SvgUnitConversionError(original_unit="%", target_unit=None)
+
+    for gradient in gradients:
+        spell_out_gradient(gradient, viewport=viewport)
+
 
 @final
 class Svg(
@@ -1478,9 +1564,12 @@ class Svg(
         `style` sets its transformation -- is wrapped in a new `g` that
         carries the scaling and translation instead.
 
-        Any attributes of type `Length` in the SVG must be convertible to
-        user units. If an attribute is not convertible, the method raises an
-        exception.
+        A length given as a percentage of the viewport would resolve against
+        the new `viewBox` once the mapping is applied, so the method refuses
+        a document with one. The coordinates of a gradient in user space
+        default to such percentages; they are written out against the old
+        viewport first, which is possible as long as the document has a
+        single viewport.
 
         Args:
             viewbox: A tuple of four numbers representing the new viewBox.
@@ -1489,8 +1578,9 @@ class Svg(
             ValueError: If `viewBox` is not set and `width` and `height` are
                 not set or if the aspect ratios of the old and new viewBox
                 differ.
-            SvgUnitConversionError: If an attribute is not convertible to user
-                units.
+            SvgUnitConversionError: If a length is a percentage of the
+                viewport, or a user-space gradient's percentages cannot be
+                written out.
 
         """
         if self.viewBox is None:
@@ -1522,6 +1612,9 @@ class Svg(
         tx = min_x - sx * old_min_x
         ty = min_y - sy * old_min_y
 
+        _refuse_viewport_percentages(self)
+        _spell_out_user_space_gradients(self, (old_width, old_height))
+
         mapping: Transform = [Translate(tx, ty), Scale(sx, sy)]
         referenced = referenced_elements(self.get_root())
 
@@ -1540,7 +1633,7 @@ class Svg(
                 # mapping goes around it instead
                 index = self.get_child_index(child)
                 self.remove_child(child)
-                wrapper = G(transform=list(mapping)).add_child(child)
+                wrapper = G(transform=_normalize(mapping)).add_child(child)
                 self.add_child(wrapper, index=index)
                 continue
 
@@ -1549,9 +1642,10 @@ class Svg(
             child.decompose_transform_origin()
             child.transform = [*mapping, *(child.transform or [])]
 
-        self.reify()
-
+        # the svg's own transformation is applied in pixels, after the new
+        # viewBox is fitted into its box, so it is reified under that one
         self.viewBox = viewbox
+        self.reify()
 
     def render(
         self,
