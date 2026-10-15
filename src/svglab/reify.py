@@ -596,54 +596,87 @@ def _is_convertible(attr: object, /) -> bool:
             return True
 
 
-def _is_scalable(attr: object, /) -> bool:
+_FONT_RELATIVE: Final = frozenset({"em", "ex"})
+"""Units measured against the font size the element renders with."""
+
+
+def _is_scalable(
+    attr: object, /, *, relative: frozenset[str] = frozenset()
+) -> bool:
     """Check whether an attribute holds a magnitude that can be resized.
 
     Keywords such as `medium` or `inherit` hold a magnitude that reification
-    cannot resolve, so an element using one cannot be resized.
+    cannot resolve, so an element using one cannot be resized. A length in a
+    relative unit is resized by multiplying its number, which is only right
+    where its reference does not change along with it: the element's own
+    `font-size` in `em` is relative to the parent's, which stays as it is,
+    while one it inherits has been computed against a size already.
+
+    Args:
+        attr: The value of the attribute.
+        relative: The relative units that may be multiplied.
 
     Returns:
-        `True` if the attribute is unset or holds a magnitude in user
-        units.
+        `True` if the attribute is unset or holds a magnitude that can be
+        multiplied.
 
     """
     match attr:
         case None:
+            return True
+        case Length(_, unit) if unit in relative:
             return True
         case Length():
             return _is_convertible(attr)
         case int() | float():
             return True
         case list() | tuple():
-            return all(_is_scalable(item) for item in attr)
+            return all(
+                _is_scalable(item, relative=relative) for item in attr
+            )
         case _:
             return False
 
 
-def _is_resizable(attr: object, /) -> bool:
-    """Check whether an attribute holds a magnitude that is there to resize.
+def _is_resizable(
+    element: object,
+    name: str,
+    scope: Scope,
+    /,
+    *,
+    initial: object = None,
+    relative: frozenset[str] = _FONT_RELATIVE,
+    keywords: tuple[str, ...] = (),
+) -> bool:
+    """Check whether the magnitude an element renders with can be resized.
 
-    Unlike `_is_scalable`, an absent value counts as unresizable: there is a
-    magnitude in play, it just is not one reification can see.
+    The element's own value may be in a relative unit, since what it is
+    relative to stays as it is; a value it inherits has been computed
+    against the ancestor's reference and must be in user units. An absent
+    value with no initial one counts as unresizable: there is a magnitude in
+    play, it just is not one reification can see.
+
+    Args:
+        element: The element.
+        name: The name of the property, as a Python attribute name.
+        scope: How far up the tree inheritance can be seen.
+        initial: The value the property takes when nothing specifies one.
+        relative: The relative units the element's own value may be in.
+        keywords: Keywords that leave the magnitude to something resized
+            already, such as the font.
 
     Returns:
-        `True` if the attribute holds a magnitude in user units.
+        `True` if the magnitude can be resized.
 
     """
-    return attr is not None and _is_scalable(attr)
+    own = _property(element, name, scope)
 
+    if _is_specified(own):
+        return own in keywords or _is_scalable(own, relative=relative)
 
-def _is_spacing_scalable(attr: object, /) -> bool:
-    """Check whether a glyph spacing can be resized.
+    value = property_value(element, name, initial=initial, scope=scope)
 
-    `normal` and `auto` leave the spacing to the font, which is resized with
-    the `font-size` already; any other keyword cannot be resolved.
-
-    Returns:
-        `True` if the spacing is left to the font or can be resized.
-
-    """
-    return attr in ("normal", "auto") or _is_scalable(attr)
+    return value in keywords or (value is not None and _is_scalable(value))
 
 
 def _get(element: object, name: str, /) -> object:
@@ -652,15 +685,28 @@ def _get(element: object, name: str, /) -> object:
     return getattr(element, name, None)
 
 
-def _scaled(attr: object, /, by: float) -> object:
-    """Resize a magnitude-valued attribute, leaving anything else alone."""
+def _scaled(
+    attr: object, /, by: float, *, keep: frozenset[str] = frozenset()
+) -> object:
+    """Resize a magnitude-valued attribute, leaving anything else alone.
+
+    The caller has checked that a relative unit may be multiplied; see
+    `_is_scalable`. A length in one of the units in `keep` is left as it is:
+    on an element whose font size is resized, a length in `em` follows it.
+
+    Returns:
+        The resized attribute.
+
+    """
     match attr:
-        case Length(_, "%"):
+        case Length(_, unit) if unit in keep:
             return attr
         case int() | float() | Length():
             return attr * by
         case list() | tuple():
-            return type(attr)(_scaled(item, by) for item in attr)
+            return type(attr)(
+                _scaled(item, by, keep=keep) for item in attr
+            )
         case _:
             return attr
 
@@ -932,13 +978,16 @@ def _apply_text(element: object, matrix: Matrix, /) -> None:
         y = _text_position(element, element.y, matrix.f)
         element.y = _translated(_scaled(y, factor), matrix.f)  # type: ignore[assignment]
 
-    # a delta is a distance, so it is resized but never moved
+    # a delta is a distance, so it is resized but never moved; one in `em`
+    # follows the font size, which is resized along with the text
     if isinstance(element, DxListOfLengthsAttr):
-        element.dx = _scaled(element.dx, factor)  # type: ignore[reportAttributeAccessIssue]
+        element.dx = _scaled(element.dx, factor, keep=_FONT_RELATIVE)  # type: ignore[reportAttributeAccessIssue]
     if isinstance(element, DyListOfLengthsAttr):
-        element.dy = _scaled(element.dy, factor)  # type: ignore[reportAttributeAccessIssue]
+        element.dy = _scaled(element.dy, factor, keep=_FONT_RELATIVE)  # type: ignore[reportAttributeAccessIssue]
     if isinstance(element, TextLengthAttr):
-        element.textLength = _scaled(element.textLength, factor)  # type: ignore[reportAttributeAccessIssue]
+        element.textLength = _scaled(  # type: ignore[reportAttributeAccessIssue]
+            element.textLength, factor, keep=_FONT_RELATIVE
+        )
 
 
 def _text_position(element: object, attr: object, by: float, /) -> object:
@@ -1000,7 +1049,16 @@ def _apply_magnitudes(
         if inherited_resized and not _is_specified(_get(element, name)):
             return
 
-        _scale_inherited(element, name, factor, scope, initial=initial)
+        # on an element that resizes its font size, a magnitude in `em`
+        # follows it; the font size itself is relative to the parent's
+        keep = (
+            _FONT_RELATIVE
+            if isinstance(element, FontSizeScaled) and name != "font_size"
+            else frozenset[str]()
+        )
+        _scale_inherited(
+            element, name, factor, scope, initial=initial, keep=keep
+        )
 
     if isinstance(element, FontSizeScaled):
         for name in _FONT_MAGNITUDES:
@@ -1118,6 +1176,7 @@ def _scale_inherited(
     /,
     *,
     initial: object = None,
+    keep: frozenset[str] = frozenset(),
 ) -> None:
     """Resize an inherited magnitude, spelling it out if it was inherited.
 
@@ -1128,7 +1187,7 @@ def _scale_inherited(
     value = property_value(element, name, initial=initial, scope=scope)
 
     if isinstance(value, Length | list | int | float):
-        setattr(element, name, _scaled(value, factor))
+        setattr(element, name, _scaled(value, factor, keep=keep))
 
 
 def _strokes_in_host_space(element: object, scope: Scope, /) -> bool:
@@ -1493,7 +1552,13 @@ def geometry_capability(
         return NOTHING
 
     if not all(
-        _is_scalable(_get(element, name)) for name in _MAGNITUDE_ATTRS
+        _is_scalable(
+            _get(element, name),
+            relative=_FONT_RELATIVE | {"%"}
+            if name == "font_size"
+            else _FONT_RELATIVE,
+        )
+        for name in _MAGNITUDE_ATTRS
     ):
         capability &= TRANSLATION
 
@@ -1505,7 +1570,7 @@ def geometry_capability(
         capability &= TRANSLATION
 
     if isinstance(element, FontSizeScaled) and not _is_resizable(
-        property_value(element, "font_size", scope=scope)
+        element, "font_size", scope, relative=_FONT_RELATIVE | {"%"}
     ):
         # the glyphs are drawn at a size reification cannot resolve -- a
         # keyword, or whatever the renderer picks by default -- so the
@@ -1513,11 +1578,19 @@ def geometry_capability(
         capability &= TRANSLATION
 
     if isinstance(element, FontSizeScaled) and not all(
-        _is_spacing_scalable(property_value(element, name, scope=scope))
+        # `normal` and `auto` leave the spacing to the font, which is
+        # resized with the font size already
+        _is_resizable(
+            element,
+            name,
+            scope,
+            initial="normal",
+            keywords=("normal", "auto"),
+        )
         for name in _GLYPH_SPACING_ATTRS
     ):
-        # a spacing relative to the font or the viewport cannot be resized
-        # by a factor reification knows
+        # a spacing relative to the viewport cannot be resized by a factor
+        # reification knows
         capability &= TRANSLATION
 
     if isinstance(element, StrokeWidthScaled) and _is_stroked(
@@ -1529,17 +1602,24 @@ def geometry_capability(
             property_value(element, "vector_effect", scope=scope)
             is UNKNOWN
             or not _is_resizable(
-                property_value(
-                    element, "stroke_width", initial=Length(1), scope=scope
-                )
+                element, "stroke_width", scope, initial=Length(1)
             )
             or (
                 _is_dashed(element, scope)
-                and not all(
-                    _is_scalable(
-                        property_value(element, name, scope=scope)
+                and not (
+                    _is_resizable(
+                        element,
+                        "stroke_dasharray",
+                        scope,
+                        initial="none",
+                        keywords=("none",),
                     )
-                    for name in ("stroke_dasharray", "stroke_dashoffset")
+                    and _is_resizable(
+                        element,
+                        "stroke_dashoffset",
+                        scope,
+                        initial=Length(0),
+                    )
                 )
             )
         ):
