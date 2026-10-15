@@ -3,6 +3,7 @@
 import collections
 import contextlib
 import pathlib
+import re
 import warnings
 
 import bs4
@@ -137,6 +138,50 @@ def _convert_element(backend: bs4.PageElement) -> Entity | None:
             return None
 
 
+_INTERNAL_SUBSET: Final = re.compile(
+    rb"<!DOCTYPE\b[^\[>]*\[(.*?)\]\s*>", re.DOTALL
+)
+_ENTITY: Final = re.compile(
+    rb"<!ENTITY\s+([\w.-]+)\s+(?:\"([^\"]*)\"|'([^']*)')\s*>"
+)
+
+
+def _expand_internal_entities(markup: bytes) -> bytes:
+    """Replace the entities a document declares in its DOCTYPE.
+
+    Illustrator declares the namespaces it uses as entities in an internal
+    DTD subset and refers to them as `&ns_ai;`. The XML parser behind
+    BeautifulSoup gives up on the document at the first such reference, so
+    the references are expanded here and the subset, which has nothing else
+    to say, is dropped.
+
+    Returns:
+        The markup with the declared entities expanded.
+
+    Examples:
+        >>> _expand_internal_entities(
+        ...     b'<!DOCTYPE svg [<!ENTITY ns "urn:x">]><svg xmlns:a="&ns;"/>'
+        ... )
+        b'<svg xmlns:a="urn:x"/>'
+
+    """
+    subset = _INTERNAL_SUBSET.search(markup)
+
+    if subset is None:
+        return markup
+
+    entities = {
+        name: quoted or apostrophed
+        for name, quoted, apostrophed in _ENTITY.findall(subset.group(1))
+    }
+    markup = markup[: subset.start()] + markup[subset.end() :]
+
+    for name, value in entities.items():
+        markup = markup.replace(b"&" + name + b";", value)
+
+    return markup
+
+
 def _get_markup_head(markup: _Markup, limit: int = 30) -> str:
     match markup:
         case str():
@@ -202,9 +247,14 @@ def parse_svg(
         if isinstance(markup, SupportsRead):
             markup = markup.read()
 
+        if isinstance(markup, str):
+            expanded = _expand_internal_entities(markup.encode()).decode()
+        else:
+            expanded = _expand_internal_entities(markup)
+
         try:
             soup = bs4.BeautifulSoup(
-                markup, features=parser, multi_valued_attributes=None
+                expanded, features=parser, multi_valued_attributes=None
             )
         except bs4.FeatureNotFound as e:
             if parser != "html5lib":
