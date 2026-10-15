@@ -23,7 +23,7 @@ from __future__ import annotations
 import enum
 import math
 import re
-from collections.abc import Callable, Container, Iterator, Mapping
+from collections.abc import Container, Iterator, Mapping
 
 from typing_extensions import Final, NamedTuple, TypeAlias, cast, override
 
@@ -49,7 +49,6 @@ from svglab.attrs.attrdefs import (
     StrokeDasharrayAttr,
     StrokeDashoffsetAttr,
     TextLengthAttr,
-    VectorEffectAttr,
     WidthAttr,
     X1Attr,
     X2Attr,
@@ -163,6 +162,21 @@ class Scope(NamedTuple):
 
     A property nothing in the document declares takes its initial value
     everywhere, so it is known even past the boundary.
+    """
+
+    styled: Container[str] = frozenset()
+    """The properties, by their SVG names, declared in a stylesheet.
+
+    A stylesheet rule beats a presentation attribute, and which elements it
+    picks out cannot be told, so such a property is unknown on every element
+    whose own `style` attribute does not settle it.
+    """
+
+    animated: Container[str] = frozenset()
+    """The properties, by their SVG names, an animation changes over time.
+
+    An element inheriting one of them inherits a value that changes, which
+    no number written onto the element could stand in for.
     """
 
 
@@ -949,7 +963,7 @@ def _apply_magnitudes(
         for name in _FONT_MAGNITUDES:
             _scale_inherited(element, name, factor, scope)
 
-    if _strokes_in_host_space(element) or not (
+    if not (
         isinstance(element, StrokeWidthScaled)
         and _is_stroked(element, scope)
     ):
@@ -976,70 +990,18 @@ def _is_specified(value: object, /) -> bool:
     return value is not None and value != "inherit"
 
 
-def _past_the_boundary(name: str, scope: Scope, /) -> object:
-    """Say what an inherited property is where inheritance is unknown."""
-    return UNKNOWN if name.replace("_", "-") in scope.declared else None
-
-
-def _inherited(
-    element: object,
-    name: str,
-    scope: Scope,
-    /,
-    *,
-    read: Callable[[object, str], object],
-) -> object:
-    """Walk the ancestors for a property, stopping at the scope's boundary."""
-    if element is scope.boundary:
-        return _past_the_boundary(name, scope)
-
-    for ancestor in _ancestors(element):
-        value = read(ancestor, name)
-
-        if _is_specified(value):
-            return value
-
-        if ancestor is scope.boundary:
-            return _past_the_boundary(name, scope)
-
-    return None
-
-
-def inherited_value(
-    element: object, name: str, /, *, scope: Scope = WHOLE_DOCUMENT
-) -> object:
-    """Resolve the value an element inherits for a property.
-
-    An element that does not specify an inherited property uses the value of
-    the nearest ancestor that specifies one.
-
-    Args:
-        element: The element whose inherited value to resolve.
-        name: The name of the property, as a Python attribute name.
-        scope: How far up the tree inheritance can be seen.
+def _unknown_unless_initial(name: str, scope: Scope, /) -> object:
+    """Say what a property is where it cannot be followed any further.
 
     Returns:
-        The inherited value, `None` if no ancestor specifies one, or
-        `UNKNOWN` if the ancestors that could lie beyond the scope.
-
-    Examples:
-        >>> from svglab import G, Length, Path
-        >>> path = Path()
-        >>> g = G(stroke_width=Length(5)).add_child(path)
-        >>> inherited_value(path, "stroke_width")
-        Length(value=5.0, unit=None)
-        >>> inherited_value(Path(), "stroke_width") is None
-        True
-        >>> inherited_value(
-        ...     path, "stroke_width", scope=Scope(boundary=path)
-        ... )
-        UNKNOWN
+        `UNKNOWN`, or `None` for a property nothing in the document
+        declares, which is at its initial value everywhere.
 
     """
-    return _inherited(element, name, scope, read=_get)
+    return UNKNOWN if name in scope.declared else None
 
 
-def resolved_value(
+def property_value(
     element: object,
     name: str,
     /,
@@ -1047,7 +1009,16 @@ def resolved_value(
     initial: object = None,
     scope: Scope = WHOLE_DOCUMENT,
 ) -> object:
-    """Resolve the value an inherited property has for an element.
+    """Resolve a property the way the element is rendered with it.
+
+    The element's own value wins, then the nearest ancestor's, then
+    `initial`. A declaration in a `style` attribute beats the presentation
+    attribute of the same name, on the element itself and on every ancestor,
+    and is returned as the string it was written as.
+
+    The scope says where that stops being certain: past the element a `use`
+    refers to, under a stylesheet rule that may set the property on any
+    element, and for a value an animation changes over time.
 
     Args:
         element: The element to resolve the property for.
@@ -1056,65 +1027,46 @@ def resolved_value(
         scope: How far up the tree inheritance can be seen.
 
     Returns:
-        The element's own value, the one it inherits, `initial`, or
-        `UNKNOWN` if the value may come from beyond the scope.
+        The value, `initial` if nothing specifies one, or `UNKNOWN` if it
+        cannot be told.
 
     Examples:
-        >>> from svglab import G, Length, Path
-        >>> path = Path(stroke_width=Length(2))
-        >>> g = G(stroke_width=Length(5)).add_child(path)
-        >>> resolved_value(path, "stroke_width")
-        Length(value=2.0, unit=None)
-        >>> resolved_value(Path(), "stroke_width", initial=Length(1))
-        Length(value=1.0, unit=None)
-
-    """
-    own = _get(element, name)
-
-    if _is_specified(own):
-        return own
-
-    inherited = inherited_value(element, name, scope=scope)
-
-    return initial if inherited is None else inherited
-
-
-def property_value(
-    element: object, name: str, /, *, scope: Scope = WHOLE_DOCUMENT
-) -> object:
-    """Resolve a property as it is rendered, `style` declarations included.
-
-    A declaration in a `style` attribute beats the presentation attribute of
-    the same name, on the element itself and on every ancestor it inherits
-    from. A declaration is returned as the string it was written as.
-
-    Args:
-        element: The element to resolve the property for.
-        name: The name of the property, as a Python attribute name.
-        scope: How far up the tree inheritance can be seen.
-
-    Returns:
-        The value, `None` if nothing specifies one, or `UNKNOWN` if it may
-        come from beyond the scope.
-
-    Examples:
-        >>> from svglab import Color, G, Path
+        >>> from svglab import Color, G, Length, Path
         >>> own, inheriting = Path(fill=Color("red")), Path()
         >>> g = G(style="fill: url(#p)").add_children(own, inheriting)
         >>> property_value(own, "fill")
         Color('red')
         >>> property_value(inheriting, "fill")
         'url(#p)'
-        >>> property_value(Path(), "fill") is None
-        True
+        >>> property_value(Path(), "stroke_width", initial=Length(1))
+        Length(value=1.0, unit=None)
+        >>> property_value(
+        ...     inheriting, "fill", scope=Scope(boundary=inheriting)
+        ... )
+        UNKNOWN
 
     """
-    own = _property(element, name)
+    svg_name = name.replace("_", "-")
+    own = _property(element, name, scope)
 
     if _is_specified(own):
         return own
 
-    return _inherited(element, name, scope, read=_property)
+    if element is scope.boundary:
+        return _unknown_unless_initial(svg_name, scope)
+
+    for ancestor in _ancestors(element):
+        value = _property(ancestor, name, scope)
+
+        if _is_specified(value):
+            # an animation of the ancestor's value changes what the element
+            # inherits over time
+            return UNKNOWN if svg_name in scope.animated else value
+
+        if ancestor is scope.boundary:
+            return _unknown_unless_initial(svg_name, scope)
+
+    return initial
 
 
 def _scale_inherited(
@@ -1132,34 +1084,13 @@ def _scale_inherited(
     that uses it, because the ancestor is shared with elements this
     transformation does not reach.
     """
-    own = _get(element, name)
-    spelled_out = _is_specified(own)
-    inherited = (
-        None
-        if spelled_out
-        else resolved_value(element, name, initial=initial, scope=scope)
-    )
-    value = own if spelled_out else inherited
+    value = property_value(element, name, initial=initial, scope=scope)
 
-    if not isinstance(value, Length | list | int | float):
-        # a keyword, or nothing at all; there is no magnitude to resize
-        return
-
-    scaled = _scaled(value, factor)
-    setattr(element, name, scaled)
-
-    # if the value was not spelled out and the scaled one is what the element
-    # inherits anyway, there is no need to start spelling it out now
-    if (
-        isinstance(inherited, Length)
-        and isinstance(scaled, Length)
-        and scaled.unit == inherited.unit
-        and is_close(float(scaled), float(inherited))
-    ):
-        setattr(element, name, own)
+    if isinstance(value, Length | list | int | float):
+        setattr(element, name, _scaled(value, factor))
 
 
-def _strokes_in_host_space(element: object, /) -> bool:
+def _strokes_in_host_space(element: object, scope: Scope, /) -> bool:
     """Check whether the element's stroke ignores its coordinate system.
 
     `vector-effect: non-scaling-stroke` pins the stroke to the coordinate
@@ -1171,8 +1102,8 @@ def _strokes_in_host_space(element: object, /) -> bool:
 
     """
     return (
-        isinstance(element, VectorEffectAttr)
-        and element.vector_effect == "non-scaling-stroke"
+        property_value(element, "vector_effect", scope=scope)
+        == "non-scaling-stroke"
     )
 
 
@@ -1365,54 +1296,72 @@ _STYLE_OPAQUE: Final = frozenset(
         "mask",
         "filter",
         "d",
+        "x",
+        "y",
+        "cx",
+        "cy",
+        "r",
+        "rx",
+        "ry",
+        "width",
+        "height",
     }
 )
-"""Properties that decide the geometry and that reification cannot rewrite."""
+"""Properties that decide the geometry and that reification cannot rewrite.
 
-_STYLE_MAGNITUDES: Final = frozenset(
-    {
-        "stroke-width",
-        "font-size",
-        "letter-spacing",
-        "word-spacing",
-        "kerning",
-        "stroke-dasharray",
-        "stroke-dashoffset",
-        "marker",
-        "marker-start",
-        "marker-mid",
-        "marker-end",
-        "vector-effect",
-    }
-)
-"""Properties reification would have to resize but cannot reach in a style."""
+A magnitude declared in a style -- a stroke width, a font size -- is not
+listed: it resolves to the string it was written as, which cannot be resized
+and so holds the element to a move by itself.
+"""
+
+_SHORTHANDS: Final = {"font-size": ("font",)}
+"""Shorthand properties that set a property reification reads."""
 
 
 def style_capability(element: object, /) -> Capability:
     """Work out what the element's `style` attribute leaves reifiable.
 
     A declaration in a `style` attribute overrides the presentation attribute
-    of the same name, and reification rewrites attributes. Anything it would
-    have had to rewrite, or would have had to read to decide what is safe, is
-    out of reach there -- so the element keeps as much of its transformation
-    as that costs.
+    of the same name, and reification rewrites attributes. A geometric
+    property declared there is out of reach, so the element keeps its
+    transformation.
 
     Returns:
         What the element's `style` attribute leaves it able to absorb.
 
     """
-    declarations = style_declarations(element)
+    return (
+        NOTHING
+        if _STYLE_OPAQUE & style_declarations(element).keys()
+        else AFFINE
+    )
 
-    if not declarations:
-        return AFFINE
 
-    if _STYLE_OPAQUE & declarations.keys():
-        return NOTHING
+def stylesheet_declarations(css: str, /) -> Iterator[tuple[str, str]]:
+    """Read the declarations of a stylesheet, whatever they are declared on.
 
-    if _STYLE_MAGNITUDES & declarations.keys():
-        return TRANSLATION
+    Yields:
+        Pairs of a property name, in lower case, and the value it is given,
+        stripped of whitespace and of any `!important`.
 
-    return AFFINE
+    Examples:
+        >>> list(
+        ...     stylesheet_declarations(".a { fill: red } .b{stroke:blue}")
+        ... )
+        [('fill', 'red'), ('stroke', 'blue')]
+
+    """
+    # a declaration is only interesting inside a block, which is after a
+    # brace and before the closing one
+    for block in css.split("{")[1:]:
+        for declaration in block.split("}")[0].split(";"):
+            name, separator, value = declaration.partition(":")
+
+            if separator:
+                yield (
+                    name.strip().lower(),
+                    value.replace("!important", "").strip(),
+                )
 
 
 def declared_properties(css: str, /) -> frozenset[str]:
@@ -1426,15 +1375,7 @@ def declared_properties(css: str, /) -> frozenset[str]:
         ['fill', 'stroke']
 
     """
-    # a property name is only interesting where it is declared, which is
-    # after a brace and before a colon
-    return frozenset(
-        name.strip().lower()
-        for block in css.split("{")[1:]
-        for declaration in block.split("}")[0].split(";")
-        for name, separator, _ in [declaration.partition(":")]
-        if separator
-    )
+    return frozenset(name for name, _ in stylesheet_declarations(css))
 
 
 _ATTRIBUTE_SELECTOR: Final = re.compile(r"\[\s*([\w:-]+)")
@@ -1474,15 +1415,7 @@ def stylesheet_capability(css: str, /) -> Capability:
     if GEOMETRIC_ATTR_NAMES & set(_ATTRIBUTE_SELECTOR.findall(selectors)):
         return NOTHING
 
-    declared = declared_properties(css)
-
-    if _STYLE_OPAQUE & declared:
-        return NOTHING
-
-    if _STYLE_MAGNITUDES & declared:
-        return TRANSLATION
-
-    return AFFINE
+    return NOTHING if _STYLE_OPAQUE & declared_properties(css) else AFFINE
 
 
 def geometry_capability(
@@ -1544,7 +1477,7 @@ def geometry_capability(
         capability -= {Feature.MIRROR, Feature.QUARTER_TURN}
 
     if isinstance(element, FontSizeScaled) and not _is_resizable(
-        resolved_value(element, "font_size", scope=scope)
+        property_value(element, "font_size", scope=scope)
     ):
         # the glyphs are drawn at a size reification cannot resolve -- a
         # keyword, or whatever the renderer picks by default -- so the
@@ -1552,7 +1485,7 @@ def geometry_capability(
         capability &= TRANSLATION
 
     if isinstance(element, FontSizeScaled) and not all(
-        _is_spacing_scalable(resolved_value(element, name, scope=scope))
+        _is_spacing_scalable(property_value(element, name, scope=scope))
         for name in _GLYPH_SPACING_ATTRS
     ):
         # a spacing relative to the font or the viewport cannot be resized
@@ -1562,19 +1495,27 @@ def geometry_capability(
     if _is_stroked(element, scope):
         capability &= SIMILARITY
 
-        if not _is_resizable(
-            resolved_value(
-                element, "stroke_width", initial=Length(1), scope=scope
+        if (
+            property_value(element, "vector_effect", scope=scope)
+            is UNKNOWN
+            or not _is_resizable(
+                property_value(
+                    element, "stroke_width", initial=Length(1), scope=scope
+                )
             )
-        ) or (
-            _is_dashed(element, scope)
-            and not all(
-                _is_scalable(resolved_value(element, name, scope=scope))
-                for name in ("stroke_dasharray", "stroke_dashoffset")
+            or (
+                _is_dashed(element, scope)
+                and not all(
+                    _is_scalable(
+                        property_value(element, name, scope=scope)
+                    )
+                    for name in ("stroke_dasharray", "stroke_dashoffset")
+                )
             )
         ):
-            # the stroke is drawn at a width reification cannot resolve, so
-            # the element may be moved but not resized
+            # the stroke is drawn at a width reification cannot resolve, or
+            # may not be scaled with the shape at all, so the element may
+            # be moved but not resized
             capability &= TRANSLATION
 
         if (
@@ -1644,16 +1585,38 @@ def style_declarations(element: object, /) -> Mapping[str, str]:
     return declarations
 
 
-def _property(element: object, name: str, /) -> object:
-    """Read a property, preferring the `style` declaration overriding it."""
-    declared = style_declarations(element).get(name.replace("_", "-"))
+def _property(element: object, name: str, scope: Scope, /) -> object:
+    """Read the element's own value of a property, as it is rendered.
 
-    return _get(element, name) if declared is None else declared
+    A `style` declaration beats the presentation attribute, and a stylesheet
+    rule may beat both without saying on which elements, so a property a
+    stylesheet declares is unknown unless the element's own `style` settles
+    it.
+
+    Returns:
+        The value, `None` if the element does not specify one, or `UNKNOWN`.
+
+    """
+    svg_name = name.replace("_", "-")
+    declarations = style_declarations(element)
+
+    for declared in (svg_name, *_SHORTHANDS.get(svg_name, ())):
+        if declared in declarations:
+            # a shorthand such as `font` sets the property to something
+            # reification does not read out of it
+            return (
+                declarations[declared] if declared == svg_name else UNKNOWN
+            )
+
+        if declared in scope.styled:
+            return UNKNOWN
+
+    return _get(element, name)
 
 
 def _is_stroked(element: object, scope: Scope, /) -> bool:
     """Check whether the element is stroked, or might be."""
-    if _strokes_in_host_space(element):
+    if _strokes_in_host_space(element, scope):
         # the stroke ignores the coordinate system, so it constrains nothing
         return False
 
@@ -1666,9 +1629,11 @@ def _is_dashed(element: object, scope: Scope, /) -> bool:
     """Check whether the element's stroke is dashed, or might be."""
     dasharray = property_value(element, "stroke_dasharray", scope=scope)
 
-    return dasharray is UNKNOWN or (
-        isinstance(dasharray, list) and len(dasharray) > 0
-    )
+    match dasharray:
+        case None | "none" | []:
+            return False
+        case _:
+            return True
 
 
 GEOMETRIC_ATTR_NAMES: Final[frozenset[AttributeName]] = frozenset(
