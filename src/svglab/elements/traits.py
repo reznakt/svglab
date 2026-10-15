@@ -47,7 +47,6 @@ from svglab.reify import (
     Markable,
     PercentageDefaults,
     RenderedIndirectly,
-    SimilarityGeometry,
     StrokeWidthScaled,
     TransformInheritedByChildren,
     UniformlyScalableGeometry,
@@ -264,9 +263,7 @@ class FilterPrimitiveElement(
     """
 
 
-class GradientElement(
-    SimilarityGeometry, PercentageDefaults, RenderedIndirectly, Element
-):
+class GradientElement(PercentageDefaults, RenderedIndirectly, Element):
     """A gradient element.
 
     From the SVG 1.1 specification:
