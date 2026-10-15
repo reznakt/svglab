@@ -729,7 +729,7 @@ def _number(attr: object, /) -> float:
 
 
 def _coordinate(value: float, like: object, /) -> object:
-    """Produce a value of the same flavour as an existing attribute."""
+    """Produce a value of the same flavor as an existing attribute."""
     return value if isinstance(like, int | float) else Length(value)
 
 
@@ -913,22 +913,22 @@ def _apply_radii(element: object, matrix: Matrix, /) -> None:
     element.ry = ry  # type: ignore[reportAttributeAccessIssue]
 
 
-def _apply_centre(element: object, matrix: Matrix, /) -> None:
+def _apply_center(element: object, matrix: Matrix, /) -> None:
     assert isinstance(element, CxAttr)
     assert isinstance(element, CyAttr)
 
     cx, cy = element.cx, element.cy
-    centre = _transform_point(matrix, cx, cy)
+    center = _transform_point(matrix, cx, cy)
 
-    _set_coordinate(element, "cx", centre.x, cx)
-    _set_coordinate(element, "cy", centre.y, cy)
+    _set_coordinate(element, "cx", center.x, cx)
+    _set_coordinate(element, "cy", center.y, cy)
 
     if isinstance(element, FxAttr | FyAttr):
         fx = _get(element, "fx")
         fy = _get(element, "fy")
 
-        # an unset focal point sits at the centre, where it stays; a half-set
-        # one takes the other coordinate from the centre as it was written
+        # an unset focal point sits at the center, where it stays; a half-set
+        # one takes the other coordinate from the center as it was written
         if fx is not None or fy is not None:
             focus = _transform_point(
                 matrix,
@@ -1232,7 +1232,7 @@ def apply(
     if is_box(element):
         _apply_box(element, matrix)
     elif isinstance(element, CxAttr | CyAttr):
-        _apply_centre(element, matrix)
+        _apply_center(element, matrix)
 
     if isinstance(element, X1Attr):
         _apply_end_points(element, matrix)
