@@ -1046,6 +1046,7 @@ class Line(
 
 @final
 class LinearGradient(
+    AffineGeometry,
     XlinkAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1193,6 +1194,7 @@ class Polyline(
 
 @final
 class RadialGradient(
+    SimilarityGeometry,
     XlinkAttrs,
     ClassAttr,
     CxAttr,
