@@ -64,6 +64,7 @@ def test_a_style_that_decides_the_geometry_stops_reification(
         "stroke-width: 3",
         "stroke-dasharray: 4 2",
         "stroke-dasharray: 4 2; stroke-dashoffset: 2",
+        "marker-end: url(#m)",
     ],
 )
 def test_a_stroke_magnitude_in_a_style_leaves_only_a_move(
