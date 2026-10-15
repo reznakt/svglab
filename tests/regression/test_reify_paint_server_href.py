@@ -4,14 +4,15 @@ The inheritance runs through the whole chain of references and covers the
 transformation attribute too. Reifying the template's transformation into its
 coordinates would take it away from everything referring to it, and dropping
 an identity transformation from a referring element would let the inherited
-one through.
+one through. A gradient that spells out its own geometry and only borrows
+the stops, the way Inkscape writes every gradient, is reified on its own.
 """
 
 import copy
 
 import pytest
 
-from svglab import Element, Pattern, parse_svg
+from svglab import Element, LinearGradient, Pattern, parse_svg
 from tests.conftest import assert_svg_visually_equal, transforms_left
 
 
@@ -97,3 +98,33 @@ def test_pattern_units_are_read_through_href() -> None:
     assert transforms_left(reified) == [rect]
     assert isinstance(reified.find(Pattern), Pattern)
     assert_svg_visually_equal(original, reified)
+
+
+def test_a_gradient_that_only_borrows_the_stops_is_reified() -> None:
+    original = parse_svg("""
+        <svg width="200" height="200"
+             xmlns:xlink="http://www.w3.org/1999/xlink">
+            <linearGradient id="stops">
+                <stop offset="0" stop-color="gold"/>
+                <stop offset="1" stop-color="navy"/>
+            </linearGradient>
+            <linearGradient id="own" xlink:href="#stops"
+                            gradientUnits="userSpaceOnUse"
+                            gradientTransform="rotate(30 100 100)"
+                            x1="20" y1="100" x2="180" y2="100"/>
+            <rect x="20" y="20" width="160" height="160" fill="url(#own)"/>
+        </svg>
+    """)
+    reified = copy.deepcopy(original)
+
+    reified.reify()
+
+    def own(svg: Element) -> LinearGradient:
+        gradient, *_ = (
+            g for g in svg.find_all(LinearGradient) if g.id == "own"
+        )
+        return gradient
+
+    assert not transforms_left(reified)
+    assert own(reified).x1 != own(original).x1
+    assert_svg_visually_equal(original, reified, tolerance=1e-5)
