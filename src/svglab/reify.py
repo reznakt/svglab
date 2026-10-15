@@ -1063,20 +1063,20 @@ def _apply_magnitudes(
         for name in _FONT_MAGNITUDES:
             resize(name)
 
-    if not (
-        isinstance(element, StrokeWidthScaled)
-        and _is_stroked(element, scope)
-    ):
+    stroked = _is_stroked(element, scope)
+
+    if not (stroked or _may_carry_markers(element, scope)):
         # the whole stroke -- its width and its dash pattern alike -- is
         # either laid out in a coordinate system this transformation is no
         # part of, or not drawn at all
         return
 
+    # a marker is sized in stroke widths whether or not the shape is stroked
     resize("stroke_width", Length(1))
 
     # distance-along-a-path attributes and `pathLength` are proportional, so
     # a shape that declares its own path length needs no adjustment
-    if (
+    if stroked and (
         not isinstance(element, PathLengthAttr)
         or element.pathLength is None
     ):
@@ -1601,9 +1601,9 @@ def geometry_capability(
         # reification knows
         capability &= TRANSLATION
 
-    if isinstance(element, StrokeWidthScaled) and _is_stroked(
-        element, scope
-    ):
+    if _is_stroked(element, scope) or _may_carry_markers(element, scope):
+        # the stroke is drawn, or a marker is sized, in stroke widths, which
+        # a transformation has to resize evenly
         capability &= SIMILARITY
 
         if not _stroke_is_resizable(element, scope):
@@ -1743,13 +1743,32 @@ def _property(element: object, name: str, scope: Scope, /) -> object:
 
 def _is_stroked(element: object, scope: Scope, /) -> bool:
     """Check whether the element is stroked, or might be."""
-    if _strokes_in_host_space(element, scope):
+    if not isinstance(
+        element, StrokeWidthScaled
+    ) or _strokes_in_host_space(element, scope):
         # the stroke ignores the coordinate system, so it constrains nothing
         return False
 
     stroke = property_value(element, "stroke", scope=scope)
 
     return stroke is not None and stroke != "none"
+
+
+MARKER_ATTRS: Final = (
+    "marker",
+    "marker_start",
+    "marker_mid",
+    "marker_end",
+)
+"""The marker properties, shorthand included, as Python attribute names."""
+
+
+def _may_carry_markers(element: object, scope: Scope, /) -> bool:
+    """Check whether the element has markers on it, or might have."""
+    return isinstance(element, Markable) and any(
+        property_value(element, name, scope=scope) not in {None, "none"}
+        for name in MARKER_ATTRS
+    )
 
 
 def _is_dashed(element: object, scope: Scope, /) -> bool:
