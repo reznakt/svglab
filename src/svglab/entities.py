@@ -140,6 +140,9 @@ _ANIMATABLE_BY_REIFICATION: Final[frozenset[str]] = frozenset(
         "dx",
         "dy",
         "font-size",
+        "letter-spacing",
+        "word-spacing",
+        "kerning",
         "textLength",
         "stroke-width",
         "stroke-dasharray",
@@ -2570,13 +2573,23 @@ def _frozen_elements(
         if template is not None:
             frozen.update((id(element), id(template)))
 
+        if element_name(element) == "mpath":
+            # the motion follows the path's data as written; the path's own
+            # transformation does not come along
+            for attr_name in ("href", "xlink:href"):
+                path = _resolve_reference(element, attr_name, index)
+
+                if path is not None:
+                    frozen.add(id(path))
+
         if not isinstance(element, Animation):
             continue
 
         attr_name = _attr_or_default(element, "attributeName")
 
         if (
-            element_name(element) != "animateTransform"
+            element_name(element)
+            not in {"animateTransform", "animateMotion"}
             and attr_name not in _ANIMATABLE_BY_REIFICATION
         ):
             continue
@@ -2587,6 +2600,18 @@ def _frozen_elements(
             frozen.add(id(target))
 
     return frozen
+
+
+def _animated_properties(root: Element, /) -> frozenset[str]:
+    """List the properties any animation in the document changes."""
+    return frozenset(
+        name
+        for element in itertools.chain([root], root.find_all())
+        if isinstance(element, Animation)
+        and isinstance(
+            name := _attr_or_default(element, "attributeName"), str
+        )
+    )
 
 
 def _pinned_elements(
@@ -2711,9 +2736,10 @@ def _scopes(
     styled = frozenset().union(
         *map(declared_properties, _stylesheets(root))
     )
+    animated = _animated_properties(root)
     scopes: dict[int, Scope] = {}
     stack: list[tuple[Element, Scope]] = [
-        (root, Scope(None, declared, styled))
+        (root, Scope(None, declared, styled, animated))
     ]
 
     while stack:
