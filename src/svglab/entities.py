@@ -56,6 +56,7 @@ from svglab.errors import (
 from svglab.models import BaseModel
 from svglab.reify import (
     AFFINE,
+    MARKER_ATTRS,
     NOTHING,
     RECTILINEAR,
     TRANSLATION,
@@ -1830,7 +1831,7 @@ def _reference_capability(
             capability &= NOTHING
 
     if isinstance(element, Markable):
-        for name in _MARKER_ATTRS:
+        for name in MARKER_ATTRS:
             marker = property_value(element, name, scope=scope)
 
             if marker is UNKNOWN:
@@ -1857,15 +1858,6 @@ def _reference_capability(
         capability &= _filter_capability(filter_, context.by_id)
 
     return capability
-
-
-_MARKER_ATTRS: Final = (
-    "marker",
-    "marker_start",
-    "marker_mid",
-    "marker_end",
-)
-"""The marker properties, shorthand included."""
 
 
 def _marker_capability(marker: Element, /) -> Capability:
@@ -2255,7 +2247,7 @@ def _is_convertible_shape(
 
     # browsers put markers on paths but not on rects and circles, so a shape
     # that may carry a marker would gain some as a path
-    for name in _MARKER_ATTRS:
+    for name in MARKER_ATTRS:
         marker = property_value(
             element, name, scope=context.scopes[id(element)]
         )
