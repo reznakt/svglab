@@ -1740,7 +1740,20 @@ def _has_unreadable_geometry(element: object, /) -> bool:
     if extra is None:
         return False
 
-    return bool(GEOMETRIC_ATTR_NAMES & extra().keys())
+    names = extra().keys()
+
+    # Inkscape rebuilds a shape from these when it opens the file, so the
+    # rewritten geometry would be thrown away
+    return bool(GEOMETRIC_ATTR_NAMES & names) or any(
+        name.startswith("sodipodi:") or name in _EDITOR_GEOMETRY
+        for name in names
+    )
+
+
+_EDITOR_GEOMETRY: Final = frozenset(
+    {"inkscape:original-d", "inkscape:path-effect"}
+)
+"""Attributes an editor regenerates the path data from."""
 
 
 # endregion
