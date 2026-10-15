@@ -83,6 +83,7 @@ from svglab.reify import (
     style_capability,
     style_declarations,
     stylesheet_capability,
+    stylesheet_declarations,
 )
 from svglab.serialize import (
     Formatter,
@@ -1535,10 +1536,11 @@ class _Context(NamedTuple):
     stylesheet: Capability
     """What the document's stylesheets leave reifiable anywhere in it."""
 
-    paint_servers: Capability
-    """What a shape painted by a paint server it cannot name may absorb.
+    paint_servers: Mapping[str, Capability]
+    """What a shape whose `fill` or `stroke` cannot be told may absorb.
 
-    The least any paint server in the document allows.
+    The least any paint server named by a `fill`, or by a `stroke`, anywhere
+    in the document allows.
     """
 
     markers: bool
@@ -1792,25 +1794,16 @@ def _reference_capability(
         paint = property_value(element, name, scope=scope)
 
         if paint is UNKNOWN:
-            capability &= context.paint_servers
-        elif isinstance(paint, str) and "url(" in paint:
-            # declared in a `style`, so it survives as the string it was
-            # written as
-            match = _URL_FRAGMENT.search(paint)
-            target = context.by_id.get(match.group(1)) if match else None
-            capability &= (
-                NOTHING
-                if target is None
-                else _paint_server_capability(target, context.by_id)
-            )
-        elif isinstance(paint, Iri) and paint.is_local:
-            assert paint.fragment is not None
-            target = context.by_id.get(paint.fragment)
+            capability &= context.paint_servers[name]
+            continue
 
-            if target is not None:
-                capability &= _paint_server_capability(
-                    target, context.by_id
-                )
+        target = _paint_target(paint, context.by_id)
+
+        if target is not None:
+            capability &= _paint_server_capability(target, context.by_id)
+        elif isinstance(paint, str) and "url(" in paint:
+            # a paint server reification cannot find, declared in a style
+            capability &= NOTHING
 
     if isinstance(element, AffineGeometry):
         # a marker is placed in user space and oriented along the path, so
@@ -2607,14 +2600,19 @@ def _scopes(
                     boundaries.add(id(target))
 
     declared = _declared_properties(root)
+    styled = frozenset().union(
+        *map(declared_properties, _stylesheets(root))
+    )
     scopes: dict[int, Scope] = {}
-    stack: list[tuple[Element, Scope]] = [(root, Scope(None, declared))]
+    stack: list[tuple[Element, Scope]] = [
+        (root, Scope(None, declared, styled))
+    ]
 
     while stack:
         element, scope = stack.pop()
 
         if id(element) in boundaries:
-            scope = Scope(element, declared)
+            scope = scope._replace(boundary=element)
 
         scopes[id(element)] = scope
         stack.extend(
@@ -2626,15 +2624,65 @@ def _scopes(
 
 def _paint_servers_capability(
     root: Element, index: Mapping[str, Element], /
-) -> Capability:
-    """Work out the least any paint server in the document allows."""
-    capability = AFFINE
+) -> Mapping[str, Capability]:
+    """Work out the least the paint servers named by fills, or strokes, allow.
+
+    Returns:
+        The capability for a `fill` and for a `stroke` that cannot be told.
+
+    """
+    capabilities: dict[str, Capability] = {
+        "fill": AFFINE,
+        "stroke": AFFINE,
+    }
+    declarations: list[tuple[str, object]] = []
 
     for element in itertools.chain([root], root.find_all()):
-        if isinstance(element, PatternUnitsAttr | GradientUnitsAttr):
-            capability &= _paint_server_capability(element, index)
+        declarations.extend(
+            (name, _attr_or_default(element, name))
+            for name in ("fill", "stroke")
+        )
+        declarations.extend(style_declarations(element).items())
 
-    return capability
+    for css in _stylesheets(root):
+        declarations.extend(stylesheet_declarations(css))
+
+    for name, value in declarations:
+        if name not in capabilities:
+            continue
+
+        target = _paint_target(value, index)
+
+        if target is not None:
+            capabilities[name] &= _paint_server_capability(target, index)
+        elif isinstance(value, str) and "url(" in value:
+            capabilities[name] = NOTHING
+
+    return capabilities
+
+
+def _paint_target(
+    paint: object, index: Mapping[str, Element], /
+) -> Element | None:
+    """Find the element a paint names, if it names one in this document.
+
+    Returns:
+        The paint server, or `None`.
+
+    """
+    if isinstance(paint, Iri) and paint.is_local:
+        assert paint.fragment is not None
+        return index.get(paint.fragment)
+
+    if isinstance(paint, str):
+        # declared in a `style` or a stylesheet, so it survives as the
+        # string it was written as
+        match = _URL_FRAGMENT.search(paint)
+
+        if match is not None:
+            return index.get(match.group(1))
+
+    return None
 
 
 def _spell_out_gradients(
