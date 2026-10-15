@@ -53,6 +53,7 @@ from svglab.models import BaseModel
 from svglab.reify import (
     AFFINE,
     NOTHING,
+    RECTILINEAR,
     TRANSLATION,
     UNIFORM_SCALING,
     UNKNOWN,
@@ -1540,6 +1541,15 @@ class _Context(NamedTuple):
     markers: bool
     """Whether the document has any `marker` to put on a shape."""
 
+    boxed: Container[int]
+    """Elements below one whose resources are laid out in its bounding box.
+
+    A renderer takes the bounding box of a container to be the union of its
+    children's boxes, each transformed as a rectangle, so turning or
+    skewing a child's geometry would change the box its parent's clip
+    path, mask or filter is laid out in.
+    """
+
     convert_shapes: bool
     """Whether a basic shape may be replaced by the `path` it draws."""
 
@@ -1634,15 +1644,7 @@ def _pattern_transform_capability(
     """Work out what survives a pattern's own `patternTransform`.
 
     The tiling is laid out in the bounding box of the element and the pattern
-    transform is applied to the result, in user space. Reification rewrites
-    the bounding box, which happens *before* the pattern transform, so the
-    picture only survives if doing the absorbed part first comes to the same
-    thing as doing it last -- that is, if the two commute.
-
-    Moving the tiling commutes with moving the element. A pattern transform
-    that only turns or stretches the tiling commutes with resizing the
-    element about the origin, which is the one resizing that leaves the
-    corner of the box where it is. Nothing else is safe.
+    transform is applied to the result, in user space.
 
     Returns:
         What a shape painted with the pattern may absorb.
@@ -1651,7 +1653,32 @@ def _pattern_transform_capability(
     pattern_transform = _paint_server_attr(
         target, "patternTransform", index
     )
-    matrix = compose(cast("Transform | None", pattern_transform) or [])
+
+    return _commuting_capability(
+        compose(cast("Transform | None", pattern_transform) or [])
+    )
+
+
+def _commuting_capability(matrix: Matrix, /) -> Capability:
+    """Work out what commutes with a transformation applied after a box.
+
+    A pattern's tiling and a clip path's content in bounding box units are
+    laid out in the bounding box of the element, and the pattern's or clip
+    path's own transformation is applied to the result, in user space.
+    Reification rewrites the bounding box, which happens *before* that
+    transformation, so the picture only survives if doing the absorbed part
+    first comes to the same thing as doing it last -- that is, if the two
+    commute.
+
+    Moving commutes with moving. A transformation that only turns or
+    stretches commutes with resizing the element about the origin, which is
+    the one resizing that leaves the corner of the box where it is. Nothing
+    else is safe.
+
+    Returns:
+        What an element the transformation is applied after may absorb.
+
+    """
     identity = Matrix.identity()
 
     if matrix == identity:
@@ -1755,6 +1782,13 @@ def _resource_capability(
     match attr_name:
         case "clip-path":
             units = _attr_or_default(target, "clipPathUnits")
+
+            if units == "objectBoundingBox":
+                # the clip path's own transformation is applied after the
+                # mapping onto the box, so the two have to commute
+                return UPRIGHT & _commuting_capability(
+                    compose(target.main_transform or [])
+                )
         case _:
             # a mask's region and its content have separate unit settings,
             # and both have to follow the box for the mask to move with the
@@ -1829,7 +1863,7 @@ def _reference_capability(
     filter_ = _resolve_reference(element, "filter", context.by_id)
 
     if filter_ is not None:
-        capability &= _filter_capability(filter_)
+        capability &= _filter_capability(filter_, context.by_id)
 
     return capability
 
@@ -1868,12 +1902,21 @@ def _marker_capability(marker: Element, /) -> Capability:
     return capability
 
 
-def _filter_capability(target: Element, /) -> Capability:
-    """Work out what a filter lets the element it is attached to absorb."""
+def _filter_capability(
+    target: Element, index: Mapping[str, Element], /
+) -> Capability:
+    """Work out what a filter lets the element it is attached to absorb.
+
+    Returns:
+        What an element with the filter may absorb.
+
+    """
     if _attr_or_default(target, "filterUnits") != "objectBoundingBox":
         # the filter region is pinned to the coordinate system the element
         # renders in, so moving the element would leave the region behind
         return NOTHING
+
+    primitives = list(target.find_all())
 
     if _attr_or_default(
         target, "primitiveUnits"
@@ -1883,10 +1926,22 @@ def _filter_capability(target: Element, /) -> Capability:
             _attr_or_default(primitive, name) is not None
             for name in _PRIMITIVE_POSITION_ATTRS
         )
-        for primitive in target.find_all()
+        for primitive in primitives
     ):
         # a primitive placed at a point of the user space, or noise sampled
         # from it, stays where it is when the element moves out from under it
+        return NOTHING
+
+    if any(
+        element_name(primitive) == "feImage"
+        and any(
+            _resolve_reference(primitive, name, index) is not None
+            for name in ("href", "xlink:href")
+        )
+        for primitive in primitives
+    ):
+        # an element rendered by `feImage` is drawn where it sits in user
+        # space, so it does not follow the filtered element either
         return NOTHING
 
     # the region follows the bounding box, but the primitives are
@@ -2157,6 +2212,7 @@ def _element_capability(
         return NOTHING
 
     inheriting = _children_inheriting_transform(element)
+    boxed = RECTILINEAR if id(element) in context.boxed else AFFINE
 
     if _pushes_transform_to_children(element) and any(
         id(child) in context.pinned or id(child) in context.frozen
@@ -2187,12 +2243,13 @@ def _element_capability(
         for child in inheriting:
             capability &= children[id(child)]
 
-        return capability
+        return capability & boxed
 
     capability = (
         geometry_capability(element, scope=scope, as_path=as_path)
         & _reference_capability(element, context=context, scope=scope)
         & context.stylesheet
+        & boxed
     )
 
     if not _pushes_transform_to_children(element):
@@ -2736,6 +2793,54 @@ def _paint_target(
     return None
 
 
+def _boxed_elements(
+    root: Element, index: Mapping[str, Element], /
+) -> Container[int]:
+    """Find the elements below one with resources laid out in its box.
+
+    Returns:
+        The `id()`s of the elements.
+
+    """
+    boxed: set[int] = set()
+
+    for element in itertools.chain([root], root.find_all()):
+        if any(
+            _lies_in_bounding_box(target, attr_name)
+            for attr_name in ("clip-path", "mask", "filter")
+            if (target := _resolve_reference(element, attr_name, index))
+            is not None
+        ):
+            boxed.update(
+                id(descendant) for descendant in element.find_all()
+            )
+
+    return boxed
+
+
+def _lies_in_bounding_box(
+    target: Element, attr_name: AttributeName, /
+) -> bool:
+    """Check whether a resource is laid out in the referencing element's box.
+
+    Returns:
+        `True` if its region or its content is given in bounding box units.
+
+    """
+    match attr_name:
+        case "clip-path":
+            names: tuple[AttributeName, ...] = ("clipPathUnits",)
+        case "mask":
+            names = ("maskUnits", "maskContentUnits")
+        case _:
+            names = ("filterUnits", "primitiveUnits")
+
+    return any(
+        _attr_or_default(target, name) == "objectBoundingBox"
+        for name in names
+    )
+
+
 def _spell_out_gradients(
     root: Element, subject: Element, frozen: Container[int], /
 ) -> None:
@@ -2795,6 +2900,7 @@ def _build_context(
             AFFINE,
         ),
         paint_servers=_paint_servers_capability(root, index),
+        boxed=_boxed_elements(root, index),
         markers=any(
             element_name(element) == "marker"
             for element in itertools.chain([root], root.find_all())
