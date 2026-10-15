@@ -14,6 +14,7 @@ from svglab import (
     Ellipse,
     G,
     Length,
+    Marker,
     Matrix,
     Path,
     RawText,
@@ -245,3 +246,27 @@ def test_a_shape_that_can_take_what_the_group_hands_down_stays_a_shape() -> (
     assert not transforms_left(reified)
     assert isinstance(reified.find(Rect), Rect)
     assert_svg_visually_equal(original, reified)
+
+
+def test_a_shape_that_may_carry_a_marker_stays_a_shape() -> None:
+    # browsers put markers on paths but not on rects, so the rect would gain
+    # the marker its group passes down once it became a path
+    marker = Marker(id="m", markerWidth=Length(4), markerHeight=Length(4))
+    rect = Rect(
+        x=Length(20),
+        y=Length(20),
+        width=Length(60),
+        height=Length(40),
+        fill=Color("green"),
+    )
+    original = _svg(
+        G(
+            marker_end=marker.get_func_iri(), transform=[Rotate(30)]
+        ).add_child(rect)
+    ).add_child(Defs().add_child(marker))
+    reified = copy.deepcopy(original)
+
+    reified.reify(convert_shapes_to_paths=True)
+
+    assert isinstance(reified.find(Rect), Rect)
+    assert transforms_left(reified)
