@@ -78,11 +78,12 @@ def test_the_outermost_svg_turns_about_its_center() -> None:
     reified.reify()
 
     # resvg 0.48 turns the root about the origin, so this is checked
-    # algebraically: the rect sits halfway between its place and the center
-    # (50, 50) of the viewBox's size
+    # algebraically: the box is 200 pixels square and turns about its
+    # center at (100, 100) pixels, which the viewBox maps to (70, 90) in
+    # user units, so the rect ends up halfway between its place and that
     assert not transforms_left(reified)
-    assert reified.find(Rect).x == L(55)
-    assert reified.find(Rect).y == L(65)
+    assert reified.find(Rect).x == L(65)
+    assert reified.find(Rect).y == L(85)
     assert rect.x == L(60)
 
 
