@@ -2044,7 +2044,7 @@ def _viewbox_mapping(svg: Element, /) -> Matrix | None:
     Returns:
         The matrix taking user units to pixels, the identity without a
         `viewBox`, or `None` if the box the `viewBox` is fitted into is not
-        known.
+        known or the `viewBox` has no extent.
 
     """
     view_box = _attr_or_default(svg, "viewBox")
@@ -2060,6 +2060,12 @@ def _viewbox_mapping(svg: Element, /) -> Matrix | None:
     min_x, min_y, view_width, view_height = cast(
         "tuple[float, ...]", view_box
     )
+
+    if view_width <= 0 or view_height <= 0:
+        # a viewBox of no extent disables rendering, so there is nothing to
+        # map the content onto
+        return None
+
     width, height = box
     align, *rest = str(
         _attr_or_default(svg, "preserveAspectRatio") or "xMidYMid"
@@ -2497,7 +2503,13 @@ def _reify_element(
         if _is_outermost_viewport(element)
         else Matrix.identity()
     )
-    assert mapping is not None
+
+    if mapping is None:
+        # the content is not fitted into any box reification can see, so
+        # the transformation stays exactly as written
+        element.main_transform, element.transform_origin = written
+        return element
+
     matrix = mapping.inverse() @ matrix @ mapping
     scope = context.scopes[id(element)]
     convertible = _is_convertible_shape(element, context=context)
