@@ -18,6 +18,7 @@ import abc
 
 from typing_extensions import Protocol
 
+from svglab.attrparse.length import Length
 from svglab.attrparse.path_data import PathData
 from svglab.attrs.attrdefs import PathLengthAttr
 from svglab.attrs.attrgroups import (
@@ -47,7 +48,6 @@ from svglab.reify import (
     StrokeWidthScaled,
     TransformInheritedByChildren,
     UniformlyScalableGeometry,
-    scale_distance_along_a_path_attrs,
 )
 
 
@@ -155,7 +155,19 @@ class Shape(PathLengthAttr, Markable, StrokeWidthScaled, GraphicsElement):
             raise RuntimeError("Current pathLength must not be None")
 
         ratio = value / self.pathLength
-        scale_distance_along_a_path_attrs(self, ratio)
+
+        # distances along the path are measured against `pathLength`, so
+        # they scale with it; a percentage is of the length already
+        if isinstance(self.stroke_dasharray, list):
+            self.stroke_dasharray = [
+                dash if dash.unit == "%" else dash * ratio
+                for dash in self.stroke_dasharray
+            ]
+        if (
+            isinstance(self.stroke_dashoffset, Length)
+            and self.stroke_dashoffset.unit != "%"
+        ):
+            self.stroke_dashoffset = self.stroke_dashoffset * ratio
 
         self.pathLength = value
 
