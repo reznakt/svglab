@@ -213,8 +213,9 @@ print(image)
 
 Reification folds `transform` attributes into the geometry they act on, so
 that the document looks the same without them. Each element takes on as much
-as its own attributes can express -- a `path` anything, a `rect` no rotation,
-a `text` no mirroring -- and a group hands its transformation to its children.
+as its own attributes can express -- a `path` anything, a `rect` nothing that
+would tilt it, a `text` no mirroring -- and a group hands its transformation
+to its children.
 Whatever cannot be absorbed without changing the picture stays where it is.
 
 ```python

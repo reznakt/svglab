@@ -106,7 +106,7 @@ svg.reify()
 print(rect.x, rect.transform)  # Length(value=15.0, unit=None) None
 ```
 
-Each element takes on as much as its own attributes can express: a `#!python Path` absorbs anything, a `#!python Rect` cannot be rotated, a `#!python Text` cannot be mirrored, and a group hands its transformation to its children. Whatever would change the picture if folded in -- a shape painted by a gradient defined in user space, a stroke that is not to be scaled, a length given as a percentage -- is left where it is, in the shortest form the library can find for it.
+Each element takes on as much as its own attributes can express: a `#!python Path` absorbs anything, a `#!python Rect` nothing that would tilt it, a `#!python Text` cannot be mirrored, and a group hands its transformation to its children. Whatever would change the picture if folded in -- a shape painted by a gradient defined in user space, a stroke that is not to be scaled, a length given as a percentage -- is left where it is, in the shortest form the library can find for it.
 
 Two options go further. `#!python convert_shapes_to_paths` replaces a basic shape that is asked to absorb more than it can express by the `#!python Path` drawing the same shape, and `#!python unwrap_groups` lifts the children of a group left with no attributes at all:
 
