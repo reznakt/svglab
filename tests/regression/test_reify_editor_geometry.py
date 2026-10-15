@@ -2,7 +2,9 @@
 
 A path carrying `sodipodi:type="arc"` and its radii, or `inkscape:original-d`
 with a path effect, is regenerated from those when Inkscape loads it, so
-rewriting its `d` would be thrown away there.
+rewriting its `d` would be thrown away there. An attribute that merely
+describes the path as it is, such as `sodipodi:nodetypes`, stands in the way
+of nothing.
 """
 
 import pytest
@@ -32,3 +34,19 @@ def test_geometry_an_editor_regenerates_keeps_the_transform(
     svg.reify()
 
     assert svg.find(Path).transform is not None
+
+
+def test_a_description_of_the_path_as_it_is_lets_it_be_reified() -> None:
+    svg = parse_svg("""
+        <svg width="200" height="200"
+             xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+             xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+            <path d="M0 0 L50 50" sodipodi:nodetypes="cc"
+                  inkscape:connector-curvature="0" inkscape:label="Layer"
+                  transform="translate(10 10)"/>
+        </svg>
+    """)
+
+    svg.reify()
+
+    assert svg.find(Path).transform is None
