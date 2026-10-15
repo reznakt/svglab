@@ -853,9 +853,12 @@ class OverlineThicknessAttr(_Attr):
 
 
 class PaintOrderAttr(_Attr):
-    paint_order: (
-        Attr[Literal["normal", "fill", "stroke", "markers"]] | Inherit
-    ) = None
+    # the layers may be named in any order, and the ones left out follow
+    paint_order: Attr[
+        Literal["normal"]
+        | List[Literal["fill", "stroke", "markers"]]
+        | Inherit
+    ] = None
 
 
 class Panose1Attr(_Attr):
