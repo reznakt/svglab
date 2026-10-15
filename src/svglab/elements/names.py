@@ -99,6 +99,15 @@ ELEMENT_NAMES: Final[frozenset[ElementName]] = frozenset(
 )
 """A set of all SVG element names."""
 
+TEXT_CONTENT_ELEMENT_NAMES: Final[frozenset[ElementName]] = frozenset(
+    {"altGlyph", "text", "textPath", "tref", "tspan"}
+)
+"""The names of the elements whose character data is drawn.
+
+Whitespace in it is drawn too, so it is kept as written where the markup
+around any other element is laid out freely.
+"""
+
 
 def _normalize_element_name(name: ElementName, /) -> str:
     """Convert an SVG element name to an appropriate class name.

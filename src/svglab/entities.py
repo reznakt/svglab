@@ -45,7 +45,11 @@ from svglab.attrs.attrgroups import CoreAttrs, PresentationAttrs
 from svglab.attrs.names import ATTR_NAME_TO_NORMALIZED, AttributeName
 from svglab.attrs.typedefs import TransformOrigin
 from svglab.constants import SVG_XMLNS
-from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED, ElementName
+from svglab.elements.names import (
+    ELEMENT_NAME_TO_NORMALIZED,
+    TEXT_CONTENT_ELEMENT_NAMES,
+    ElementName,
+)
 from svglab.errors import (
     SvgElementNotFoundError,
     SvgTransformOriginError,
@@ -1156,11 +1160,17 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
     @override
     def to_beautifulsoup_object(self) -> bs4.Tag:
+        name = element_name(self)
         element = bs4.Tag(
-            name=element_name(self),
+            name=name,
             can_be_empty_element=True,
             prefix=self.prefix,
             is_xml=True,
+            # whitespace added around the character data of a text content
+            # element when pretty-printing would be drawn along with it
+            preserve_whitespace_tags=[name]
+            if name in TEXT_CONTENT_ELEMENT_NAMES
+            else None,
         )
 
         element.can_be_empty_element = len(self.__children) == 0
