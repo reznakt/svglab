@@ -872,19 +872,27 @@ def test_the_marker_shorthand_counts_as_a_marker() -> None:
 
 
 def test_a_tref_carries_the_text_positioning_attributes() -> None:
-    tref = Tref(
-        x=[Length(10)],
-        y=[Length(20)],
-        font_size=Length(12),
-        transform=[Scale(2)],
-    )
-    Text().add_child(tref)
+    tref = Tref(x=[Length(10)], y=[Length(20)], font_size=Length(12))
+    text = Text(font_size=Length(8), transform=[Scale(2)]).add_child(tref)
 
-    tref.reify()
+    text.reify()
 
+    assert text.transform is None
     assert tref.transform is None
     assert tref.x == [Length(20)]
     assert tref.font_size == Length(24)
+
+
+def test_a_transform_written_on_a_tspan_is_left_alone() -> None:
+    # renderers ignore it, so folding it into the span's coordinates would
+    # move glyphs that never moved
+    tspan = Tspan(x=[Length(10)], transform=[Scale(2)])
+    Text().add_child(tspan)
+
+    tspan.reify()
+
+    assert tspan.transform == [Scale(2)]
+    assert tspan.x == [Length(10)]
 
 
 # endregion
