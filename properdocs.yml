@@ -18,6 +18,7 @@ nav:
       - Attributes: api-reference/attributes.md
       - Attribute Groups: api-reference/attribute-groups.md
       - Traits: api-reference/traits.md
+      - Reification: api-reference/reification.md
 
 theme:
   name: material

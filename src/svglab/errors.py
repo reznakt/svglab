@@ -39,16 +39,6 @@ class SvgRenderError(SvgError):
     """Exception raised when a document cannot be rendered into an image."""
 
 
-class SvgTransformSwapError(SvgError):
-    """Exception raised when two transformations cannot be swapped."""
-
-    @override
-    def __init__(self, transform_a: object, transform_b: object) -> None:
-        super().__init__(
-            f"Cannot swap {transform_a!r} and {transform_b!r}"
-        )
-
-
 class SvgTransformOriginError(SvgError):
     """Exception raised when a transform origin value is unsupported."""
 
@@ -57,3 +47,11 @@ class SvgTransformOriginError(SvgError):
         super().__init__(
             f"Unsupported transform-origin: {transform_origin!r}"
         )
+
+
+class SvgSingularMatrixError(SvgError):
+    """Exception raised when a singular matrix cannot be worked with."""
+
+    @override
+    def __init__(self, matrix: object) -> None:
+        super().__init__(f"Matrix {matrix!r} is singular")

@@ -3,13 +3,18 @@
 import collections
 import contextlib
 import pathlib
+import re
 import warnings
 
 import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
 
 from svglab.elements.elements import Svg
-from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED, ElementName
+from svglab.elements.names import (
+    ELEMENT_NAME_TO_NORMALIZED,
+    TEXT_CONTENT_ELEMENT_NAMES,
+    ElementName,
+)
 from svglab.entities import (
     CData,
     Comment,
@@ -92,11 +97,16 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def _convert_element(backend: bs4.PageElement) -> Entity | None:
+def _convert_element(
+    backend: bs4.PageElement, *, keep_whitespace: bool = False
+) -> Entity | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
         backend: A BeautifulSoup element to convert.
+        keep_whitespace: Whether a text node holding nothing but whitespace
+            is kept. Between the spans of a text it is drawn as a space;
+            anywhere else it is only there to lay the markup out.
 
     Returns:
         An `Element` instance representing the given BeautifulSoup element.
@@ -112,7 +122,10 @@ def _convert_element(backend: bs4.PageElement) -> Entity | None:
             if cls is None:
                 return None
 
-            return None if backend.isspace() else cls(backend)
+            if backend.isspace() and not keep_whitespace:
+                return None
+
+            return cls(backend)
         case bs4.Tag():
             element_class = _ELEMENT_NAME_TO_CLASS.get(
                 cast(ElementName, backend.name), UnknownElement
@@ -128,13 +141,61 @@ def _convert_element(backend: bs4.PageElement) -> Entity | None:
             element = element_class.model_validate(attrs, strict=False)
 
             for child in backend.children:
-                grandchild = _convert_element(child)
+                grandchild = _convert_element(
+                    child,
+                    keep_whitespace=backend.name
+                    in TEXT_CONTENT_ELEMENT_NAMES,
+                )
 
                 if grandchild is not None:
                     element.add_child(grandchild)
             return element
         case _:
             return None
+
+
+_INTERNAL_SUBSET: Final = re.compile(
+    rb"<!DOCTYPE\b[^\[>]*\[(.*?)\]\s*>", re.DOTALL
+)
+_ENTITY: Final = re.compile(
+    rb"<!ENTITY\s+([\w.-]+)\s+(?:\"([^\"]*)\"|'([^']*)')\s*>"
+)
+
+
+def _expand_internal_entities(markup: bytes) -> bytes:
+    """Replace the entities a document declares in its DOCTYPE.
+
+    Illustrator declares the namespaces it uses as entities in an internal
+    DTD subset and refers to them as `&ns_ai;`. The XML parser behind
+    BeautifulSoup gives up on the document at the first such reference, so
+    the references are expanded here and the subset, which has nothing else
+    to say, is dropped.
+
+    Returns:
+        The markup with the declared entities expanded.
+
+    Examples:
+        >>> _expand_internal_entities(
+        ...     b'<!DOCTYPE svg [<!ENTITY ns "urn:x">]><svg xmlns:a="&ns;"/>'
+        ... )
+        b'<svg xmlns:a="urn:x"/>'
+
+    """
+    subset = _INTERNAL_SUBSET.search(markup)
+
+    if subset is None:
+        return markup
+
+    entities = {
+        name: quoted or apostrophed
+        for name, quoted, apostrophed in _ENTITY.findall(subset.group(1))
+    }
+    markup = markup[: subset.start()] + markup[subset.end() :]
+
+    for name, value in entities.items():
+        markup = markup.replace(b"&" + name + b";", value)
+
+    return markup
 
 
 def _get_markup_head(markup: _Markup, limit: int = 30) -> str:
@@ -202,9 +263,19 @@ def parse_svg(
         if isinstance(markup, SupportsRead):
             markup = markup.read()
 
+        if isinstance(markup, str):
+            expanded = _expand_internal_entities(markup.encode()).decode()
+        else:
+            expanded = _expand_internal_entities(markup)
+
         try:
             soup = bs4.BeautifulSoup(
-                markup, features=parser, multi_valued_attributes=None
+                expanded,
+                features=parser,
+                multi_valued_attributes=None,
+                # the parser would collapse a run of whitespace in a text to
+                # a single character, which `xml:space="preserve"` draws
+                preserve_whitespace_tags=set(TEXT_CONTENT_ELEMENT_NAMES),
             )
         except bs4.FeatureNotFound as e:
             if parser != "html5lib":

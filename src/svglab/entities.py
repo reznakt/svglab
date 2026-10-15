@@ -12,17 +12,22 @@ from __future__ import annotations
 
 import abc
 import collections
+import functools
 import itertools
+import operator
+import re
 import reprlib
 import sys
 import warnings
-from collections.abc import Generator, Mapping
+from collections.abc import Container, Generator, Iterator, Mapping
 
 import bs4
 import pydantic
 from typing_extensions import (
+    Any,
     Final,
     Literal,
+    NamedTuple,
     Self,
     SupportsIndex,
     TypeVar,
@@ -34,62 +39,66 @@ from typing_extensions import (
 
 from svglab.attrparse.iri import FuncIri, Iri
 from svglab.attrparse.length import Length
+from svglab.attrparse.point import Point
 from svglab.attrparse.transform import (
-    Reifiable,
-    Rotate,
-    Scale,
-    SkewX,
-    SkewY,
+    Matrix,
     Transform,
-    TransformFunction,
     Translate,
-    decompose_matrices,
+    compose,
 )
-from svglab.attrs.attrdefs import (
-    CxAttr,
-    CyAttr,
-    DAttr,
-    DxListOfLengthsAttr,
-    DyListOfLengthsAttr,
-    FontSizeAttr,
-    FxAttr,
-    FyAttr,
-    GradientUnitsAttr,
-    HeightAttr,
-    OffsetNumberPercentageAttr,
-    PathLengthAttr,
-    PatternUnitsAttr,
-    PointsAttr,
-    RAttr,
-    RxAttr,
-    RyAttr,
-    StrokeDasharrayAttr,
-    StrokeDashoffsetAttr,
-    StrokeWidthAttr,
-    TextLengthAttr,
-    VectorEffectAttr,
-    WidthAttr,
-    X1Attr,
-    X2Attr,
-    XCoordinateAttr,
-    XListOfCoordinatesAttr,
-    XNumberAttr,
-    Y1Attr,
-    Y2Attr,
-    YCoordinateAttr,
-    YListOfCoordinatesAttr,
-    YNumberAttr,
-)
+from svglab.attrs.attrdefs import GradientUnitsAttr, PatternUnitsAttr
 from svglab.attrs.attrgroups import CoreAttrs, PresentationAttrs
 from svglab.attrs.names import ATTR_NAME_TO_NORMALIZED, AttributeName
 from svglab.constants import SVG_XMLNS
-from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED, ElementName
+from svglab.elements.names import (
+    ELEMENT_NAME_TO_NORMALIZED,
+    TEXT_CONTENT_ELEMENT_NAMES,
+    ElementName,
+)
 from svglab.errors import (
     SvgElementNotFoundError,
     SvgTransformOriginError,
-    SvgTransformSwapError,
+    SvgUnitConversionError,
 )
 from svglab.models import BaseModel
+from svglab.reify import (
+    AFFINE,
+    MARKER_ATTRS,
+    NOTHING,
+    RECTILINEAR,
+    TRANSLATION,
+    UNIFORM_SCALING,
+    UNKNOWN,
+    UPRIGHT,
+    Animation,
+    Capability,
+    Descriptive,
+    DocumentFragmentRoot,
+    Feature,
+    Grouping,
+    Markable,
+    PercentageDefaults,
+    RenderedIndirectly,
+    Scope,
+    SelectsAChild,
+    Stylesheet,
+    TransformIgnored,
+    TransformInheritedByChildren,
+    ViewportEstablishing,
+    apply,
+    declared_properties,
+    features,
+    geometry_capability,
+    has_own_geometry,
+    property_value,
+    spell_out_gradient,
+    split,
+    stretches_content,
+    style_capability,
+    style_declarations,
+    stylesheet_capability,
+    stylesheet_declarations,
+)
 from svglab.serialize import (
     Formatter,
     get_current_formatter,
@@ -97,14 +106,12 @@ from svglab.serialize import (
 )
 from svglab.utils.bsutils import beautifulsoup_to_str
 from svglab.utils.iterutils import search_by_reference, take_last
-from svglab.utils.mathutils import arctan, is_close, tan
+from svglab.utils.mathutils import is_close
 from svglab.utils.miscutils import basic_compare
 
 
 _T = TypeVar("_T")
 _ElementT = TypeVar("_ElementT", bound="Element")
-_TransformT1 = TypeVar("_TransformT1", bound=TransformFunction)
-_TransformT2 = TypeVar("_TransformT2", bound=TransformFunction)
 
 _EMPTY_PARAM: Final = object()
 """A sentinel value for an empty parameter."""
@@ -119,9 +126,51 @@ _REFERENCE_ATTR_NAMES: Final[tuple[AttributeName, ...]] = (
 )
 """Attributes that may hold an IRI reference to another element."""
 
+_ANIMATABLE_BY_REIFICATION: Final[frozenset[str]] = frozenset(
+    {
+        "transform",
+        "gradientTransform",
+        "patternTransform",
+        "transform-origin",
+        "x",
+        "y",
+        "width",
+        "height",
+        "r",
+        "rx",
+        "ry",
+        "cx",
+        "cy",
+        "fx",
+        "fy",
+        "fr",
+        "x1",
+        "y1",
+        "x2",
+        "y2",
+        "points",
+        "d",
+        "dx",
+        "dy",
+        "font-size",
+        "letter-spacing",
+        "word-spacing",
+        "kerning",
+        "textLength",
+        "stroke-width",
+        "stroke-dasharray",
+        "stroke-dashoffset",
+    }
+)
+"""The attributes reification rewrites, and an animation must keep."""
 
-class StrokeWidthScaled:
-    """The element's `stroke-width` attribute should be scaled."""
+_RESOURCE_ATTR_NAMES: Final[tuple[AttributeName, ...]] = (
+    "fill",
+    "stroke",
+    "mask",
+    "clip-path",
+)
+"""Attributes that attach a resource drawn in some coordinate system."""
 
 
 def _match_element(
@@ -154,451 +203,65 @@ def _match_element(
     return element_name(element) == search
 
 
-def _scale_attr(attr: _T, /, by: float) -> _T:
-    """Scale an attribute by the given factor.
-
-    This is a helper function for scaling attributes. If the attribute is a
-    number or a non-percentage length, it is scaled by the given factor.
-    Otherwise, the attribute is left unchanged. If the attribute is a list or
-    tuple, the function is applied recursively to each element.
+def _normalize_transform(matrix: Matrix, /) -> Transform | None:
+    """Express a matrix in the shortest transform list that serializes it.
 
     Args:
-        attr: The attribute to scale.
-        by: The factor by which to scale the attribute.
+        matrix: The transformation left over after reification.
 
     Returns:
-        The scaled attribute.
+        A transform list equivalent to the matrix, or `None` if the matrix is
+        the identity and the attribute can be dropped altogether.
 
     Examples:
-        >>> from svglab import Length
-        >>> _scale_attr(Length(10), 2)
-        Length(value=20.0, unit=None)
-        >>> _scale_attr(None, 2) is None
+        >>> from svglab.attrparse.transform import Matrix, Translate
+        >>> _normalize_transform(Matrix.identity()) is None
         True
-        >>> _scale_attr(Length(10, "%"), 2)
-        Length(value=10.0, unit='%')
+        >>> _normalize_transform(Translate(10, 20).to_matrix())
+        [Translate(tx=10.0, ty=20.0)]
 
     """
-    match attr:
-        case Length(_, "%"):
-            return attr
-        case int() | float() | Length():
-            return cast(_T, attr * by)
-        case list() | tuple():
-            items = cast(list[object] | tuple[object, ...], attr)
-            return cast(
-                _T, type(items)(_scale_attr(item, by) for item in items)
-            )
-        case _:
-            return attr
+    if matrix == Matrix.identity():
+        return None
+
+    return matrix.decompose()
 
 
-def _inherited_stroke_width(element: StrokeWidthAttr, /) -> Length:
-    """Resolve the `stroke-width` that the element inherits.
+def _attr_or_default(
+    element: Element, attr_name: AttributeName, /
+) -> object:
+    """Read an attribute, falling back to the value the spec says it has.
 
-    `stroke-width` is an inherited property. An element that does not
-    specify its own `stroke-width` uses the value of the nearest ancestor
-    that specifies one. If no ancestor specifies one, the initial value
-    (`1`) is used.
+    Only the attributes whose default matters to the rest of the library are
+    filled in; everything else reads as `None` when it is not set.
 
     Args:
-        element: The element whose inherited `stroke-width` to resolve.
+        element: The element to read from.
+        attr_name: The name of the attribute.
 
     Returns:
-        The inherited `stroke-width`.
-
-    Examples:
-        >>> from svglab import G, Length, Path
-        >>> path = Path()
-        >>> g = G(stroke_width=Length(5)).add_child(path)
-        >>> _inherited_stroke_width(path)
-        Length(value=5.0, unit=None)
-        >>> nested = Path()
-        >>> g = G(stroke_width=Length(5)).add_child(
-        ...     G(stroke_width=Length(3)).add_child(nested)
-        ... )
-        >>> _inherited_stroke_width(nested)
-        Length(value=3.0, unit=None)
-        >>> _inherited_stroke_width(Path())
-        Length(value=1.0, unit=None)
+        The value of the attribute, its default, or `None`.
 
     """
-    if isinstance(element, Element):
-        for ancestor in element.ancestors:
-            stroke_width = ancestor.stroke_width
+    attrs = element.standard_attrs()
 
-            if stroke_width is not None and stroke_width != "inherit":
-                return stroke_width
+    if attr_name in attrs:
+        return attrs[attr_name]
 
-    return Length(1)
-
-
-def _scale_stroke_width(element: StrokeWidthAttr, by: float) -> None:
-    if (
-        isinstance(element, VectorEffectAttr)
-        and element.vector_effect == "non-scaling-stroke"
-    ):
-        return
-
-    # only elements that actually stroke something scale their stroke-width.
-    # on a container, the transformation is pushed down to the children, each
-    # of which scales its own (possibly inherited) stroke-width, so scaling
-    # the container's value as well would apply the factor twice
-    if not isinstance(element, StrokeWidthScaled):
-        return
-
-    sw_set = element.stroke_width is not None
-    inherited = None if sw_set else _inherited_stroke_width(element)
-
-    if inherited is not None:
-        element.stroke_width = inherited
-
-    element.stroke_width = _scale_attr(element.stroke_width, by)
-
-    # if stroke-width was not set and the scaled value is equal to the value
-    # the element inherits anyway, remove the attribute
-    if (
-        isinstance(inherited, Length)
-        and isinstance(element.stroke_width, Length)
-        and element.stroke_width.unit == inherited.unit
-        and is_close(float(element.stroke_width), float(inherited))
-    ):
-        element.stroke_width = None
-
-
-def scale_distance_along_a_path_attrs(element: object, by: float) -> None:
-    """Scale distance-along-a-path attributes of the element.
-
-    The attributes are:
-    - `stroke-dasharray`
-    - `stroke-dashoffset`
-
-    Args:
-        element: The element to scale.
-        by: The factor by which to scale the attributes.
-
-    """
-    if isinstance(element, StrokeDasharrayAttr) and isinstance(
-        element.stroke_dasharray, list
-    ):
-        element.stroke_dasharray = [
-            _scale_attr(dash, by) for dash in element.stroke_dasharray
-        ]
-    if isinstance(element, StrokeDashoffsetAttr):
-        element.stroke_dashoffset = _scale_attr(
-            element.stroke_dashoffset, by
-        )
-
-
-def _scale(element: object, scale: Scale) -> None:  # noqa: PLR0915
-    if not is_close(scale.sx, scale.sy):
-        raise ValueError("Non-uniform scaling is not supported.")
-
-    factor = scale.sx
-
-    if is_close(factor, 1):
-        return
-
-    if isinstance(element, WidthAttr):
-        element.width = _scale_attr(element.width, factor)
-    if isinstance(element, HeightAttr):
-        element.height = _scale_attr(element.height, factor)
-    if isinstance(element, RAttr):
-        element.r = _scale_attr(element.r, factor)
-    if isinstance(element, X1Attr):
-        element.x1 = _scale_attr(element.x1, factor)
-    if isinstance(element, Y1Attr):
-        element.y1 = _scale_attr(element.y1, factor)
-    if isinstance(element, X2Attr):
-        element.x2 = _scale_attr(element.x2, factor)
-    if isinstance(element, Y2Attr):
-        element.y2 = _scale_attr(element.y2, factor)
-    if isinstance(element, RxAttr):
-        element.rx = _scale_attr(element.rx, factor)
-    if isinstance(element, RyAttr):
-        element.ry = _scale_attr(element.ry, factor)
-    if isinstance(element, CxAttr):
-        element.cx = _scale_attr(element.cx, factor)
-    if isinstance(element, CyAttr):
-        element.cy = _scale_attr(element.cy, factor)
-    if isinstance(element, FxAttr):
-        element.fx = _scale_attr(element.fx, factor)
-    if isinstance(element, FyAttr):
-        element.fy = _scale_attr(element.fy, factor)
-    if isinstance(element, FontSizeAttr):
-        element.font_size = _scale_attr(element.font_size, factor)
-    if isinstance(element, DxListOfLengthsAttr):
-        element.dx = _scale_attr(element.dx, factor)
-    if isinstance(element, DyListOfLengthsAttr):
-        element.dy = _scale_attr(element.dy, factor)
-    if isinstance(element, TextLengthAttr):
-        element.textLength = _scale_attr(element.textLength, factor)
-    if isinstance(element, PointsAttr) and element.points is not None:
-        element.points = [scale @ point for point in element.points]
-    if isinstance(element, DAttr) and element.d is not None:
-        element.d = scale @ element.d
-
-    # these assignments have to be mutually exclusive, because the
-    # type checker doesn't know that x being a <number> implies that x is
-    # not a <coordinate> and vice versa
-    if isinstance(element, XNumberAttr):  # noqa: SIM114
-        element.x = _scale_attr(element.x, factor)
-    elif isinstance(element, XCoordinateAttr):  # noqa: SIM114
-        element.x = _scale_attr(element.x, factor)
-    elif isinstance(element, XListOfCoordinatesAttr):
-        element.x = _scale_attr(element.x, factor)
-
-    if isinstance(element, YNumberAttr):  # noqa: SIM114
-        element.y = _scale_attr(element.y, factor)
-    elif isinstance(element, YCoordinateAttr):  # noqa: SIM114
-        element.y = _scale_attr(element.y, factor)
-    elif isinstance(element, YListOfCoordinatesAttr):
-        element.y = _scale_attr(element.y, factor)
-
-    if isinstance(element, StrokeWidthAttr):
-        _scale_stroke_width(element, factor)
-
-    # no need to scale distance-along-a-path attributes if a custom path
-    # length is provided because those attributes and pathLength are
-    # proportional
-    if (
-        not isinstance(element, PathLengthAttr)
-        or element.pathLength is None
-    ):
-        scale_distance_along_a_path_attrs(element, factor)
-
-    if isinstance(element, OffsetNumberPercentageAttr):
-        element.offset = _scale_attr(element.offset, factor)
-
-
-def _translate_attr(attr: _T, /, by: float) -> _T:
-    """Translate an attribute by the given amount.
-
-    This is a helper function for translating attributes. If the attribute is
-    a number or a non-percentage length, it is translated by the given amount.
-    Otherwise, the attribute is left unchanged. If the attribute is a list or
-    tuple, the function is applied recursively to each element.
-
-    Args:
-        attr: The attribute to translate.
-        by: The amount by which to translate the attribute.
-
-    Returns:
-        The translated attribute.
-
-    Examples:
-        >>> from svglab import Length
-        >>> _translate_attr(Length(10), 5)
-        Length(value=15.0, unit=None)
-        >>> _translate_attr(None, 5) is None
-        True
-        >>> _translate_attr(Length(10, "%"), 5)
-        Length(value=10.0, unit='%')
-
-    """
-    match attr:
-        case Length(_, "%"):
-            return attr
-        case int() | float():
-            return cast(_T, attr + by)
-        case Length():
-            return attr + Length(by)
-        case list() | tuple():
-            items = cast(list[object] | tuple[object, ...], attr)
-            return cast(
-                _T,
-                type(items)(_translate_attr(item, by) for item in items),
-            )
+    match attr_name:
+        case (
+            "gradientUnits" | "patternUnits" | "maskUnits" | "filterUnits"
+        ):
+            return "objectBoundingBox"
+        case (
+            "patternContentUnits"
+            | "clipPathUnits"
+            | "maskContentUnits"
+            | "primitiveUnits"
+        ):
+            return "userSpaceOnUse"
         case _:
-            return attr
-
-
-# pyright goes nuts if `element` is annotated as `Element`... seems like a bug
-# luckily we don't really care
-def _translate(element: object, translate: Translate) -> None:
-    tx, ty = translate.tx, translate.ty
-
-    if is_close(tx, 0) and is_close(ty, 0):
-        return
-
-    zero = Length.zero()
-
-    # these attributes are mandatory for the respective elements
-    if isinstance(element, X1Attr):
-        element.x1 = _translate_attr(element.x1, tx)
-    if isinstance(element, Y1Attr):
-        element.y1 = _translate_attr(element.y1, ty)
-    if isinstance(element, X2Attr):
-        element.x2 = _translate_attr(element.x2, tx)
-    if isinstance(element, Y2Attr):
-        element.y2 = _translate_attr(element.y2, ty)
-
-    # but these are not, so if they are not present, we initialize them
-    # to 0
-    if isinstance(element, CxAttr):
-        element.cx = _translate_attr(element.cx or zero, tx)
-    if isinstance(element, CyAttr):
-        element.cy = _translate_attr(element.cy or zero, ty)
-
-    # an unset focal point follows the already translated center
-    if isinstance(element, FxAttr):
-        element.fx = _translate_attr(element.fx, tx)
-    if isinstance(element, FyAttr):
-        element.fy = _translate_attr(element.fy, ty)
-
-    if isinstance(element, XNumberAttr):
-        element.x = _translate_attr(element.x or 0, tx)
-    elif isinstance(element, XCoordinateAttr):
-        element.x = _translate_attr(element.x or zero, tx)
-    elif isinstance(element, XListOfCoordinatesAttr):
-        element.x = _translate_attr(element.x, tx)
-
-    if isinstance(element, YNumberAttr):
-        element.y = _translate_attr(element.y or 0, ty)
-    elif isinstance(element, YCoordinateAttr):
-        element.y = _translate_attr(element.y or zero, ty)
-    elif isinstance(element, YListOfCoordinatesAttr):
-        element.y = _translate_attr(element.y, ty)
-
-    if isinstance(element, PointsAttr) and element.points is not None:
-        element.points = [translate @ point for point in element.points]
-
-    if isinstance(element, DAttr) and element.d is not None:
-        element.d = translate @ element.d
-
-    if isinstance(element, OffsetNumberPercentageAttr):
-        element.offset = _translate_attr(element.offset, tx)
-
-
-def swap_transforms(
-    a: _TransformT1, b: _TransformT2, /
-) -> tuple[_TransformT2, _TransformT1]:
-    """Swap transforms, adjusting parameters so that the result is equal.
-
-    Args:
-        a: The first transform.
-        b: The second transform.
-
-    Returns:
-        A 2-tuple (b', a') where b' and a' are the adjusted transforms.
-
-    Raises:
-        SvgTransformSwapError: If the transforms cannot be swapped.
-
-    Examples:
-        >>> from svglab.attrparse.transform import Scale, Translate, SkewX
-        >>> swap_transforms(Translate(10, 20), Scale(2, 3))
-        (Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667))
-        >>> swap_transforms(Scale(2, 3), SkewX(45))
-        (SkewX(angle=33.690067525979785), Scale(sx=2.0, sy=3.0))
-        >>> swap_transforms(SkewX(45), Translate(10, 20))
-        (Translate(tx=30.0, ty=20.0), SkewX(angle=45.0))
-
-    """
-    match a, b:
-        # transformations of the same type
-        case (Translate(), Translate()) | (Scale(), Scale()):
-            return b, a
-
-        # translate <-> scale
-        case Translate(tx, ty), Scale(sx, sy) as scale:
-            return scale, type(a)(tx / sx, ty / sy)
-
-        case Scale(sx, sy) as scale, Translate(tx, ty):
-            return type(b)(sx * tx, sy * ty), scale
-
-        # translate <-> rotate
-        case Rotate(angle, cx, cy), Translate(tx, ty):
-            return type(b)(tx, ty), type(a)(angle, cx - tx, cy - ty)
-        case Translate(tx, ty), Rotate(angle, cx, cy):
-            return type(b)(angle, cx + tx, cy + ty), type(a)(tx, ty)
-
-        # scale <-> rotate
-        case Rotate(angle, cx, cy), Scale(sx, sy) as scale:
-            return scale, type(a)(angle, cx / sx, cy / sy)
-        case Scale(sx, sy) as scale, Rotate(angle, cx, cy):
-            return type(b)(angle, cx * sx, cy * sy), scale
-
-        # translate <-> skew
-        case SkewX(angle) as skew_x, Translate(tx, ty):
-            return type(b)(tx + ty * tan(angle), ty), skew_x
-
-        case Translate(tx, ty), SkewX(angle) as skew_x:
-            return skew_x, type(a)(tx - ty * tan(angle), ty)
-
-        case SkewY(angle) as skew_y, Translate(tx, ty):
-            return type(b)(tx, ty + tx * tan(angle)), skew_y
-
-        case Translate(tx, ty), SkewY(angle) as skew_y:
-            return skew_y, type(a)(tx, ty - tx * tan(angle))
-
-        # scale <-> skew
-        case Scale(sx, sy) as scale, SkewX(angle):
-            if is_close(sx, sy):
-                return b, a
-
-            angle = arctan(sx / sy * tan(angle))
-            return type(b)(angle), scale
-
-        case SkewX(angle), Scale(sx, sy) as scale:
-            if is_close(sx, sy):
-                return b, a
-
-            angle = arctan(sy / sx * tan(angle))
-            return scale, type(a)(angle)
-
-        case Scale(sx, sy) as scale, SkewY(angle):
-            if is_close(sx, sy):
-                return b, a
-
-            angle = arctan(sy / sx * tan(angle))
-            return type(b)(angle), scale
-
-        case SkewY(angle), Scale(sx, sy) as scale:
-            if is_close(sx, sy):
-                return b, a
-
-            angle = arctan(sx / sy * tan(angle))
-
-            return scale, type(a)(angle)
-        case _:
-            raise SvgTransformSwapError(a, b)
-
-
-def _move_transformation_to_end(
-    transformations: Transform, index: int
-) -> None:
-    """Move a transformation to the end of the transform list.
-
-    This function moves a transformation from the given index to the end of
-    the list, swapping it with each transformation that follows it.
-    The transformations in the list are adjusted so that the result is the
-    same. The transformation itself may have its parameters adjusted as well.
-
-    Args:
-        transformations: A list of transformations.
-        index: The index of the transformation to move.
-
-    Raises:
-        ValueError: If the index is out of range.
-        SvgTransformSwapError: If two transformations cannot be swapped.
-
-    Examples:
-        >>> from svglab.attrparse.transform import Translate, Scale
-        >>> transform = [Translate(10, 20), Scale(2, 3)]
-        >>> _move_transformation_to_end(transform, 0)
-        >>> transform
-        [Scale(sx=2.0, sy=3.0), Translate(tx=5.0, ty=6.666666666666667)]
-
-    """
-    if not (0 <= index < len(transformations)):
-        msg = f"Index {index=} out of range"
-        raise ValueError(msg)
-
-    for i in range(index, len(transformations) - 1):
-        transformations[i], transformations[i + 1] = swap_transforms(
-            transformations[i], transformations[i + 1]
-        )
+            return None
 
 
 def element_name(element: Element, /) -> str:
@@ -705,6 +368,32 @@ class Entity(BaseModel, metaclass=abc.ABCMeta):
     def __delattr__(self, name: str) -> None:
         super().__delattr__(name)
         self.__pydantic_fields_set__.discard(name)
+
+    @override
+    def __deepcopy__(self, memo: dict[int, object] | None = None) -> Self:
+        """Copy the entity and everything below it, but nothing above it.
+
+        The copy is detached from the tree unless its parent is being copied
+        along with it. Pydantic only records a copy in `memo` once it is
+        complete, so following the parent link would copy the ancestors all
+        over again -- and, through their children, the entity itself.
+
+        Returns:
+            The copy.
+
+        """
+        memo = {} if memo is None else memo
+        parent = self.parent
+        blocked = parent is not None and id(parent) not in memo
+
+        if blocked:
+            memo[id(parent)] = None
+
+        try:
+            return super().__deepcopy__(memo)
+        finally:
+            if blocked:
+                del memo[id(parent)]
 
 
 class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
@@ -820,20 +509,6 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         extra = self.extra_attrs()
 
         return {**standard, **extra}
-
-    def __get_attr_or_default(self, attr_name: AttributeName) -> object:
-        attrs = self.standard_attrs()
-
-        if attr_name in attrs:
-            return attrs[attr_name]
-
-        match attr_name:
-            case "gradientUnits" | "patternUnits":
-                return "objectBoundingBox"
-            case "patternContentUnits":
-                return "userSpaceOnUse"
-            case _:
-                return None
 
     def __getitem__(self, key: str) -> str:
         assert self.model_extra is not None, "model_extra is None"
@@ -1019,6 +694,21 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
         """
         return take_last(self.ancestors) or self
+
+    # endregion
+    # region Copying
+
+    @override
+    def __deepcopy__(self, memo: dict[int, object] | None = None) -> Self:
+        copied = super().__deepcopy__(memo)
+
+        # each child was copied while this element was still being copied,
+        # so it could not be attached to the copy yet; the link is known to be
+        # valid, so it skips the validation an assignment would run
+        for child in copied.children:
+            object.__setattr__(child, "parent", copied)
+
+        return copied
 
     # endregion
     # region Tree Mutation
@@ -1372,7 +1062,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             if not hasattr(self, attr_name):
                 continue
 
-            attr = self.__get_attr_or_default(attr_name)
+            attr = _attr_or_default(self, attr_name)
 
             if not (isinstance(attr, Iri) and attr.is_local):
                 continue
@@ -1426,11 +1116,17 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
     @override
     def to_beautifulsoup_object(self) -> bs4.Tag:
+        name = element_name(self)
         element = bs4.Tag(
-            name=element_name(self),
+            name=name,
             can_be_empty_element=True,
             prefix=self.prefix,
             is_xml=True,
+            # whitespace added around the character data of a text content
+            # element when pretty-printing would be drawn along with it
+            preserve_whitespace_tags=[name]
+            if name in TEXT_CONTENT_ELEMENT_NAMES
+            else None,
         )
 
         element.can_be_empty_element = len(self.__children) == 0
@@ -1485,8 +1181,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         transform_attr_name = self.__get_main_transform_attribute()
 
         return cast(
-            Transform | None,
-            self.__get_attr_or_default(transform_attr_name),
+            Transform | None, _attr_or_default(self, transform_attr_name)
         )
 
     @main_transform.setter
@@ -1510,210 +1205,96 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         ]
         ```
 
+        A keyword such as `center` and a percentage are resolved against the
+        nearest viewport, as `transform-box: view-box` prescribes for SVG
+        elements. The outermost `svg` has a CSS box of its own and turns
+        about its center unless told otherwise, so it is treated as if it
+        said `transform-origin="50% 50%"`.
+
         If the `transform-origin` attribute is not set, this function does
         nothing.
 
         Raises:
             SvgTransformOriginError: If the value of the `transform-origin`
-                attribute cannot be decomposed.
+                attribute cannot be decomposed: it has a depth, or it is
+                relative to a viewport whose size is not known.
+            SvgUnitConversionError: If an offset cannot be converted to user
+                units.
 
         """
-        if self.transform_origin is None:
-            return
+        origin = _transform_origin(self)
 
-        if not (
-            isinstance(self.transform_origin, tuple)
-            and isinstance(self.transform_origin[0], Length)
-            and isinstance(self.transform_origin[1], Length)
-        ):
-            raise SvgTransformOriginError(self.transform_origin)
+        if origin is None:
+            return
 
         if not self.main_transform:
             self.main_transform = []
 
-        tx = float(self.transform_origin[0])
-        ty = float(self.transform_origin[1])
-
-        self.main_transform.insert(0, Translate(tx, ty))
-        self.main_transform.append(Translate(-tx, -ty))
+        self.main_transform.insert(0, Translate(origin.x, origin.y))
+        self.main_transform.append(Translate(-origin.x, -origin.y))
 
         self.transform_origin = None
 
-    def apply_transformation(
-        self, transformation: TransformFunction, /
-    ) -> None:
-        """Apply a transformation to the attributes of the element.
-
-        Args:
-            transformation: The transformation to apply.
-
-        Raises:
-            ValueError: If the transformation is not supported.
-            SvgLengthConversionError: If a length attribute is not convertible
-                to user units.
-
-        """
-        match transformation:
-            case Translate():
-                _translate(self, transformation)
-            case Scale():
-                _scale(self, transformation)
-            case _:
-                msg = f"Unsupported transformation: {transformation}"
-                raise ValueError(msg)
-
-    def __reify_this(self, *, limit: int, ids: frozenset[str]) -> None:
-        if limit < 0:
-            raise ValueError("Limit must be a positive integer")
-
-        self.decompose_transform_origin()
-
-        if not self.main_transform:
-            return
-
-        decompose_matrices(transform=self.main_transform)
-
-        reified = 0
-        i = 0
-
-        while reified < limit and i < len(self.main_transform):
-            if not isinstance(self.main_transform[i], Reifiable):
-                i += 1
-                continue
-
-            # move the transformation to the end of the list where it can
-            # be directly applied to the element
-            _move_transformation_to_end(self.main_transform, i)
-            transformation = self.main_transform[-1]
-
-            try:
-                self.apply_transformation(transformation)
-            except ValueError:
-                break
-
-            self.main_transform.pop()
-
-            for child in self.find_all(recursive=False):
-                if element_name(child) == "stop":
-                    continue
-
-                # bounding box paint servers are relative to the referencing
-                # element, so they are transformed along with it
-                if isinstance(
-                    child, GradientUnitsAttr
-                ) and child.gradientUnits in (None, "objectBoundingBox"):
-                    continue
-
-                if isinstance(
-                    child, PatternUnitsAttr
-                ) and child.patternUnits in (None, "objectBoundingBox"):
-                    continue
-
-                if child.main_transform is None:
-                    child.main_transform = []
-
-                # decompose transform-origin before we prepend
-                child.decompose_transform_origin()
-                child.main_transform.insert(0, transformation)
-
-                child.__reify(  # noqa: SLF001
-                    limit=1,
-                    recursive=False,
-                    remove_transform_list_if_empty=False,
-                    ids=ids,
-                )
-
-            reified += 1
-
-    def __can_reify(self, ids: frozenset[str]) -> bool:
-        # transformations on <use> elements cannot be reified.
-        # reification would only work if all usages of the referenced element
-        # via <use> have equal transform attributes (f.e. if the referenced
-        # element is only used once), in which case we would continue with
-        # reification on the referenced element (probably not worth the hassle)
-        # patternTransforms also cannot be reified (no clue why)
-        if element_name(self) in ["use", "pattern"]:
-            return False
-
-        main_transform_attr_name = self.__get_main_transform_attribute()
-
-        if main_transform_attr_name != "transform" and self.transform:
-            warnings.warn(
-                (
-                    f"Attribute 'transform' on element {type(self)} has "
-                    f"no effect. Use {main_transform_attr_name!r} instead."
-                ),
-                stacklevel=2,
-            )
-
-        if (
-            main_transform_attr_name == "gradientTransform"
-            and self.__get_attr_or_default("gradientUnits")
-            == "objectBoundingBox"
-        ):
-            return False
-
-        # reification of elements that reference other elements (f.e. paint
-        # servers or clipping paths) is problematic. there is a lot of stuff
-        # that can go wrong here, so we just disable this for now
-
-        # TODO: this is overly general; find out in which cases this is
-        # actually needed
-        return not self.__references_element_in(ids)
+    # region Reification
 
     def reify(
         self,
         *,
-        limit: int = sys.maxsize,
         recursive: bool = True,
-        remove_transform_list_if_empty: bool = True,
+        convert_shapes_to_paths: bool = False,
+        unwrap_groups: bool = False,
     ) -> None:
-        """Apply transformations defined by the `transform` attribute.
+        """Replace transformations with equivalent changes to the geometry.
 
-        This method takes the transformations defined by the `transform`
-        attribute and applies them directly to the coordinate, length, and
-        other attributes of the element. The transformations are applied in
-        the order in which they are defined. The result of this operation
-        should be a visually identical element with the `transform` attribute
-        reduced or removed (depending on the `limit` parameter).
+        This method takes the transformation described by the `transform`
+        attribute and folds it into the coordinate, length, and path data
+        attributes of the element, so that the element looks the same but no
+        longer carries the attribute.
 
-        Only `Translate` and `Scale` transformations can be reified. If
-        the `transform` attribute contains other transformations, their
-        parameters are adjusted so that `Translate` and `Scale` transformations
-        can be applied. Unsupported transformations are ignored.
+        The whole transform list is composed into a single matrix first, so
+        the order of the individual transformation functions does not matter
+        and a `matrix(...)` is no harder to reify than a `translate(...)`.
 
-        Reification stops at the first transformation that cannot be applied
-        to the element, such as a non-uniform `Scale`. That transformation and
-        everything preceding it are left in the `transform` attribute.
+        How much of that matrix an element can take on depends on what its
+        attributes are able to describe. A `path` can express any affine
+        transformation; a `rect` can be moved, resized and turned by a
+        quarter, but not rotated freely; a `text` can only be moved and
+        resized, since mirroring it would mean mirroring its glyphs. Whatever
+        is left over stays in the `transform` attribute, in the shortest form
+        the library can find for it. An element that establishes a coordinate
+        system for its children, such as a `g`, hands the transformation to
+        them instead of absorbing it.
 
-        If all transformations are successfully applied, the `transform`
-        attribute is removed from the element.
-
-        All length values in the element must be convertible to user units.
+        Reification never changes the way the document looks. Where that
+        cannot be guaranteed -- an element painted by a gradient defined in
+        user space, a shape whose markers would not survive, a length given
+        as a percentage, a stroke whose width a stylesheet may set, an
+        element a `use` renders under properties of its own -- the
+        transformation is left alone. Inherited properties are read the way
+        the element is rendered, `style` declarations and stylesheets
+        included.
 
         Args:
-            limit: The maximum number of transformations to apply. If the
-                `transform` attribute contains more transformations than the
-                limit, the remaining transformations are kept in the attribute
-                and not applied. The limit must be a positive integer and is
-                applied on a per-element basis.
             recursive: If `True`, the method is called recursively on all
-                child elements that support reification.
-            remove_transform_list_if_empty: If `True`, the `transform`
-                attribute is set to `None` if the list is empty after
-                reification.
-
-        Raises:
-            ValueError: If the limit is not a positive integer.
-            SvgUnitConversionError: If a length value cannot be converted to
-                user units.
-            SvgTransformOriginError: If the value of the `transform-origin`
-                attribute is unsupported.
-            SvgLengthConversionError: If a length value cannot be
-                converted to user units.
+                child elements. If `False`, only what the element hands down
+                to its children is followed up, since a `text` cannot leave
+                a transformation on its spans.
+            convert_shapes_to_paths: If `True`, a basic shape that is asked
+                to absorb more than its attributes can express is replaced
+                by an equivalent `path` element, which can absorb anything.
+                Only descendants are replaced; the element the method is
+                called on keeps its type, and so does every shape in a
+                document with a stylesheet, whose selectors may pick shapes
+                out by name.
+            unwrap_groups: If `True`, a descendant `g` that is left without
+                any attributes once its transformation is gone is replaced by
+                its children. Groups that had no attributes to begin with are
+                left alone, and so are groups with a `title`, a `desc` or an
+                animation of their own, and every group in a document with a
+                stylesheet, whose selectors may depend on the tree's shape.
 
         Examples:
-            >>> from svglab import Rect, Length, Scale, Translate
+            >>> from svglab import Rect, Length, Rotate, Scale, Translate
             >>> rect = Rect(
             ...     x=Length(10),
             ...     y=Length(20),
@@ -1722,58 +1303,35 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             ...     transform=[Translate(5, 5)],
             ... )
             >>> rect.reify()
-            >>> rect.x
-            Length(value=15.0, unit=None)
-            >>> rect.y
-            Length(value=25.0, unit=None)
-            >>> rect.width
-            Length(value=20.0, unit=None)
-            >>> rect.height
-            Length(value=40.0, unit=None)
+            >>> rect.x, rect.y
+            (Length(value=15.0, unit=None), Length(value=25.0, unit=None))
             >>> rect.transform is None
             True
 
-            A transformation that cannot be applied is left in place:
+            Non-uniform scaling is no trouble for a rectangle:
 
-            >>> rect = Rect(width=Length(20), transform=[Scale(2, 3)])
+            >>> rect = Rect(width=Length(20), height=Length(10))
+            >>> rect.transform = [Scale(2, 3)]
+            >>> rect.reify()
+            >>> rect.width, rect.height
+            (Length(value=40.0, unit=None), Length(value=30.0, unit=None))
+
+            A rotation is, so it stays where it is:
+
+            >>> rect = Rect(width=Length(20), transform=[Rotate(45)])
             >>> rect.reify()
             >>> rect.transform
-            [Scale(sx=2.0, sy=3.0)]
-            >>> rect.width
-            Length(value=20.0, unit=None)
+            [Rotate(angle=45.0, cx=0.0, cy=0.0)]
 
         """
-        self.__reify(
-            limit=limit,
+        _reify_tree(
+            self,
+            context=_build_context(
+                self, convert_shapes_to_paths=convert_shapes_to_paths
+            ),
             recursive=recursive,
-            remove_transform_list_if_empty=remove_transform_list_if_empty,
-            ids=self.__document_ids(),
+            unwrap_groups=unwrap_groups,
         )
-
-    def __reify(
-        self,
-        *,
-        limit: int,
-        recursive: bool,
-        remove_transform_list_if_empty: bool,
-        ids: frozenset[str],
-    ) -> None:
-        if not self.__can_reify(ids):
-            return
-
-        self.__reify_this(limit=limit, ids=ids)
-
-        if remove_transform_list_if_empty and not self.main_transform:
-            self.main_transform = None
-
-        if recursive:
-            for child in self.find_all(recursive=False):
-                child.__reify(  # noqa: SLF001
-                    limit=limit,
-                    recursive=True,
-                    remove_transform_list_if_empty=remove_transform_list_if_empty,
-                    ids=ids,
-                )
 
     # endregion
 
@@ -1786,7 +1344,7 @@ Element.model_rebuild()
 
 
 @final
-class UnknownElement(Element):
+class UnknownElement(RenderedIndirectly, Element):
     """Represents an unknown element that is not part of the SVG specification.
 
     This element has no standard parsed attributes. All attributes are treated
@@ -1797,6 +1355,10 @@ class UnknownElement(Element):
     intended as a last-resort fallback so we don't lose information about
     elements the library does not know about.
 
+    A renderer draws nothing it does not know, so reification treats an
+    unknown element like one that is not drawn where it sits: a
+    transformation handed down from above neither reaches it nor is held up
+    by it.
     """
 
     element_name: str = pydantic.Field(frozen=True, min_length=1)
@@ -1915,3 +1477,1601 @@ class RawText(CharacterData):
     @override
     def to_beautifulsoup_object(self) -> bs4.NavigableString:
         return bs4.NavigableString(self.content)
+
+
+# region Reification
+
+
+class _Context(NamedTuple):
+    """What the reification of one tree needs to know about the whole of it."""
+
+    by_id: Mapping[str, Element]
+    """The elements of the tree, keyed by their `id` attribute."""
+
+    pinned: Container[int]
+    """Elements no transformation may be pushed into, by object identity.
+
+    An element that something else in the document refers to renders wherever
+    the reference is, not where it sits in the tree, so handing it a
+    transformation from an ancestor would change what the reference sees.
+    Everything on the way down to it is off limits for the same reason.
+    """
+
+    frozen: Container[int]
+    """Elements that may not be reified at all, by object identity.
+
+    An animation records the values of an attribute in the coordinate system
+    the document was written in; rewriting that system underneath it would
+    move the animation, not the element.
+    """
+
+    scopes: Mapping[int, Scope]
+    """How far each element's inherited properties can be seen."""
+
+    capabilities: Mapping[int, Capability]
+    """What each element of the tree can absorb, by object identity."""
+
+    stylesheet: Capability
+    """What the document's stylesheets leave reifiable anywhere in it."""
+
+    paint_servers: Mapping[str, Capability]
+    """What a shape whose `fill` or `stroke` cannot be told may absorb.
+
+    The least any paint server named by a `fill`, or by a `stroke`, anywhere
+    in the document allows.
+    """
+
+    markers: bool
+    """Whether the document has any `marker` to put on a shape."""
+
+    boxed: Container[int]
+    """Elements below one whose resources are laid out in its bounding box.
+
+    A renderer takes the bounding box of a container to be the union of its
+    children's boxes, each transformed as a rectangle, so turning or
+    skewing a child's geometry would change the box its parent's clip
+    path, mask or filter is laid out in.
+    """
+
+    convert_shapes: bool
+    """Whether a basic shape may be replaced by the `path` it draws."""
+
+    pushed: set[int]
+    """Elements handed a transformation by their parent during this pass."""
+
+
+def _resolve_reference(
+    element: Element,
+    attr_name: AttributeName,
+    index: Mapping[str, Element],
+    /,
+) -> Element | None:
+    """Follow a local IRI reference to the element it points at.
+
+    A reference that resolves to nothing renders as nothing, so reification
+    treats it as no reference at all.
+
+    Returns:
+        The element referred to, or `None` if the attribute is not a local
+        reference or nothing in the index has its id.
+
+    """
+    attr = _attr_or_default(element, attr_name)
+
+    if not (isinstance(attr, Iri) and attr.is_local):
+        return None
+
+    assert attr.fragment is not None
+
+    return index.get(attr.fragment)
+
+
+def _paint_server_attr(
+    target: Element,
+    attr_name: AttributeName,
+    index: Mapping[str, Element],
+    /,
+) -> object:
+    """Read an attribute of a gradient or pattern, following its `href`.
+
+    A gradient or pattern takes every attribute it leaves out from the one
+    it refers to, which may in turn refer to another.
+
+    Returns:
+        The value of the attribute, or its default.
+
+    """
+    seen: set[int] = set()
+    element: Element | None = target
+
+    while element is not None and id(element) not in seen:
+        seen.add(id(element))
+        attrs = element.standard_attrs()
+
+        if attr_name in attrs:
+            return attrs[attr_name]
+
+        element = _paint_server_template(element, index)
+
+    return _attr_or_default(target, attr_name)
+
+
+_PAINT_SERVER_GEOMETRY: Final[tuple[AttributeName, ...]] = (
+    "x1",
+    "y1",
+    "x2",
+    "y2",
+    "cx",
+    "cy",
+    "r",
+    "fx",
+    "fy",
+    "fr",
+    "x",
+    "y",
+    "width",
+    "height",
+    "viewBox",
+    "preserveAspectRatio",
+    "gradientUnits",
+    "gradientTransform",
+    "patternUnits",
+    "patternContentUnits",
+    "patternTransform",
+)
+"""Attributes of a gradient or pattern that decide where it is painted."""
+
+
+def _paint_server_geometry_source(
+    element: Element, index: Mapping[str, Element], /
+) -> Element | None:
+    """Find the template a gradient or pattern takes geometry from.
+
+    Returns:
+        The nearest template in the chain of `href`s that defines an
+        attribute deciding the geometry which the element leaves out, or
+        `None` if the element defines all of its own or has no template.
+
+    """
+    own = element.standard_attrs()
+    missing = [name for name in _PAINT_SERVER_GEOMETRY if name not in own]
+    seen: set[int] = set()
+    template = _paint_server_template(element, index)
+
+    while template is not None and id(template) not in seen:
+        seen.add(id(template))
+        attrs = template.standard_attrs()
+
+        if any(name in attrs for name in missing):
+            return template
+
+        template = _paint_server_template(template, index)
+
+    return None
+
+
+def _paint_server_template(
+    element: Element, index: Mapping[str, Element], /
+) -> Element | None:
+    """Find the gradient or pattern the element inherits attributes from."""
+    if not isinstance(element, PatternUnitsAttr | GradientUnitsAttr):
+        return None
+
+    for attr_name in ("href", "xlink:href"):
+        template = _resolve_reference(element, attr_name, index)
+
+        if isinstance(template, PatternUnitsAttr | GradientUnitsAttr):
+            return template
+
+    return None
+
+
+def _commuting_capability(matrix: Matrix, /) -> Capability:
+    """Work out what commutes with a transformation applied after a box.
+
+    A pattern's tiling and a clip path's content in bounding box units are
+    laid out in the bounding box of the element, and the pattern's or clip
+    path's own transformation is applied to the result, in user space.
+    Reification rewrites the bounding box, which happens *before* that
+    transformation, so the picture only survives if doing the absorbed part
+    first comes to the same thing as doing it last -- that is, if the two
+    commute.
+
+    Moving commutes with moving. A transformation that only turns or
+    stretches commutes with resizing the element about the origin, which is
+    the one resizing that leaves the corner of the box where it is. Nothing
+    else is safe.
+
+    Returns:
+        What an element the transformation is applied after may absorb.
+
+    """
+    identity = Matrix.identity()
+
+    if matrix == identity:
+        return AFFINE
+
+    if matrix.linear() == identity:
+        return TRANSLATION
+
+    if matrix.translation() == Translate(0, 0):
+        return UNIFORM_SCALING - TRANSLATION
+
+    return NOTHING
+
+
+def _pattern_capability(
+    target: Element, index: Mapping[str, Element], /
+) -> Capability:
+    """Work out what a pattern lets the element it paints absorb.
+
+    The tile is placed relative to the bounding box, so it moves and resizes
+    with the element. The content inside the tile only follows as far as its
+    own coordinate system does: a `viewBox` maps it onto the tile, and
+    `patternContentUnits` can tie it to the bounding box, but by default it is
+    drawn at its natural size in user space and only the tiling changes.
+
+    Whatever the tile allows is then narrowed by the pattern's own
+    `patternTransform`, which the tiling has to keep in step with.
+
+    Returns:
+        What a shape painted with the pattern may absorb.
+
+    """
+    if (
+        _paint_server_attr(target, "patternUnits", index)
+        != "objectBoundingBox"
+    ):
+        return NOTHING
+
+    pattern_transform = _paint_server_attr(
+        target, "patternTransform", index
+    )
+
+    return _pattern_tile_capability(target, index) & _commuting_capability(
+        compose(cast("Transform | None", pattern_transform) or [])
+    )
+
+
+def _pattern_tile_capability(
+    target: Element, index: Mapping[str, Element], /
+) -> Capability:
+    """Work out how far the content of a pattern follows its tile."""
+    if _paint_server_attr(target, "viewBox", index) is not None:
+        return (
+            UPRIGHT
+            if stretches_content(
+                _paint_server_attr(target, "preserveAspectRatio", index)
+            )
+            else UNIFORM_SCALING
+        )
+
+    if (
+        _paint_server_attr(target, "patternContentUnits", index)
+        == "objectBoundingBox"
+    ):
+        return UPRIGHT
+
+    return TRANSLATION
+
+
+def _paint_server_capability(
+    target: Element, index: Mapping[str, Element], /
+) -> Capability:
+    """Work out what a paint server lets the element it paints absorb."""
+    if isinstance(target, PatternUnitsAttr):
+        return _pattern_capability(target, index)
+
+    if isinstance(target, GradientUnitsAttr):
+        # a gradient is a ramp across whatever space it is defined in, so it
+        # is carried along by anything that leaves the box upright
+        units = _paint_server_attr(target, "gradientUnits", index)
+
+        return UPRIGHT if units == "objectBoundingBox" else NOTHING
+
+    # not a paint server at all; nothing to keep in step with
+    return AFFINE
+
+
+def _resource_capability(
+    target: Element, attr_name: AttributeName, /
+) -> Capability:
+    """Work out what a referenced resource lets the element absorb.
+
+    A resource described as a fraction of the box of whatever refers to it
+    follows that element wherever reification puts it -- but only as far as
+    moving and resizing go, since turning or flipping the element would have
+    turned or flipped the resource too, and rewriting a box cannot say that.
+    A resource expressed in user space follows nowhere: it is resolved in the
+    coordinate system the referencing element renders in, which is exactly
+    what reification takes away.
+
+    Returns:
+        What an element referring to the resource may absorb.
+
+    """
+    match attr_name:
+        case "clip-path":
+            units = _attr_or_default(target, "clipPathUnits")
+
+            if units == "objectBoundingBox":
+                # the clip path's own transformation is applied after the
+                # mapping onto the box, so the two have to commute
+                return UPRIGHT & _commuting_capability(
+                    compose(target.main_transform or [])
+                )
+        case _:
+            # a mask's region and its content have separate unit settings,
+            # and both have to follow the box for the mask to move with the
+            # element
+            units = (
+                _attr_or_default(target, "maskUnits")
+                if _attr_or_default(target, "maskContentUnits")
+                == "objectBoundingBox"
+                else "userSpaceOnUse"
+            )
+
+    return UPRIGHT if units == "objectBoundingBox" else NOTHING
+
+
+_URL_FRAGMENT: Final = re.compile(r"url\(\s*['\"]?#([^'\")\s]+)")
+
+
+def _reference_capability(
+    element: Element, /, *, context: _Context, scope: Scope
+) -> Capability:
+    """Work out what the element's references let it absorb.
+
+    The paint and the markers are inherited, so they are resolved the way the
+    element is rendered -- and where they cannot be resolved, the element is
+    held to the worst any paint server or marker in the document could do.
+
+    Returns:
+        What the element may absorb.
+
+    """
+    capability = AFFINE
+
+    for name in ("fill", "stroke"):
+        paint = property_value(element, name, scope=scope)
+
+        if paint is UNKNOWN:
+            capability &= context.paint_servers[name]
+            continue
+
+        target = _paint_target(paint, context.by_id)
+
+        if target is not None:
+            capability &= _paint_server_capability(target, context.by_id)
+        elif isinstance(paint, str) and "url(" in paint:
+            # a paint server reification cannot find, declared in a style
+            capability &= NOTHING
+
+    if isinstance(element, Markable):
+        for name in MARKER_ATTRS:
+            marker = property_value(element, name, scope=scope)
+
+            if marker is UNKNOWN:
+                if context.markers:
+                    capability &= TRANSLATION
+            elif isinstance(marker, Iri) and marker.is_local:
+                assert marker.fragment is not None
+                target = context.by_id.get(marker.fragment)
+
+                if target is not None:
+                    capability &= _marker_capability(target)
+            elif marker is not None and marker != "none":
+                capability &= TRANSLATION
+
+    for attr_name in ("mask", "clip-path"):
+        target = _resolve_reference(element, attr_name, context.by_id)
+
+        if target is not None:
+            capability &= _resource_capability(target, attr_name)
+
+    filter_ = _resolve_reference(element, "filter", context.by_id)
+
+    if filter_ is not None:
+        capability &= _filter_capability(filter_, context.by_id)
+
+    return capability
+
+
+def _marker_capability(marker: Element, /) -> Capability:
+    """Work out what a marker lets the shape carrying it absorb.
+
+    A marker sized in stroke widths grows with the stroke, which is resized
+    along with the shape, and one oriented along the outline turns with it.
+    A fixed orientation keeps its angle whatever the shape does, and a marker
+    sized in user space keeps its size. None of them is mirrored when the
+    shape is: the outline reverses but the marker stays as drawn.
+
+    Returns:
+        What a shape with the marker may absorb.
+
+    """
+    orient = str(_attr_or_default(marker, "orient") or "0")
+    turns = orient in ("auto", "auto-start-reverse")
+    grows = _attr_or_default(marker, "markerUnits") != "userSpaceOnUse"
+
+    capability = UNIFORM_SCALING if grows else TRANSLATION
+
+    if turns:
+        capability |= {Feature.ROTATE, Feature.QUARTER_TURN}
+
+    return capability
+
+
+def _filter_capability(
+    target: Element, index: Mapping[str, Element], /
+) -> Capability:
+    """Work out what a filter lets the element it is attached to absorb.
+
+    Returns:
+        What an element with the filter may absorb.
+
+    """
+    if _attr_or_default(target, "filterUnits") != "objectBoundingBox":
+        # the filter region is pinned to the coordinate system the element
+        # renders in, so moving the element would leave the region behind
+        return NOTHING
+
+    primitives = list(target.find_all())
+
+    if _attr_or_default(
+        target, "primitiveUnits"
+    ) == "userSpaceOnUse" and any(
+        element_name(primitive) == "feTurbulence"
+        or any(
+            _attr_or_default(primitive, name) is not None
+            for name in _PRIMITIVE_POSITION_ATTRS
+        )
+        for primitive in primitives
+    ):
+        # a primitive placed at a point of the user space, or noise sampled
+        # from it, stays where it is when the element moves out from under it
+        return NOTHING
+
+    if any(
+        element_name(primitive) == "feImage"
+        and any(
+            _resolve_reference(primitive, name, index) is not None
+            for name in ("href", "xlink:href")
+        )
+        for primitive in primitives
+    ):
+        # an element rendered by `feImage` is drawn where it sits in user
+        # space, so it does not follow the filtered element either
+        return NOTHING
+
+    # the region follows the bounding box, but the primitives are
+    # parametrized in user space, so the element may only move
+    return TRANSLATION
+
+
+_PRIMITIVE_POSITION_ATTRS: Final[tuple[AttributeName, ...]] = (
+    "x",
+    "y",
+    "pointsAtX",
+    "pointsAtY",
+)
+"""Attributes that place a filter primitive, or its light, in user space."""
+
+
+def _is_outermost_viewport(element: Element, /) -> bool:
+    return (
+        isinstance(element, DocumentFragmentRoot)
+        and element.parent is None
+    )
+
+
+def _css_box(svg: Element, /) -> tuple[float, float] | None:
+    """Measure the box of the outermost svg, in pixels.
+
+    Returns:
+        The width and height, or `None` if either is left out or given as
+        a fraction of something outside the document.
+
+    """
+    width = _attr_or_default(svg, "width")
+    height = _attr_or_default(svg, "height")
+
+    if not (isinstance(width, Length) and isinstance(height, Length)):
+        return None
+
+    try:
+        return float(width), float(height)
+    except SvgUnitConversionError:
+        return None
+
+
+_ALIGNMENT: Final = {"Min": 0.0, "Mid": 0.5, "Max": 1.0}
+
+
+def _viewbox_mapping(svg: Element, /) -> Matrix | None:
+    """Work out how the outermost svg maps user units onto its pixels.
+
+    A transformation on the outermost svg is a CSS transformation of its
+    box, applied in pixels after the `viewBox` has been fitted into the
+    box; handing it to the content means expressing it in user units, which
+    this mapping translates between.
+
+    Returns:
+        The matrix taking user units to pixels, the identity without a
+        `viewBox`, or `None` if the box the `viewBox` is fitted into is not
+        known or the `viewBox` has no extent.
+
+    """
+    view_box = _attr_or_default(svg, "viewBox")
+
+    if not isinstance(view_box, tuple):
+        return Matrix.identity()
+
+    box = _css_box(svg)
+
+    if box is None:
+        return None
+
+    min_x, min_y, view_width, view_height = cast(
+        "tuple[float, ...]", view_box
+    )
+
+    if view_width <= 0 or view_height <= 0:
+        # a viewBox of no extent disables rendering, so there is nothing to
+        # map the content onto
+        return None
+
+    width, height = box
+    align, *rest = str(
+        _attr_or_default(svg, "preserveAspectRatio") or "xMidYMid"
+    ).split()
+
+    if align == "none":
+        sx, sy = width / view_width, height / view_height
+        ax = ay = 0.0
+    else:
+        choose = max if rest == ["slice"] else min
+        sx = sy = choose(width / view_width, height / view_height)
+        ax, ay = _ALIGNMENT[align[1:4]], _ALIGNMENT[align[5:8]]
+
+    return Matrix(
+        sx,
+        0,
+        0,
+        sy,
+        ax * (width - view_width * sx) - min_x * sx,
+        ay * (height - view_height * sy) - min_y * sy,
+    )
+
+
+def _pushes_transform_to_children(element: Element, /) -> bool:
+    """Check whether the children inherit the element's coordinate system.
+
+    When they do, a transformation on the element is equivalent to the same
+    transformation on each of its children, which is what lets reification
+    carry one down the tree to elements that can absorb it.
+
+    Returns:
+        `True` if a transformation on the element may be handed down to
+        its children.
+
+    """
+    if _attr_or_default(element, "clipPathUnits") == "objectBoundingBox":
+        # the content is drawn in the bounding box of whatever the clip path
+        # is applied to, and the transformation is applied on top of that
+        # mapping, so it cannot be handed down past it
+        return False
+
+    return isinstance(
+        element, TransformInheritedByChildren
+    ) or _is_outermost_viewport(element)
+
+
+def _delegates_transform(element: Element, /) -> bool:
+    """Check whether the transformation belongs entirely to the children.
+
+    A `g` has no geometry of its own, so there is nothing to fold a
+    transformation into -- handing it to the children is the whole of the
+    work. The outermost `svg` is in the same position: its `x`, `y`, `width`
+    and `height` describe the canvas rather than anything drawn on it, so its
+    transformation applies to its content.
+
+    Returns:
+        `True` if the element has nothing of its own to fold a
+        transformation into.
+
+    """
+    return _pushes_transform_to_children(element) and (
+        _is_outermost_viewport(element) or not has_own_geometry(element)
+    )
+
+
+def _children_inheriting_transform(element: Element, /) -> list[Element]:
+    """List the children a transformation would have to be handed to."""
+    return [
+        child
+        for child in element.find_all(recursive=False)
+        if not isinstance(child, RenderedIndirectly)
+    ]
+
+
+_HORIZONTAL_KEYWORDS: Final = {"left": 0.0, "center": 50.0, "right": 100.0}
+_VERTICAL_KEYWORDS: Final = {"top": 0.0, "center": 50.0, "bottom": 100.0}
+_CSS_INITIAL_ORIGIN: Final = (Length(50, "%"), Length(50, "%"))
+
+
+def _transform_origin(element: Element, /) -> Point | None:
+    """Resolve the point the element's `transform-origin` turns about.
+
+    The outermost `svg` with a transformation has one even when it says
+    nothing: a CSS box turns about its center.
+
+    Returns:
+        The origin, or `None` when the element has none to speak of.
+
+    Raises:
+        SvgTransformOriginError: If the origin has a depth, names a side
+            that cannot be told apart from the other axis, or is relative to
+            a viewport whose size is not known.
+        SvgUnitConversionError: If an offset cannot be converted.
+
+    """
+    origin = _attr_or_default(element, "transform-origin")
+
+    if origin is None:
+        if not (
+            _is_outermost_viewport(element) and element.main_transform
+        ):
+            return None
+
+        origin = _CSS_INITIAL_ORIGIN
+
+    match origin:
+        case (first, second):
+            pass
+        case (first, second, depth):
+            if not (
+                isinstance(depth, Length) and is_close(float(depth), 0)
+            ):
+                raise SvgTransformOriginError(origin)
+        case "top" | "bottom":
+            first, second = "center", origin
+        case _:
+            first, second = origin, "center"
+
+    if first in ("top", "bottom") or second in ("left", "right"):
+        # two keywords may be written in either order
+        first, second = second, first
+
+    offsets: list[float] = []
+
+    for value, keywords, axis in (
+        (first, _HORIZONTAL_KEYWORDS, 0),
+        (second, _VERTICAL_KEYWORDS, 1),
+    ):
+        if isinstance(value, str):
+            if value not in keywords:
+                raise SvgTransformOriginError(origin)
+
+            value = Length(keywords[value], "%")  # noqa: PLW2901
+
+        if not isinstance(value, Length):
+            raise SvgTransformOriginError(origin)
+
+        if value.unit == "%":
+            # `transform-box` is `view-box` for SVG elements, so a percentage
+            # is of the nearest viewport; the outermost svg has a CSS box of
+            # its own, measured in pixels
+            viewport = (
+                _css_box(element)
+                if _is_outermost_viewport(element)
+                else _viewport_size(element)
+            )
+
+            if viewport is None:
+                raise SvgTransformOriginError(origin)
+
+            offsets.append(value.value / 100 * viewport[axis])
+        else:
+            offsets.append(float(value))
+
+    return Point(*offsets)
+
+
+def _viewport_size(element: Element, /) -> tuple[float, float] | None:
+    """Measure the viewport the element's percentages are resolved against.
+
+    The nearest viewport is the one established by the closest ancestor
+    that establishes one; for the outermost `svg` it is its own. Its size is
+    that of its `viewBox`, or for an `svg` without one, its `width` and
+    `height`.
+
+    Returns:
+        The width and height of the viewport, or `None` if they are not
+        known.
+
+    """
+    start = element if _is_outermost_viewport(element) else element.parent
+
+    if start is None:
+        return None
+
+    for candidate in itertools.chain([start], start.ancestors):
+        if not isinstance(candidate, ViewportEstablishing):
+            continue
+
+        view_box = _attr_or_default(candidate, "viewBox")
+
+        if isinstance(view_box, tuple):
+            _, _, width, height = cast("tuple[float, ...]", view_box)
+            return width, height
+
+        if element_name(candidate) != "svg":
+            return None
+
+        width = _attr_or_default(candidate, "width")
+        height = _attr_or_default(candidate, "height")
+
+        try:
+            if isinstance(width, Length) and isinstance(height, Length):
+                return float(width), float(height)
+        except SvgUnitConversionError:
+            return None
+
+        return None
+
+    return None
+
+
+def _has_unusable_transform_origin(element: Element, /) -> bool:
+    """Check whether `transform-origin` keeps the element where it is.
+
+    An element whose origin cannot be taken apart cannot have its
+    transformation reified, nor be handed one by its parent. An origin on an
+    element with no transformation does nothing at all, and is simply dropped
+    when a transformation arrives.
+
+    Returns:
+        `True` if the element's transformation has to stay where it is.
+
+    """
+    if not element.main_transform:
+        return False
+
+    try:
+        _transform_origin(element)
+    except (SvgTransformOriginError, SvgUnitConversionError):
+        return True
+
+    return False
+
+
+def _is_convertible_shape(
+    element: Element, /, *, context: _Context
+) -> bool:
+    """Check whether the element may be replaced by the path it draws."""
+    to_path_data = getattr(element, "to_path_data", None)
+
+    if (
+        not context.convert_shapes
+        or to_path_data is None
+        or id(element) in context.frozen
+    ):
+        # an animation of the shape's own attributes would have nothing left
+        # to animate on a path
+        return False
+
+    try:
+        to_path_data()
+    except SvgUnitConversionError:
+        # a shape sized in percentages has no path equivalent that does not
+        # need to know the viewport
+        return False
+
+    # browsers put markers on paths but not on rects and circles, so a shape
+    # that may carry a marker would gain some as a path
+    for name in MARKER_ATTRS:
+        marker = property_value(
+            element, name, scope=context.scopes[id(element)]
+        )
+
+        if marker is UNKNOWN:
+            if context.markers:
+                return False
+        elif marker is not None and marker != "none":
+            return False
+
+    return True
+
+
+def _element_capability(
+    element: Element,
+    /,
+    *,
+    context: _Context,
+    children: Mapping[int, Capability],
+    as_path: bool,
+) -> Capability:
+    """Work out how much of a transformation an element can take on.
+
+    `children` holds the capability of every element below this one, so that
+    the whole tree is worked out from the leaves upwards in a single pass.
+    `as_path` says whether a basic shape is judged as the path it would be
+    converted into.
+
+    Returns:
+        What the element may absorb.
+
+    """
+    if (
+        id(element) in context.frozen
+        or _has_unusable_transform_origin(element)
+        or (
+            _is_outermost_viewport(element)
+            and _viewbox_mapping(element) is None
+        )
+    ):
+        return NOTHING
+
+    inheriting = _children_inheriting_transform(element)
+    boxed = RECTILINEAR if id(element) in context.boxed else AFFINE
+
+    if _pushes_transform_to_children(element) and any(
+        id(child) in context.pinned or id(child) in context.frozen
+        for child in inheriting
+    ):
+        # a child that something else in the document points at has to keep
+        # rendering the way it does now, so nothing may be pushed into it --
+        # and pushing to only some of the children would tear the group apart
+        return NOTHING
+
+    scope = context.scopes[id(element)]
+
+    if _delegates_transform(element):
+        # the element has no geometry of its own, but what it refers to is
+        # still resolved where it sits: a clip path, a mask or a filter in
+        # user space stays behind when the transformation moves down to the
+        # children, and the content slides out from under it
+        capability = (
+            _reference_capability(element, context=context, scope=scope)
+            & style_capability(element)
+            & context.stylesheet
+        )
+
+        # handing the transformation to the children is the rest of the
+        # work, so the element can take on exactly as much as all of them
+        # can. Handing them more only writes the leftover onto every one of
+        # them, where it started out written once
+        for child in inheriting:
+            capability &= children[id(child)]
+
+        return capability & boxed
+
+    capability = (
+        geometry_capability(element, scope=scope, as_path=as_path)
+        & _reference_capability(element, context=context, scope=scope)
+        & context.stylesheet
+        & boxed
+    )
+
+    if not _pushes_transform_to_children(element):
+        return capability
+
+    # the element draws content of its own *and* establishes the coordinate
+    # system its children draw in. Inherited properties -- `font-size`, the
+    # stroke -- are folded into its own attributes, so a child that kept the
+    # transformation instead of absorbing it would have the inherited part
+    # applied to it twice
+    for child in inheriting:
+        if child.main_transform:
+            return NOTHING
+
+        capability &= children[id(child)]
+
+    return capability
+
+
+def _capabilities(
+    root: Element, /, *, context: _Context
+) -> dict[int, Capability]:
+    """Work out what every element of a tree can absorb, leaves first.
+
+    A container can only take on what its children can, so the tree has to be
+    read from the bottom up. Doing that once here keeps it linear, and keeps
+    the depth of the document out of the call stack.
+
+    Returns:
+        What every element may absorb, by object identity.
+
+    """
+    order: list[Element] = []
+    stack = collections.deque([root])
+
+    while stack:
+        element = stack.pop()
+        order.append(element)
+        stack.extend(element.find_all(recursive=False))
+
+    capabilities: dict[int, Capability] = {}
+
+    # a parent always comes before its children in the order above, so
+    # reversing it puts every child before its parent
+    for element in reversed(order):
+        capabilities[id(element)] = _element_capability(
+            element,
+            context=context,
+            children=capabilities,
+            as_path=_is_convertible_shape(element, context=context),
+        )
+
+    return capabilities
+
+
+def _reify_element(
+    element: Element, /, *, context: _Context, as_descendant: bool = True
+) -> Element:
+    """Fold as much of the element's transformation into it as will go.
+
+    A basic shape that is asked to absorb more than its attributes can
+    express is replaced by the `path` drawing the same shape, which absorbs
+    anything -- unless it is the element reification was called on, which
+    keeps its type.
+
+    Returns:
+        The element, or the `path` that replaced it.
+
+    """
+    if id(element) in context.frozen:
+        return element
+
+    if (
+        isinstance(element, TransformIgnored)
+        and id(element) not in context.pushed
+    ):
+        # renderers ignore the attribute, so it is left as written
+        return element
+
+    identity = Matrix.identity()
+
+    if (
+        not element.main_transform
+        or compose(element.main_transform) == identity
+    ):
+        # the list does nothing, about any origin, so the attribute can go
+        element.main_transform = None
+        return element
+
+    written = list(element.main_transform), element.transform_origin
+
+    try:
+        element.decompose_transform_origin()
+    except (SvgTransformOriginError, SvgUnitConversionError):
+        # the origin is a keyword or a percentage of a box reification
+        # cannot see, so the transformation has to stay where it is
+        return element
+
+    matrix = compose(element.main_transform)
+    # the outermost svg is transformed in pixels, after its viewBox is
+    # fitted into its box; its content lives in user units
+    mapping = (
+        _viewbox_mapping(element)
+        if _is_outermost_viewport(element)
+        else Matrix.identity()
+    )
+
+    if mapping is None:
+        # the content is not fitted into any box reification can see, so
+        # the transformation stays exactly as written
+        element.main_transform, element.transform_origin = written
+        return element
+
+    matrix = mapping.inverse() @ matrix @ mapping
+    scope = context.scopes[id(element)]
+    convertible = _is_convertible_shape(element, context=context)
+
+    if convertible and not as_descendant:
+        # the element reification was called on keeps its type, so it is
+        # judged as the shape it is rather than the path it could become
+        convertible = False
+        capability = _element_capability(
+            element,
+            context=context,
+            children=context.capabilities,
+            as_path=False,
+        )
+    else:
+        capability = context.capabilities[id(element)]
+
+    residue, absorbed = split(matrix, capability)
+
+    if absorbed == identity:
+        # nothing was folded in; the list is left exactly as written, with
+        # the origin it was written with
+        if written[1] is not None or element.main_transform != written[0]:
+            element.main_transform, element.transform_origin = written
+
+        return element
+
+    if has_own_geometry(element) and not _delegates_transform(element):
+        if convertible and not features(absorbed) <= geometry_capability(
+            element, scope=scope
+        ):
+            element = _convert_to_path(element)
+
+        # a span was handed the transformation by a text that resized the
+        # magnitudes it inherits already
+        apply(
+            element,
+            absorbed,
+            scope=scope,
+            inherited_resized=id(element) in context.pushed
+            and has_own_geometry(cast(Element, element.parent)),
+        )
+
+    if _pushes_transform_to_children(element):
+        # the children are placed in the coordinate system the element
+        # establishes, so they have to be given back what was taken out of it
+        for child in _children_inheriting_transform(element):
+            if child.main_transform and not isinstance(
+                child, TransformIgnored
+            ):
+                child.decompose_transform_origin()
+            else:
+                # an origin without a transformation did nothing, and must
+                # not start doing something now; a transformation renderers
+                # ignore did nothing either
+                child.transform_origin = None
+                child.main_transform = []
+
+            child.main_transform.insert(0, absorbed)
+            context.pushed.add(id(child))
+
+    element.main_transform = _normalize_transform(
+        mapping @ residue @ mapping.inverse()
+    )
+
+    if element.main_transform and _is_outermost_viewport(element):
+        # the residue was worked out about the origin, and an outermost svg
+        # left to its own devices would turn about its center instead
+        element.transform_origin = (Length(0), Length(0))
+
+    return element
+
+
+def _convert_to_path(shape: Element, /) -> Element:
+    """Replace a basic shape with the `path` drawing the same shape."""
+    parent = shape.parent
+    assert parent is not None
+
+    path = cast(Element, cast("Any", shape).to_path())
+    position = parent.get_child_index(shape)
+
+    parent.pop_child(position)
+    parent.add_child(path, index=position)
+
+    return path
+
+
+def _reify_tree(
+    element: Element,
+    /,
+    *,
+    context: _Context,
+    recursive: bool,
+    unwrap_groups: bool,
+) -> None:
+    """Reify an element and, if asked, everything below it.
+
+    The walk keeps its own stack: an SVG can be nested arbitrarily deeply and
+    a recursive walk would run out of Python frames long before the document
+    runs out of elements.
+    """
+    _reify_element(element, context=context, as_descendant=False)
+
+    # each entry is a parent whose children still have to be visited
+    pending: list[Element] = [element]
+    # groups whose transformation was taken off in full, parents first
+    emptied: list[Element] = []
+
+    while pending:
+        parent = pending.pop()
+
+        for child in list(parent.find_all(recursive=False)):
+            if not recursive and id(child) not in context.pushed:
+                # only what the element handed down is followed up, since
+                # leaving that half done would leave the picture changed
+                continue
+
+            grouping = (
+                unwrap_groups
+                and isinstance(child, Grouping)
+                and child.main_transform is not None
+            )
+            reified = _reify_element(child, context=context)
+            pending.append(reified)
+
+            if grouping and reified.main_transform is None:
+                emptied.append(reified)
+
+    if emptied and not _has_stylesheet(element.get_root()):
+        # children first, so that each group is spliced into a parent that is
+        # still where it was
+        for group in reversed(emptied):
+            if _is_bare_group(group):
+                _unwrap(group)
+
+
+def _has_stylesheet(root: Element, /) -> bool:
+    return any(
+        isinstance(element, Stylesheet)
+        for element in itertools.chain([root], root.find_all())
+    )
+
+
+def _is_bare_group(group: Element, /) -> bool:
+    """Check that lifting the group's children would not change a thing.
+
+    A child that acts on its parent -- a `title`, a `desc`, an animation
+    that names no target -- would act on the group's parent instead.
+
+    Returns:
+        `True` if the group's children can take its place.
+
+    """
+    return (
+        group.parent is not None
+        and not isinstance(group.parent, SelectsAChild)
+        and not group.all_attrs()
+        and not any(
+            isinstance(child, Animation | Descriptive)
+            for child in group.find_all(recursive=False)
+        )
+    )
+
+
+def _unwrap(group: Element, /) -> None:
+    """Put the group's children where the group is."""
+    parent = group.parent
+    assert parent is not None
+
+    index = parent.get_child_index(group)
+    parent.pop_child(index)
+
+    while group.has_children():
+        parent.add_child(group.pop_child(), index=index)
+
+
+def _index_by_id(root: Element, /) -> Mapping[str, Element]:
+    """Index the elements of a tree by their `id` attribute."""
+    index: dict[str, Element] = {}
+
+    for element in itertools.chain([root], root.find_all()):
+        if element.id is not None:
+            index.setdefault(element.id, element)
+
+    return index
+
+
+def _animation_target(
+    animation: Element, index: Mapping[str, Element], /
+) -> Element | None:
+    """Find the element an animation animates.
+
+    An animation acts on the element it references, or on its parent when it
+    references none.
+
+    Returns:
+        The animated element, or `None` for a detached animation that
+        references nothing.
+
+    """
+    for attr_name in ("href", "xlink:href"):
+        target = _resolve_reference(animation, attr_name, index)
+
+        if target is not None:
+            return target
+
+    return animation.parent
+
+
+def _frozen_elements(
+    root: Element, index: Mapping[str, Element], /
+) -> Container[int]:
+    """Find the elements an animation pins to the coordinates they are in.
+
+    An animation records values of an attribute in the coordinate system the
+    document was written in. Reification rewrites that system, so an animated
+    attribute it would touch has to be left exactly where it is -- and so
+    does the element carrying it.
+
+    A gradient or pattern that refers to another inherits every attribute it
+    leaves out, its transformation included, and even an identity
+    transformation of its own overrides the inherited one. Where one takes
+    any of its geometry from the other -- a coordinate, its units, its
+    transformation -- both are left as written; one that only borrows the
+    stops is reified on its own. A path a motion animation follows is left
+    as written too, since the motion follows its data as written.
+
+    Returns:
+        The `id()`s of the elements.
+
+    """
+    frozen: set[int] = set()
+
+    for element in itertools.chain([root], root.find_all()):
+        template = _paint_server_geometry_source(element, index)
+
+        if template is not None:
+            frozen.update((id(element), id(template)))
+
+        if element_name(element) == "mpath":
+            # the motion follows the path's data as written; the path's own
+            # transformation does not come along
+            for attr_name in ("href", "xlink:href"):
+                path = _resolve_reference(element, attr_name, index)
+
+                if path is not None:
+                    frozen.add(id(path))
+
+        if not isinstance(element, Animation):
+            continue
+
+        attr_name = _attr_or_default(element, "attributeName")
+
+        if (
+            element_name(element)
+            not in ("animateTransform", "animateMotion")
+            and attr_name not in _ANIMATABLE_BY_REIFICATION
+        ):
+            continue
+
+        target = _animation_target(element, index)
+
+        if target is not None:
+            frozen.add(id(target))
+
+    return frozen
+
+
+def _animated_properties(root: Element, /) -> frozenset[str]:
+    """List the properties any animation in the document changes."""
+    return frozenset(
+        name
+        for element in itertools.chain([root], root.find_all())
+        if isinstance(element, Animation)
+        and isinstance(
+            name := _attr_or_default(element, "attributeName"), str
+        )
+    )
+
+
+def _pinned_elements(
+    root: Element, index: Mapping[str, Element], frozen: Container[int], /
+) -> Container[int]:
+    """Find the elements no transformation may be pushed into.
+
+    An element that something else in the document refers to renders wherever
+    the reference is, not where it sits in the tree. Handing it a
+    transformation from an ancestor would change what the reference sees, so
+    it -- and everything on the way down to it -- is off limits. So is an
+    element whose transformation an animation replaces.
+
+    Returns:
+        The `id()`s of the elements.
+
+    """
+    pinned: set[int] = set()
+
+    for target in _referenced_elements(root, index, frozen):
+        pinned.add(id(target))
+        pinned.update(id(ancestor) for ancestor in target.ancestors)
+
+    return pinned
+
+
+def _referenced_elements(
+    root: Element, index: Mapping[str, Element], frozen: Container[int], /
+) -> Iterator[Element]:
+    """Find the elements that are seen with their own transformation.
+
+    An element that something else in the document refers to renders there
+    with its own transformation, and one an animation targets has its
+    transformation replaced over time.
+
+    Yields:
+        The elements, possibly more than once.
+
+    """
+    for element in itertools.chain([root], root.find_all()):
+        if id(element) in frozen:
+            yield element
+
+        for attr_name in (*_REFERENCE_ATTR_NAMES, "filter"):
+            target = _resolve_reference(element, attr_name, index)
+
+            if target is not None:
+                yield target
+
+
+def referenced_elements(root: Element, /) -> Container[int]:
+    """Find the elements whose own transformation is seen somewhere else.
+
+    Prepending to the `transform` of such an element does not only move what
+    is drawn where it sits: a `use` referencing it would see the prepended
+    transformation as well, and an animation of it would discard it.
+
+    Args:
+        root: The root of the document to search.
+
+    Returns:
+        The `id()`s of the elements.
+
+    """
+    index = _index_by_id(root)
+    frozen = _frozen_elements(root, index)
+
+    return {
+        id(target) for target in _referenced_elements(root, index, frozen)
+    }
+
+
+def _stylesheets(root: Element, /) -> Iterator[str]:
+    """Read the text of every stylesheet in the document."""
+    for element in itertools.chain([root], root.find_all()):
+        if isinstance(element, Stylesheet):
+            yield "".join(
+                child.content
+                for child in element.children
+                if isinstance(child, CharacterData)
+            )
+
+
+def _declared_properties(root: Element, /) -> frozenset[str]:
+    """List every attribute and property the document declares anywhere."""
+    declared: set[str] = set()
+
+    for element in itertools.chain([root], root.find_all()):
+        declared.update(element.all_attrs())
+        declared.update(style_declarations(element))
+
+    for css in _stylesheets(root):
+        declared.update(declared_properties(css))
+
+    return frozenset(declared)
+
+
+def _scopes(
+    root: Element, index: Mapping[str, Element], /
+) -> Mapping[int, Scope]:
+    """Work out how far each element's inherited properties can be seen.
+
+    An element a `use` refers to is also rendered with whatever the `use`
+    passes down, so inheritance stops being known at it, for it and for
+    everything below it. `feImage` renders what it refers to the same way.
+
+    Returns:
+        The scope of every element, by object identity.
+
+    """
+    boundaries: set[int] = set()
+
+    for element in itertools.chain([root], root.find_all()):
+        if element_name(element) in ("use", "feImage"):
+            for attr_name in ("href", "xlink:href"):
+                target = _resolve_reference(element, attr_name, index)
+
+                if target is not None:
+                    boundaries.add(id(target))
+
+    declared = _declared_properties(root)
+    styled = frozenset().union(
+        *map(declared_properties, _stylesheets(root))
+    )
+    animated = _animated_properties(root)
+    scopes: dict[int, Scope] = {}
+    stack: list[tuple[Element, Scope]] = [
+        (root, Scope(None, declared, styled, animated))
+    ]
+
+    while stack:
+        element, scope = stack.pop()
+
+        if id(element) in boundaries:
+            scope = scope._replace(boundary=element)
+
+        scopes[id(element)] = scope
+        stack.extend(
+            (child, scope) for child in element.find_all(recursive=False)
+        )
+
+    return scopes
+
+
+def _paint_servers_capability(
+    root: Element, index: Mapping[str, Element], /
+) -> Mapping[str, Capability]:
+    """Work out the least the paint servers named by fills, or strokes, allow.
+
+    Returns:
+        The capability for a `fill` and for a `stroke` that cannot be told.
+
+    """
+    capabilities: dict[str, Capability] = {
+        "fill": AFFINE,
+        "stroke": AFFINE,
+    }
+    declarations: list[tuple[str, object]] = []
+
+    for element in itertools.chain([root], root.find_all()):
+        declarations.extend(
+            (name, _attr_or_default(element, name))
+            for name in ("fill", "stroke")
+        )
+        declarations.extend(style_declarations(element).items())
+
+    for css in _stylesheets(root):
+        declarations.extend(stylesheet_declarations(css))
+
+    for name, value in declarations:
+        if name not in capabilities:
+            continue
+
+        target = _paint_target(value, index)
+
+        if target is not None:
+            capabilities[name] &= _paint_server_capability(target, index)
+        elif isinstance(value, str) and "url(" in value:
+            capabilities[name] = NOTHING
+
+    return capabilities
+
+
+def _paint_target(
+    paint: object, index: Mapping[str, Element], /
+) -> Element | None:
+    """Find the element a paint names, if it names one in this document.
+
+    Returns:
+        The paint server, or `None`.
+
+    """
+    if isinstance(paint, Iri) and paint.is_local:
+        assert paint.fragment is not None
+        return index.get(paint.fragment)
+
+    if isinstance(paint, str):
+        # declared in a `style` or a stylesheet, so it survives as the
+        # string it was written as
+        match = _URL_FRAGMENT.search(paint)
+
+        if match is not None:
+            return index.get(match.group(1))
+
+    return None
+
+
+def _boxed_elements(
+    root: Element, index: Mapping[str, Element], /
+) -> Container[int]:
+    """Find the elements below one with resources laid out in its box.
+
+    Returns:
+        The `id()`s of the elements.
+
+    """
+    boxed: set[int] = set()
+
+    for element in itertools.chain([root], root.find_all()):
+        if any(
+            _lies_in_bounding_box(target, attr_name)
+            for attr_name in ("clip-path", "mask", "filter")
+            if (target := _resolve_reference(element, attr_name, index))
+            is not None
+        ):
+            boxed.update(
+                id(descendant) for descendant in element.find_all()
+            )
+
+    return boxed
+
+
+def _lies_in_bounding_box(
+    target: Element, attr_name: AttributeName, /
+) -> bool:
+    """Check whether a resource is laid out in the referencing element's box.
+
+    Returns:
+        `True` if its region or its content is given in bounding box units.
+
+    """
+    match attr_name:
+        case "clip-path":
+            names: tuple[AttributeName, ...] = ("clipPathUnits",)
+        case "mask":
+            names = ("maskUnits", "maskContentUnits")
+        case _:
+            names = ("filterUnits", "primitiveUnits")
+
+    return any(
+        _attr_or_default(target, name) == "objectBoundingBox"
+        for name in names
+    )
+
+
+def _spell_out_gradients(
+    root: Element, subject: Element, frozen: Container[int], /
+) -> None:
+    """Write out the geometry of every gradient about to be reified.
+
+    A gradient's coordinates default to percentages, which say nothing a
+    transformation could be folded into until they are written out as
+    fractions of the box, or of the viewport, they refer to.
+
+    In user space a percentage is of the viewport of whatever is painted
+    with the gradient, which may be a different one for every shape, so it
+    is only written out when the document has a single viewport.
+    """
+    viewport = (
+        _viewport_size(root)
+        if not any(
+            isinstance(element, ViewportEstablishing)
+            and element_name(element) not in ("image", "foreignObject")
+            for element in root.find_all()
+        )
+        else None
+    )
+
+    for element in itertools.chain([subject], subject.find_all()):
+        if (
+            isinstance(element, PercentageDefaults)
+            and element.main_transform
+            and id(element) not in frozen
+        ):
+            spell_out_gradient(element, viewport=viewport)
+
+
+def _build_context(
+    subject: Element, /, *, convert_shapes_to_paths: bool
+) -> _Context:
+    """Gather what reifying part of a tree needs to know about all of it.
+
+    Returns:
+        The context for reifying `subject` and everything below it.
+
+    """
+    root = subject.get_root()
+    index = _index_by_id(root)
+    frozen = _frozen_elements(root, index)
+
+    _spell_out_gradients(root, subject, frozen)
+
+    context = _Context(
+        by_id=index,
+        pinned=_pinned_elements(root, index, frozen),
+        frozen=frozen,
+        scopes=_scopes(root, index),
+        capabilities={},
+        stylesheet=functools.reduce(
+            operator.and_,
+            map(stylesheet_capability, _stylesheets(root)),
+            AFFINE,
+        ),
+        paint_servers=_paint_servers_capability(root, index),
+        boxed=_boxed_elements(root, index),
+        markers=any(
+            element_name(element) == "marker"
+            for element in itertools.chain([root], root.find_all())
+        ),
+        # a selector may pick a shape out by its name, which a path no
+        # longer answers to
+        convert_shapes=convert_shapes_to_paths
+        and not _has_stylesheet(root),
+        pushed=set(),
+    )
+
+    return context._replace(
+        capabilities=_capabilities(root, context=context)
+    )
+
+
+# endregion
