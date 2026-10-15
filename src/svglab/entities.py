@@ -1348,8 +1348,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         _reify_tree(
             self,
             context=_build_context(
-                self.get_root(),
-                convert_shapes_to_paths=convert_shapes_to_paths,
+                self, convert_shapes_to_paths=convert_shapes_to_paths
             ),
             recursive=recursive,
             unwrap_groups=unwrap_groups,
@@ -2313,6 +2312,11 @@ def _reify_element(
 
     element.main_transform = _normalize_transform(residue)
 
+    if element.main_transform and _is_outermost_viewport(element):
+        # the residue was worked out about the origin, and an outermost svg
+        # left to its own devices would turn about its center instead
+        element.transform_origin = (Length(0), Length(0))
+
     return element
 
 
@@ -2633,30 +2637,52 @@ def _paint_servers_capability(
     return capability
 
 
-def _spell_out_gradients(root: Element, frozen: Container[int], /) -> None:
-    """Write out the geometry of every gradient with a transformation.
+def _spell_out_gradients(
+    root: Element, subject: Element, frozen: Container[int], /
+) -> None:
+    """Write out the geometry of every gradient about to be reified.
 
     A gradient's coordinates default to percentages, which say nothing a
     transformation could be folded into until they are written out as
     fractions of the box, or of the viewport, they refer to.
+
+    In user space a percentage is of the viewport of whatever is painted
+    with the gradient, which may be a different one for every shape, so it
+    is only written out when the document has a single viewport.
     """
-    for element in itertools.chain([root], root.find_all()):
+    viewport = (
+        _viewport_size(root)
+        if not any(
+            isinstance(element, ViewportEstablishing)
+            and element_name(element) not in {"image", "foreignObject"}
+            for element in root.find_all()
+        )
+        else None
+    )
+
+    for element in itertools.chain([subject], subject.find_all()):
         if (
             isinstance(element, PercentageDefaults)
             and element.main_transform
             and id(element) not in frozen
         ):
-            spell_out_gradient(element, viewport=_viewport_size(element))
+            spell_out_gradient(element, viewport=viewport)
 
 
 def _build_context(
-    root: Element, /, *, convert_shapes_to_paths: bool
+    subject: Element, /, *, convert_shapes_to_paths: bool
 ) -> _Context:
-    """Gather what reifying part of a tree needs to know about all of it."""
+    """Gather what reifying part of a tree needs to know about all of it.
+
+    Returns:
+        The context for reifying `subject` and everything below it.
+
+    """
+    root = subject.get_root()
     index = _index_by_id(root)
     frozen = _frozen_elements(root, index)
 
-    _spell_out_gradients(root, frozen)
+    _spell_out_gradients(root, subject, frozen)
 
     context = _Context(
         by_id=index,

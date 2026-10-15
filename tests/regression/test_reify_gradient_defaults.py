@@ -10,7 +10,7 @@ import copy
 
 import pytest
 
-from svglab import Length, LinearGradient, RadialGradient, parse_svg
+from svglab import Length, LinearGradient, RadialGradient, Rect, parse_svg
 from tests.conftest import assert_svg_visually_equal, transforms_left
 
 
@@ -73,18 +73,20 @@ def test_a_user_space_gradient_resolves_percentages_against_the_viewbox() -> (
     assert_svg_visually_equal(original, reified)
 
 
-def test_a_user_space_gradient_in_an_unknown_viewport_is_left_alone() -> (
+def test_a_user_space_gradient_in_a_document_of_viewports_is_left_alone() -> (
     None
 ):
+    # a percentage is of the viewport of whatever is painted, and the rect
+    # sits in a viewport of its own
     original = parse_svg("""
         <svg width="200" height="200">
-            <svg width="50%" height="50%">
-                <radialGradient id="g" gradientUnits="userSpaceOnUse"
-                                gradientTransform="translate(10)">
-                    <stop offset="0" stop-color="white"/>
-                    <stop offset="1" stop-color="black"/>
-                </radialGradient>
-                <rect width="100" height="100" fill="url(#g)"/>
+            <radialGradient id="g" gradientUnits="userSpaceOnUse"
+                            gradientTransform="translate(10)">
+                <stop offset="0" stop-color="white"/>
+                <stop offset="1" stop-color="black"/>
+            </radialGradient>
+            <svg x="20" y="20" width="120" height="100">
+                <rect width="120" height="100" fill="url(#g)"/>
             </svg>
         </svg>
     """)
@@ -95,6 +97,24 @@ def test_a_user_space_gradient_in_an_unknown_viewport_is_left_alone() -> (
     assert transforms_left(reified) == [reified.find(RadialGradient)]
     assert reified.find(RadialGradient).cx is None
     assert_svg_visually_equal(original, reified)
+
+
+def test_a_gradient_outside_the_reified_subtree_is_not_touched() -> None:
+    svg = parse_svg("""
+        <svg width="200" height="200">
+            <linearGradient id="g" gradientTransform="rotate(30)">
+                <stop offset="0" stop-color="white"/>
+                <stop offset="1" stop-color="black"/>
+            </linearGradient>
+            <rect width="200" height="200" fill="url(#g)"
+                  transform="translate(5 5)"/>
+        </svg>
+    """)
+    before = svg.find(LinearGradient).to_xml()
+
+    svg.find(Rect).reify()
+
+    assert svg.find(LinearGradient).to_xml() == before
 
 
 def test_a_gradient_without_a_transformation_is_not_touched() -> None:
