@@ -25,7 +25,7 @@ import math
 import re
 from collections.abc import Container, Iterator, Mapping
 
-from typing_extensions import Final, NamedTuple, TypeAlias, cast, override
+from typing_extensions import Final, NamedTuple, TypeAlias, override
 
 from svglab.attrparse.length import Length
 from svglab.attrparse.point import Point
@@ -45,8 +45,6 @@ from svglab.attrs.attrdefs import (
     RAttr,
     RxAttr,
     RyAttr,
-    StrokeDasharrayAttr,
-    StrokeDashoffsetAttr,
     TextLengthAttr,
     WidthAttr,
     X1Attr,
@@ -1142,29 +1140,6 @@ def _strokes_in_host_space(element: object, scope: Scope, /) -> bool:
         property_value(element, "vector_effect", scope=scope)
         == "non-scaling-stroke"
     )
-
-
-def scale_distance_along_a_path_attrs(element: object, by: float) -> None:
-    """Scale distance-along-a-path attributes of the element.
-
-    The attributes are:
-    - `stroke-dasharray`
-    - `stroke-dashoffset`
-
-    Args:
-        element: The element to scale.
-        by: The factor by which to scale the attributes.
-
-    """
-    if isinstance(element, StrokeDasharrayAttr) and isinstance(
-        element.stroke_dasharray, list
-    ):
-        dashes = [_scaled(dash, by) for dash in element.stroke_dasharray]
-        element.stroke_dasharray = cast("list[Length]", dashes)
-    if isinstance(element, StrokeDashoffsetAttr):
-        element.stroke_dashoffset = _scaled(  # type: ignore[reportAttributeAccessIssue]
-            element.stroke_dashoffset, by
-        )
 
 
 def apply(
