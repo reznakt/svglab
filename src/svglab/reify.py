@@ -16,6 +16,13 @@ The traits in this module (`AffineGeometry` and friends) declare what an
 element class is able to absorb. They are combined with facts that can only be
 known at runtime -- whether the element is stroked, whether its lengths are
 expressed in percentages -- by `geometry_capability`.
+
+Those facts come from inherited properties, which `property_value` resolves
+the way a renderer does: the element's own `style` declaration first, then
+its presentation attribute, then its ancestors'. A `Scope` says where that
+stops being certain -- past the element a `use` refers to, under a stylesheet
+rule, for a value an animation changes -- and what cannot be told is
+`UNKNOWN`, which every check treats as whatever would be worst for it.
 """
 
 from __future__ import annotations
