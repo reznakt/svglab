@@ -311,11 +311,14 @@ def _ellipse_to_path_data(
         ry: The y-radius of the ellipse.
 
     Returns:
-        A `PathData` instance representing the ellipse.
+        A `PathData` instance representing the ellipse. It starts at the
+        point `(cx + rx, cy)` and runs in the positive angle direction, the
+        way the specification says the outline of an ellipse is drawn, so a
+        dash pattern falls where it did on the ellipse.
 
     References:
         https://stackoverflow.com/a/10477334
-        https://aleen42.gitbooks.io/wiki/content/Programming/JavaScript/webgl/SVG/convert_shapes_to_path/convert_shapes_to_path.html
+        https://www.w3.org/TR/SVG11/shapes.html#EllipseElement
 
     """
     if rx.value <= 0 or ry.value <= 0:
@@ -323,21 +326,21 @@ def _ellipse_to_path_data(
 
     return (
         PathData()
-        .move_to(Point(cx - rx, cy))
-        .arc_to(
-            Point(rx, ry),
-            0,
-            Point(2 * rx, 0),
-            large=True,
-            sweep=False,
-            relative=True,
-        )
+        .move_to(Point(cx + rx, cy))
         .arc_to(
             Point(rx, ry),
             0,
             Point(-2 * rx, 0),
             large=True,
-            sweep=False,
+            sweep=True,
+            relative=True,
+        )
+        .arc_to(
+            Point(rx, ry),
+            0,
+            Point(2 * rx, 0),
+            large=True,
+            sweep=True,
             relative=True,
         )
     )
