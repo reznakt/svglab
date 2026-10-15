@@ -1822,9 +1822,15 @@ which is reason enough to leave it alone.
 
 
 _EDITOR_GEOMETRY: Final = frozenset(
-    {"inkscape:original-d", "inkscape:path-effect"}
+    {"sodipodi:type", "inkscape:original-d", "inkscape:path-effect"}
 )
-"""Attributes an editor regenerates the path data from."""
+"""Attributes an editor regenerates the geometry from.
+
+`sodipodi:type` marks a path Inkscape draws again as an arc, a star or a
+spiral from the `sodipodi:` parameters beside it, and a path effect is
+applied to `inkscape:original-d` afresh. Attributes such as
+`sodipodi:nodetypes` only describe the path as it is.
+"""
 
 
 def _has_unreadable_geometry(element: object, /) -> bool:
@@ -1843,14 +1849,9 @@ def _has_unreadable_geometry(element: object, /) -> bool:
     if extra is None:
         return False
 
-    names = extra().keys()
-
-    # Inkscape rebuilds a shape from these when it opens the file, so the
-    # rewritten geometry would be thrown away
-    return bool(GEOMETRIC_ATTR_NAMES & names) or any(
-        name.startswith("sodipodi:") or name in _EDITOR_GEOMETRY
-        for name in names
-    )
+    # an editor that rebuilds the geometry from its own attributes when it
+    # opens the file would throw the rewritten geometry away
+    return bool((GEOMETRIC_ATTR_NAMES | _EDITOR_GEOMETRY) & extra().keys())
 
 
 # endregion
