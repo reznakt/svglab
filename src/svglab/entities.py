@@ -62,6 +62,7 @@ from svglab.reify import (
     UPRIGHT,
     Animation,
     Capability,
+    Descriptive,
     DocumentFragmentRoot,
     Feature,
     Grouping,
@@ -2501,11 +2502,23 @@ def _has_stylesheet(root: Element, /) -> bool:
 
 
 def _is_bare_group(group: Element, /) -> bool:
-    """Check that lifting the group's children would not change a thing."""
+    """Check that lifting the group's children would not change a thing.
+
+    A child that acts on its parent -- a `title`, a `desc`, an animation
+    that names no target -- would act on the group's parent instead.
+
+    Returns:
+        `True` if the group's children can take its place.
+
+    """
     return (
         group.parent is not None
         and not isinstance(group.parent, SelectsAChild)
         and not group.all_attrs()
+        and not any(
+            isinstance(child, Animation | Descriptive)
+            for child in group.find_all(recursive=False)
+        )
     )
 
 
