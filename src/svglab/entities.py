@@ -69,6 +69,7 @@ from svglab.reify import (
     Scope,
     SelectsAChild,
     Stylesheet,
+    TransformIgnored,
     TransformInheritedByChildren,
     ViewportEstablishing,
     apply,
@@ -1549,6 +1550,9 @@ class _Context(NamedTuple):
     convert_shapes: bool
     """Whether a basic shape may be replaced by the `path` it draws."""
 
+    pushed: set[int]
+    """Elements handed a transformation by their parent during this pass."""
+
 
 def _resolve_reference(
     element: Element,
@@ -2237,6 +2241,13 @@ def _reify_element(
     if id(element) in context.frozen:
         return element
 
+    if (
+        isinstance(element, TransformIgnored)
+        and id(element) not in context.pushed
+    ):
+        # renderers ignore the attribute, so it is left as written
+        return element
+
     identity = Matrix.identity()
 
     if (
@@ -2287,21 +2298,33 @@ def _reify_element(
         ):
             element = _convert_to_path(element)
 
-        apply(element, absorbed, scope=scope)
+        # a span was handed the transformation by a text that resized the
+        # magnitudes it inherits already
+        apply(
+            element,
+            absorbed,
+            scope=scope,
+            inherited_resized=id(element) in context.pushed
+            and has_own_geometry(cast(Element, element.parent)),
+        )
 
     if _pushes_transform_to_children(element):
         # the children are placed in the coordinate system the element
         # establishes, so they have to be given back what was taken out of it
         for child in _children_inheriting_transform(element):
-            if child.main_transform:
+            if child.main_transform and not isinstance(
+                child, TransformIgnored
+            ):
                 child.decompose_transform_origin()
             else:
                 # an origin without a transformation did nothing, and must
-                # not start doing something now
+                # not start doing something now; a transformation renderers
+                # ignore did nothing either
                 child.transform_origin = None
                 child.main_transform = []
 
             child.main_transform.insert(0, absorbed)
+            context.pushed.add(id(child))
 
     element.main_transform = _normalize_transform(residue)
 
@@ -2343,9 +2366,6 @@ def _reify_tree(
     """
     _reify_element(element, context=context, as_descendant=False)
 
-    if not recursive:
-        return
-
     # each entry is a parent whose children still have to be visited
     pending: list[Element] = [element]
     # groups whose transformation was taken off in full, parents first
@@ -2355,6 +2375,11 @@ def _reify_tree(
         parent = pending.pop()
 
         for child in list(parent.find_all(recursive=False)):
+            if not recursive and id(child) not in context.pushed:
+                # only what the element handed down is followed up, since
+                # leaving that half done would leave the picture changed
+                continue
+
             grouping = (
                 unwrap_groups
                 and isinstance(child, Grouping)
@@ -2752,6 +2777,7 @@ def _build_context(
         # longer answers to
         convert_shapes=convert_shapes_to_paths
         and not _has_stylesheet(root),
+        pushed=set(),
     )
 
     return context._replace(

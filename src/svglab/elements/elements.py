@@ -233,6 +233,7 @@ from svglab.reify import (
     SelectsAChild,
     SimilarityGeometry,
     Stylesheet,
+    TransformIgnored,
     TransformInheritedByChildren,
     TranslatableGeometry,
     UniformlyScalableGeometry,
@@ -368,6 +369,7 @@ class A(
 
 @final
 class AltGlyph(
+    TransformIgnored,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -1697,6 +1699,7 @@ class Text(
 @final
 class TextPath(
     PositionedByReference,
+    TransformIgnored,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -1721,6 +1724,7 @@ class Title(ClassAttr, StyleAttr, DescriptiveElement, Element):
 
 @final
 class Tref(
+    TransformIgnored,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -1742,6 +1746,7 @@ class Tref(
 
 @final
 class Tspan(
+    TransformIgnored,
     ConditionalProcessingAttrs,
     ClassAttr,
     DxListOfLengthsAttr,

@@ -45,7 +45,6 @@ from svglab.attrs.attrdefs import (
     RAttr,
     RxAttr,
     RyAttr,
-    StartOffsetAttr,
     StrokeDasharrayAttr,
     StrokeDashoffsetAttr,
     TextLengthAttr,
@@ -316,6 +315,15 @@ class TransformInheritedByChildren:
     This is *not* true of elements that establish a new viewport, such as a
     nested `svg`: there, the transformation applies to the viewport as a
     whole, and pushing it down as well would apply it twice.
+    """
+
+
+class TransformIgnored:
+    """The element has no `transform` attribute of its own to speak of.
+
+    A `tspan` is laid out by the text it belongs to, and renderers ignore a
+    `transform` written on it. Reification only ever hands it one the text
+    absorbed, which is then folded into its coordinates.
     """
 
 
@@ -939,7 +947,12 @@ def _translated(attr: object, /, by: float) -> object:
 
 
 def _apply_magnitudes(
-    element: object, matrix: Matrix, scope: Scope, /
+    element: object,
+    matrix: Matrix,
+    scope: Scope,
+    /,
+    *,
+    inherited_resized: bool,
 ) -> None:
     """Resize the lengths that describe how a shape is painted, not placed.
 
@@ -949,7 +962,10 @@ def _apply_magnitudes(
     They are also inherited, so each is resolved and written onto the element
     that actually uses it. Scaling a container's own value instead would
     double up on any descendant that keeps a transformation of its own, and
-    would miss the descendants that spell out none of their own.
+    would miss the descendants that spell out none of their own. The one
+    container that does resize them is a text element handing the
+    transformation to its spans: it draws glyphs itself, and what it writes
+    onto itself its spans inherit already resized.
     """
     if not is_similarity(matrix):
         return
@@ -959,9 +975,15 @@ def _apply_magnitudes(
     if is_close(factor, 1):
         return
 
+    def resize(name: str, initial: object = None) -> None:
+        if inherited_resized and not _is_specified(_get(element, name)):
+            return
+
+        _scale_inherited(element, name, factor, scope, initial=initial)
+
     if isinstance(element, FontSizeScaled):
         for name in _FONT_MAGNITUDES:
-            _scale_inherited(element, name, factor, scope)
+            resize(name)
 
     if not (
         isinstance(element, StrokeWidthScaled)
@@ -972,9 +994,7 @@ def _apply_magnitudes(
         # part of, or not drawn at all
         return
 
-    _scale_inherited(
-        element, "stroke_width", factor, scope, initial=Length(1)
-    )
+    resize("stroke_width", Length(1))
 
     # distance-along-a-path attributes and `pathLength` are proportional, so
     # a shape that declares its own path length needs no adjustment
@@ -982,8 +1002,8 @@ def _apply_magnitudes(
         not isinstance(element, PathLengthAttr)
         or element.pathLength is None
     ):
-        _scale_inherited(element, "stroke_dasharray", factor, scope)
-        _scale_inherited(element, "stroke_dashoffset", factor, scope)
+        resize("stroke_dasharray")
+        resize("stroke_dashoffset")
 
 
 def _is_specified(value: object, /) -> bool:
@@ -1131,7 +1151,12 @@ def scale_distance_along_a_path_attrs(element: object, by: float) -> None:
 
 
 def apply(
-    element: object, matrix: Matrix, /, *, scope: Scope = WHOLE_DOCUMENT
+    element: object,
+    matrix: Matrix,
+    /,
+    *,
+    scope: Scope = WHOLE_DOCUMENT,
+    inherited_resized: bool = False,
 ) -> None:
     """Fold a transformation into the element's geometry attributes.
 
@@ -1142,6 +1167,9 @@ def apply(
         element: The element to transform.
         matrix: The transformation to apply.
         scope: How far up the tree inheritance can be seen.
+        inherited_resized: Whether the element inherits its magnitudes from
+            a parent that absorbed the same matrix and resized them already,
+            so that only the magnitudes it spells out itself are resized.
 
     """
     if is_box(element):
@@ -1158,10 +1186,12 @@ def apply(
     if isinstance(element, DAttr) and element.d is not None:
         element.d = matrix @ element.d
 
-    if isinstance(element, XListOfCoordinatesAttr | StartOffsetAttr):
+    if isinstance(element, XListOfCoordinatesAttr):
         _apply_text(element, matrix)
 
-    _apply_magnitudes(element, matrix, scope)
+    _apply_magnitudes(
+        element, matrix, scope, inherited_resized=inherited_resized
+    )
 
 
 # endregion
