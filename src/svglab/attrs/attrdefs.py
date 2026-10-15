@@ -704,8 +704,26 @@ class MinAttr(_Attr):
 
 
 class ModeAttr(_Attr):
+    # the blend modes of Filter Effects Level 1, which has every one CSS has
     mode: Attr[
-        Literal["normal", "multiply", "screen", "darken", "lighten"]
+        Literal[
+            "normal",
+            "multiply",
+            "screen",
+            "overlay",
+            "darken",
+            "lighten",
+            "color-dodge",
+            "color-burn",
+            "hard-light",
+            "soft-light",
+            "difference",
+            "exclusion",
+            "hue",
+            "saturation",
+            "color",
+            "luminosity",
+        ]
     ] = None
 
 
