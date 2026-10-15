@@ -1501,9 +1501,9 @@ def geometry_capability(
     if is_box(element) and (
         _get(element, "width") is None or _get(element, "height") is None
     ):
-        # without both extents there is no box to map the corners of, so the
-        # anchor cannot be moved to a different corner
-        capability -= {Feature.MIRROR, Feature.QUARTER_TURN}
+        # an extent left out is a percentage of the viewport, or whatever
+        # the content measures, which no number written here could resize
+        capability &= TRANSLATION
 
     if isinstance(element, FontSizeScaled) and not _is_resizable(
         property_value(element, "font_size", scope=scope)
