@@ -1293,6 +1293,20 @@ _MAGNITUDE_ATTRS: Final = (
 )
 """Attributes that say how big the element is."""
 
+_RELATIVE_UNITS: Final = {
+    name: _FONT_RELATIVE | {"%"}
+    if name == "font_size"
+    else _FONT_RELATIVE
+    if name in {"textLength", *_MAGNITUDE_ATTRS[-3:]}
+    else frozenset[str]()
+    for name in _MAGNITUDE_ATTRS
+}
+"""The relative units each magnitude may be resized in.
+
+A stroke or font magnitude in a relative unit is multiplied, or follows the
+font; an extent of a box is mapped corner by corner and has to be a number.
+"""
+
 
 def _ancestors(element: object, /) -> Iterator[object]:
     ancestors = getattr(element, "ancestors", None)
@@ -1553,12 +1567,7 @@ def geometry_capability(
         return NOTHING
 
     if not all(
-        _is_scalable(
-            _get(element, name),
-            relative=_FONT_RELATIVE | {"%"}
-            if name == "font_size"
-            else _FONT_RELATIVE,
-        )
+        _is_scalable(_get(element, name), relative=_RELATIVE_UNITS[name])
         for name in _MAGNITUDE_ATTRS
     ):
         capability &= TRANSLATION
