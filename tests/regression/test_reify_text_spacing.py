@@ -87,11 +87,15 @@ def test_spacing_left_to_the_font_is_left_alone(spacing: str) -> None:
     assert_svg_visually_equal(original, reified)
 
 
-def test_font_relative_spacing_keeps_the_scale() -> None:
+def test_font_relative_spacing_follows_the_font_size() -> None:
+    # the spacing is a fraction of the font size, which is resized, so it
+    # is resized along with it as it is
     text = _text(letter_spacing=L(0.2, "em"), transform=[Scale(2)])
-    _svg(text)
+    original = _svg(text)
+    reified = copy.deepcopy(original)
 
-    text.reify()
+    reified.find(Text).reify()
 
-    assert text.transform == [Scale(2)]
-    assert text.letter_spacing == L(0.2, "em")
+    assert reified.find(Text).transform is None
+    assert reified.find(Text).letter_spacing == L(0.2, "em")
+    assert_svg_visually_equal(original, reified, tolerance=1e-5)
