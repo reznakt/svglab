@@ -10,7 +10,7 @@ font size is of the viewport.
 
 import copy
 
-from svglab import Length, Path, Rect, Text, parse_svg
+from svglab import Length, Path, Rect, Svg, Text, parse_svg
 from tests.conftest import assert_svg_visually_equal, transforms_left
 
 
@@ -63,3 +63,24 @@ def test_an_own_em_stroke_width_is_multiplied() -> None:
     assert transforms_left(reified) == [reified.find(Rect)]
     assert reified.find(Path).stroke_width == Length(1, "em")
     assert_svg_visually_equal(original, reified, tolerance=1e-5)
+
+
+def test_an_extent_in_em_only_lets_a_box_move() -> None:
+    # a box is mapped corner by corner, which needs numbers; a nested svg
+    # as tall as six lines of text is only moved
+    svg = parse_svg("""
+        <svg width="200" height="200" font-size="10">
+            <svg x="20" y="20" width="120" height="6.25em"
+                 viewBox="0 0 30 30" preserveAspectRatio="none"
+                 transform="scale(1.5) translate(10 0)">
+                <rect x="5" y="5" width="20" height="20" fill="orange"/>
+            </svg>
+        </svg>
+    """)
+    nested = svg.find(Svg)
+
+    svg.reify()
+
+    assert transforms_left(svg) == [nested]
+    # the move went in, the scale stayed
+    assert nested.x == Length(30)
