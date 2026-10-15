@@ -1574,8 +1574,6 @@ def _resolve_reference(
     attr_name: AttributeName,
     index: Mapping[str, Element],
     /,
-    *,
-    warn: bool = False,
 ) -> Element | None:
     """Follow a local IRI reference to the element it points at.
 
@@ -1593,15 +1591,8 @@ def _resolve_reference(
         return None
 
     assert attr.fragment is not None
-    target = index.get(attr.fragment)
 
-    if target is None and warn:
-        warnings.warn(
-            f"Dangling IRI reference {attr_name}={attr.serialize()!r}",
-            stacklevel=2,
-        )
-
-    return target
+    return index.get(attr.fragment)
 
 
 def _paint_server_attr(
@@ -1865,9 +1856,7 @@ def _reference_capability(
                 capability &= TRANSLATION
 
     for attr_name in ("mask", "clip-path"):
-        target = _resolve_reference(
-            element, attr_name, context.by_id, warn=True
-        )
+        target = _resolve_reference(element, attr_name, context.by_id)
 
         if target is not None:
             capability &= _resource_capability(target, attr_name)
