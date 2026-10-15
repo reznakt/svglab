@@ -1256,26 +1256,31 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
         Reification never changes the way the document looks. Where that
         cannot be guaranteed -- an element painted by a gradient defined in
-        user space, a shape carrying markers, a length given as a percentage
-        -- the transformation is left alone.
+        user space, a shape whose markers would not survive, a length given
+        as a percentage, a stroke whose width a stylesheet may set, an
+        element a `use` renders under properties of its own -- the
+        transformation is left alone. Inherited properties are read the way
+        the element is rendered, `style` declarations and stylesheets
+        included.
 
         Args:
             recursive: If `True`, the method is called recursively on all
-                child elements.
-            convert_shapes_to_paths: If `True`, a basic shape whose
-                transformation cannot otherwise be absorbed is replaced by an
-                equivalent `path` element, which can absorb anything. Only
-                descendants are replaced; the element the method is called on
-                keeps its type.
+                child elements. If `False`, only what the element hands down
+                to its children is followed up, since a `text` cannot leave
+                a transformation on its spans.
+            convert_shapes_to_paths: If `True`, a basic shape that is asked
+                to absorb more than its attributes can express is replaced
+                by an equivalent `path` element, which can absorb anything.
+                Only descendants are replaced; the element the method is
+                called on keeps its type, and so does every shape in a
+                document with a stylesheet, whose selectors may pick shapes
+                out by name.
             unwrap_groups: If `True`, a descendant `g` that is left without
                 any attributes once its transformation is gone is replaced by
                 its children. Groups that had no attributes to begin with are
-                left alone, and so is every group in a document with a
+                left alone, and so are groups with a `title`, a `desc` or an
+                animation of their own, and every group in a document with a
                 stylesheet, whose selectors may depend on the tree's shape.
-
-        Raises:
-            SvgTransformOriginError: If the value of the `transform-origin`
-                attribute is unsupported.
 
         Examples:
             >>> from svglab import Rect, Length, Rotate, Scale, Translate
