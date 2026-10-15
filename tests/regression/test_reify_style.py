@@ -1,4 +1,8 @@
-"""A `style` declaration overrides the attribute reification would rewrite."""
+"""A `style` declaration overrides the attribute reification would rewrite.
+
+So it is read the way the attribute would be, and a magnitude it declares is
+resized in the declaration itself.
+"""
 
 import pytest
 
@@ -7,6 +11,7 @@ from svglab import (
     Element,
     G,
     Length,
+    LinearGradient,
     RawText,
     Rect,
     Scale,
@@ -42,8 +47,6 @@ def _svg(*children: Element) -> Svg:
         "clip-path: url(#c)",
         "mask: url(#m)",
         "filter: url(#f)",
-        "fill: url(#g)",
-        "stroke: url(#g)",
     ],
 )
 def test_a_style_that_decides_the_geometry_stops_reification(
@@ -58,20 +61,45 @@ def test_a_style_that_decides_the_geometry_stops_reification(
     assert rect.x == L(10)
 
 
+@pytest.mark.parametrize("name", ["fill", "stroke"])
+def test_a_paint_declared_in_a_style_is_resolved_like_the_attribute(
+    name: str,
+) -> None:
+    # a gradient in user space pins the shape where it is, one in bounding
+    # box units follows it
+    pinned = _rect(style=f"{name}: url(#u)", transform=[Translate(5, 5)])
+    following = _rect(
+        style=f"{name}: url(#b)", transform=[Translate(5, 5)]
+    )
+    _svg(
+        LinearGradient(id="u", gradientUnits="userSpaceOnUse"),
+        LinearGradient(id="b"),
+        pinned,
+        following,
+    )
+
+    pinned.reify()
+    following.reify()
+
+    assert pinned.transform == [Translate(5, 5)]
+    assert following.transform is None
+    assert following.x == L(15)
+
+
 @pytest.mark.parametrize(
-    "style",
+    ("style", "resized"),
     [
-        "stroke-width: 3",
-        "stroke-dasharray: 4 2",
-        "stroke-dasharray: 4 2; stroke-dashoffset: 2",
-        "marker-end: url(#m)",
+        ("stroke-width: 3", "stroke-width: 6"),
+        ("stroke-dasharray: 4 2", "stroke-dasharray: 8 4"),
+        (
+            "stroke-dasharray: 4 2; stroke-dashoffset: 2",
+            "stroke-dasharray: 8 4; stroke-dashoffset: 4",
+        ),
     ],
 )
-def test_a_stroke_magnitude_in_a_style_leaves_only_a_move(
-    style: str,
+def test_a_stroke_magnitude_in_a_style_is_resized_in_the_declaration(
+    style: str, resized: str
 ) -> None:
-    # reification cannot resize what it cannot rewrite, so it does not resize
-    # the geometry either
     scaled = _rect(
         stroke=Color("black"), style=style, transform=[Scale(2)]
     )
@@ -83,38 +111,55 @@ def test_a_stroke_magnitude_in_a_style_leaves_only_a_move(
     scaled.reify()
     moved.reify()
 
-    assert scaled.transform == [Scale(2)]
-    assert scaled.width == L(40)
+    assert scaled.transform is None
+    assert scaled.width == L(80)
+    assert scaled.style == resized
 
     assert moved.transform is None
     assert moved.x == L(15)
+    assert moved.style == style
 
 
 @pytest.mark.parametrize(
-    "style",
+    ("style", "resized"),
     [
-        "font-size: 12px",
-        "font: italic 12px serif",
-        "letter-spacing: 2px",
-        "word-spacing: 4px",
-        "kerning: 1",
+        ("font-size: 12px", "font-size: 24px"),
+        ("letter-spacing: 2px", "letter-spacing: 4px"),
+        ("word-spacing: 4px", "word-spacing: 8px"),
+        ("kerning: 1", "kerning: 2"),
     ],
 )
-def test_a_font_magnitude_in_a_style_leaves_only_a_move(
-    style: str,
+def test_a_font_magnitude_in_a_style_is_resized_in_the_declaration(
+    style: str, resized: str
 ) -> None:
-    scaled = Text(
+    text = Text(
         x=[L(10)],
         y=[L(20)],
         font_size=L(12),
         style=style,
         transform=[Scale(2)],
     )
+    _svg(text)
+
+    text.reify()
+
+    assert text.transform is None
+    assert text.x == [L(20)]
+    assert text.style == resized
+
+
+def test_a_font_shorthand_in_a_style_leaves_only_a_move() -> None:
+    # the shorthand sets a font size reification does not read out of it
+    scaled = Text(
+        x=[L(10)],
+        y=[L(20)],
+        style="font: italic 12px serif",
+        transform=[Scale(2)],
+    )
     moved = Text(
         x=[L(10)],
         y=[L(20)],
-        font_size=L(12),
-        style=style,
+        style="font: italic 12px serif",
         transform=[Translate(5, 5)],
     )
     _svg(scaled, moved)
@@ -123,7 +168,6 @@ def test_a_font_magnitude_in_a_style_leaves_only_a_move(
     moved.reify()
 
     assert scaled.transform == [Scale(2)]
-    assert scaled.font_size == L(12)
 
     assert moved.transform is None
     assert moved.x == [L(15)]
@@ -145,15 +189,15 @@ def test_a_magnitude_in_a_style_the_element_does_not_use_is_harmless() -> (
 
 
 def test_a_magnitude_in_an_ancestor_style_is_read_too() -> None:
-    # the stroke width the rect inherits is written in a style, which cannot
-    # be resized any more than the rect's own would be
+    # the stroke width the rect inherits is written in a style on the group,
+    # which is shared, so the resized value is written onto the rect
     rect = _rect(stroke=Color("black"), transform=[Scale(2)])
     _svg(G(style="stroke-width: 3").add_child(rect))
 
     rect.reify()
 
-    assert rect.transform == [Scale(2)]
-    assert rect.stroke_width is None
+    assert rect.transform is None
+    assert rect.stroke_width == L(6)
 
 
 def test_an_ordinary_style_does_not_stop_reification() -> None:

@@ -18,8 +18,10 @@ known at runtime -- whether the element is stroked, whether its lengths are
 expressed in percentages -- by `geometry_capability`.
 
 Those facts come from inherited properties, which `property_value` resolves
-the way a renderer does: the element's own `style` declaration first, then
-its presentation attribute, then its ancestors'. A `Scope` says where that
+the way a renderer does: the element's own `style` declaration first, read
+as the presentation attribute would be, then that attribute, then its
+ancestors'. What is resized is written back where it was read from, a
+`style` declaration included. A `Scope` says where that
 stops being certain -- past the element a `use` refers to, under a stylesheet
 rule, for a value an animation changes -- and what cannot be told is
 `UNKNOWN`, which every check treats as whatever would be worst for it.
@@ -28,10 +30,12 @@ rule, for a value an animation changes -- and what cannot be told is
 from __future__ import annotations
 
 import enum
+import functools
 import math
 import re
 from collections.abc import Container, Iterator, Mapping
 
+import pydantic
 from typing_extensions import Final, NamedTuple, TypeAlias, override
 
 from svglab.attrparse.length import Length
@@ -65,6 +69,7 @@ from svglab.attrs.attrdefs import (
 )
 from svglab.attrs.names import AttributeName
 from svglab.errors import SvgUnitConversionError
+from svglab.serialize import serialize_attr
 from svglab.utils.mathutils import is_close
 
 
@@ -1045,7 +1050,9 @@ def _apply_magnitudes(
         return
 
     def resize(name: str, initial: object = None) -> None:
-        if inherited_resized and not _is_specified(_get(element, name)):
+        if inherited_resized and not _is_specified(
+            _property(element, name, scope)
+        ):
             return
 
         # on an element that resizes its font size, a magnitude in `em`
@@ -1112,7 +1119,7 @@ def property_value(
     The element's own value wins, then the nearest ancestor's, then
     `initial`. A declaration in a `style` attribute beats the presentation
     attribute of the same name, on the element itself and on every ancestor,
-    and is returned as the string it was written as.
+    and is read the way that attribute would be.
 
     The scope says where that stops being certain: past the element a `use`
     refers to, under a stylesheet rule that may set the property on any
@@ -1131,11 +1138,11 @@ def property_value(
     Examples:
         >>> from svglab import Color, G, Length, Path
         >>> own, inheriting = Path(fill=Color("red")), Path()
-        >>> g = G(style="fill: url(#p)").add_children(own, inheriting)
+        >>> g = G(style="fill: blue").add_children(own, inheriting)
         >>> property_value(own, "fill")
         Color('red')
         >>> property_value(inheriting, "fill")
-        'url(#p)'
+        Color('blue')
         >>> property_value(Path(), "stroke_width", initial=Length(1))
         Length(value=1.0, unit=None)
         >>> property_value(
@@ -1186,7 +1193,7 @@ def _scale_inherited(
     value = property_value(element, name, initial=initial, scope=scope)
 
     if isinstance(value, Length | list | int | float):
-        setattr(element, name, _scaled(value, factor, keep=keep))
+        _set_property(element, name, _scaled(value, factor, keep=keep))
 
 
 def _strokes_in_host_space(element: object, scope: Scope, /) -> bool:
@@ -1413,8 +1420,7 @@ _STYLE_OPAQUE: Final = frozenset(
 """Properties that decide the geometry and that reification cannot rewrite.
 
 A magnitude declared in a style -- a stroke width, a font size -- is not
-listed: it resolves to the string it was written as, which cannot be resized
-and so holds the element to a move by itself.
+listed: it is read, and written back, as the attribute would be.
 """
 
 
@@ -1715,10 +1721,10 @@ _SHORTHANDS: Final = {"font-size": ("font",)}
 def _property(element: object, name: str, scope: Scope, /) -> object:
     """Read the element's own value of a property, as it is rendered.
 
-    A `style` declaration beats the presentation attribute, and a stylesheet
-    rule may beat both without saying on which elements, so a property a
-    stylesheet declares is unknown unless the element's own `style` settles
-    it.
+    A `style` declaration beats the presentation attribute, and is read the
+    way the attribute would be. A stylesheet rule may beat both without
+    saying on which elements, so a property a stylesheet declares is unknown
+    unless the element's own `style` settles it.
 
     Returns:
         The value, `None` if the element does not specify one, or `UNKNOWN`.
@@ -1732,13 +1738,89 @@ def _property(element: object, name: str, scope: Scope, /) -> object:
             # a shorthand such as `font` sets the property to something
             # reification does not read out of it
             return (
-                declarations[declared] if declared == svg_name else UNKNOWN
+                _parsed(element, name, declarations[declared])
+                if declared == svg_name
+                else UNKNOWN
             )
 
         if declared in scope.styled:
             return UNKNOWN
 
     return _get(element, name)
+
+
+def _parsed(element: object, name: str, text: str, /) -> object:
+    """Read a `style` declaration the way the attribute of its name is read.
+
+    Returns:
+        The value, or `UNKNOWN` if the text is not one the attribute takes.
+
+    """
+    adapter = _attribute_adapter(type(element), name)
+
+    if adapter is None:
+        return text
+
+    try:
+        return adapter.validate_python(text)
+    except pydantic.ValidationError:
+        return UNKNOWN
+
+
+@functools.cache
+def _attribute_adapter(
+    cls: type, name: str, /
+) -> pydantic.TypeAdapter[object] | None:
+    """Build a validator for an attribute of an element class, once.
+
+    Returns:
+        The validator, or `None` if the class has no such attribute.
+
+    """
+    fields = getattr(cls, "model_fields", {})
+
+    if name not in fields:
+        return None
+
+    return pydantic.TypeAdapter(fields[name].annotation)
+
+
+def _set_property(element: object, name: str, value: object, /) -> None:
+    """Write a property where the element reads it from.
+
+    That is the declaration in its own `style` attribute if there is one,
+    since that would beat anything written to the presentation attribute,
+    and the attribute otherwise.
+    """
+    svg_name = name.replace("_", "-")
+    style = _get(element, "style")
+
+    if isinstance(style, str) and svg_name in style_declarations(element):
+        # the last declaration of a property is the one that counts; it was
+        # read a moment ago, so it is there to be found
+        *_, declaration = _declaration_pattern(svg_name).finditer(style)
+        start, end = declaration.span("value")
+        text = serialize_attr(svg_name, value)
+        element.style = style[:start] + text + style[end:]  # type: ignore[reportAttributeAccessIssue]
+    else:
+        setattr(element, name, value)
+
+
+@functools.cache
+def _declaration_pattern(svg_name: str, /) -> re.Pattern[str]:
+    """Build the pattern of a declaration of a property in a `style`.
+
+    Returns:
+        A pattern capturing the value as `value`, without the whitespace
+        around it and without any `!important`, which both stay as they are
+        when it is replaced.
+
+    """
+    return re.compile(
+        rf"(?:^|;)\s*{re.escape(svg_name)}\s*:\s*"
+        r"(?P<value>[^;!]*?)\s*(?:!important\s*)?(?=;|$)",
+        re.IGNORECASE,
+    )
 
 
 def _is_stroked(element: object, scope: Scope, /) -> bool:
