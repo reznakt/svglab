@@ -961,10 +961,54 @@ def _apply_end_points(element: object, matrix: Matrix, /) -> None:
     start = _transform_point(matrix, element.x1, element.y1)
     end = _transform_point(matrix, element.x2, element.y2)
 
+    if isinstance(element, PercentageDefaults) and not is_similarity(
+        matrix
+    ):
+        end = _gradient_end(element, matrix, start, end)
+
     _set_coordinate(element, "x1", start.x, element.x1)
     _set_coordinate(element, "y1", start.y, element.y1)
     _set_coordinate(element, "x2", end.x, element.x2)
     _set_coordinate(element, "y2", end.y, element.y2)
+
+
+def _gradient_end(
+    element: object, matrix: Matrix, start: Point, end: Point, /
+) -> Point:
+    """Find where a linear gradient's vector ends after a skew or stretch.
+
+    The stops of a linear gradient lie on lines perpendicular to its vector.
+    A matrix that does not preserve angles maps those to parallel lines that
+    are no longer perpendicular to the mapped vector, so the vector is drawn
+    afresh: perpendicular to the mapped lines, from the mapped start to the
+    line through the mapped end. The ratios along it, and with them the
+    stops, are what an affine map preserves.
+
+    Returns:
+        The end of the redrawn vector.
+
+    """
+    assert isinstance(element, X1Attr)
+    assert isinstance(element, Y1Attr)
+    assert isinstance(element, X2Attr)
+    assert isinstance(element, Y2Attr)
+
+    x1, y1 = _number(element.x1), _number(element.y1)
+    x2, y2 = _number(element.x2), _number(element.y2)
+    # the direction of the stop lines after the map
+    along = matrix.linear() @ Point(y1 - y2, x2 - x1)
+    across = Point(along.y, -along.x)
+    length = across.x**2 + across.y**2
+
+    if is_close(length, 0):
+        # a vector of no length draws a single color wherever it ends
+        return end
+
+    span = end - start
+
+    return start + across * (
+        (span.x * across.x + span.y * across.y) / length
+    )
 
 
 def _apply_text(element: object, matrix: Matrix, /) -> None:
