@@ -1601,27 +1601,6 @@ def _paint_server_template(
     return None
 
 
-def _pattern_transform_capability(
-    target: Element, index: Mapping[str, Element], /
-) -> Capability:
-    """Work out what survives a pattern's own `patternTransform`.
-
-    The tiling is laid out in the bounding box of the element and the pattern
-    transform is applied to the result, in user space.
-
-    Returns:
-        What a shape painted with the pattern may absorb.
-
-    """
-    pattern_transform = _paint_server_attr(
-        target, "patternTransform", index
-    )
-
-    return _commuting_capability(
-        compose(cast("Transform | None", pattern_transform) or [])
-    )
-
-
 def _commuting_capability(matrix: Matrix, /) -> Capability:
     """Work out what commutes with a transformation applied after a box.
 
@@ -1680,9 +1659,13 @@ def _pattern_capability(
     ):
         return NOTHING
 
-    return _pattern_tile_capability(
-        target, index
-    ) & _pattern_transform_capability(target, index)
+    pattern_transform = _paint_server_attr(
+        target, "patternTransform", index
+    )
+
+    return _pattern_tile_capability(target, index) & _commuting_capability(
+        compose(cast("Transform | None", pattern_transform) or [])
+    )
 
 
 def _pattern_tile_capability(

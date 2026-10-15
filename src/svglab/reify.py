@@ -719,9 +719,7 @@ def _number(attr: object, /) -> float:
     match attr:
         case None:
             return 0.0
-        case Length():
-            return float(attr)
-        case int() | float():
+        case Length() | int() | float():
             return float(attr)
         case _:
             msg = f"Expected a number, got {attr!r}"
@@ -1277,6 +1275,13 @@ _GLYPH_SPACING_ATTRS: Final = ("letter_spacing", "word_spacing", "kerning")
 _FONT_MAGNITUDES: Final = ("font_size", *_GLYPH_SPACING_ATTRS)
 """Properties that size the glyphs of a text content element."""
 
+_STROKE_MAGNITUDES: Final = (
+    "stroke_width",
+    "stroke_dasharray",
+    "stroke_dashoffset",
+)
+"""Properties that size the stroke of a shape."""
+
 _MAGNITUDE_ATTRS: Final = (
     "width",
     "height",
@@ -1286,19 +1291,15 @@ _MAGNITUDE_ATTRS: Final = (
     "fr",
     "font_size",
     "textLength",
-    "stroke_width",
-    "stroke_dasharray",
-    "stroke_dashoffset",
+    *_STROKE_MAGNITUDES,
 )
 """Attributes that say how big the element is."""
 
-_RELATIVE_UNITS: Final = {
-    name: _FONT_RELATIVE | {"%"}
-    if name == "font_size"
-    else _FONT_RELATIVE
-    if name in ("textLength", *_MAGNITUDE_ATTRS[-3:])
-    else frozenset[str]()
-    for name in _MAGNITUDE_ATTRS
+_RELATIVE_UNITS: Final[Mapping[str, frozenset[str]]] = {
+    **dict.fromkeys(_MAGNITUDE_ATTRS, frozenset()),
+    "font_size": _FONT_RELATIVE | {"%"},
+    "textLength": _FONT_RELATIVE,
+    **dict.fromkeys(_STROKE_MAGNITUDES, _FONT_RELATIVE),
 }
 """The relative units each magnitude may be resized in.
 
@@ -1414,9 +1415,6 @@ A magnitude declared in a style -- a stroke width, a font size -- is not
 listed: it resolves to the string it was written as, which cannot be resized
 and so holds the element to a move by itself.
 """
-
-_SHORTHANDS: Final = {"font-size": ("font",)}
-"""Shorthand properties that set a property reification reads."""
 
 
 def style_capability(element: object, /) -> Capability:
@@ -1607,34 +1605,7 @@ def geometry_capability(
     ):
         capability &= SIMILARITY
 
-        if (
-            property_value(element, "vector_effect", scope=scope)
-            is UNKNOWN
-            or not _is_resizable(
-                element, "stroke_width", scope, initial=Length(1)
-            )
-            or (
-                _is_dashed(element, scope)
-                and not (
-                    _is_resizable(
-                        element,
-                        "stroke_dasharray",
-                        scope,
-                        initial="none",
-                        keywords=("none",),
-                    )
-                    and _is_resizable(
-                        element,
-                        "stroke_dashoffset",
-                        scope,
-                        initial=Length(0),
-                    )
-                )
-            )
-        ):
-            # the stroke is drawn at a width reification cannot resolve, or
-            # may not be scaled with the shape at all, so the element may
-            # be moved but not resized
+        if not _stroke_is_resizable(element, scope):
             capability &= TRANSLATION
 
         if (
@@ -1648,6 +1619,38 @@ def geometry_capability(
             capability &= UNIFORM_SCALING
 
     return capability
+
+
+def _stroke_is_resizable(element: object, scope: Scope, /) -> bool:
+    """Check whether the stroke can be resized along with the shape.
+
+    It cannot where it is drawn at a width reification cannot resolve, or
+    may not be scaled with the shape at all.
+
+    Returns:
+        `True` if the width, and the dash pattern if any, can be resized.
+
+    """
+    if property_value(element, "vector_effect", scope=scope) is UNKNOWN:
+        return False
+
+    if not _is_resizable(
+        element, "stroke_width", scope, initial=Length(1)
+    ):
+        return False
+
+    if not _is_dashed(element, scope):
+        return True
+
+    return _is_resizable(
+        element,
+        "stroke_dasharray",
+        scope,
+        initial="none",
+        keywords=("none",),
+    ) and _is_resizable(
+        element, "stroke_dashoffset", scope, initial=Length(0)
+    )
 
 
 def _geometry_is_explicit(element: object, /) -> bool:
@@ -1702,6 +1705,10 @@ def style_declarations(element: object, /) -> Mapping[str, str]:
         ).strip()
 
     return declarations
+
+
+_SHORTHANDS: Final = {"font-size": ("font",)}
+"""Shorthand properties that set a property reification reads."""
 
 
 def _property(element: object, name: str, scope: Scope, /) -> object:
@@ -1795,6 +1802,12 @@ which is reason enough to leave it alone.
 """
 
 
+_EDITOR_GEOMETRY: Final = frozenset(
+    {"inkscape:original-d", "inkscape:path-effect"}
+)
+"""Attributes an editor regenerates the path data from."""
+
+
 def _has_unreadable_geometry(element: object, /) -> bool:
     """Check for geometry the element holds but the library has not parsed.
 
@@ -1819,12 +1832,6 @@ def _has_unreadable_geometry(element: object, /) -> bool:
         name.startswith("sodipodi:") or name in _EDITOR_GEOMETRY
         for name in names
     )
-
-
-_EDITOR_GEOMETRY: Final = frozenset(
-    {"inkscape:original-d", "inkscape:path-effect"}
-)
-"""Attributes an editor regenerates the path data from."""
 
 
 # endregion
