@@ -830,12 +830,12 @@ class Matrix(_TransformFunctionBase):
         """
         return degrees(math.atan2(self.b, self.a))
 
-    def __rotation_centre(self) -> _Vector | None:
+    def __rotation_center(self) -> _Vector | None:
         """Find the point a rotation leaves where it is, if this is one.
 
         A rotation about a point is a rotation about the origin surrounded by
         a pair of translations, and `rotate(a cx cy)` writes all three in one
-        function. The centre is the matrix's fixed point: the `c` that solves
+        function. The center is the matrix's fixed point: the `c` that solves
         `(I - R) c = v`.
 
         Returns:
@@ -952,10 +952,10 @@ class Matrix(_TransformFunctionBase):
 
             # a rotation about a point says the same as a rotation between
             # two moves, in one function instead of three
-            centre = self.__rotation_centre()
+            center = self.__rotation_center()
 
-            if moves and centre is not None:
-                yield [Rotate(angle, *centre)]
+            if moves and center is not None:
+                yield [Rotate(angle, *center)]
 
         for candidate in (
             self.__qr_candidate(prefix),
