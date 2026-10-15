@@ -1596,6 +1596,60 @@ def _paint_server_attr(
     return _attr_or_default(target, attr_name)
 
 
+_PAINT_SERVER_GEOMETRY: Final[tuple[AttributeName, ...]] = (
+    "x1",
+    "y1",
+    "x2",
+    "y2",
+    "cx",
+    "cy",
+    "r",
+    "fx",
+    "fy",
+    "fr",
+    "x",
+    "y",
+    "width",
+    "height",
+    "viewBox",
+    "preserveAspectRatio",
+    "gradientUnits",
+    "gradientTransform",
+    "patternUnits",
+    "patternContentUnits",
+    "patternTransform",
+)
+"""Attributes of a gradient or pattern that decide where it is painted."""
+
+
+def _paint_server_geometry_source(
+    element: Element, index: Mapping[str, Element], /
+) -> Element | None:
+    """Find the template a gradient or pattern takes geometry from.
+
+    Returns:
+        The nearest template in the chain of `href`s that defines an
+        attribute deciding the geometry which the element leaves out, or
+        `None` if the element defines all of its own or has no template.
+
+    """
+    own = element.standard_attrs()
+    missing = [name for name in _PAINT_SERVER_GEOMETRY if name not in own]
+    seen: set[int] = set()
+    template = _paint_server_template(element, index)
+
+    while template is not None and id(template) not in seen:
+        seen.add(id(template))
+        attrs = template.standard_attrs()
+
+        if any(name in attrs for name in missing):
+            return template
+
+        template = _paint_server_template(template, index)
+
+    return None
+
+
 def _paint_server_template(
     element: Element, index: Mapping[str, Element], /
 ) -> Element | None:
@@ -2620,9 +2674,11 @@ def _frozen_elements(
 
     A gradient or pattern that refers to another inherits every attribute it
     leaves out, its transformation included, and even an identity
-    transformation of its own overrides the inherited one. Both ends of such
-    a reference are left as written, and so is a path a motion animation
-    follows, since the motion follows its data as written.
+    transformation of its own overrides the inherited one. Where one takes
+    any of its geometry from the other -- a coordinate, its units, its
+    transformation -- both are left as written; one that only borrows the
+    stops is reified on its own. A path a motion animation follows is left
+    as written too, since the motion follows its data as written.
 
     Returns:
         The `id()`s of the elements.
@@ -2631,7 +2687,7 @@ def _frozen_elements(
     frozen: set[int] = set()
 
     for element in itertools.chain([root], root.find_all()):
-        template = _paint_server_template(element, index)
+        template = _paint_server_geometry_source(element, index)
 
         if template is not None:
             frozen.update((id(element), id(template)))
