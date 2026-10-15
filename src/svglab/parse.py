@@ -187,6 +187,7 @@ def parse_svg(
             document fragment
         ImportError: If `parser` is 'html5lib' and the `html5lib` extra
             is not installed
+        bs4.FeatureNotFound: If any other parser is not available
 
     Examples:
         >>> svg = parse_svg("<svg><rect/></svg>")

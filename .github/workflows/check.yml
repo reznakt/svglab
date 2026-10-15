@@ -36,6 +36,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Nix
         uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
@@ -43,13 +45,10 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Cache the Rust build
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            src/svglab-resvg/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('src/svglab-resvg/Cargo.lock', 'flake.lock') }}
+          workspaces: src/svglab-resvg
+          cmd-format: nix develop --command {0} # the toolchain lives in the dev shell
 
       - name: Install tools
         run: uv sync --all-groups --python ${{ matrix.python }}
@@ -82,6 +81,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Nix
         uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
@@ -89,13 +90,10 @@ jobs:
           nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Cache the Rust build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            src/svglab-resvg/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('src/svglab-resvg/Cargo.lock', 'flake.lock') }}
+          workspaces: src/svglab-resvg
+          cmd-format: nix develop --command {0} # the toolchain lives in the dev shell
 
       - name: Install tools
         run: uv sync --all-groups
@@ -114,3 +112,17 @@ jobs:
 
       - name: Run license check
         run: just licensecheck
+
+      - name: Run dependency check
+        run: just depcheck
+
+      - name: Run workflow check
+        run: just workflowcheck
+        env:
+          GH_TOKEN: ${{ github.token }} # lets zizmor run its online audits
+
+      - name: Run schema check
+        run: just schemacheck
+
+      - name: Run secret scan
+        run: just secretcheck

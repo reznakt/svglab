@@ -34,18 +34,30 @@
           packages =
             with pkgs;
             [
+              actionlint
               cargo
               cargo-deny
+              cargo-machete
               clippy
+              deadnix
+              editorconfig-checker
+              gitleaks
               just
               maturin
+              nixfmt
               pngquant
-              pre-commit
+              prek
               python
+              rumdl
               rust-analyzer
               rustc
               rustfmt
+              statix
+              tombi
+              typos
               uv
+              yamlfmt
+              zizmor
             ]
             ++ systemLibs;
 
@@ -62,8 +74,8 @@
           shellHook = ''
             unset PYTHONPATH
 
-            if [ -d .git ] && [ ! -f .git/hooks/pre-commit ]; then
-              pre-commit install
+            if [ -d .git ] && ! grep -qs prek .git/hooks/pre-commit; then
+              prek install
             fi
           '';
         };

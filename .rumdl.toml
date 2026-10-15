@@ -1,0 +1,7 @@
+[global]
+flavor = "mkdocs"
+disable = [
+  "MD013",  # line length; the prose is written one sentence per line
+  "MD033",  # inline HTML; the badges and the small caps need it
+  "MD041",  # first line must be a heading; the README opens with the logo
+]

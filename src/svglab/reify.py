@@ -440,6 +440,9 @@ def is_similarity(matrix: Matrix, /) -> bool:
     A similarity is the most a stroked shape can absorb: anything more turns
     a stroke of uniform width into one that varies along the outline.
 
+    Returns:
+        `True` if the matrix is a similarity.
+
     Examples:
         >>> from svglab.attrparse.transform import Rotate, Scale
         >>> is_similarity(Rotate(45).to_matrix())
@@ -453,6 +456,9 @@ def is_similarity(matrix: Matrix, /) -> bool:
 
 def uniform_scale_factor(matrix: Matrix, /) -> float:
     """Compute the factor by which a similarity resizes lengths.
+
+    Returns:
+        The factor.
 
     Examples:
         >>> from svglab.attrparse.transform import Rotate, Scale
@@ -527,6 +533,10 @@ def _is_convertible(attr: object, /) -> bool:
     Percentages and physical units are resolved against things reification
     knows nothing about -- the viewport, the font -- so a value expressed in
     them cannot be rewritten.
+
+    Returns:
+        `True` if the attribute can be converted to user units.
+
     """
     match attr:
         case Length():
@@ -547,6 +557,11 @@ def _is_scalable(attr: object, /) -> bool:
 
     Keywords such as `medium` or `inherit` hold a magnitude that reification
     cannot resolve, so an element using one cannot be resized.
+
+    Returns:
+        `True` if the attribute is unset or holds a magnitude in user
+        units.
+
     """
     match attr:
         case None:
@@ -566,6 +581,10 @@ def _is_resizable(attr: object, /) -> bool:
 
     Unlike `_is_scalable`, an absent value counts as unresizable: there is a
     magnitude in play, it just is not one reification can see.
+
+    Returns:
+        `True` if the attribute holds a magnitude in user units.
+
     """
     return attr is not None and _is_scalable(attr)
 
@@ -575,6 +594,10 @@ def _is_spacing_scalable(attr: object, /) -> bool:
 
     `normal` and `auto` leave the spacing to the font, which is resized with
     the `font-size` already; any other keyword cannot be resolved.
+
+    Returns:
+        `True` if the spacing is left to the font or can be resized.
+
     """
     return attr in ("normal", "auto") or _is_scalable(attr)
 
@@ -1141,6 +1164,10 @@ def _strokes_in_host_space(element: object, /) -> bool:
     `vector-effect: non-scaling-stroke` pins the stroke to the coordinate
     system of the nearest viewport, so folding a transformation into the
     geometry leaves the stroke exactly as it was.
+
+    Returns:
+        `True` if the stroke is not scaled with the element.
+
     """
     return (
         isinstance(element, VectorEffectAttr)
@@ -1263,6 +1290,9 @@ def stretches_content(preserve_aspect_ratio: object, /) -> bool:
     fitting it, which is what makes a non-uniform scaling of the viewport
     survive being folded into its attributes.
 
+    Returns:
+        `True` if the content is stretched to fill the viewport.
+
     Examples:
         >>> stretches_content("none")
         True
@@ -1317,6 +1347,10 @@ def has_own_geometry(element: object, /) -> bool:
     """Check whether the element has geometry of its own to fold a matrix into.
 
     A `g` does not: a transformation on it belongs entirely to its children.
+
+    Returns:
+        `True` if the element has geometry of its own.
+
     """
     return _structural_capability(element) is not NOTHING
 
@@ -1361,6 +1395,10 @@ def style_capability(element: object, /) -> Capability:
     have had to rewrite, or would have had to read to decide what is safe, is
     out of reach there -- so the element keeps as much of its transformation
     as that costs.
+
+    Returns:
+        What the element's `style` attribute leaves it able to absorb.
+
     """
     declarations = style_declarations(element)
 
@@ -1378,6 +1416,9 @@ def style_capability(element: object, /) -> Capability:
 
 def declared_properties(css: str, /) -> frozenset[str]:
     """List the properties a stylesheet declares, whatever it declares them on.
+
+    Returns:
+        The names of the properties, in lower case.
 
     Examples:
         >>> sorted(declared_properties(".a { fill: red; stroke: blue }"))
@@ -1675,6 +1716,10 @@ def _has_unreadable_geometry(element: object, /) -> bool:
     An attribute svglab does not model for this element survives as a plain
     string. Reification would rewrite everything around it and leave it
     behind, so an element carrying one keeps its transformation.
+
+    Returns:
+        `True` if the element carries geometry the library did not parse.
+
     """
     extra = getattr(element, "extra_attrs", None)
 

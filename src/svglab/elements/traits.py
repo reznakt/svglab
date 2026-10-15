@@ -88,7 +88,6 @@ class _GraphicalOperations(Element):
         located (or visible) in the rendered SVG and `False` values elsewhere.
 
         Args:
-            element: The element to create a mask for.
             visible_only: If `True`, only the visible parts of the element are
                 included in the mask. If `False`, the mask includes all parts
                 of the element (even if they are transparent).

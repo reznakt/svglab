@@ -5,64 +5,119 @@ default_install_hook_types:
 
 fail_fast: true
 
+# Hooks with the same priority run concurrently, so every hook that edits files
+# has a priority of its own and the read-only hooks share one.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
+        priority: 0
       - id: check-case-conflict
+        priority: 0
       - id: check-executables-have-shebangs
+        priority: 0
       - id: check-illegal-windows-names
+        priority: 0
       - id: check-merge-conflict
+        priority: 0
       - id: check-shebang-scripts-are-executable
+        priority: 0
       - id: check-symlinks
+        priority: 0
       - id: check-toml
+        priority: 0
       - id: check-yaml
+        priority: 0
         args: ["--unsafe"]
       - id: detect-private-key
+        priority: 0
       - id: end-of-file-fixer
+        priority: 10
       - id: mixed-line-ending
+        priority: 20
         args: ["--fix=lf"]
       - id: name-tests-test
+        priority: 0
         args: ["--pytest-test-first"]
       - id: trailing-whitespace
+        priority: 30
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.12.23
     hooks:
       - id: uv-lock
+        priority: 40
   - repo: local
     hooks:
       - id: lint
+        priority: 50
         name: lint
         entry: just lint-fix
         language: system
-        files: &code ^(.*\.(py|pyi|rs)|src/svglab-resvg/Cargo\.(toml|lock))$
         pass_filenames: false
       - id: format
+        priority: 60
         name: format
         entry: just format-fix
         language: system
-        files: *code
+        pass_filenames: false
+      - id: secretcheck
+        priority: 70
+        name: secretcheck
+        entry: just secretcheck --pre-commit --staged
+        language: system
+        pass_filenames: false
+      - id: schemacheck
+        priority: 70
+        name: schemacheck
+        entry: just schemacheck
+        language: system
+        files: ^(CITATION\.cff|\.github/dependabot\.yml|codecov\.yml)$
+        pass_filenames: false
+      - id: docs
+        priority: 70
+        name: docs
+        entry: just docs --strict
+        language: system
+        files: ^(docs/|properdocs\.yml$)
+        pass_filenames: false
+      - id: workflowcheck
+        priority: 70
+        name: workflowcheck
+        entry: just workflowcheck
+        language: system
+        files: ^\.github/
+        pass_filenames: false
+      - id: depcheck
+        priority: 70
+        name: depcheck
+        entry: just depcheck
+        language: system
+        files: ^(.*\.(py|rs)|pyproject\.toml|uv\.lock|src/svglab-resvg/Cargo\.(toml|lock))$
         pass_filenames: false
       - id: versioncheck
+        priority: 70
         name: versioncheck
         entry: just versioncheck
         language: system
         types: [python]
         pass_filenames: false
       - id: licensecheck
+        priority: 70
         name: licensecheck
         entry: just licensecheck
         language: system
         files: ^(pyproject\.toml|uv\.lock|src/svglab-resvg/(Cargo\.(toml|lock)|deny\.toml))$
         pass_filenames: false
       - id: typecheck
+        priority: 70
         name: typecheck
         entry: just typecheck
         language: system
         types: [python]
         pass_filenames: false
       - id: test
+        priority: 70
         name: test
         entry: just test
         language: system
