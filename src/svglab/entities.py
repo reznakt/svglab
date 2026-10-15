@@ -64,11 +64,12 @@ from svglab.reify import (
     UNIFORM_SCALING,
     UNKNOWN,
     UPRIGHT,
-    AffineGeometry,
     Animation,
     Capability,
     DocumentFragmentRoot,
+    Feature,
     Grouping,
+    Markable,
     PercentageDefaults,
     RenderedIndirectly,
     Scope,
@@ -1764,15 +1765,19 @@ def _reference_capability(
             # a paint server reification cannot find, declared in a style
             capability &= NOTHING
 
-    if isinstance(element, AffineGeometry):
-        # a marker is placed in user space and oriented along the path, so
-        # anything but a move changes its size or its angle
+    if isinstance(element, Markable):
         for name in _MARKER_ATTRS:
             marker = property_value(element, name, scope=scope)
 
             if marker is UNKNOWN:
                 if context.markers:
                     capability &= TRANSLATION
+            elif isinstance(marker, Iri) and marker.is_local:
+                assert marker.fragment is not None
+                target = context.by_id.get(marker.fragment)
+
+                if target is not None:
+                    capability &= _marker_capability(target)
             elif marker is not None and marker != "none":
                 capability &= TRANSLATION
 
@@ -1799,6 +1804,31 @@ _MARKER_ATTRS: Final = (
     "marker_end",
 )
 """The marker properties, shorthand included."""
+
+
+def _marker_capability(marker: Element, /) -> Capability:
+    """Work out what a marker lets the shape carrying it absorb.
+
+    A marker sized in stroke widths grows with the stroke, which is resized
+    along with the shape, and one oriented along the outline turns with it.
+    A fixed orientation keeps its angle whatever the shape does, and a marker
+    sized in user space keeps its size. None of them is mirrored when the
+    shape is: the outline reverses but the marker stays as drawn.
+
+    Returns:
+        What a shape with the marker may absorb.
+
+    """
+    orient = str(_attr_or_default(marker, "orient") or "0")
+    turns = orient in ("auto", "auto-start-reverse")
+    grows = _attr_or_default(marker, "markerUnits") != "userSpaceOnUse"
+
+    capability = UNIFORM_SCALING if grows else TRANSLATION
+
+    if turns:
+        capability |= {Feature.ROTATE, Feature.QUARTER_TURN}
+
+    return capability
 
 
 def _filter_capability(target: Element, /) -> Capability:

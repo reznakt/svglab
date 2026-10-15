@@ -420,18 +420,39 @@ def test_a_dashed_rect_refuses_to_be_turned() -> None:
     assert rect.transform == [Rotate(90)]
 
 
-def test_a_shape_with_markers_may_only_be_moved() -> None:
-    marker = Marker(id="m")
+@pytest.mark.parametrize(
+    ("marker_attrs", "transformation", "absorbed"),
+    [
+        # a marker sized in stroke widths grows with the stroke
+        ({}, Scale(2), True),
+        # but keeps the angle it was given
+        ({}, Rotate(30), False),
+        # one oriented along the outline turns with it
+        ({"orient": "auto"}, Rotate(30), True),
+        # yet is not mirrored along with it
+        ({"orient": "auto"}, Scale(-1, 1), False),
+        # and one sized in user space keeps its size
+        ({"markerUnits": "userSpaceOnUse"}, Scale(2), False),
+        ({"markerUnits": "userSpaceOnUse"}, Translate(3, 4), True),
+    ],
+)
+def test_a_shape_with_markers_absorbs_what_the_marker_survives(
+    marker_attrs: dict[str, str],
+    transformation: TransformFunction,
+    *,
+    absorbed: bool,
+) -> None:
+    marker = Marker(id="m", **marker_attrs)  # type: ignore[arg-type]
     polyline = Polyline(
         points=[Point(0, 0), Point(10, 10)],
         marker_end=marker.get_func_iri(),
-        transform=[Scale(2)],
+        transform=[transformation],
     )
     Svg().add_children(Defs().add_child(marker), polyline)
 
     polyline.reify()
 
-    assert polyline.transform == [Scale(2)]
+    assert (polyline.transform is None) == absorbed
 
 
 def test_a_percentage_length_blocks_reification() -> None:

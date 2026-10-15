@@ -354,6 +354,15 @@ class PercentageDefaults:
     """
 
 
+class Markable:
+    """The element's vertices can carry markers.
+
+    Every shape can in SVG 2, not only the ones made of explicit points. A
+    marker is placed in user space and oriented along the outline, so what
+    a shape with markers can absorb depends on the marker.
+    """
+
+
 class ImplicitlyOrientedShape:
     """The element's outline is traversed in a direction fixed by the spec.
 
@@ -1521,7 +1530,9 @@ def geometry_capability(
         # by a factor reification knows
         capability &= TRANSLATION
 
-    if _is_stroked(element, scope):
+    if isinstance(element, StrokeWidthScaled) and _is_stroked(
+        element, scope
+    ):
         capability &= SIMILARITY
 
         if (
