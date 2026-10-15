@@ -269,6 +269,14 @@ class Animation:
     """
 
 
+class Descriptive:
+    """The element describes the element it sits in.
+
+    A `title` is the tooltip of its parent and a `desc` its description, so
+    moving one somewhere else describes something else.
+    """
+
+
 class Stylesheet:
     """The element carries CSS that can restyle anything in the document.
 
