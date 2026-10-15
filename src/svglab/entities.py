@@ -1932,6 +1932,79 @@ def _is_outermost_viewport(element: Element, /) -> bool:
     )
 
 
+def _css_box(svg: Element, /) -> tuple[float, float] | None:
+    """Measure the box of the outermost svg, in pixels.
+
+    Returns:
+        The width and height, or `None` if either is left out or given as
+        a fraction of something outside the document.
+
+    """
+    width = _attr_or_default(svg, "width")
+    height = _attr_or_default(svg, "height")
+
+    if not (isinstance(width, Length) and isinstance(height, Length)):
+        return None
+
+    try:
+        return float(width), float(height)
+    except SvgUnitConversionError:
+        return None
+
+
+_ALIGNMENT: Final = {"Min": 0.0, "Mid": 0.5, "Max": 1.0}
+
+
+def _viewbox_mapping(svg: Element, /) -> Matrix | None:
+    """Work out how the outermost svg maps user units onto its pixels.
+
+    A transformation on the outermost svg is a CSS transformation of its
+    box, applied in pixels after the `viewBox` has been fitted into the
+    box; handing it to the content means expressing it in user units, which
+    this mapping translates between.
+
+    Returns:
+        The matrix taking user units to pixels, the identity without a
+        `viewBox`, or `None` if the box the `viewBox` is fitted into is not
+        known.
+
+    """
+    view_box = _attr_or_default(svg, "viewBox")
+
+    if not isinstance(view_box, tuple):
+        return Matrix.identity()
+
+    box = _css_box(svg)
+
+    if box is None:
+        return None
+
+    min_x, min_y, view_width, view_height = cast(
+        "tuple[float, ...]", view_box
+    )
+    width, height = box
+    align, *rest = str(
+        _attr_or_default(svg, "preserveAspectRatio") or "xMidYMid"
+    ).split()
+
+    if align == "none":
+        sx, sy = width / view_width, height / view_height
+        ax = ay = 0.0
+    else:
+        choose = max if rest == ["slice"] else min
+        sx = sy = choose(width / view_width, height / view_height)
+        ax, ay = _ALIGNMENT[align[1:4]], _ALIGNMENT[align[5:8]]
+
+    return Matrix(
+        sx,
+        0,
+        0,
+        sy,
+        ax * (width - view_width * sx) - min_x * sx,
+        ay * (height - view_height * sy) - min_y * sy,
+    )
+
+
 def _pushes_transform_to_children(element: Element, /) -> bool:
     """Check whether the children inherit the element's coordinate system.
 
@@ -2048,8 +2121,13 @@ def _transform_origin(element: Element, /) -> Point | None:
 
         if value.unit == "%":
             # `transform-box` is `view-box` for SVG elements, so a percentage
-            # is of the nearest viewport
-            viewport = _viewport_size(element)
+            # is of the nearest viewport; the outermost svg has a CSS box of
+            # its own, measured in pixels
+            viewport = (
+                _css_box(element)
+                if _is_outermost_viewport(element)
+                else _viewport_size(element)
+            )
 
             if viewport is None:
                 raise SvgTransformOriginError(origin)
@@ -2173,8 +2251,13 @@ def _element_capability(
         What the element may absorb.
 
     """
-    if id(element) in context.frozen or _has_unusable_transform_origin(
-        element
+    if (
+        id(element) in context.frozen
+        or _has_unusable_transform_origin(element)
+        or (
+            _is_outermost_viewport(element)
+            and _viewbox_mapping(element) is None
+        )
     ):
         return NOTHING
 
@@ -2316,6 +2399,15 @@ def _reify_element(
         return element
 
     matrix = compose(element.main_transform)
+    # the outermost svg is transformed in pixels, after its viewBox is
+    # fitted into its box; its content lives in user units
+    mapping = (
+        _viewbox_mapping(element)
+        if _is_outermost_viewport(element)
+        else Matrix.identity()
+    )
+    assert mapping is not None
+    matrix = mapping.inverse() @ matrix @ mapping
     scope = context.scopes[id(element)]
     convertible = _is_convertible_shape(element, context=context)
 
@@ -2376,7 +2468,9 @@ def _reify_element(
             child.main_transform.insert(0, absorbed)
             context.pushed.add(id(child))
 
-    element.main_transform = _normalize_transform(residue)
+    element.main_transform = _normalize_transform(
+        mapping @ residue @ mapping.inverse()
+    )
 
     if element.main_transform and _is_outermost_viewport(element):
         # the residue was worked out about the origin, and an outermost svg
