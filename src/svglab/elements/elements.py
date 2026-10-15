@@ -314,13 +314,17 @@ def _ellipse_to_path_data(
         A `PathData` instance representing the ellipse. It starts at the
         point `(cx + rx, cy)` and runs in the positive angle direction, the
         way the specification says the outline of an ellipse is drawn, so a
-        dash pattern falls where it did on the ellipse.
+        dash pattern falls where it did on the ellipse. An ellipse without a
+        radius is not rendered, and neither is its path.
 
     References:
         https://stackoverflow.com/a/10477334
         https://www.w3.org/TR/SVG11/shapes.html#EllipseElement
 
     """
+    if not rx or not ry:
+        return PathData()
+
     return (
         PathData()
         .move_to(Point(cx + rx, cy))
@@ -550,10 +554,13 @@ class Ellipse(
     def to_path_data(self) -> PathData:
         cx = _length_or_zero(self.cx)
         cy = _length_or_zero(self.cy)
-        rx = _length_or_zero(self.rx)
-        ry = _length_or_zero(self.ry)
+        # a radius left out follows the other, as SVG 2 has it
+        rx = self.rx if self.rx is not None else self.ry
+        ry = self.ry if self.ry is not None else self.rx
 
-        return _ellipse_to_path_data(cx=cx, cy=cy, rx=rx, ry=ry)
+        return _ellipse_to_path_data(
+            cx=cx, cy=cy, rx=_length_or_zero(rx), ry=_length_or_zero(ry)
+        )
 
     @override
     def to_path(self) -> Path:
@@ -1229,6 +1236,10 @@ class Rect(
             case Length(), Length():
                 rx = self.rx
                 ry = self.ry
+
+        if not width or not height:
+            # a rect without an extent is not rendered
+            return PathData()
 
         # the specification requires clamping the radii to half the side
         rx = min(rx, width / 2, key=float)
