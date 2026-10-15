@@ -3,13 +3,16 @@
 import pytest
 
 from svglab import (
+    Color,
     Element,
+    G,
     Length,
     RawText,
     Rect,
     Scale,
     Style,
     Svg,
+    Text,
     Translate,
 )
 from svglab.reify import style_declarations
@@ -59,21 +62,21 @@ def test_a_style_that_decides_the_geometry_stops_reification(
     "style",
     [
         "stroke-width: 3",
-        "font-size: 12px",
-        "letter-spacing: 2px",
-        "word-spacing: 4px",
-        "kerning: 1",
         "stroke-dasharray: 4 2",
-        "stroke-dashoffset: 2",
-        "marker-end: url(#m)",
-        "vector-effect: non-scaling-stroke",
+        "stroke-dasharray: 4 2; stroke-dashoffset: 2",
     ],
 )
-def test_a_magnitude_in_a_style_leaves_only_a_move(style: str) -> None:
+def test_a_stroke_magnitude_in_a_style_leaves_only_a_move(
+    style: str,
+) -> None:
     # reification cannot resize what it cannot rewrite, so it does not resize
     # the geometry either
-    scaled = _rect(style=style, transform=[Scale(2)])
-    moved = _rect(style=style, transform=[Translate(5, 5)])
+    scaled = _rect(
+        stroke=Color("black"), style=style, transform=[Scale(2)]
+    )
+    moved = _rect(
+        stroke=Color("black"), style=style, transform=[Translate(5, 5)]
+    )
     _svg(scaled, moved)
 
     scaled.reify()
@@ -84,6 +87,72 @@ def test_a_magnitude_in_a_style_leaves_only_a_move(style: str) -> None:
 
     assert moved.transform is None
     assert moved.x == L(15)
+
+
+@pytest.mark.parametrize(
+    "style",
+    [
+        "font-size: 12px",
+        "font: italic 12px serif",
+        "letter-spacing: 2px",
+        "word-spacing: 4px",
+        "kerning: 1",
+    ],
+)
+def test_a_font_magnitude_in_a_style_leaves_only_a_move(
+    style: str,
+) -> None:
+    scaled = Text(
+        x=[L(10)],
+        y=[L(20)],
+        font_size=L(12),
+        style=style,
+        transform=[Scale(2)],
+    )
+    moved = Text(
+        x=[L(10)],
+        y=[L(20)],
+        font_size=L(12),
+        style=style,
+        transform=[Translate(5, 5)],
+    )
+    _svg(scaled, moved)
+
+    scaled.reify()
+    moved.reify()
+
+    assert scaled.transform == [Scale(2)]
+    assert scaled.font_size == L(12)
+
+    assert moved.transform is None
+    assert moved.x == [L(15)]
+
+
+def test_a_magnitude_in_a_style_the_element_does_not_use_is_harmless() -> (
+    None
+):
+    # a rect has no glyphs to size and no stroke to widen
+    rect = _rect(
+        style="font-size: 12px; stroke-width: 3", transform=[Scale(2)]
+    )
+    _svg(rect)
+
+    rect.reify()
+
+    assert rect.transform is None
+    assert rect.width == L(80)
+
+
+def test_a_magnitude_in_an_ancestor_style_is_read_too() -> None:
+    # the stroke width the rect inherits is written in a style, which cannot
+    # be resized any more than the rect's own would be
+    rect = _rect(stroke=Color("black"), transform=[Scale(2)])
+    _svg(G(style="stroke-width: 3").add_child(rect))
+
+    rect.reify()
+
+    assert rect.transform == [Scale(2)]
+    assert rect.stroke_width is None
 
 
 def test_an_ordinary_style_does_not_stop_reification() -> None:
