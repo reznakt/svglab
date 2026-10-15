@@ -41,6 +41,7 @@ from svglab.graphics import (
 from svglab.models import Attr
 from svglab.reify import (
     Animation,
+    Descriptive,
     FontSizeScaled,
     Markable,
     PercentageDefaults,
@@ -231,7 +232,7 @@ class ContainerElement(
     """
 
 
-class DescriptiveElement(RenderedIndirectly, Element):
+class DescriptiveElement(Descriptive, RenderedIndirectly, Element):
     """A descriptive element.
 
     From the SVG 1.1 specification:
