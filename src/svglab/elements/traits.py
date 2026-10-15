@@ -39,6 +39,7 @@ from svglab.models import Attr
 from svglab.reify import (
     Animation,
     FontSizeScaled,
+    Markable,
     PercentageDefaults,
     RenderedIndirectly,
     SimilarityGeometry,
@@ -107,9 +108,7 @@ class _GraphicalOperations(Element):
         )
 
 
-class GraphicsElement(
-    _GraphicalOperations, GraphicalEventsAttrs, StrokeWidthScaled, Element
-):
+class GraphicsElement(_GraphicalOperations, GraphicalEventsAttrs, Element):
     """A graphics element.
 
     From the SVG 1.1 specification:
@@ -118,7 +117,7 @@ class GraphicsElement(
     """
 
 
-class Shape(PathLengthAttr, GraphicsElement):
+class Shape(PathLengthAttr, Markable, StrokeWidthScaled, GraphicsElement):
     """A shape.
 
     From the SVG 1.1 specification:
@@ -290,6 +289,7 @@ class TextContentElement(
     UniformlyScalableGeometry,
     TransformInheritedByChildren,
     FontSizeScaled,
+    StrokeWidthScaled,
     GraphicsElement,
 ):
     """A text content element.
