@@ -2108,11 +2108,14 @@ def _element_capability(
     *,
     context: _Context,
     children: Mapping[int, Capability],
+    as_path: bool,
 ) -> Capability:
     """Work out how much of a transformation an element can take on.
 
     `children` holds the capability of every element below this one, so that
     the whole tree is worked out from the leaves upwards in a single pass.
+    `as_path` says whether a basic shape is judged as the path it would be
+    converted into.
 
     Returns:
         What the element may absorb.
@@ -2157,11 +2160,7 @@ def _element_capability(
         return capability
 
     capability = (
-        geometry_capability(
-            element,
-            scope=scope,
-            as_path=_is_convertible_shape(element, context=context),
-        )
+        geometry_capability(element, scope=scope, as_path=as_path)
         & _reference_capability(element, context=context, scope=scope)
         & context.stylesheet
     )
@@ -2210,7 +2209,10 @@ def _capabilities(
     # reversing it puts every child before its parent
     for element in reversed(order):
         capabilities[id(element)] = _element_capability(
-            element, context=context, children=capabilities
+            element,
+            context=context,
+            children=capabilities,
+            as_path=_is_convertible_shape(element, context=context),
         )
 
     return capabilities
@@ -2261,19 +2263,21 @@ def _reify_element(
 
     matrix = compose(element.main_transform)
     scope = context.scopes[id(element)]
-    convertible = as_descendant and _is_convertible_shape(
-        element, context=context
-    )
-    capability = (
-        context.capabilities[id(element)]
-        if convertible
-        or not _is_convertible_shape(element, context=context)
+    convertible = _is_convertible_shape(element, context=context)
+
+    if convertible and not as_descendant:
         # the element reification was called on keeps its type, so it is
         # judged as the shape it is rather than the path it could become
-        else _element_capability(
-            element, context=context, children=context.capabilities
+        convertible = False
+        capability = _element_capability(
+            element,
+            context=context,
+            children=context.capabilities,
+            as_path=False,
         )
-    )
+    else:
+        capability = context.capabilities[id(element)]
+
     residue, absorbed = split(matrix, capability)
 
     if absorbed == identity:
