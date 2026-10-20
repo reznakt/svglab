@@ -53,7 +53,7 @@ def _get_parser(*, grammar: LiteralString) -> lark.Lark:
     return lark.Lark.open(
         grammar_filename=str(_get_grammar_path(grammar)),
         rel_to=None,
-        cache=True,
+        cache=False,
         maybe_placeholders=False,
         ordered_sets=False,
         parser="lalr",
