@@ -59,7 +59,9 @@ jobs:
       - name: Locate the interpreter
         if: matrix.python.interpreter && runner.os != 'Linux'
         shell: bash
-        run: echo "INTERPRETER=$(uv python find)" >> "$GITHUB_ENV"
+        run: |
+          uv python install "$UV_PYTHON"
+          echo "INTERPRETER=$(uv python find "$UV_PYTHON")" >> "$GITHUB_ENV"
 
       - uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
         with:
