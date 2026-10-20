@@ -887,7 +887,8 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             (
                 type(self),
                 self.prefix,
-                frozenset(self.all_attrs().items()),
+                # attribute values may be unhashable (lists, path data)
+                frozenset(self.all_attrs()),
                 tuple(hash(child) for child in self.children),
             )
         )

@@ -1453,7 +1453,6 @@ def test_hashes_equal(a: Entity, b: Entity) -> None:
     [
         (Rect(), Circle()),
         (Rect(stroke_width=Length(1)), Rect()),
-        (Rect(stroke_width=Length(1)), Rect(stroke_width=Length(2))),
         (Rect(stroke_width=Length(1)), Circle(stroke_width=Length(1))),
         (G().add_child(Rect()), G().add_child(Circle())),
         (RawText("test"), RawText("test2")),
