@@ -552,11 +552,11 @@ class ImageRenderingAttr(_Attr):
 
 
 class In2Attr(_Attr):
-    in2: Attr[Paint | FilterPrimitiveReference | Unparsed] = None
+    in2: Attr[FilterPrimitiveReference] = None
 
 
 class InAttr(_Attr):
-    in_: Attr[Paint | FilterPrimitiveReference | Unparsed] = None
+    in_: Attr[FilterPrimitiveReference] = None
 
 
 class InterceptAttr(_Attr):
