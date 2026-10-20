@@ -21,6 +21,7 @@ from collections.abc import Generator, Mapping
 import bs4
 import pydantic
 from typing_extensions import (
+    ClassVar,
     Final,
     Literal,
     Self,
@@ -724,7 +725,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
     ```
     """
 
-    model_config = pydantic.ConfigDict(
+    model_config: ClassVar[pydantic.ConfigDict] = pydantic.ConfigDict(
         extra="allow",
         alias_generator=pydantic.AliasGenerator(
             validation_alias=lambda name: pydantic.AliasChoices(

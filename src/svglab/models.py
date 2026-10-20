@@ -10,6 +10,7 @@ import pydantic
 from typing_extensions import (
     TYPE_CHECKING,
     Annotated,
+    ClassVar,
     Final,
     TypeAlias,
     TypeVar,
@@ -228,7 +229,7 @@ Tuple: TypeAlias = Annotated[
 class BaseModel(pydantic.BaseModel):
     """Pydantic BaseModel with sane defaults and a few extra tweaks."""
 
-    model_config = pydantic.ConfigDict(
+    model_config: ClassVar[pydantic.ConfigDict] = pydantic.ConfigDict(
         allow_inf_nan=False,
         defer_build=True,
         extra="forbid",
