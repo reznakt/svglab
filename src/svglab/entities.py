@@ -703,6 +703,10 @@ class Entity(BaseModel, metaclass=abc.ABCMeta):
 
     @override
     def __delattr__(self, name: str) -> None:
+        if name in type(self).model_fields:
+            setattr(self, name, None)
+            return
+
         super().__delattr__(name)
         self.__pydantic_fields_set__.discard(name)
 
