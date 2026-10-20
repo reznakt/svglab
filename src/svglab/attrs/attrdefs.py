@@ -384,7 +384,7 @@ class FilterUnitsAttr(_Attr):
 
 class FloodColorAttr(_Attr):
     flood_color: Attr[
-        Literal["currentColor"] | Inherit | IccColor | Color
+        Literal["currentColor"] | Inherit | Color | IccColor
     ] = None
 
 
@@ -1070,7 +1070,7 @@ class StitchTilesAttr(_Attr):
 
 class StopColorAttr(_Attr):
     stop_color: Attr[
-        Literal["currentColor"] | Inherit | IccColor | Color
+        Literal["currentColor"] | Inherit | Color | IccColor
     ] = None
 
 
