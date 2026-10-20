@@ -1379,9 +1379,6 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
     def __references_element_in(self, ids: frozenset[str]) -> bool:
         for attr_name in _REFERENCE_ATTR_NAMES:
-            if not hasattr(self, attr_name):
-                continue
-
             attr = self.__get_attr_or_default(attr_name)
 
             if not (isinstance(attr, Iri) and attr.is_local):
