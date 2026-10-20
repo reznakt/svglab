@@ -142,12 +142,15 @@ class FuncIri(Iri):
     @classmethod
     @override
     def from_str(cls, iri: str, /) -> Self:
-        if not iri.startswith("url(") or not iri.endswith(")"):
+        if not iri.lower().startswith("url(") or not iri.endswith(")"):
             msg = f"Invalid FuncIri: {iri}"
             raise ValueError(msg)
 
         # Remove the url() part
         iri = iri[4:-1].strip()
+
+        if len(iri) > 1 and iri[0] == iri[-1] and iri[0] in "'\"":
+            iri = iri[1:-1]
 
         return super().from_str(iri)
 
