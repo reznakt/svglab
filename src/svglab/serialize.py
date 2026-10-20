@@ -77,7 +77,7 @@ class PrecisionInterval:
     start: Annotated[float, pydantic.Field(ge=0)]
     """The start (inclusive) of this interval."""
 
-    end: Annotated[float, pydantic.Field(ge=0)]
+    end: Annotated[float, pydantic.Field(ge=0, allow_inf_nan=True)]
     """The end (exclusive) of this interval."""
 
     precision: _Precision

@@ -35,6 +35,7 @@ Attr: TypeAlias = _T_co | None
 
 
 DATACLASS_CONFIG: Final = pydantic.ConfigDict(
+    allow_inf_nan=False,
     defer_build=True,
     extra="forbid",
     strict=True,
