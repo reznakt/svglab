@@ -461,8 +461,9 @@ class Formatter:
             )
         )
 
-    def __enter__(self) -> None:
+    def __enter__(self) -> Self:
         _formatters.set((*_formatters.get(), self))
+        return self
 
     def __exit__(
         self,
