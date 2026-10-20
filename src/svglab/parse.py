@@ -37,7 +37,10 @@ _ELEMENT_NAME_TO_CLASS: Final = {
 
 _BS_TO_TEXT_ELEMENT: Final[
     dict[type[bs4.NavigableString], type[CData | Comment | RawText]]
-] = {bs4.CData: CData, bs4.Comment: Comment, bs4.NavigableString: RawText}
+] = {bs4.CData: CData, bs4.Comment: Comment} | dict.fromkeys(
+    (bs4.NavigableString, bs4.Stylesheet, bs4.Script, bs4.TemplateString),
+    RawText,
+)
 
 
 def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
