@@ -101,6 +101,9 @@ class Iri(CustomSerializable):
             ValueError: If the IRI is invalid.
 
         """
+        if iri.startswith("#"):
+            return cls(fragment=iri[1:])
+
         try:
             parsed = rfc3986.iri_reference(iri)
 
