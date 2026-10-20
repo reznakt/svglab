@@ -47,6 +47,7 @@ from svglab.models import DATACLASS_CONFIG, dataclass
 from svglab.protocols import CustomSerializable, SupportsFloatOrIndex
 from svglab.serialize import (
     get_current_formatter,
+    serialize,
     serialize_path_command,
     serialize_point,
 )
@@ -1021,7 +1022,7 @@ class PathData(  # noqa: PLW1641
                 case ArcTo(radii, angle, large, sweep, end):
                     yield serialize_path_command(
                         pt(radii),
-                        angle,
+                        serialize(angle, precision_group="angle"),
                         large,
                         sweep,
                         pt(end),
