@@ -197,7 +197,7 @@ def parse_svg(
     """
     with contextlib.ExitStack() as stack:
         if isinstance(markup, pathlib.Path):
-            markup = stack.push(markup.open())
+            markup = stack.enter_context(markup.open("rb"))
 
         if isinstance(markup, SupportsRead):
             markup = markup.read()

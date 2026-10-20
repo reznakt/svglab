@@ -1343,7 +1343,7 @@ class Svg(
             match path_or_file:
                 case str() | os.PathLike() as path:
                     file = stack.enter_context(
-                        pathlib.Path(path).open("w")
+                        pathlib.Path(path).open("w", encoding="utf-8")
                     )
                 case SupportsWrite() as file:
                     pass
