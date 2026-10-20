@@ -93,4 +93,4 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
     """
     match = re.match(r"^([^\(\)]+)\(([^\(\)]+)\)$", attr)
 
-    return None if match is None else (match[1], match[2])
+    return None if match is None else (match[1], match[2].strip())
