@@ -467,9 +467,10 @@ class Matrix(_TransformFunctionBase):
 
     @override
     def serialize(self) -> str:
-        return serialize_function_call(
-            "matrix", self.a, self.b, self.c, self.d, self.e, self.f
-        )
+        linear = (self.a, self.b, self.c, self.d)
+        scales = serialize(*linear, precision_group="scale")
+
+        return serialize_function_call("matrix", *scales, self.e, self.f)
 
     @override
     def to_matrix(self) -> Matrix:
