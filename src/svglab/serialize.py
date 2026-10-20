@@ -512,7 +512,7 @@ def get_current_formatter() -> Formatter:
 
 
 def set_formatter(formatter: Formatter, /) -> None:
-    """Set the current formatter."""
+    """Set the formatter for the current thread or asyncio task."""
     _formatters.set((*_formatters.get()[:-1], formatter))
 
 
