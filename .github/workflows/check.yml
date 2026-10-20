@@ -10,7 +10,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.resolution == 'latest' }}
+    continue-on-error: ${{ matrix.resolution == 'highest' }}
 
     strategy:
       fail-fast: false
