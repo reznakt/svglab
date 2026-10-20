@@ -34,9 +34,10 @@ from svglab.utiltypes import LengthUnit
 _convert: Final[Converter[Length, LengthUnit]] = make_converter(
     conversion_table={
         ("in", "cm"): 2.54,
+        ("in", "px"): 96,
         ("cm", "mm"): 10,
-        ("pc", "px"): 15,
-        ("pt", "px"): 1.25,
+        ("pc", "px"): 16,
+        ("pt", "px"): 4 / 3,
         (None, "px"): 1,
         ("mm", "Q"): 4,
     }
