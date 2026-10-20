@@ -59,6 +59,8 @@ jobs:
 
       - name: Run tests
         run: just test --cov-branch --cov-report=xml --junitxml=junit.xml
+        env:
+          UV_NO_SYNC: "1" # keep the dependency resolution applied above
 
       - name: Upload coverage results to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
