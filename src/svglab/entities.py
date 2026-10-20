@@ -1079,7 +1079,8 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         else:
             self.__children.insert(index, child)
 
-        child.parent = self
+        # the parent is always valid, so skip pydantic's slow validation
+        object.__setattr__(child, "parent", self)
 
         return self
 
@@ -1141,14 +1142,14 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
         """
         child = self.__children.pop(index)
-        child.parent = None
+        object.__setattr__(child, "parent", None)
 
         return child
 
     def clear_children(self) -> None:
         """Remove all children from the element."""
         for child in self.__children:
-            child.parent = None
+            object.__setattr__(child, "parent", None)
 
         self.__children.clear()
 
