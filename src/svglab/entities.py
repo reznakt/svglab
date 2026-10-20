@@ -870,6 +870,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
     def _eq(self, other: Entity) -> bool:
         return (
             isinstance(other, Element)
+            and element_name(self) == element_name(other)
             and self.prefix == other.prefix
             and self.all_attrs() == other.all_attrs()
             and self.num_children == other.num_children
