@@ -108,7 +108,7 @@ class Color(pydantic_extra_types.color.Color, CustomSerializable):
         ):
             result = result.upper()
 
-        if result.endswith(")"):  # just to make this a bit faster
+        if not verbatim and result.endswith(")"):
             name_and_args = extract_function_name_and_args(result)
             assert name_and_args is not None
 
