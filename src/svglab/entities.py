@@ -13,6 +13,7 @@ from __future__ import annotations
 import abc
 import collections
 import itertools
+import re
 import reprlib
 import sys
 import warnings
@@ -1884,7 +1885,7 @@ class CData(CharacterData):
 
     @override
     def to_beautifulsoup_object(self) -> bs4.CData:
-        return bs4.CData(self.content)
+        return bs4.CData(self.content.replace("]]>", "]]]]><![CDATA[>"))
 
 
 @final
@@ -1912,7 +1913,7 @@ class Comment(CharacterData):
 
     @override
     def to_beautifulsoup_object(self) -> bs4.Comment:
-        return bs4.Comment(self.content)
+        return bs4.Comment(re.sub(r"-(?=-|$)", "- ", self.content))
 
 
 @final
