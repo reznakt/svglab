@@ -428,9 +428,6 @@ def visible_mask(  # noqa: D103
     element_copy, svg = _copy_tree(element)
     assert isinstance(svg, Element)
 
-    for t in svg.find_all():
-        t.visibility = "visible"
-
     with_element: _ImageArray = np.array(
         svg.render(width=width, height=height)
     )
