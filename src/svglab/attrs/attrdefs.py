@@ -419,7 +419,6 @@ class FontStretchAttr(_Attr):
     font_stretch: Attr[
         All
         | Literal[
-            "condensed ",
             "condensed",
             "expanded",
             "extra-condensed",
