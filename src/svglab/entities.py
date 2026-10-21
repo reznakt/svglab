@@ -952,7 +952,9 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         """Iterate over the descendants of the element.
 
         The descendants of the element are the children and their children,
-        and so on. The descendants are returned in a breath-first order.
+        and so on. The descendants are returned in document order (the order
+        of their start tags in the markup: an element before its descendants,
+        siblings in the order written).
 
         Yields:
             The descendants of the element.
@@ -965,7 +967,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             yield child
 
             if isinstance(child, Element):
-                queue.extend(child.children)
+                queue.extendleft(reversed(list(child.children)))
 
     @property
     def next_siblings(self) -> Generator[Entity]:
