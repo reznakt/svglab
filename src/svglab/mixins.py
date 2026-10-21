@@ -157,7 +157,6 @@ class FloatMulDiv(
 class AddSub(
     SubWithNeg[_SupportsNegT_contra],
     RAddWithAdd[_SupportsNegT_contra],
-    RSubWithSub[_SupportsNegT_contra],
     metaclass=abc.ABCMeta,
 ):
     """Implement addition and subtraction as effortlessly as possible."""
