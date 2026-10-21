@@ -298,6 +298,9 @@ def _ellipse_to_path_data(
         https://aleen42.gitbooks.io/wiki/content/Programming/JavaScript/webgl/SVG/convert_shapes_to_path/convert_shapes_to_path.html
 
     """
+    if rx.value <= 0 or ry.value <= 0:
+        return PathData()  # a non-positive radius disables rendering
+
     return (
         PathData()
         .move_to(Point(cx - rx, cy))
@@ -1155,6 +1158,9 @@ class Rect(
         y = _length_or_zero(self.y)
         width = _length_or_zero(self.width)
         height = _length_or_zero(self.height)
+
+        if width.value <= 0 or height.value <= 0:
+            return PathData()  # a non-positive size disables rendering
 
         match self.rx, self.ry:
             case None, None:
