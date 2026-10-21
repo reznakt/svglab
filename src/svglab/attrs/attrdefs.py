@@ -31,6 +31,7 @@ from svglab.attrs.typedefs import (
     Inherit,
     Integer,
     Iri,
+    KeySplines,
     LanguageCodes,
     LanguageId,
     LanguageTag,
@@ -43,6 +44,7 @@ from svglab.attrs.typedefs import (
     ListOfNumbers,
     ListOfPoints,
     ListOfStrings,
+    ListOfValues,
     MediaDescriptors,
     Miterlimit,
     Name,
@@ -56,6 +58,7 @@ from svglab.attrs.typedefs import (
     Percentage,
     ProfileName,
     RelativeSize,
+    SemicolonListOfNumbers,
     Shape,
     ShapeRendering,
     TextRendering,
@@ -596,15 +599,15 @@ class KerningAttr(_Attr):
 
 
 class KeyPointsAttr(_Attr):
-    keyPoints: Attr[ListOfNumbers] = None
+    keyPoints: Attr[SemicolonListOfNumbers] = None
 
 
 class KeySplinesAttr(_Attr):
-    keySplines: Attr[Unparsed] = None
+    keySplines: Attr[KeySplines] = None
 
 
 class KeyTimesAttr(_Attr):
-    keyTimes: Attr[Unparsed] = None
+    keyTimes: Attr[SemicolonListOfNumbers] = None
 
 
 class LangAttr(_Attr):
@@ -1322,7 +1325,7 @@ class VMathematicalAttr(_Attr):
 
 
 class ValuesListAttr(_Attr):
-    values: Attr[Unparsed] = None
+    values: Attr[ListOfValues] = None
 
 
 class ValuesListOfNumbersAttr(_Attr):

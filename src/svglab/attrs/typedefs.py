@@ -10,7 +10,7 @@ from svglab.attrparse.length import LengthType
 from svglab.attrparse.path_data import PathDataType
 from svglab.attrparse.points import PointsType
 from svglab.attrparse.transform import TransformType
-from svglab.models import List, Tuple
+from svglab.models import List, SemicolonList, Tuple
 from svglab.utils.mathutils import clamp
 
 
@@ -26,10 +26,8 @@ None_: TypeAlias = Literal["none"]
 
 # basic types that are not parsed
 AdvisoryTitle: TypeAlias = Unparsed
-BeginValueList: TypeAlias = Unparsed
 ClockValue: TypeAlias = Unparsed
 ContentType: TypeAlias = Unparsed  # MIME type
-EndValueList: TypeAlias = Unparsed
 FamilyName: TypeAlias = Unparsed
 FilterPrimitiveReference: TypeAlias = Unparsed
 GenericFamily: TypeAlias = Unparsed
@@ -80,6 +78,7 @@ TransformList: TypeAlias = TransformType
 
 
 # composite types
+BeginValueList: TypeAlias = SemicolonList[Unparsed]
 Coordinate: TypeAlias = Length
 CursorValue: TypeAlias = (
     FuncIri
@@ -102,6 +101,10 @@ CursorValue: TypeAlias = (
         "help",
     ]
 )
+EndValueList: TypeAlias = SemicolonList[Unparsed]
+KeySplines: TypeAlias = SemicolonList[
+    Tuple[Number, Number, Number, Number]
+]
 ListOfCoordinates: TypeAlias = List[Coordinate]
 ListOfExtensions: TypeAlias = List[Iri]
 ListOfFeatures: TypeAlias = List[Unparsed]
@@ -109,6 +112,7 @@ ListOfLengths: TypeAlias = List[Length]
 ListOfNames: TypeAlias = List[Name]
 ListOfNumbers: TypeAlias = List[Number]
 ListOfStrings: TypeAlias = List[Anything]
+ListOfValues: TypeAlias = SemicolonList[Unparsed]
 Miterlimit: TypeAlias = Annotated[Number, pydantic.Field(ge=1)]
 NumericValue: TypeAlias = Number
 NumberOptionalNumber: TypeAlias = Number | Tuple[Number, Number]
@@ -124,6 +128,7 @@ Paint: TypeAlias = (
     | FuncIri
 )
 Percentage: TypeAlias = Length
+SemicolonListOfNumbers: TypeAlias = SemicolonList[Number]
 
 _TransformOriginDirection: TypeAlias = Literal[
     "left", "center", "right", "top", "bottom"

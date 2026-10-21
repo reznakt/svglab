@@ -167,11 +167,56 @@ def _get_validator(
     return pydantic.BeforeValidator(validator)
 
 
+def _parse_semicolon_list(text: str, /) -> list[str]:
+    """Parse a string into a list of strings.
+
+    Items are separated by semicolons. Whitespace around the separators is
+    ignored and empty items are dropped.
+
+    Args:
+        text: The string to parse.
+
+    Returns:
+        A list of strings.
+
+    Examples:
+        >>> _parse_semicolon_list("0;0.5;1")
+        ['0', '0.5', '1']
+        >>> _parse_semicolon_list("0s; click; 2s")
+        ['0s', 'click', '2s']
+        >>> _parse_semicolon_list("0;")
+        ['0']
+        >>> _parse_semicolon_list("")
+        []
+
+    """
+    return [item for part in text.split(";") if (item := part.strip())]
+
+
+class SemicolonSeparated(list[_T]):
+    """A list whose items are separated by semicolons when serialized.
+
+    SVG separates the items of the animation attributes `begin`, `end`,
+    `values`, `keyTimes`, `keySplines` and `keyPoints` with semicolons,
+    whatever separator the formatter uses for other lists.
+    """
+
+
 List: TypeAlias = Annotated[
     list[_T],
     _get_validator(functools.partial(_parse_list, collection=list)),
 ]
 """Pydantic field for a list of strings. Uses `_parse_list` as a validator."""
+
+SemicolonList: TypeAlias = Annotated[
+    list[_T],
+    _get_validator(_parse_semicolon_list),
+    pydantic.AfterValidator(SemicolonSeparated),
+]
+"""
+Pydantic field for a semicolon-separated list. Uses `_parse_semicolon_list`
+as a validator and stores the items in a `SemicolonSeparated` list.
+"""
 
 Tuple: TypeAlias = Annotated[
     tuple[*_Ts],
