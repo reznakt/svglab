@@ -3,7 +3,7 @@ name = "svglab"
 version = "0.0.0"
 description = "The Python library for parsing, manipulating, and optimizing SVG files."
 readme = "README.md"
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Tomáš Režňák", email = "tomas.reznak@proton.me" }]
 keywords = [
@@ -18,7 +18,6 @@ classifiers = [
   "Development Status :: 3 - Alpha",
   "Framework :: Pydantic :: 2",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
@@ -47,6 +46,7 @@ dependencies = [
 ]
 
 [project.urls]
+"Documentation" = "https://svglab.rocks/"
 "GitHub" = "https://github.com/reznakt/svglab"
 "Issues" = "https://github.com/reznakt/svglab/issues"
 
