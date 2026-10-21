@@ -1213,7 +1213,7 @@ class TextAnchorAttr(_Attr):
 class TextDecorationAttr(_Attr):
     text_decoration: Attr[
         None_
-        | Literal["underline", "overline", "line-through", "blink"]
+        | List[Literal["underline", "overline", "line-through", "blink"]]
         | Inherit
     ] = None
 
