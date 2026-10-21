@@ -722,7 +722,6 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
     `color`) and non-standard user-defined attributes.
 
     Example: `<rect id="foo" class="bar" color="red" />`
-    ```
     """
 
     model_config: ClassVar[pydantic.ConfigDict] = pydantic.ConfigDict(

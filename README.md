@@ -38,7 +38,7 @@
 - Highly configurable formatting options:
     - indentation level
     - maximum precision for floating-point numbers
-    - color mode (`rgb`, `rgba`, `hsl`, `hex`, `named`)
+    - color mode (`named`, `hex-short`, `hex-long`, `rgb`, `hsl`, `auto`, `original`)
     - relative/absolute path commands
     - scientific notation for small/large numbers
     - and many more...
