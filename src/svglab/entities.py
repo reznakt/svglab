@@ -1052,7 +1052,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
         Raises:
             ValueError: If the child is the same as the element itself or
-                if the child already has a parent.
+                its ancestor, or if the child already has a parent.
 
         """
         if child is self:
@@ -1062,6 +1062,14 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             raise ValueError(
                 "Cannot add a child that already has a parent."
             )
+
+        # only an element with children can be an ancestor of this one
+        if (
+            isinstance(child, Element)
+            and child.has_children()
+            and self.get_root() is child
+        ):
+            raise ValueError("Cannot add an ancestor as a child.")
 
         if index is None:
             self.__children.append(child)
