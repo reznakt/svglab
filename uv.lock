@@ -2631,7 +2631,7 @@ requires-dist = [
     { name = "lxml", specifier = ">=5.1.0,!=6.0.0,!=6.0.1" },
     { name = "more-itertools", specifier = ">=9.0.0" },
     { name = "numpy", specifier = ">=2.0.0" },
-    { name = "pillow", specifier = ">=9.0.0" },
+    { name = "pillow", specifier = ">=9.2.0" },
     { name = "pydantic", specifier = ">=2.12.0,<3.0.0" },
     { name = "pydantic-extra-types", specifier = ">=2.2.0,<3.0.0" },
     { name = "rfc3986", specifier = ">=1.5.0" },
