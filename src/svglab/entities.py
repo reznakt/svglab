@@ -1,12 +1,4 @@
-"""Abstract base classes for representing common XML entities.
-
-This module defines the following classes:
-- `Entity`: The base class for all XML entities.
-- `Element`: A subclass of `Entity` that represents an XML element.
-- `CharacterData`: A subclass of `Entity` that represents a textual entity.
-- `CData`, `Comment`, `RawText`: Subclasses of `CharacterData` that represent
-    specific types of character data in XML.
-"""
+"""Abstract base classes for representing common XML entities."""
 
 from __future__ import annotations
 
@@ -931,12 +923,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
     @property
     def num_children(self) -> int:
-        """Get the number of children of the element.
-
-        Returns:
-            The number of children of the element.
-
-        """
+        """The number of children of the element."""
         return len(self.__children)
 
     def has_children(self) -> bool:

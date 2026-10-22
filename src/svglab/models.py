@@ -103,7 +103,7 @@ def convert(
         source: The source model to convert.
         target_type: The target model type.
         strict: Whether to use pydantic's strict mode when instantiating the
-                new model.
+            new model.
         deepcopy: Whether to create deep copies of the fields.
 
     Returns:
