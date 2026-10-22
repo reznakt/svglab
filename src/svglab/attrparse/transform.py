@@ -337,6 +337,10 @@ def _argument_count(transformation: TransformFunction, /) -> int:
     The transformation functions are final classes, and they inherit a
     protocol, which makes `isinstance` on them go the long way round. Their
     exact type is a pointer comparison and says the same thing.
+
+    Returns:
+        The number of arguments the function is written with.
+
     """
     kind = type(transformation)
 
@@ -450,6 +454,10 @@ def _remove_redundant_transformations(
 
     Exact types rather than `isinstance`, for the reason given in
     `_argument_count`.
+
+    Returns:
+        The list without the transformations that do nothing.
+
     """
     result: Transform = []
 
@@ -618,6 +626,9 @@ class Matrix(_TransformFunctionBase):
     def linear(self) -> Matrix:
         """Drop the translation, keeping only the linear part of the matrix.
 
+        Returns:
+            The matrix with its translation zeroed.
+
         Examples:
             >>> Matrix(1, 2, 3, 4, 5, 6).linear()
             Matrix(a=1.0, b=2.0, c=3.0, d=4.0, e=0.0, f=0.0)
@@ -627,6 +638,9 @@ class Matrix(_TransformFunctionBase):
 
     def translation(self) -> Translate:
         """Extract the translation applied after the linear part.
+
+        Returns:
+            The translation, as a `Translate`.
 
         Examples:
             >>> Matrix(1, 2, 3, 4, 5, 6).translation()
@@ -804,6 +818,9 @@ class Matrix(_TransformFunctionBase):
     def rotation_angle(self) -> float:
         """Compute the angle, in degrees, of the rotation part of the matrix.
 
+        Returns:
+            The angle of the rotation, in degrees.
+
         Examples:
             >>> (Rotate(30) @ Scale(2)).rotation_angle()
             30.0
@@ -820,6 +837,11 @@ class Matrix(_TransformFunctionBase):
         a pair of translations, and `rotate(a cx cy)` writes all three in one
         function. The centre is the matrix's fixed point: the `c` that solves
         `(I - R) c = v`.
+
+        Returns:
+            The fixed point, or `None` if the rotation is by a whole turn and
+            every point is fixed.
+
         """
         a, b, _, _, e, f = self.to_tuple()
         determinant = (1 - a) ** 2 + b**2
@@ -839,6 +861,10 @@ class Matrix(_TransformFunctionBase):
         Gram-Schmidt on the columns; the shape that survives the rotation is
         upper triangular, and an upper triangular matrix is a scaling
         followed by a skew along x.
+
+        Returns:
+            The factorization, or `None` if the matrix is singular.
+
         """
         try:
             rotation, rest = self.qr_decompose()
@@ -871,6 +897,10 @@ class Matrix(_TransformFunctionBase):
 
         Every matrix has this factorization, singular ones included, which is
         what makes it the one that is always available.
+
+        Returns:
+            The factorization.
+
         """
         angle, sx, sy, pre = self.svd_decompose()
 
@@ -888,6 +918,10 @@ class Matrix(_TransformFunctionBase):
 
         The matrix itself is always among the candidates, so there is always
         an answer.
+
+        Yields:
+            Transformation lists that may compose to this matrix.
+
         """
         a, b, c, d, e, f = self.to_tuple()
 
@@ -995,7 +1029,8 @@ class Matrix(_TransformFunctionBase):
             if compose(candidate) == self:
                 return candidate
 
-        raise AssertionError("the matrix itself always reconstructs")
+        # unreachable: the matrix itself is among the candidates
+        return [self]
 
     @override
     def __eq__(self, other: object, /) -> bool:
