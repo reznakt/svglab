@@ -3,7 +3,7 @@ version: 2
 updates:
   - package-ecosystem: uv
     directory: /
-    versioning-strategy: widen # keep the lower bounds of a library
+    versioning-strategy: increase-if-necessary # keep a lower bound that already admits the update
     schedule:
       interval: monthly
     cooldown:
