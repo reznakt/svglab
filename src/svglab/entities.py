@@ -392,6 +392,10 @@ class Entity(BaseModel, metaclass=abc.ABCMeta):
         along with it. Pydantic only records a copy in `memo` once it is
         complete, so following the parent link would copy the ancestors all
         over again -- and, through their children, the entity itself.
+
+        Returns:
+            The copy.
+
         """
         memo = {} if memo is None else memo
         parent = self.parent
@@ -1557,6 +1561,11 @@ def _resolve_reference(
 
     A reference that resolves to nothing renders as nothing, so reification
     treats it as no reference at all.
+
+    Returns:
+        The element referred to, or `None` if the attribute is not a local
+        reference or nothing in the index has its id.
+
     """
     attr = _attr_or_default(element, attr_name)
 
@@ -1585,6 +1594,10 @@ def _paint_server_attr(
 
     A gradient or pattern takes every attribute it leaves out from the one
     it refers to, which may in turn refer to another.
+
+    Returns:
+        The value of the attribute, or its default.
+
     """
     seen: set[int] = set()
     element: Element | None = target
@@ -1632,6 +1645,10 @@ def _pattern_transform_capability(
     that only turns or stretches the tiling commutes with resizing the
     element about the origin, which is the one resizing that leaves the
     corner of the box where it is. Nothing else is safe.
+
+    Returns:
+        What a shape painted with the pattern may absorb.
+
     """
     pattern_transform = _paint_server_attr(
         target, "patternTransform", index
@@ -1664,6 +1681,10 @@ def _pattern_capability(
 
     Whatever the tile allows is then narrowed by the pattern's own
     `patternTransform`, which the tiling has to keep in step with.
+
+    Returns:
+        What a shape painted with the pattern may absorb.
+
     """
     if (
         _paint_server_attr(target, "patternUnits", index)
@@ -1728,6 +1749,10 @@ def _resource_capability(
     A resource expressed in user space follows nowhere: it is resolved in the
     coordinate system the referencing element renders in, which is exactly
     what reification takes away.
+
+    Returns:
+        What an element referring to the resource may absorb.
+
     """
     match attr_name:
         case "clip-path":
@@ -1757,6 +1782,10 @@ def _reference_capability(
     The paint and the markers are inherited, so they are resolved the way the
     element is rendered -- and where they cannot be resolved, the element is
     held to the worst any paint server or marker in the document could do.
+
+    Returns:
+        What the element may absorb.
+
     """
     capability = AFFINE
 
@@ -1869,6 +1898,11 @@ def _pushes_transform_to_children(element: Element, /) -> bool:
     When they do, a transformation on the element is equivalent to the same
     transformation on each of its children, which is what lets reification
     carry one down the tree to elements that can absorb it.
+
+    Returns:
+        `True` if a transformation on the element may be handed down to
+        its children.
+
     """
     if _attr_or_default(element, "clipPathUnits") == "objectBoundingBox":
         # the content is drawn in the bounding box of whatever the clip path
@@ -1889,6 +1923,11 @@ def _delegates_transform(element: Element, /) -> bool:
     work. The outermost `svg` is in the same position: its `x`, `y`, `width`
     and `height` describe the canvas rather than anything drawn on it, so its
     transformation applies to its content.
+
+    Returns:
+        `True` if the element has nothing of its own to fold a
+        transformation into.
+
     """
     return _pushes_transform_to_children(element) and (
         _is_outermost_viewport(element) or not has_own_geometry(element)
@@ -1912,9 +1951,11 @@ _CSS_INITIAL_ORIGIN: Final = (Length(50, "%"), Length(50, "%"))
 def _transform_origin(element: Element, /) -> Point | None:
     """Resolve the point the element's `transform-origin` turns about.
 
-    Returns `None` when the element has no origin to speak of. The outermost
-    `svg` with a transformation has one even when it says nothing: a CSS box
-    turns about its center.
+    The outermost `svg` with a transformation has one even when it says
+    nothing: a CSS box turns about its center.
+
+    Returns:
+        The origin, or `None` when the element has none to speak of.
 
     Raises:
         SvgTransformOriginError: If the origin has a depth, names a side
@@ -1987,6 +2028,11 @@ def _viewport_size(element: Element, /) -> tuple[float, float] | None:
     that establishes one; for the outermost `svg` it is its own. Its size is
     that of its `viewBox`, or for an `svg` without one, its `width` and
     `height`.
+
+    Returns:
+        The width and height of the viewport, or `None` if they are not
+        known.
+
     """
     start = element if _is_outermost_viewport(element) else element.parent
 
@@ -2027,6 +2073,10 @@ def _has_unusable_transform_origin(element: Element, /) -> bool:
     transformation reified, nor be handed one by its parent. An origin on an
     element with no transformation does nothing at all, and is simply dropped
     when a transformation arrives.
+
+    Returns:
+        `True` if the element's transformation has to stay where it is.
+
     """
     if not element.main_transform:
         return False
@@ -2075,6 +2125,10 @@ def _element_capability(
 
     `children` holds the capability of every element below this one, so that
     the whole tree is worked out from the leaves upwards in a single pass.
+
+    Returns:
+        What the element may absorb.
+
     """
     if id(element) in context.frozen or _has_unusable_transform_origin(
         element
@@ -2149,6 +2203,10 @@ def _capabilities(
     A container can only take on what its children can, so the tree has to be
     read from the bottom up. Doing that once here keeps it linear, and keeps
     the depth of the document out of the call stack.
+
+    Returns:
+        What every element may absorb, by object identity.
+
     """
     order: list[Element] = []
     stack = collections.deque([root])
@@ -2365,6 +2423,11 @@ def _animation_target(
 
     An animation acts on the element it references, or on its parent when it
     references none.
+
+    Returns:
+        The animated element, or `None` for a detached animation that
+        references nothing.
+
     """
     for attr_name in ("href", "xlink:href"):
         target = _resolve_reference(animation, attr_name, index)
@@ -2389,6 +2452,10 @@ def _frozen_elements(
     leaves out, its transformation included, and even an identity
     transformation of its own overrides the inherited one. Both ends of such
     a reference are left as written.
+
+    Returns:
+        The `id()`s of the elements.
+
     """
     frozen: set[int] = set()
 
@@ -2427,6 +2494,10 @@ def _pinned_elements(
     transformation from an ancestor would change what the reference sees, so
     it -- and everything on the way down to it -- is off limits. So is an
     element whose transformation an animation replaces.
+
+    Returns:
+        The `id()`s of the elements.
+
     """
     pinned: set[int] = set()
 
@@ -2445,6 +2516,10 @@ def _referenced_elements(
     An element that something else in the document refers to renders there
     with its own transformation, and one an animation targets has its
     transformation replaced over time.
+
+    Yields:
+        The elements, possibly more than once.
+
     """
     for element in itertools.chain([root], root.find_all()):
         if id(element) in frozen:
@@ -2512,6 +2587,10 @@ def _scopes(
     An element a `use` refers to is also rendered with whatever the `use`
     passes down, so inheritance stops being known at it, for it and for
     everything below it. `feImage` renders what it refers to the same way.
+
+    Returns:
+        The scope of every element, by object identity.
+
     """
     boundaries: set[int] = set()
 
