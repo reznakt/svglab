@@ -283,7 +283,7 @@ def scale_distance_along_a_path_attrs(element: object, by: float) -> None:
         )
 
 
-def _scale(element: object, scale: Scale) -> None:  # noqa: PLR0915
+def _scale(element: object, scale: Scale) -> None:  # ruff: ignore[PLR0915]
     if not is_close(scale.sx, scale.sy):
         raise ValueError("Non-uniform scaling is not supported.")
 
@@ -334,16 +334,16 @@ def _scale(element: object, scale: Scale) -> None:  # noqa: PLR0915
     # these assignments have to be mutually exclusive, because the
     # type checker doesn't know that x being a <number> implies that x is
     # not a <coordinate> and vice versa
-    if isinstance(element, XNumberAttr):  # noqa: SIM114
+    if isinstance(element, XNumberAttr):  # ruff: ignore[SIM114]
         element.x = _scale_attr(element.x, factor)
-    elif isinstance(element, XCoordinateAttr):  # noqa: SIM114
+    elif isinstance(element, XCoordinateAttr):  # ruff: ignore[SIM114]
         element.x = _scale_attr(element.x, factor)
     elif isinstance(element, XListOfCoordinatesAttr):
         element.x = _scale_attr(element.x, factor)
 
-    if isinstance(element, YNumberAttr):  # noqa: SIM114
+    if isinstance(element, YNumberAttr):  # ruff: ignore[SIM114]
         element.y = _scale_attr(element.y, factor)
-    elif isinstance(element, YCoordinateAttr):  # noqa: SIM114
+    elif isinstance(element, YCoordinateAttr):  # ruff: ignore[SIM114]
         element.y = _scale_attr(element.y, factor)
     elif isinstance(element, YListOfCoordinatesAttr):
         element.y = _scale_attr(element.y, factor)
@@ -734,7 +734,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
     # a lambda is faster with pydantic than `list`
     _children: list[Entity] = pydantic.PrivateAttr(
-        default_factory=lambda: []  # noqa: PIE807
+        default_factory=lambda: []  # ruff: ignore[PIE807]
     )
 
     @property
@@ -1626,7 +1626,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
                 child.decompose_transform_origin()
                 child.main_transform.insert(0, transformation)
 
-                child.__reify(  # noqa: SLF001
+                child.__reify(  # ruff: ignore[SLF001]
                     limit=1,
                     recursive=False,
                     remove_transform_list_if_empty=False,
@@ -1778,7 +1778,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
         if recursive:
             for child in self.find_all(recursive=False):
-                child.__reify(  # noqa: SLF001
+                child.__reify(  # ruff: ignore[SLF001]
                     limit=limit,
                     recursive=True,
                     remove_transform_list_if_empty=remove_transform_list_if_empty,

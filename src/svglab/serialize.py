@@ -601,7 +601,7 @@ def _serialize_number(
 
 
 def _serialize_bool(
-    value: bool,  # noqa: FBT001
+    value: bool,  # ruff: ignore[FBT001]
     /,
     *,
     mode: _BoolMode,

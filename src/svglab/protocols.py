@@ -1,6 +1,6 @@
 """Utility protocols for type hinting."""
 
-# ruff: noqa: D101, D102
+# ruff: file-ignore[D101, D102]
 
 from __future__ import annotations
 

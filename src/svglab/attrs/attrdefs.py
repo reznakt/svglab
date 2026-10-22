@@ -1,6 +1,6 @@
 """Definitions of all SVG attributes."""
 
-# ruff: noqa: N815, D101
+# ruff: file-ignore[N815, D101]
 
 import pydantic
 from typing_extensions import Annotated, Literal, TypeAlias

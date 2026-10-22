@@ -611,7 +611,7 @@ def _add_command(
 
 
 @final
-class PathData(  # noqa: PLW1641
+class PathData(  # ruff: ignore[PLW1641]
     MutableSequence[PathCommand],
     CustomModel,
     PointAddSubWithTranslateRMatmul,
@@ -1267,15 +1267,15 @@ class _Transformer(lark.Transformer[object, PathData]):
     vertical_line = VerticalLineTo
     z = ClosePath
 
-    def FLAG(self, value: _Flag) -> bool:  # noqa: N802
+    def FLAG(self, value: _Flag) -> bool:  # ruff: ignore[N802]
         return value == "1"
 
     def arc(
         self,
         radii: Point,
         angle: float,
-        large: bool,  # noqa: FBT001
-        sweep: bool,  # noqa: FBT001
+        large: bool,  # ruff: ignore[FBT001]
+        sweep: bool,  # ruff: ignore[FBT001]
         end: Point,
     ) -> ArcTo:
         return ArcTo(

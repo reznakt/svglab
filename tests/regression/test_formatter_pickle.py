@@ -24,7 +24,7 @@ def _formatter() -> Formatter:
 def test_formatter_round_trips_through_pickle() -> None:
     formatter = _formatter()
 
-    assert pickle.loads(pickle.dumps(formatter)) == formatter  # noqa: S301
+    assert pickle.loads(pickle.dumps(formatter)) == formatter  # ruff: ignore[S301]
 
 
 def test_formatter_repr_shows_the_values() -> None:

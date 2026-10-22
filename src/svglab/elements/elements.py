@@ -7,7 +7,7 @@ The elements are defined as classes, which inherit traits from the `traits`
 module and attributes from the `attrs` package.
 """
 
-# ruff: noqa: D101
+# ruff: file-ignore[D101]
 
 from __future__ import annotations
 

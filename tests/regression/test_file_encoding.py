@@ -39,7 +39,7 @@ def test_save_writes_utf8_regardless_of_the_locale(
         "PYTHONCOERCECLOCALE": "0",
     }
 
-    subprocess.run(  # noqa: S603
+    subprocess.run(  # ruff: ignore[S603]
         [sys.executable, "-c", script, str(path)], check=True, env=env
     )
 

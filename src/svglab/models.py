@@ -65,7 +65,7 @@ if TYPE_CHECKING:
     ) -> Callable[[_ClsT], _ClsT]: ...
 
     @dataclass_transform(frozen_default=False, kw_only_default=False)
-    def dataclass(  # noqa: D103
+    def dataclass(  # ruff: ignore[D103]
         cls: _ClsT | None = None,
         *,
         frozen: bool = False,

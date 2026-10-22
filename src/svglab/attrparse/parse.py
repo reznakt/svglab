@@ -154,7 +154,7 @@ def inline_args(cls: type[_TransformerT]) -> type[_TransformerT]:
     Returns:
         The decorated transformer class.
 
-    """  # noqa: D401
+    """  # ruff: ignore[D401]
     return cast(type[_TransformerT], lark.v_args(inline=True)(cls))
 
 
@@ -170,7 +170,7 @@ def visit_tokens(cls: type[_TransformerT]) -> type[_TransformerT]:
     Returns:
         The decorated transformer class.
 
-    """  # noqa: D401
+    """  # ruff: ignore[D401]
     original_init = cls.__init__
 
     @functools.wraps(original_init)

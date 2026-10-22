@@ -41,7 +41,7 @@ _BLACK: Final = Color((0, 0, 0))
 class _SvgElementLike(Protocol):
     width: Length | None
     height: Length | None
-    viewBox: tuple[float, float, float, float] | None  # noqa: N815
+    viewBox: tuple[float, float, float, float] | None  # ruff: ignore[N815]
 
     def render(
         self,
@@ -241,7 +241,7 @@ def _compute_render_size(
     return width, height
 
 
-def render(  # noqa: D103
+def render(  # ruff: ignore[D103]
     svg: Element,
     options: RenderOptions | None = None,
     *,
@@ -284,7 +284,7 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
     svg = element.get_root()
 
     if not isinstance(svg, _SvgElementLike):
-        raise ValueError("Element must be part of an SVG tree")  # noqa: TRY004
+        raise ValueError("Element must be part of an SVG tree")  # ruff: ignore[TRY004]
 
     memo: dict[int, object] = {}
     svg = copy.deepcopy(svg, memo)
@@ -400,7 +400,7 @@ def _mask_to_image(mask: Mask) -> PIL.Image.Image:
     return PIL.Image.fromarray(rgba)
 
 
-def mask(  # noqa: D103
+def mask(  # ruff: ignore[D103]
     element: Element,
     *,
     width: float | None = None,
@@ -419,7 +419,7 @@ def mask(  # noqa: D103
     return array[:, :, 3] > 0  # alpha channel > 0
 
 
-def visible_mask(  # noqa: D103
+def visible_mask(  # ruff: ignore[D103]
     element: Element,
     *,
     width: float | None = None,
@@ -443,7 +443,7 @@ def visible_mask(  # noqa: D103
     return diff
 
 
-def bbox(element: Element) -> BBox | None:  # noqa: D103
+def bbox(element: Element) -> BBox | None:  # ruff: ignore[D103]
     img = _render_tree(
         element,
         render_this=True,
@@ -454,7 +454,7 @@ def bbox(element: Element) -> BBox | None:  # noqa: D103
     return img.getbbox()
 
 
-def visible_bbox(element: Element) -> BBox | None:  # noqa: D103
+def visible_bbox(element: Element) -> BBox | None:  # ruff: ignore[D103]
     mask = visible_mask(element)
     img = _mask_to_image(mask)
 

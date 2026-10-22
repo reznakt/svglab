@@ -177,6 +177,7 @@ extend-select = [
   "FURB118",  # Use `operator` functions instead of lambdas
   "FURB140",  # Use `itertools.starmap` instead of the generator
   "PLR6201",  # Use a set literal when testing for membership
+  "RUF105",  # Use `ruff: ignore` instead of `noqa`
 ]
 ignore = [
   # conflicts

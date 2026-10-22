@@ -65,7 +65,7 @@ def test_threads_do_not_share_the_current_formatter() -> None:
                 first_entered.set()
                 second_entered.wait(timeout=10)
                 seen[3] = get_current_formatter().indent
-        except BaseException as error:  # noqa: BLE001
+        except BaseException as error:  # ruff: ignore[BLE001]
             errors.append(error)
         finally:
             first_left.set()
@@ -78,7 +78,7 @@ def test_threads_do_not_share_the_current_formatter() -> None:
                 second_entered.set()
                 first_left.wait(timeout=10)
                 seen[7] = get_current_formatter().indent
-        except BaseException as error:  # noqa: BLE001
+        except BaseException as error:  # ruff: ignore[BLE001]
             errors.append(error)
 
     threads = [
