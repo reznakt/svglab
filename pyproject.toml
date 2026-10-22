@@ -142,7 +142,7 @@ strictListInference = true
 strictSetInference = true
 typeCheckingMode = "strict"
 
-[tool.pytest.ini_options]
+[tool.pytest]
 addopts = [
   "--cov",
   "--doctest-continue-on-failure",
@@ -153,6 +153,7 @@ filterwarnings = [
   # https://bugs.launchpad.net/beautifulsoup/+bug/2076897
   "ignore:The 'strip_cdata' option of HTMLParser\\(\\) has never done anything and will eventually be removed.",
 ]
+strict = true
 
 [tool.ruff]
 target-version = "py311"

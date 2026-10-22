@@ -192,6 +192,7 @@ def test_parse_svg_unknown_element_roundtrip() -> None:
             b"<not-svg>abcdefghijklmnopqrstuvwxyz0123456789</not-svg>"
         ),
     ],
+    ids=["str", "bytes", "text-stream", "binary-stream"],
 )
 def test_parse_svg_error_message_truncates_markup_head(
     markup: str | bytes | io.StringIO | io.BytesIO,
