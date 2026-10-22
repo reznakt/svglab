@@ -948,12 +948,12 @@ class PathData(  # noqa: PLW1641
 
         path_data = self
 
-        if "never" in (line, curve):
+        if "never" in {line, curve}:
             path_data = path_data.resolve_shorthands(
                 lines=line == "never", curves=curve == "never"
             )
 
-        if "always" in (line, curve):
+        if "always" in {line, curve}:
             path_data = path_data.apply_shorthands(
                 lines=line == "always", curves=curve == "always"
             )

@@ -1403,8 +1403,9 @@ class Svg(
             old_viewbox = self.viewBox
 
         if all(
-            is_close(old, new)
-            for old, new in zip(old_viewbox, viewbox, strict=True)
+            itertools.starmap(
+                is_close, zip(old_viewbox, viewbox, strict=True)
+            )
         ):
             self.viewBox = viewbox
             return

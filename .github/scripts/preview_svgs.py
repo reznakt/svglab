@@ -71,7 +71,7 @@ class Preview:
 
     @property
     def fence(self) -> str:
-        """Return a code fence longer than any backticks in the source."""
+        """A code fence longer than any backticks in the source."""
         ticks = max(map(len, re.findall("`+", self.source)), default=0)
         return "`" * max(3, ticks + 1)
 

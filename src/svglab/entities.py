@@ -1611,12 +1611,12 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
                 # element, so they are transformed along with it
                 if isinstance(
                     child, GradientUnitsAttr
-                ) and child.gradientUnits in (None, "objectBoundingBox"):
+                ) and child.gradientUnits in {None, "objectBoundingBox"}:
                     continue
 
                 if isinstance(
                     child, PatternUnitsAttr
-                ) and child.patternUnits in (None, "objectBoundingBox"):
+                ) and child.patternUnits in {None, "objectBoundingBox"}:
                     continue
 
                 if child.main_transform is None:
@@ -1642,7 +1642,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         # element is only used once), in which case we would continue with
         # reification on the referenced element (probably not worth the hassle)
         # patternTransforms also cannot be reified (no clue why)
-        if element_name(self) in ["use", "pattern"]:
+        if element_name(self) in {"use", "pattern"}:
             return False
 
         main_transform_attr_name = self.__get_main_transform_attribute()

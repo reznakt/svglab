@@ -162,10 +162,11 @@ line-length = 75  # formatter
 [tool.ruff.lint]
 select = ["ALL"]
 fixable = ["ALL"]
-# the `DOC` rules are still in preview; keep `ALL` from pulling in the rest
+# preview rules are opted into one by one; keep `ALL` from pulling in the rest
 preview = true
 explicit-preview-rules = true
 extend-select = [
+  "D421",  # Property docstring should not start with a verb
   "DOC102",  # Documented parameter is not in the function's signature
   "DOC201",  # `return` is not documented in docstring
   "DOC202",  # Docstring should not have a returns section
@@ -173,6 +174,9 @@ extend-select = [
   "DOC403",  # Docstring should not have a yields section
   "DOC501",  # Raised exception missing from docstring
   "DOC502",  # Raised exception is not explicitly raised
+  "FURB118",  # Use `operator` functions instead of lambdas
+  "FURB140",  # Use `itertools.starmap` instead of the generator
+  "PLR6201",  # Use a set literal when testing for membership
 ]
 ignore = [
   # conflicts

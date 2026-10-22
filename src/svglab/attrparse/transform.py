@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import abc
 import functools
+import itertools
 import math
+import operator
 from collections.abc import Iterable
 
 import lark
@@ -612,9 +614,9 @@ class Matrix(_TransformFunctionBase):
             return False
 
         return all(
-            is_close(x1, x2)
-            for x1, x2 in zip(
-                self.to_tuple(), other.to_tuple(), strict=True
+            itertools.starmap(
+                is_close,
+                zip(self.to_tuple(), other.to_tuple(), strict=True),
             )
         )
 
@@ -690,9 +692,7 @@ def compose(transforms: Iterable[TransformFunction], /) -> Matrix:
         True
 
     """
-    return functools.reduce(
-        lambda acc, t: acc @ t, transforms, Matrix.identity()
-    )
+    return functools.reduce(operator.matmul, transforms, Matrix.identity())
 
 
 class PointAddSubWithTranslateRMatmul(
