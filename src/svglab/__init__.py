@@ -38,9 +38,9 @@ Length(value=50.0, unit=None)
 ```
 """
 
-from importlib import metadata as __metadata
+from importlib import metadata as _metadata
 
-from typing_extensions import Final as __Final
+from typing_extensions import Final as _Final
 
 from svglab.attrparse.angle import Angle, AngleUnit
 from svglab.attrparse.color import Color
@@ -502,7 +502,7 @@ from svglab.serialize import (
 from svglab.utiltypes import LengthUnit
 
 
-__all__: __Final = [
+__all__: _Final = [
     "DEFAULT_FORMATTER",
     "MINIMAL_FORMATTER",
     "A",
@@ -949,4 +949,4 @@ __all__: __Final = [
     "swap_transforms",
 ]
 
-__version__: __Final = __metadata.version(__name__)
+__version__: _Final = _metadata.version(__name__)
