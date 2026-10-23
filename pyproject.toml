@@ -149,6 +149,7 @@ addopts = [
   "--doctest-modules",
   "--numprocesses=auto",
 ]
+doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE"]
 filterwarnings = [
   # https://bugs.launchpad.net/beautifulsoup/+bug/2076897
   "ignore:The 'strip_cdata' option of HTMLParser\\(\\) has never done anything and will eventually be removed.",

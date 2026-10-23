@@ -364,6 +364,14 @@ def _get_end_at(path_data: PathData, idx: int) -> Point:
         Point(x=10.0, y=10.0)
         >>> _get_end_at(path_data, 1)
         Point(x=100.0, y=10.0)
+        >>> _get_end_at(path_data, 2)
+        Point(x=100.0, y=100.0)
+        >>> _get_end_at(path_data, 3)
+        Point(x=10.0, y=10.0)
+        >>> _get_end_at(path_data, 4)
+        Traceback (most recent call last):
+            ...
+        IndexError: list index out of range
 
     """
     # shorthand line commands set one coordinate and inherit the other, so
@@ -455,9 +463,27 @@ def _quadratic_control_at(path_data: PathData, idx: int) -> Point:
         ValueError: If the command has no predecessor.
 
     Examples:
-        >>> path_data = PathData.from_str("M 0,0 Q 20,0 20,20 T 40,40")
+        >>> path_data = PathData.from_str(
+        ...     "M 0,0 Q 20,0 20,20 T 40,40 T 60,60"
+        ... )
         >>> _quadratic_control_at(path_data, 2)
         Point(x=20.0, y=40.0)
+
+        A `T` command following another `T` command reflects the control
+        point that the previous command computed:
+
+        >>> _quadratic_control_at(path_data, 3)
+        Point(x=60.0, y=40.0)
+
+        After any other command, the control point is the current point:
+
+        >>> path_data = PathData.from_str("M 0,0 L 20,20 T 40,40")
+        >>> _quadratic_control_at(path_data, 2)
+        Point(x=20.0, y=20.0)
+        >>> _quadratic_control_at(path_data, 0)
+        Traceback (most recent call last):
+            ...
+        ValueError: Item MoveTo(end=Point(x=0.0, y=0.0)) has no predecessor.
 
     """
     if idx == 0:
@@ -505,6 +531,25 @@ def _cubic_control_at(path_data: PathData, idx: int) -> Point:
         >>> _cubic_control_at(path_data, 2)
         Point(x=60.0, y=60.0)
 
+        An `S` command following another `S` command reflects that command's
+        second control point, just like after a `C` command:
+
+        >>> path_data = PathData.from_str(
+        ...     "M 0,0 C 20,0 20,20 40,40 S 100,100 50,50 S 0,0 10,10"
+        ... )
+        >>> _cubic_control_at(path_data, 3)
+        Point(x=0.0, y=0.0)
+
+        After any other command, the control point is the current point:
+
+        >>> path_data = PathData.from_str("M 0,0 L 20,20 S 40,40 50,50")
+        >>> _cubic_control_at(path_data, 2)
+        Point(x=20.0, y=20.0)
+        >>> _cubic_control_at(path_data, 0)
+        Traceback (most recent call last):
+            ...
+        ValueError: Item MoveTo(end=Point(x=0.0, y=0.0)) has no predecessor.
+
     """
     if idx == 0:
         msg = f"Item {path_data[idx]!r} has no predecessor."
@@ -535,9 +580,18 @@ def _relativize(path_data: PathData) -> PathData:
         recomputed as if they were relative.
 
     Examples:
-        >>> path_data = PathData.from_str("M 10,10")
+        >>> path_data = PathData.from_str("M 10,10 L 20,30 H 25")
         >>> _relativize(path_data)
-        PathData(MoveTo(end=Point(x=10.0, y=10.0)))
+        PathData(MoveTo(end=Point(x=10.0, y=10.0)),
+                 LineTo(end=Point(x=10.0, y=20.0)),
+                 HorizontalLineTo(x=5.0))
+
+        A `ClosePath` command moves the current point back to the start of
+        the subpath, so the next command is relative to that point:
+
+        >>> path_data = PathData.from_str("M 10,10 L 20,30 Z M 15,15")
+        >>> _relativize(path_data)[-1]
+        MoveTo(end=Point(x=5.0, y=5.0))
 
     """
     result = PathData()
@@ -589,6 +643,14 @@ def _can_use_implicit_command(
         True
         >>> _can_use_implicit_command(
         ...     MoveTo(Point(100, 100)), prev=MoveTo(Point(10, 10))
+        ... )
+        False
+        >>> _can_use_implicit_command(
+        ...     HorizontalLineTo(100), prev=MoveTo(Point(10, 10))
+        ... )
+        False
+        >>> _can_use_implicit_command(
+        ...     HorizontalLineTo(100), prev=LineTo(Point(10, 10))
         ... )
         False
 
@@ -914,6 +976,20 @@ class PathData(  # ruff: ignore[PLW1641]
             >>> path_data
             PathData(MoveTo(end=Point(x=10.0, y=10.0)), ClosePath())
 
+            Relative commands are converted to absolute ones, and coordinate
+            pairs following a moveto are implicit linetos:
+
+            >>> PathData.from_str("m 10,10 20,20 h 5")
+            PathData(MoveTo(end=Point(x=10.0, y=10.0)),
+                     LineTo(end=Point(x=30.0, y=30.0)),
+                     HorizontalLineTo(x=35.0))
+            >>> PathData.from_str("")
+            PathData()
+            >>> PathData.from_str("L 10,10")
+            Traceback (most recent call last):
+                ...
+            ValueError: Failed to parse text with grammar 'path_data.lark'...
+
         """
         path_data = parse(
             text, grammar="path_data.lark", transformer=_Transformer()
@@ -1054,9 +1130,33 @@ class PathData(  # ruff: ignore[PLW1641]
             (`L`, `C`, `Q`).
 
         Examples:
-            >>> path_data = PathData.from_str("M 0,0")
+            >>> path_data = PathData.from_str("M 0,0 H 30 V 40")
             >>> path_data.resolve_shorthands()
-            PathData(MoveTo(end=Point(x=0.0, y=0.0)))
+            PathData(MoveTo(end=Point(x=0.0, y=0.0)),
+                     LineTo(end=Point(x=30.0, y=0.0)),
+                     LineTo(end=Point(x=30.0, y=40.0)))
+
+            The control point of a smooth curve is the reflection of the
+            previous control point, or the current point if there is none:
+
+            >>> path_data = PathData.from_str("M 0,0 Q 10,0 10,10 T 20,20")
+            >>> path_data.resolve_shorthands()[-1]
+            QuadraticBezierTo(control=Point(x=10.0, y=20.0),
+                              end=Point(x=20.0, y=20.0))
+            >>> path_data = PathData.from_str("M 0,0 L 10,0 S 20,10 20,0")
+            >>> path_data.resolve_shorthands()[-1]
+            CubicBezierTo(control1=Point(x=10.0, y=0.0),
+                          control2=Point(x=20.0, y=10.0),
+                          end=Point(x=20.0, y=0.0))
+
+            Either kind of shorthand can be kept:
+
+            >>> path_data = PathData.from_str("M 0,0 H 30 T 40,40")
+            >>> path_data.resolve_shorthands(lines=False)
+            PathData(MoveTo(end=Point(x=0.0, y=0.0)),
+                     HorizontalLineTo(x=30.0),
+                     QuadraticBezierTo(control=Point(x=30.0, y=0.0),
+                                       end=Point(x=40.0, y=40.0)))
 
         """
         path_data = type(self)()
@@ -1101,6 +1201,26 @@ class PathData(  # ruff: ignore[PLW1641]
             >>> path_data = PathData.from_str("M 1,1 L 9,1")
             >>> path_data.apply_shorthands()
             PathData(MoveTo(end=Point(x=1.0, y=1.0)), HorizontalLineTo(x=9.0))
+            >>> path_data.apply_shorthands(lines=False)
+            PathData(MoveTo(end=Point(x=1.0, y=1.0)),
+                     LineTo(end=Point(x=9.0, y=1.0)))
+            >>> PathData.from_str("M 1,1 L 1,9").apply_shorthands()
+            PathData(MoveTo(end=Point(x=1.0, y=1.0)), VerticalLineTo(y=9.0))
+
+            A curve becomes a shorthand only if its control point is the one
+            the shorthand would compute, that is, the reflection of the
+            previous control point or the current point if there is none:
+
+            >>> path_data = PathData.from_str(
+            ...     "M 0,0 Q 10,0 10,10 Q 10,20 20,20 Q 0,0 5,5"
+            ... )
+            >>> path_data.apply_shorthands()
+            PathData(MoveTo(end=Point(x=0.0, y=0.0)),
+                     QuadraticBezierTo(control=Point(x=10.0, y=0.0),
+                                       end=Point(x=10.0, y=10.0)),
+                     SmoothQuadraticBezierTo(end=Point(x=20.0, y=20.0)),
+                     QuadraticBezierTo(control=Point(x=0.0, y=0.0),
+                                       end=Point(x=5.0, y=5.0)))
 
         """
         path_data = type(self)()

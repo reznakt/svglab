@@ -75,6 +75,14 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
         ... )
         >>> _get_root_svg_fragments(soup)
         [<svg><svg/></svg>]
+        >>> soup = bs4.BeautifulSoup(
+        ...     "<div><p/><svg/><svg/></div>", features="lxml-xml"
+        ... )
+        >>> _get_root_svg_fragments(soup)
+        [<svg/>, <svg/>]
+        >>> soup = bs4.BeautifulSoup("<div/>", features="lxml-xml")
+        >>> _get_root_svg_fragments(soup)
+        []
 
     """
     queue: collections.deque[bs4.Tag] = collections.deque([soup])
@@ -190,9 +198,23 @@ def parse_svg(
         bs4.FeatureNotFound: If any other parser is not available
 
     Examples:
-        >>> svg = parse_svg("<svg><rect/></svg>")
-        >>> type(svg).__name__
-        'Svg'
+        >>> parse_svg("<svg><rect/></svg>")
+        Svg(children=[Rect()])
+        >>> parse_svg(b"<svg><rect/></svg>")
+        Svg(children=[Rect()])
+        >>> parse_svg(
+        ...     "<html><body><svg><rect/></svg></body></html>",
+        ...     parser="html.parser",
+        ... )
+        Svg(children=[Rect()])
+        >>> parse_svg("<div><svg/><svg/></div>")
+        Traceback (most recent call last):
+            ...
+        ValueError: Expected one <svg> element, found 2; ...
+        >>> parse_svg("<div/>")
+        Traceback (most recent call last):
+            ...
+        ValueError: Expected one <svg> element, found 0; ...
 
     """
     with contextlib.ExitStack() as stack:

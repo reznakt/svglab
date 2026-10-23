@@ -73,6 +73,14 @@ class Angle(
             >>> angle = Angle(360, "deg")
             >>> angle.to("grad")
             Angle(value=400.0, unit='grad')
+            >>> angle.to("turn")
+            Angle(value=1.0, unit='turn')
+            >>> Angle(0.5, "turn").to("rad")
+            Angle(value=3.141592653589793, unit='rad')
+            >>> Angle(90).to("deg")
+            Angle(value=90.0, unit='deg')
+            >>> Angle(1, "turn").to(None)
+            Angle(value=360.0, unit=None)
 
         """
         return _convert(self, unit)

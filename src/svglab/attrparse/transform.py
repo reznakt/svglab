@@ -599,6 +599,12 @@ class Matrix(_TransformFunctionBase):
             >>> m = Translate(10, 20) @ Scale(2, 2)
             >>> m.decompose()
             [Translate(tx=10.0, ty=20.0), Scale(sx=2.0, sy=2.0)]
+            >>> Rotate(30).to_matrix().decompose()
+            [Rotate(angle=30.0, cx=0.0, cy=0.0)]
+            >>> Scale(-1, 1).to_matrix().decompose()
+            [Scale(sx=-1.0, sy=1.0)]
+            >>> Matrix.identity().decompose()
+            []
 
         """
         decompositions = [self.__ldu_decompose(), self.__qr_decompose()]
@@ -651,6 +657,20 @@ def decompose_matrices(transform: Transform) -> None:
         >>> transform
         [Translate(tx=10.0, ty=20.0)]
 
+        A matrix may expand into several transformations or, if it is the
+        identity, vanish; other transformations are left as they are:
+
+        >>> transform = [
+        ...     Scale(3),
+        ...     Matrix(2, 0, 0, 2, 10, 20),
+        ...     Matrix.identity(),
+        ...     Rotate(5),
+        ... ]
+        >>> decompose_matrices(transform)
+        >>> transform
+        [Scale(sx=3.0, sy=3.0), Translate(tx=10.0, ty=20.0),
+         Scale(sx=2.0, sy=2.0), Rotate(angle=5.0, cx=0.0, cy=0.0)]
+
     """
     i = 0
 
@@ -690,6 +710,14 @@ def compose(transforms: Iterable[TransformFunction], /) -> Matrix:
         True
         >>> compose([]) == Matrix.identity()
         True
+
+        As in the `transform` attribute, each transformation acts in the
+        coordinate system set up by the ones before it, so the order matters:
+
+        >>> compose([Translate(10, 0), Scale(2)])
+        Matrix(a=2.0, b=0.0, c=0.0, d=2.0, e=10.0, f=0.0)
+        >>> compose([Scale(2), Translate(10, 0)])
+        Matrix(a=2.0, b=0.0, c=0.0, d=2.0, e=20.0, f=0.0)
 
     """
     return functools.reduce(operator.matmul, transforms, Matrix.identity())

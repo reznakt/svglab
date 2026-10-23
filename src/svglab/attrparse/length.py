@@ -96,6 +96,14 @@ class Length(
             Length(value=2.54, unit='cm')
             >>> Length(1, "in").to("mm")
             Length(value=25.4, unit='mm')
+            >>> Length(10).to("px")
+            Length(value=10.0, unit='px')
+            >>> Length(10, "px").to(None)
+            Length(value=10.0, unit=None)
+            >>> Length(1, "em").to("px")
+            Traceback (most recent call last):
+                ...
+            svglab.errors.SvgUnitConversionError: Unable to convert 'em' to ...
 
         """
         return _convert(self, unit)

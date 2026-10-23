@@ -139,6 +139,11 @@ def _match_element(
         True
         >>> _match_element(rect, search="circle")
         False
+        >>> _match_element(rect, search=Element)
+        True
+        >>> unknown = UnknownElement(element_name="foo")
+        >>> _match_element(unknown, search="foo")
+        True
 
     """
     if isinstance(search, type):
@@ -607,6 +612,13 @@ def element_name(element: Element, /) -> str:
         >>> from svglab import Rect
         >>> element_name(Rect())
         'rect'
+        >>> from svglab import FeGaussianBlur, FontFaceName
+        >>> element_name(FeGaussianBlur())
+        'feGaussianBlur'
+        >>> element_name(FontFaceName())
+        'font-face-name'
+        >>> element_name(UnknownElement(element_name="foo"))
+        'foo'
 
     """
     if isinstance(element, UnknownElement):
@@ -633,10 +645,21 @@ class Entity(BaseModel, metaclass=abc.ABCMeta):
             The XML representation of the element.
 
         Examples:
-            >>> from svglab import Rect, Length
+            >>> from svglab import Formatter, G, Rect
             >>> rect = Rect(id="foo", stroke_linecap="round")
             >>> rect.to_xml()
             '<rect id="foo" stroke-linecap="round"/>'
+            >>> g = G().add_child(Rect(id="foo"))
+            >>> print(g.to_xml())
+            <g>
+              <rect id="foo"/>
+            </g>
+            >>> print(g.to_xml(formatter=Formatter(indent=4)))
+            <g>
+                <rect id="foo"/>
+            </g>
+            >>> g.to_xml(pretty=False)
+            '<g><rect id="foo"/></g>'
 
         """
         with formatter or get_current_formatter():
@@ -1311,6 +1334,10 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             G(children=[Rect(id='bar')])
             >>> g.find("circle", default=None) is None
             True
+            >>> g.find("circle")
+            Traceback (most recent call last):
+                ...
+            svglab.errors.SvgElementNotFoundError: Unable to find element ...
 
         """
         try:

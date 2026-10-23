@@ -60,6 +60,15 @@ def basic_compare(other: object, /, *, self: _T) -> TypeIs[_T]:
         >>> A() == 1
         False
 
+        An instance of a subclass passes, but not the other way round:
+
+        >>> class B(A):
+        ...     pass
+        >>> basic_compare(B(), self=A())
+        True
+        >>> basic_compare(A(), self=B())
+        False
+
     """
     return other is self or isinstance(other, type(self))
 
@@ -85,6 +94,12 @@ def extract_function_name_and_args(attr: str) -> tuple[str, str] | None:
         ('foo', '42')
         >>> extract_function_name_and_args("foo(42, 'bar')")
         ('foo', "42, 'bar'")
+        >>> extract_function_name_and_args("foo( 42 )")
+        ('foo', '42')
+        >>> extract_function_name_and_args(
+        ...     "foo(bar(42))"
+        ... ) is None  # nested call
+        True
         >>> extract_function_name_and_args(
         ...     "bar"
         ... ) is None  # not a function call

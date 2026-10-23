@@ -54,6 +54,18 @@ def search_by_reference(sequence: Iterable[_T], item: _T) -> int:
             ...
         ValueError: Item not found in sequence: 4
 
+        An equal object that is not the same object does not count:
+
+        >>> item = [1]
+        >>> search_by_reference([[1], item], item)
+        1
+        >>> [[1], item].index(item)
+        0
+        >>> search_by_reference([[1]], item)
+        Traceback (most recent call last):
+            ...
+        ValueError: Item not found in sequence: [1]
+
     """
     for i, x in enumerate(sequence):
         if x is item:
@@ -121,6 +133,8 @@ def pairwise(
         [(None, 1), (1, 2)]
         >>> list(pairwise([1, 2, 3]))
         [(None, 1), (1, 2), (2, 3)]
+        >>> list(pairwise([1, 2], default=0))
+        [(0, 1), (1, 2)]
 
     """
     prev_item = default
@@ -152,6 +166,13 @@ def is_first_index(sized: Sized, index: SupportsIndex) -> bool:
         True
         >>> is_first_index([], 0)
         True
+
+        Out-of-range indices are clamped, just like in `list.insert()`:
+
+        >>> is_first_index([1, 2, 3], -10)
+        True
+        >>> is_first_index([1, 2, 3], 10)
+        False
 
     """
     start, *_ = slice(index, index).indices(len(sized))

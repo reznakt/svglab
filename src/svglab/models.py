@@ -134,7 +134,7 @@ def _parse_list(
 ) -> _ListOrTupleT:
     """Parse a string into a list of strings.
 
-    Items are separated by whitespace or commas.
+    Items are separated by whitespace or commas. Empty items are dropped.
 
     Args:
         text: The string to parse.
@@ -152,8 +152,14 @@ def _parse_list(
         ['a', 'b', 'c']
         >>> _parse_list("a,b,c")
         ['a', 'b', 'c']
+        >>> _parse_list("  a , b  ")
+        ['a', 'b']
+        >>> _parse_list("a,,b")
+        ['a', 'b']
         >>> _parse_list("")
         []
+        >>> _parse_list("a b", tuple)
+        ('a', 'b')
 
     """
     result = (part for part in re.split(r"\s+|\s*,\s*", text) if part)

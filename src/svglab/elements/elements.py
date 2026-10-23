@@ -1487,12 +1487,18 @@ class Svg(
             SvgRenderError: If the document cannot be rasterized.
 
         Examples:
-            >>> from svglab import Svg, Length, resvg
+            >>> from svglab import Color, Svg, Length, resvg
             >>> svg = Svg(width=Length(20), height=Length(10))
             >>> svg.render().size
             (20, 10)
             >>> svg.render(RenderOptions(dpi=300), width=40).size
             (40, 20)
+            >>> svg.render(zoom=2).size
+            (40, 20)
+            >>> svg.render().getpixel((0, 0))
+            (0, 0, 0, 0)
+            >>> svg.render(background=Color("red")).getpixel((0, 0))
+            (255, 0, 0, 255)
 
         """
         return render(

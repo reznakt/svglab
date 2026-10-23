@@ -69,6 +69,10 @@ def clamp(
         0
         >>> clamp(15, min_value=0, max_value=10)
         10
+        >>> clamp(0, min_value=0, max_value=10)
+        0
+        >>> clamp(10, min_value=0, max_value=10)
+        10
 
     """
     return max(min(value, max_value), min_value)
@@ -120,6 +124,10 @@ def arctan(value: float) -> float:
         0.0
         >>> arctan(1)
         45.0
+        >>> arctan(-1)
+        -45.0
+        >>> arctan(math.inf)
+        90.0
 
     """
     match value:
@@ -150,6 +158,12 @@ def tan(degrees: float) -> float:
         0.0
         >>> tan(45)
         1.0
+        >>> tan(135)
+        -1.0
+        >>> tan(-45)
+        -1.0
+        >>> tan(180)
+        0.0
 
     """
     degrees %= 180
@@ -184,6 +198,12 @@ def sin(degrees: float) -> float:
         1.0
         >>> sin(180)
         0.0
+        >>> sin(270)
+        -1.0
+        >>> sin(-90)
+        -1.0
+        >>> sin(450)
+        1.0
 
     """
     degrees %= 360
@@ -217,6 +237,12 @@ def cos(degrees: float) -> float:
         >>> cos(90)
         0.0
         >>> cos(180)
+        -1.0
+        >>> cos(270)
+        0.0
+        >>> cos(-90)
+        0.0
+        >>> cos(-180)
         -1.0
 
     """

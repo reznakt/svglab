@@ -547,6 +547,10 @@ def _serialize_number(
         '-1e+09'
         >>> _serialize_number(-1e-7)
         '-1e-07'
+        >>> _serialize_number(0)
+        '0'
+        >>> _serialize_number(-0.0)
+        '0'
 
     """
     formatter = get_current_formatter()
@@ -849,6 +853,21 @@ def serialize_path_command(
         ...     Point(100, 100), char="L", implicit=True
         ... )
         '100,100'
+        >>> serialize_path_command(char="Z", implicit=False)
+        'Z'
+
+        Booleans, such as the flags of an arc, are serialized as numbers:
+
+        >>> serialize_path_command(
+        ...     Point(5, 5),
+        ...     0,
+        ...     True,
+        ...     False,
+        ...     Point(10, 10),
+        ...     char="A",
+        ...     implicit=False,
+        ... )
+        'A5,5 0 1 0 10,10'
 
     """
     formatter = get_current_formatter()

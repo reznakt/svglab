@@ -68,7 +68,11 @@ def _positive_user_units(value: Length | None, /) -> float | None:
         >>> from svglab import Length
         >>> _positive_user_units(Length(1.5))
         1.5
+        >>> _positive_user_units(Length(1.5, "px"))
+        1.5
         >>> _positive_user_units(Length(0))
+        >>> _positive_user_units(Length(-1))
+        >>> _positive_user_units(Length(50, "%"))
         >>> _positive_user_units(None)
 
     """
