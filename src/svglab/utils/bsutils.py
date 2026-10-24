@@ -1,5 +1,6 @@
 """Utilities for working with BeautifulSoup."""
 
+import xml.sax.saxutils
 from collections.abc import Iterable
 
 import bs4
@@ -17,6 +18,18 @@ class _BsFormatter(bs4.formatter.XMLFormatter):
             entity_substitution=bs4.formatter.EntitySubstitution.substitute_xml,
             indent=formatter.indent,
         )
+
+    @override
+    def attribute_value(self, value: str) -> str:
+        # escaped by `quoted_attribute_value()`
+        return value
+
+    @classmethod
+    @override
+    def quoted_attribute_value(cls, value: str) -> str:
+        # unlike bs4, this also writes tabs and line breaks as character
+        # references, which an XML parser would otherwise turn into spaces
+        return xml.sax.saxutils.quoteattr(value)
 
     @override
     def attributes(self, tag: bs4.Tag) -> Iterable[tuple[str, Any]]:
