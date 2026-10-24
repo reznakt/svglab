@@ -82,7 +82,8 @@ graph TD
 ### Prerequisites
 
 - [CPython](https://www.python.org/) 3.11+
-- A C compiler and linker (source builds only; Rust is fetched automatically if missing)
+- [Rust](https://rustup.rs/) 1.85+ and a C compiler for linking (source builds only; when `cargo` is missing, the build downloads Rust itself)
+- `clippy` and `rustfmt` (development only; used by `just lint` and `just format`)
 - [uv](https://docs.astral.sh/uv/) (development only)
 - [just](https://just.systems/) (development only; optional)
 
@@ -238,6 +239,9 @@ prek install
 ### Common tasks
 
 ```sh
+# Rebuild the Rust extension after changing the crate
+just build
+
 # Run tests
 just test
 
