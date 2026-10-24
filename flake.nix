@@ -16,7 +16,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         inherit (pkgs) lib;
 
-        python = pkgs.python314;
+        python = pkgs.python315;
 
         systemLibs = with pkgs; [
           cairo # pycairo
