@@ -623,6 +623,9 @@ def _can_use_implicit_command(
     following a moveto is interpreted as an implicit lineto, so a `MoveTo`
     command that follows another `MoveTo` command must always be explicit.
 
+    A `ClosePath` command has no arguments, so its letter is all there is to
+    write and it is always explicit.
+
     Args:
         prev: The previous command.
         current: The current command.
@@ -653,8 +656,13 @@ def _can_use_implicit_command(
         ...     HorizontalLineTo(100), prev=LineTo(Point(10, 10))
         ... )
         False
+        >>> _can_use_implicit_command(ClosePath(), prev=ClosePath())
+        False
 
     """
+    if isinstance(current, ClosePath):
+        return False
+
     if isinstance(prev, MoveTo):
         return isinstance(current, LineTo)
 
