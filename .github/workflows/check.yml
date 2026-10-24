@@ -31,7 +31,9 @@ jobs:
             resolution: locked
           - python: "3.14"
             resolution: locked
-          - python: "3.14"
+          - python: "3.15"
+            resolution: locked
+          - python: "3.15"
             resolution: highest
 
     defaults:
