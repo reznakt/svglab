@@ -255,12 +255,16 @@ def _basic_shape_to_path(basic_shape: BasicShape, /) -> Path:
 
     # the resulting path is detached from the tree, so the children have to be
     # copied; otherwise they would end up with two parents. mapping the shape
-    # to `None` up front detaches the copies and keeps the copy from reaching
-    # the rest of the document through the parent links
-    memo: dict[int, object] = {id(basic_shape): None}
-    path.add_children(
-        *(copy.deepcopy(child, memo) for child in basic_shape.children)
-    )
+    # to itself up front keeps the copy from reaching the rest of the document
+    # through the parent links, and the copies are detached afterwards. a
+    # `None` entry would detach them directly, but Python 3.15.0 ignores it
+    memo: dict[int, object] = {id(basic_shape): basic_shape}
+    children = [
+        copy.deepcopy(child, memo) for child in basic_shape.children
+    ]
+    for child in children:
+        object.__setattr__(child, "parent", None)
+    path.add_children(*children)
 
     return path
 
