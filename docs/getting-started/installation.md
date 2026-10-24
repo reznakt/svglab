@@ -8,7 +8,7 @@ In order to use <span style="font-variant: small-caps;">svglab</span>, **you nee
 
 Anywhere else, and when installing from the GitHub repository, the extension module is compiled during installation. That needs a [Rust toolchain](https://rustup.rs/) of version 1.85 or newer and a linker: a C compiler such as GCC or Clang on Linux, the Xcode Command Line Tools on macOS, or the Visual Studio Build Tools on Windows. If `cargo` is not on the `PATH`, the build downloads Rust into a temporary directory by itself; set `MATURIN_NO_INSTALL_RUST=1` to make it fail instead.
 
-Wheels for the free-threaded build of CPython 3.14 (`3.14t`) are published as well. On those builds the GIL is re-enabled when <span style="font-variant: small-caps;">svglab</span> is imported, because [lxml](https://pypi.org/project/lxml/) does not yet declare support for free-threading, so rendering does not run in parallel by default. Setting `PYTHON_GIL=0` overrides this, but it opts every dependency into free-threading whether or not it is ready for it.
+Wheels for the free-threaded builds of CPython 3.14 (`3.14t`) and 3.15 or newer (`3.15t`) are published as well. On those builds the GIL is re-enabled when <span style="font-variant: small-caps;">svglab</span> is imported, because [lxml](https://pypi.org/project/lxml/) does not yet declare support for free-threading, so rendering does not run in parallel by default. Setting `PYTHON_GIL=0` overrides this, but it opts every dependency into free-threading whether or not it is ready for it.
 
 ## Install from PyPI
 
