@@ -850,7 +850,7 @@ class PaintOrderAttr(_Attr):
 
 
 class Panose1Attr(_Attr):
-    panose1: Attr[
+    panose_1: Attr[
         Tuple[
             Integer,
             Integer,
