@@ -10,8 +10,6 @@ authors:
 identifiers:
   - type: doi
     value: 10.5281/zenodo.15490958
-version: 0.16.0
-date-released: "2026-09-20"
 license: MIT
 repository-code: https://github.com/reznakt/svglab
 url: https://svglab.rocks/
