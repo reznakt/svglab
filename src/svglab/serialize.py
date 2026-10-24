@@ -237,7 +237,8 @@ class Formatter:
     show_decimal_part_if_int: bool = False
     """
     Whether to show the decimal part of a number even if it is an integer.
-    For example, `1.0` instead of `1`.
+    For example, `1.0` instead of `1`. Values of attributes that only accept
+    integers, such as `numOctaves` or `font-weight`, never get one.
     """
 
     small_number_scientific_threshold: float | None = pydantic.Field(
@@ -256,7 +257,8 @@ class Formatter:
     The magnitude threshold above which numbers are serialized using
     scientific notation. For example, `1e+06` instead of `1000000`. If
     `None`, scientific notation is not used for large numbers. Must be greater
-    than 0.
+    than 0. Values of attributes that only accept integers are never written
+    in scientific notation.
     """
 
     strip_leading_zero: bool = True
@@ -664,7 +666,12 @@ def _serialize(
         # needs to be before int (bool is a subclass of int)
         case bool():
             result = _serialize_bool(value, mode=bool_mode)
-        case int() | float():
+        # only fields that accept nothing but integers hold an `int` (the
+        # others coerce to `float`), and a decimal part or scientific notation
+        # would make their values invalid
+        case int():
+            result = str(value)
+        case float():
             result = _serialize_number(
                 value, precision_group=precision_group
             )
