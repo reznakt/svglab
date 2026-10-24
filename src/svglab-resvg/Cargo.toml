@@ -11,20 +11,15 @@ name = "_resvg"
 
 [dependencies]
 pyo3-log = "0.13"
-resvg = {
-  version = "0.48.1",
-  default-features = false,
-  features = [
-    "memmap-fonts",
-    "raster-images",
-    "system-fonts",
-    "text",
-  ]
-}
 
 [dependencies.pyo3]
 version = "0.29"
 features = ["abi3-py311"]
+
+[dependencies.resvg]
+version = "0.48.1"
+default-features = false
+features = ["memmap-fonts", "raster-images", "system-fonts", "text"]
 
 [lints.clippy]
 doc_markdown = "allow"
