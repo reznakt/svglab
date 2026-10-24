@@ -64,7 +64,6 @@ from svglab.attrparse.point import Point
 from svglab.attrparse.points import Points
 from svglab.attrparse.transform import (
     Matrix,
-    Reifiable,
     Rotate,
     Scale,
     SkewX,
@@ -476,7 +475,6 @@ from svglab.entities import (
     Entity,
     RawText,
     UnknownElement,
-    swap_transforms,
 )
 from svglab.errors import (
     SvgElementNotFoundError,
@@ -484,8 +482,8 @@ from svglab.errors import (
     SvgPathError,
     SvgPathMissingMoveToError,
     SvgRenderError,
+    SvgSingularMatrixError,
     SvgTransformOriginError,
-    SvgTransformSwapError,
     SvgUnitConversionError,
 )
 from svglab.parse import parse_svg
@@ -786,7 +784,6 @@ __all__: _Final = [
     "Rect",
     "RefXAttr",
     "RefYAttr",
-    "Reifiable",
     "RenderOptions",
     "RenderingIntentAttr",
     "RepeatCountAttr",
@@ -845,8 +842,8 @@ __all__: _Final = [
     "SvgPathError",
     "SvgPathMissingMoveToError",
     "SvgRenderError",
+    "SvgSingularMatrixError",
     "SvgTransformOriginError",
-    "SvgTransformSwapError",
     "SvgUnitConversionError",
     "Switch",
     "Symbol",
@@ -946,7 +943,6 @@ __all__: _Final = [
     "get_current_formatter",
     "parse_svg",
     "set_formatter",
-    "swap_transforms",
 ]
 
 __version__: _Final = _metadata.version(__name__)

@@ -9,7 +9,11 @@ import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
 
 from svglab.elements.elements import Svg
-from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED, ElementName
+from svglab.elements.names import (
+    ELEMENT_NAME_TO_NORMALIZED,
+    TEXT_CONTENT_ELEMENT_NAMES,
+    ElementName,
+)
 from svglab.entities import (
     CData,
     Comment,
@@ -100,11 +104,16 @@ def _get_root_svg_fragments(soup: bs4.Tag) -> list[bs4.Tag]:
     return []
 
 
-def _convert_element(backend: bs4.PageElement) -> Entity | None:
+def _convert_element(
+    backend: bs4.PageElement, *, keep_whitespace: bool = False
+) -> Entity | None:
     """Convert a BeautifulSoup element to an `Element` instance.
 
     Args:
         backend: A BeautifulSoup element to convert.
+        keep_whitespace: Whether a text node holding nothing but whitespace
+            is kept. Between the spans of a text it is drawn as a space;
+            anywhere else it is only there to lay the markup out.
 
     Returns:
         An `Element` instance representing the given BeautifulSoup element.
@@ -120,7 +129,10 @@ def _convert_element(backend: bs4.PageElement) -> Entity | None:
             if cls is None:
                 return None
 
-            return None if backend.isspace() else cls(backend)
+            if backend.isspace() and not keep_whitespace:
+                return None
+
+            return cls(backend)
         case bs4.Tag():
             element_class = _ELEMENT_NAME_TO_CLASS.get(
                 cast(ElementName, backend.name), UnknownElement
@@ -136,7 +148,11 @@ def _convert_element(backend: bs4.PageElement) -> Entity | None:
             element = element_class.model_validate(attrs, strict=False)
 
             for child in backend.children:
-                grandchild = _convert_element(child)
+                grandchild = _convert_element(
+                    child,
+                    keep_whitespace=backend.name
+                    in TEXT_CONTENT_ELEMENT_NAMES,
+                )
 
                 if grandchild is not None:
                     element.add_child(grandchild)
@@ -226,7 +242,12 @@ def parse_svg(
 
         try:
             soup = bs4.BeautifulSoup(
-                markup, features=parser, multi_valued_attributes=None
+                markup,
+                features=parser,
+                multi_valued_attributes=None,
+                # the parser would collapse a run of whitespace in a text to
+                # a single character, which `xml:space="preserve"` draws
+                preserve_whitespace_tags=set(TEXT_CONTENT_ELEMENT_NAMES),
             )
         except bs4.FeatureNotFound as e:
             if parser != "html5lib":

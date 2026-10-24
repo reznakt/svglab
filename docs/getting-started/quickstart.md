@@ -91,6 +91,29 @@ rect = Rect(
 svg.add_child(rect)
 ```
 
+## Reifying transformations
+
+A `transform` attribute describes geometry indirectly. Reification folds it
+into the attributes it acts on -- coordinates, lengths, path data -- so that
+the document looks the same without it:
+
+```python
+from svglab import Rotate, Translate
+
+rect.transform = [Translate(5, 5)]
+circle.transform = [Rotate(45, 50, 50)]
+svg.reify()
+print(rect.x, rect.transform)  # Length(value=15.0, unit=None) None
+```
+
+Each element takes on as much as its own attributes can express: a `#!python Path` absorbs anything, a `#!python Rect` nothing that would tilt it, a `#!python Text` cannot be mirrored, and a group hands its transformation to its children. A stroke width or font size declared in a `style` attribute is resized there. Whatever would change the picture if folded in -- a shape painted by a gradient defined in user space, a stroke that is not to be scaled, a length given as a percentage -- is left where it is, in the shortest form the library can find for it.
+
+Two options go further. `#!python convert_shapes_to_paths` replaces a basic shape that is asked to absorb more than it can express by the `#!python Path` drawing the same shape, and `#!python unwrap_groups` lifts the children of a group left with no attributes at all:
+
+```python
+svg.reify(convert_shapes_to_paths=True, unwrap_groups=True)
+```
+
 ## Serializing the SVG
 
 Finally, we can serialize the modified SVG back to a string using the `#!python to_xml()` method. The resulting string can be saved to a file or used as needed.

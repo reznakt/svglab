@@ -40,7 +40,6 @@ from svglab.attrs.typedefs import (
     ListOfExtensions,
     ListOfFeatures,
     ListOfLengths,
-    ListOfNames,
     ListOfNumbers,
     ListOfPoints,
     ListOfStrings,
@@ -68,7 +67,7 @@ from svglab.attrs.typedefs import (
     Urange,
     XmlName,
 )
-from svglab.models import Attr, BaseModel, List, Tuple
+from svglab.models import Attr, BaseModel, CommaList, List, Tuple
 from svglab.utiltypes import Xmlns
 
 
@@ -235,7 +234,7 @@ class ContentStyleTypeAttr(_Attr):
 
 
 class CursorAttr(_Attr):
-    cursor: Attr[CursorValue | Inherit | List[CursorValue]] = None
+    cursor: Attr[CursorValue | Inherit | CommaList[CursorValue]] = None
 
 
 class CxAttr(_Attr):
@@ -396,7 +395,9 @@ class FloodOpacityAttr(_Attr):
 
 
 class FontFamilyAttr(_Attr):
-    font_family: Attr[List[FamilyName | GenericFamily] | Inherit] = None
+    font_family: Attr[CommaList[FamilyName | GenericFamily] | Inherit] = (
+        None
+    )
 
 
 class FontSizeAttr(_Attr):
@@ -415,34 +416,42 @@ class FontSizeAdjustAttr(_Attr):
     font_size_adjust: Attr[Number | None_ | Inherit] = None
 
 
+_FontStretch: TypeAlias = Literal[
+    "condensed",
+    "expanded",
+    "extra-condensed",
+    "extra-expanded",
+    "narrower",
+    "normal",
+    "semi-condensed",
+    "semi-expanded",
+    "ultra-condensed",
+    "ultra-expanded",
+    "wider",
+]
+
+
 class FontStretchAttr(_Attr):
+    # a list only on `font-face`, which describes the stretches a font covers
     font_stretch: Attr[
-        All
-        | Literal[
-            "condensed",
-            "expanded",
-            "extra-condensed",
-            "extra-expanded",
-            "narrower",
-            "normal",
-            "semi-condensed",
-            "semi-expanded",
-            "ultra-condensed",
-            "ultra-expanded",
-            "wider",
-        ]
-        | Inherit
+        All | _FontStretch | CommaList[_FontStretch] | Inherit
     ] = None
 
 
 class FontStyleAttr(_Attr):
     font_style: Attr[
-        All | List[Literal["normal", "italic", "oblique"]] | Inherit
+        All | CommaList[Literal["normal", "italic", "oblique"]] | Inherit
     ] = None
 
 
+_FontVariant: TypeAlias = Literal["normal", "small-caps"]
+
+
 class FontVariantAttr(_Attr):
-    font_variant: Attr[Literal["normal", "small-caps"] | Inherit] = None
+    # a list only on `font-face`, which describes the variants a font covers
+    font_variant: Attr[
+        _FontVariant | CommaList[_FontVariant] | Inherit
+    ] = None
 
 
 # a BeforeValidator must be used on non-string literals; pydantic will not
@@ -457,7 +466,7 @@ class FontWeightAttr(_Attr):
     font_weight: Attr[
         All
         | Inherit
-        | List[
+        | CommaList[
             Literal["normal", "bold", "bolder", "lighter"] | _FontWeightInt
         ]
     ] = None
@@ -484,15 +493,15 @@ class FyAttr(_Attr):
 
 
 class G1Attr(_Attr):
-    g1: Attr[ListOfNames] = None
+    g1: Attr[CommaList[Name]] = None
 
 
 class G2Attr(_Attr):
-    g2: Attr[ListOfNames] = None
+    g2: Attr[CommaList[Name]] = None
 
 
 class GlyphNameAttr(_Attr):
-    glyph_name: Attr[ListOfNames] = None
+    glyph_name: Attr[CommaList[Name]] = None
 
 
 class GlyphOrientationHorizontalAttr(_Attr):
@@ -698,8 +707,26 @@ class MinAttr(_Attr):
 
 
 class ModeAttr(_Attr):
+    # the blend modes of Filter Effects Level 1, which has every one CSS has
     mode: Attr[
-        Literal["normal", "multiply", "screen", "darken", "lighten"]
+        Literal[
+            "normal",
+            "multiply",
+            "screen",
+            "overlay",
+            "darken",
+            "lighten",
+            "color-dodge",
+            "color-burn",
+            "hard-light",
+            "soft-light",
+            "difference",
+            "exclusion",
+            "hue",
+            "saturation",
+            "color",
+            "luminosity",
+        ]
     ] = None
 
 
@@ -844,9 +871,12 @@ class OverlineThicknessAttr(_Attr):
 
 
 class PaintOrderAttr(_Attr):
-    paint_order: (
-        Attr[Literal["normal", "fill", "stroke", "markers"]] | Inherit
-    ) = None
+    # the layers may be named in any order, and the ones left out follow
+    paint_order: Attr[
+        Literal["normal"]
+        | List[Literal["fill", "stroke", "markers"]]
+        | Inherit
+    ] = None
 
 
 class Panose1Attr(_Attr):
@@ -1274,11 +1304,11 @@ class TypeFeTurbluenceAttr(_Attr):
 
 
 class U1Attr(_Attr):
-    u1: Attr[List[Character | Urange]] = None
+    u1: Attr[CommaList[Character | Urange]] = None
 
 
 class U2Attr(_Attr):
-    u2: Attr[List[Character | Urange]] = None
+    u2: Attr[CommaList[Character | Urange]] = None
 
 
 class UnderlinePositionAttr(_Attr):
@@ -1300,7 +1330,7 @@ class UnicodeBidiAttr(_Attr):
 
 
 class UnicodeRangeAttr(_Attr):
-    unicode_range: Attr[List[Urange]] = None
+    unicode_range: Attr[CommaList[Urange]] = None
 
 
 class UnitsPerEmAttr(_Attr):
@@ -1392,7 +1422,7 @@ class WidthAttr(_Attr):
 
 
 class WidthsAttr(_Attr):
-    widths: Attr[List[Urange | Tuple[Urange, Number]]] = None
+    widths: Attr[CommaList[Urange | Tuple[Urange, Number]]] = None
 
 
 class WordSpacingAttr(_Attr):
