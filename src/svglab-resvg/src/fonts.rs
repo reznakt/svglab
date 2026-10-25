@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
+use pyo3::FromPyObject;
 use resvg::usvg::fontdb;
 
 use crate::errors::Error;
 
-#[derive(Clone, Default, PartialEq, Eq)]
+/// The font settings of a `RenderOptions`, read from its attributes of the same names.
+#[derive(Clone, Default, PartialEq, Eq, FromPyObject)]
 pub(crate) struct FontOptions {
     pub cursive_family: Option<String>,
     pub fantasy_family: Option<String>,

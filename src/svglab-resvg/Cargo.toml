@@ -24,7 +24,6 @@ features = ["memmap-fonts", "raster-images", "system-fonts", "text"]
 [lints.clippy]
 doc_markdown = "allow"
 pedantic = { level = "warn", priority = -1 }
-too_many_arguments = "allow"
 undocumented_unsafe_blocks = "warn"
 
 [lints.rust]

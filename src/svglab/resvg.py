@@ -20,6 +20,8 @@ from svglab.errors import SvgRenderError
 from svglab.models import DATACLASS_CONFIG, dataclass
 
 
+# the renderer reads these fields by name, into `Settings` and `FontOptions`
+# in src/svglab-resvg
 @final
 @dataclass(
     frozen=True,
@@ -190,27 +192,10 @@ def render(
     try:
         width, height, pixels = _render(
             svg,
+            options,
             background=_to_rgba(background)
             if background is not None
             else None,
-            cursive_family=options.cursive_family,
-            default_size=options.default_size,
-            dpi=options.dpi,
-            fantasy_family=options.fantasy_family,
-            font_dirs=options.font_dirs,
-            font_family=options.font_family,
-            font_files=options.font_files,
-            font_size=options.font_size,
-            image_rendering=options.image_rendering,
-            languages=options.languages,
-            monospace_family=options.monospace_family,
-            resources_dir=options.resources_dir,
-            sans_serif_family=options.sans_serif_family,
-            serif_family=options.serif_family,
-            shape_rendering=options.shape_rendering,
-            skip_system_fonts=options.skip_system_fonts,
-            style_sheet=options.style_sheet,
-            text_rendering=options.text_rendering,
             zoom=zoom,
         )
     except RenderError as e:
