@@ -25,6 +25,10 @@ features = ["memmap-fonts", "raster-images", "system-fonts", "text"]
 doc_markdown = "allow"
 pedantic = { level = "warn", priority = -1 }
 too_many_arguments = "allow"
+undocumented_unsafe_blocks = "warn"
+
+[lints.rust]
+unsafe_code = "deny"
 
 [profile.dist]
 inherits = "release"
