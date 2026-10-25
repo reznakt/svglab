@@ -127,10 +127,10 @@ pub(crate) fn build_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>
 
     let mut cached = DERIVED_FONTS.lock().unwrap_or_else(PoisonError::into_inner);
 
-    if let Some((key, fonts)) = cached.as_ref() {
-        if key == options {
-            return Ok(Arc::clone(fonts));
-        }
+    if let Some((key, fonts)) = cached.as_ref()
+        && key == options
+    {
+        return Ok(Arc::clone(fonts));
     }
 
     let fonts = load_fonts(options)?;
