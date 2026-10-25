@@ -1,5 +1,6 @@
 mod errors;
 mod fonts;
+mod logging;
 mod pixels;
 mod raster;
 
@@ -58,7 +59,7 @@ fn render(
     let default_size = usvg::Size::from_wh(width, height)
         .ok_or_else(|| Error::Value(format!("invalid default_size: {width}x{height}")))?;
 
-    let pixels = py.detach(move || {
+    let pixels = logging::detach(py, move || {
         let fonts = build_fonts(&font_options)?;
         let font_family = settings
             .font_family
@@ -98,7 +99,7 @@ mod _resvg {
 
     #[pymodule_init]
     fn init(module: &Bound<'_, PyModule>) -> PyResult<()> {
-        let _ = pyo3_log::try_init();
+        crate::logging::init(module.py())?;
 
         module.add(
             "PanicError",

@@ -528,6 +528,7 @@ dependencies = [
 name = "svglab-resvg"
 version = "0.0.0"
 dependencies = [
+ "log",
  "pyo3",
  "pyo3-log",
  "resvg",

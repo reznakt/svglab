@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 import math
 
 import hypothesis
@@ -118,6 +119,28 @@ def test_document_without_a_positive_size_is_rejected() -> None:
 
     with pytest.raises(SvgRenderError):
         render(svg)
+
+
+def test_renderer_warnings_reach_python_logging(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2">'
+        '<rect width="-1" height="1"/><rect width="1" height="-1"/></svg>'
+    )
+
+    with caplog.at_level(logging.WARNING):
+        render(svg)
+
+    levels = [
+        record.levelno
+        for record in caplog.records
+        if record.name.startswith("usvg.")
+    ]
+
+    # both invalid rects, logged once each even though the renderer ran
+    # without the GIL
+    assert levels == [logging.WARNING, logging.WARNING]
 
 
 def test_style_sheet_overrides_attributes() -> None:
