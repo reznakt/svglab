@@ -201,12 +201,60 @@ def _parse_semicolon_list(text: str, /) -> list[str]:
     return [item for part in text.split(";") if (item := part.strip())]
 
 
+_QUOTED_OR_UNSEPARATED: Final = re.compile(
+    r"""(?:"[^"]*"|'[^']*'|[^,])+"""
+)
+
+
+def _parse_comma_list(text: str, /) -> list[str]:
+    """Parse a string into a list of strings.
+
+    Items are separated by commas. Whitespace around an item is dropped,
+    whitespace inside it is kept, and a comma inside a quoted string does not
+    separate anything.
+
+    Args:
+        text: The string to parse.
+
+    Returns:
+        A list of strings.
+
+    Examples:
+        >>> _parse_comma_list("Arial, sans-serif")
+        ['Arial', 'sans-serif']
+        >>> _parse_comma_list("Times New Roman,serif")
+        ['Times New Roman', 'serif']
+        >>> _parse_comma_list("'Foo, Bar', serif")
+        ["'Foo, Bar'", 'serif']
+        >>> _parse_comma_list("")
+        []
+
+    """
+    # the regex is only needed to keep quoted commas together; a plain split
+    # is several times faster on the common unquoted case
+    parts = (
+        _QUOTED_OR_UNSEPARATED.findall(text)
+        if "'" in text or '"' in text
+        else text.split(",")
+    )
+    return [item for part in parts if (item := part.strip())]
+
+
 class SemicolonSeparated(list[_T]):
     """A list whose items are separated by semicolons when serialized.
 
     SVG separates the items of the animation attributes `begin`, `end`,
     `values`, `keyTimes`, `keySplines` and `keyPoints` with semicolons,
     whatever separator the formatter uses for other lists.
+    """
+
+
+class CommaSeparated(list[_T]):
+    """A list whose items are separated by commas when serialized.
+
+    SVG separates the items of `font-family` and the like with commas,
+    whatever separator the formatter uses for other lists, because an item
+    may itself contain whitespace (`Times New Roman`, or a `widths` entry).
     """
 
 
@@ -224,6 +272,16 @@ SemicolonList: TypeAlias = Annotated[
 """
 Pydantic field for a semicolon-separated list. Uses `_parse_semicolon_list`
 as a validator and stores the items in a `SemicolonSeparated` list.
+"""
+
+CommaList: TypeAlias = Annotated[
+    list[_T],
+    _get_validator(_parse_comma_list),
+    pydantic.AfterValidator(CommaSeparated),
+]
+"""
+Pydantic field for a comma-separated list. Uses `_parse_comma_list` as a
+validator and stores the items in a `CommaSeparated` list.
 """
 
 Tuple: TypeAlias = Annotated[

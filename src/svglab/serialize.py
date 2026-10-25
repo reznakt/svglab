@@ -37,7 +37,12 @@ from typing_extensions import (
 from svglab.attrs.names import AttributeName
 from svglab.constants import FLOAT_ABSOLUTE_TOLERANCE
 from svglab.elements.names import ElementName
-from svglab.models import DATACLASS_CONFIG, SemicolonSeparated, dataclass
+from svglab.models import (
+    DATACLASS_CONFIG,
+    CommaSeparated,
+    SemicolonSeparated,
+    dataclass,
+)
 from svglab.protocols import CustomSerializable, PointLike
 from svglab.utils.iterutils import pairwise
 from svglab.utils.miscutils import extract_function_name_and_args
@@ -682,11 +687,13 @@ def _serialize(
         # this should go last to avoid classifying strings as iterables, etc.
         case Iterable():
             items = cast(Iterable[object], value)
-            separator = (
-                ";"
-                if isinstance(value, SemicolonSeparated)
-                else formatter.list_separator
-            )
+            match value:
+                case SemicolonSeparated():
+                    separator = ";"
+                case CommaSeparated():
+                    separator = ", "
+                case _:
+                    separator = formatter.list_separator
             result = separator.join(
                 _serialize(
                     v, bool_mode=bool_mode, precision_group=precision_group
