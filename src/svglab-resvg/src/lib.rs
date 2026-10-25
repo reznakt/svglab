@@ -11,7 +11,7 @@ use pyo3::prelude::*;
 use resvg::usvg;
 
 use crate::errors::Error;
-use crate::fonts::{FontOptions, build_fonts, default_family};
+use crate::fonts::{DEFAULT_FAMILY, FontOptions, build_fonts};
 use crate::pixels::Pixels;
 use crate::raster::rasterize;
 
@@ -60,15 +60,15 @@ fn render(
         .ok_or_else(|| Error::Value(format!("invalid default_size: {width}x{height}")))?;
 
     let pixels = logging::detach(py, move || {
-        let fonts = build_fonts(&font_options)?;
-        let font_family = settings
-            .font_family
-            .unwrap_or_else(|| default_family(&fonts));
+        let (fonts, font_resolver) = build_fonts(&font_options)?;
 
         let options = usvg::Options {
             default_size,
             dpi: settings.dpi,
-            font_family,
+            font_family: settings
+                .font_family
+                .unwrap_or_else(|| DEFAULT_FAMILY.to_owned()),
+            font_resolver,
             font_size: settings.font_size,
             fontdb: fonts,
             image_rendering: settings.image_rendering,

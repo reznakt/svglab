@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
 use pyo3::FromPyObject;
+use resvg::usvg;
 use resvg::usvg::fontdb;
 
 use crate::errors::Error;
@@ -72,6 +73,7 @@ static SYSTEM_FONTS: LazyLock<Arc<fontdb::Database>> = LazyLock::new(|| {
     Arc::new(fonts)
 });
 
+/// The fonts last loaded for options other than the bare defaults.
 static DERIVED_FONTS: Mutex<Option<(FontOptions, Arc<fontdb::Database>)>> = Mutex::new(None);
 
 fn is_available(fonts: &fontdb::Database, family: fontdb::Family<'_>) -> bool {
@@ -129,11 +131,7 @@ fn load_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
     Ok(Arc::new(fonts))
 }
 
-pub(crate) fn build_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
-    if options.is_bare() && !options.skip_system_fonts {
-        return Ok(Arc::clone(&SYSTEM_FONTS));
-    }
-
+fn derived_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
     let mut cached = DERIVED_FONTS.lock().unwrap_or_else(PoisonError::into_inner);
 
     if let Some((key, fonts)) = cached.as_ref()
@@ -148,6 +146,34 @@ pub(crate) fn build_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>
     Ok(fonts)
 }
 
-pub(crate) fn default_family(fonts: &fontdb::Database) -> String {
-    fonts.family_name(&fontdb::Family::Serif).to_owned()
+/// The font database to render with, and the resolver that picks fonts from it.
+///
+/// Loading the system fonts takes a while, so when they are all that is asked for, the database
+/// starts out empty and the resolver loads them once a document turns out to have text.
+pub(crate) fn build_fonts(
+    options: &FontOptions,
+) -> Result<(Arc<fontdb::Database>, usvg::FontResolver<'static>), Error> {
+    if !options.is_bare() || options.skip_system_fonts {
+        return Ok((derived_fonts(options)?, usvg::FontResolver::default()));
+    }
+
+    let select_font = usvg::FontResolver::default_font_selector();
+
+    let resolver = usvg::FontResolver {
+        select_font: Box::new(move |font, fonts| {
+            if fonts.is_empty() {
+                *fonts = Arc::clone(&SYSTEM_FONTS);
+            }
+
+            select_font(font, fonts)
+        }),
+        ..usvg::FontResolver::default()
+    };
+
+    Ok((Arc::new(fontdb::Database::new()), resolver))
 }
+
+/// The family to fall back on where a document names none. usvg's font selector appends
+/// `serif` to every query and no face is called this, so it resolves to whatever `serif`
+/// resolves to, without loading the fonts to find out which family that is.
+pub(crate) const DEFAULT_FAMILY: &str = "serif";
