@@ -190,7 +190,7 @@ def render(
     options = _DEFAULT_OPTIONS if options is None else options
 
     try:
-        width, height, pixels = _render(
+        pixels = _render(
             svg,
             options,
             background=_to_rgba(background)
@@ -203,6 +203,14 @@ def render(
     except PanicError as e:
         raise RuntimeError(str(e)) from e
 
+    # Pillow maps the buffer instead of copying it, though its signature only
+    # names `bytes` and `bytearray` among the objects that export one
     return PIL.Image.frombuffer(
-        "RGBA", (width, height), pixels, "raw", "RGBA", 0, 1
+        "RGBA",
+        (pixels.width, pixels.height),
+        pixels,  # pyright: ignore[reportArgumentType]
+        "raw",
+        "RGBA",
+        0,
+        1,
     )

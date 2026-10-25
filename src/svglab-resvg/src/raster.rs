@@ -3,6 +3,7 @@ use std::sync::LazyLock;
 use resvg::{tiny_skia, usvg};
 
 use crate::errors::Error;
+use crate::pixels::Pixels;
 
 /// What `Pixmap::take_demultiplied` turns each channel value into under each alpha, indexed by
 /// alpha and then by channel. It is taken from tiny-skia itself, so a lookup gives exactly what
@@ -80,7 +81,7 @@ pub(crate) fn rasterize(
     options: &usvg::Options<'_>,
     background: Option<(u8, u8, u8, u8)>,
     zoom: f32,
-) -> Result<(u32, u32, Vec<u8>), Error> {
+) -> Result<Pixels, Error> {
     if !zoom.is_finite() || zoom <= 0.0 {
         return Err(Error::Value(format!(
             "zoom must be positive and finite: {zoom}"
@@ -108,5 +109,9 @@ pub(crate) fn rasterize(
         &mut pixmap.as_mut(),
     );
 
-    Ok((pixmap.width(), pixmap.height(), take_demultiplied(pixmap)))
+    Ok(Pixels::new(
+        pixmap.width(),
+        pixmap.height(),
+        take_demultiplied(pixmap),
+    ))
 }
