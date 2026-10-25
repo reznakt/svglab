@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
@@ -73,8 +75,21 @@ static SYSTEM_FONTS: LazyLock<Arc<fontdb::Database>> = LazyLock::new(|| {
     Arc::new(fonts)
 });
 
+/// The fallback faces already chosen from one database, by character and the faces tried
+/// before. usvg asks again for every text chunk that lacks a glyph, and each time it scans the
+/// faces until one has it, which is all of them when none does.
+type Fallbacks = Mutex<HashMap<(char, Vec<fontdb::ID>), Option<fontdb::ID>>>;
+
+static SYSTEM_FALLBACKS: LazyLock<Fallbacks> = LazyLock::new(Fallbacks::default);
+
 /// The fonts last loaded for options other than the bare defaults.
-static DERIVED_FONTS: Mutex<Option<(FontOptions, Arc<fontdb::Database>)>> = Mutex::new(None);
+struct Derived {
+    options: FontOptions,
+    fonts: Arc<fontdb::Database>,
+    fallbacks: Arc<Fallbacks>,
+}
+
+static DERIVED_FONTS: Mutex<Option<Derived>> = Mutex::new(None);
 
 fn is_available(fonts: &fontdb::Database, family: fontdb::Family<'_>) -> bool {
     let query = fontdb::Query {
@@ -131,19 +146,50 @@ fn load_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
     Ok(Arc::new(fonts))
 }
 
-fn derived_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
+fn derived_fonts(options: &FontOptions) -> Result<(Arc<fontdb::Database>, Arc<Fallbacks>), Error> {
     let mut cached = DERIVED_FONTS.lock().unwrap_or_else(PoisonError::into_inner);
 
-    if let Some((key, fonts)) = cached.as_ref()
-        && key == options
+    if let Some(derived) = cached.as_ref()
+        && derived.options == *options
     {
-        return Ok(Arc::clone(fonts));
+        return Ok((Arc::clone(&derived.fonts), Arc::clone(&derived.fallbacks)));
     }
 
-    let fonts = load_fonts(options)?;
-    *cached = Some((options.clone(), Arc::clone(&fonts)));
+    let derived = cached.insert(Derived {
+        options: options.clone(),
+        fonts: load_fonts(options)?,
+        fallbacks: Arc::default(),
+    });
 
-    Ok(fonts)
+    Ok((Arc::clone(&derived.fonts), Arc::clone(&derived.fallbacks)))
+}
+
+/// usvg's fallback selector, remembering its answers in `fallbacks`, which must belong to the
+/// database the selector is handed.
+fn select_fallback(
+    fallbacks: impl Deref<Target = Fallbacks> + Send + Sync + 'static,
+) -> usvg::FallbackSelectionFn<'static> {
+    let select_fallback = usvg::FontResolver::default_fallback_selector();
+
+    Box::new(move |c, tried, fonts| {
+        let key = (c, tried.to_vec());
+        let chosen = fallbacks
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(&key)
+            .copied();
+
+        chosen.unwrap_or_else(|| {
+            let id = select_fallback(c, tried, fonts);
+
+            fallbacks
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .insert(key, id);
+
+            id
+        })
+    })
 }
 
 /// The font database to render with, and the resolver that picks fonts from it.
@@ -154,7 +200,14 @@ pub(crate) fn build_fonts(
     options: &FontOptions,
 ) -> Result<(Arc<fontdb::Database>, usvg::FontResolver<'static>), Error> {
     if !options.is_bare() || options.skip_system_fonts {
-        return Ok((derived_fonts(options)?, usvg::FontResolver::default()));
+        let (fonts, fallbacks) = derived_fonts(options)?;
+
+        let resolver = usvg::FontResolver {
+            select_fallback: select_fallback(fallbacks),
+            ..usvg::FontResolver::default()
+        };
+
+        return Ok((fonts, resolver));
     }
 
     let select_font = usvg::FontResolver::default_font_selector();
@@ -167,7 +220,8 @@ pub(crate) fn build_fonts(
 
             select_font(font, fonts)
         }),
-        ..usvg::FontResolver::default()
+        // a fallback is only looked for once `select_font` has loaded the system fonts
+        select_fallback: select_fallback(LazyLock::force(&SYSTEM_FALLBACKS)),
     };
 
     Ok((Arc::new(fontdb::Database::new()), resolver))
