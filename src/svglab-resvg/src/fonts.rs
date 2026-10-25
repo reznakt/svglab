@@ -27,6 +27,41 @@ impl FontOptions {
     }
 }
 
+/// A generic family, how to point it at a family in a database, and the option that does.
+struct GenericFamily {
+    family: fontdb::Family<'static>,
+    set: fn(&mut fontdb::Database, String),
+    chosen: fn(&FontOptions) -> Option<&str>,
+}
+
+const GENERIC_FAMILIES: [GenericFamily; 5] = [
+    GenericFamily {
+        family: fontdb::Family::Cursive,
+        set: fontdb::Database::set_cursive_family,
+        chosen: |options| options.cursive_family.as_deref(),
+    },
+    GenericFamily {
+        family: fontdb::Family::Fantasy,
+        set: fontdb::Database::set_fantasy_family,
+        chosen: |options| options.fantasy_family.as_deref(),
+    },
+    GenericFamily {
+        family: fontdb::Family::Monospace,
+        set: fontdb::Database::set_monospace_family,
+        chosen: |options| options.monospace_family.as_deref(),
+    },
+    GenericFamily {
+        family: fontdb::Family::SansSerif,
+        set: fontdb::Database::set_sans_serif_family,
+        chosen: |options| options.sans_serif_family.as_deref(),
+    },
+    GenericFamily {
+        family: fontdb::Family::Serif,
+        set: fontdb::Database::set_serif_family,
+        chosen: |options| options.serif_family.as_deref(),
+    },
+];
+
 static SYSTEM_FONTS: LazyLock<Arc<fontdb::Database>> = LazyLock::new(|| {
     let mut fonts = fontdb::Database::new();
     fonts.load_system_fonts();
@@ -56,24 +91,10 @@ fn repair_generic_families(fonts: &mut fontdb::Database) {
         return;
     };
 
-    if !is_available(fonts, fontdb::Family::Cursive) {
-        fonts.set_cursive_family(fallback.clone());
-    }
-
-    if !is_available(fonts, fontdb::Family::Fantasy) {
-        fonts.set_fantasy_family(fallback.clone());
-    }
-
-    if !is_available(fonts, fontdb::Family::Monospace) {
-        fonts.set_monospace_family(fallback.clone());
-    }
-
-    if !is_available(fonts, fontdb::Family::SansSerif) {
-        fonts.set_sans_serif_family(fallback.clone());
-    }
-
-    if !is_available(fonts, fontdb::Family::Serif) {
-        fonts.set_serif_family(fallback);
+    for generic in &GENERIC_FAMILIES {
+        if !is_available(fonts, generic.family) {
+            (generic.set)(fonts, fallback.clone());
+        }
     }
 }
 
@@ -97,24 +118,10 @@ fn load_fonts(options: &FontOptions) -> Result<Arc<fontdb::Database>, Error> {
 
     repair_generic_families(&mut fonts);
 
-    if let Some(family) = &options.cursive_family {
-        fonts.set_cursive_family(family.clone());
-    }
-
-    if let Some(family) = &options.fantasy_family {
-        fonts.set_fantasy_family(family.clone());
-    }
-
-    if let Some(family) = &options.monospace_family {
-        fonts.set_monospace_family(family.clone());
-    }
-
-    if let Some(family) = &options.sans_serif_family {
-        fonts.set_sans_serif_family(family.clone());
-    }
-
-    if let Some(family) = &options.serif_family {
-        fonts.set_serif_family(family.clone());
+    for generic in &GENERIC_FAMILIES {
+        if let Some(family) = (generic.chosen)(options) {
+            (generic.set)(&mut fonts, family.to_owned());
+        }
     }
 
     Ok(Arc::new(fonts))
