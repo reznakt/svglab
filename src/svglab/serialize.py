@@ -30,6 +30,7 @@ from typing_extensions import (
     TypeVar,
     cast,
     final,
+    get_args,
     overload,
     override,
 )
@@ -166,6 +167,9 @@ class FloatPrecisionSettings:
             The number of decimal places to use when serializing the number.
 
         """
+        if not self.precision_table:
+            return self.fallback
+
         return next(
             (
                 interval.precision
@@ -431,17 +435,7 @@ class Formatter:
                 is set.
 
         """
-        settings: _FloatPrecisionSettingsType = None
-
-        for group in precision_group, "general":
-            name = f"{group}_precision"
-
-            if (
-                hasattr(self, name)
-                and (attr := getattr(self, name)) is not None
-            ):
-                settings = attr
-                break
+        settings = self.__precision_settings[precision_group]
 
         if settings is None:
             msg = (
@@ -450,7 +444,26 @@ class Formatter:
             )
             raise TypeError(msg)
 
-        return cast(FloatPrecisionSettings, settings).get_precision(value)
+        return settings.get_precision(value)
+
+    # every number that is serialized looks its group up, so the lookup is
+    # done once per formatter
+    @functools.cached_property
+    def __precision_settings(
+        self,
+    ) -> dict[_PrecisionGroup, FloatPrecisionSettings | None]:
+        def settings(
+            group: _PrecisionGroup,
+        ) -> FloatPrecisionSettings | None:
+            for name in f"{group}_precision", "general_precision":
+                if (attr := getattr(self, name, None)) is not None:
+                    return cast(FloatPrecisionSettings, attr)
+
+            return None
+
+        return {
+            group: settings(group) for group in get_args(_PrecisionGroup)
+        }
 
     # the generated hash would fail on the `attribute_order` dict, so that
     # one field is hashed by its value instead
