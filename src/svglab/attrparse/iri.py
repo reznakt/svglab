@@ -9,12 +9,12 @@ import pydantic
 import rfc3986
 from typing_extensions import Annotated, Self, TypeAlias, final, override
 
-from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.models import DATACLASS_CONFIG, Immutable, dataclass
 from svglab.protocols import CustomSerializable
 
 
 @dataclass(frozen=True, kw_only=True, config=DATACLASS_CONFIG)
-class Iri(CustomSerializable):
+class Iri(CustomSerializable, Immutable):
     """Represents the SVG `<IRI>` type.
 
     The <IRI> type is a string that represents an Internationalized Resource

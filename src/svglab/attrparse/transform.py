@@ -36,7 +36,7 @@ from svglab.attrparse.parse import (
     v_args_to_list,
 )
 from svglab.mixins import AddSub
-from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.models import DATACLASS_CONFIG, Immutable, dataclass
 from svglab.protocols import CustomSerializable, PointLike, SupportsRMatmul
 from svglab.serialize import serialize, serialize_function_call
 from svglab.utils.mathutils import arctan, cos, degrees, is_close, sin, tan
@@ -73,7 +73,9 @@ def _dot_product(u: _Vector, v: _Vector, /) -> float:
     return u1 * v1 + u2 * v2
 
 
-class _TransformFunctionBase(CustomSerializable, metaclass=abc.ABCMeta):
+class _TransformFunctionBase(
+    CustomSerializable, Immutable, metaclass=abc.ABCMeta
+):
     @abc.abstractmethod
     def to_matrix(self) -> Matrix:
         """Convert the transformation to a `Matrix` instance.

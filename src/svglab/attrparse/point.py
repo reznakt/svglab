@@ -28,7 +28,7 @@ from svglab.attrparse.transform import (
     TransformFunction,
 )
 from svglab.mixins import FloatMulDiv
-from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.models import DATACLASS_CONFIG, Immutable, dataclass
 from svglab.protocols import (
     CustomSerializable,
     PointLike,
@@ -46,6 +46,7 @@ class _Point(
     PointAddSubWithTranslateRMatmul,
     PointLike,
     CustomSerializable,
+    Immutable,
 ):
     x: float
     y: float

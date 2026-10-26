@@ -24,7 +24,7 @@ from typing_extensions import (
 from svglab.attrparse.parse import FiniteFloat, get_validator, inline_args
 from svglab.errors import SvgUnitConversionError
 from svglab.mixins import AddSub, FloatMulDiv
-from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.models import DATACLASS_CONFIG, Immutable, dataclass
 from svglab.protocols import CustomSerializable
 from svglab.serialize import get_current_formatter, serialize
 from svglab.units import Converter, make_converter
@@ -46,7 +46,11 @@ _convert: Final[Converter[Length, LengthUnit]] = make_converter(
 @final
 @dataclass(frozen=True, config=DATACLASS_CONFIG)
 class Length(
-    AddSub["Length"], FloatMulDiv, SupportsFloat, CustomSerializable
+    AddSub["Length"],
+    FloatMulDiv,
+    SupportsFloat,
+    CustomSerializable,
+    Immutable,
 ):
     """Represents the SVG `<length>` type.
 

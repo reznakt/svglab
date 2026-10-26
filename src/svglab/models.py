@@ -12,6 +12,7 @@ from typing_extensions import (
     Annotated,
     ClassVar,
     Final,
+    Self,
     TypeAlias,
     TypeVar,
     TypeVarTuple,
@@ -75,6 +76,19 @@ if TYPE_CHECKING:
 
 else:
     dataclass = pydantic.dataclasses.dataclass
+
+
+class Immutable:
+    """A frozen value whose fields hold only immutable values.
+
+    Nothing about such a value can change, so a deep copy of it can be the
+    value itself, which saves rebuilding it field by field.
+    """
+
+    __slots__ = ()
+
+    def __deepcopy__(self, memo: dict[int, object], /) -> Self:
+        return self
 
 
 def convert(

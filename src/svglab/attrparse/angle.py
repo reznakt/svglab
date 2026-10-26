@@ -21,7 +21,7 @@ from typing_extensions import (
 
 from svglab.attrparse.parse import FiniteFloat, get_validator, inline_args
 from svglab.mixins import AddSub, FloatMulDiv
-from svglab.models import DATACLASS_CONFIG, dataclass
+from svglab.models import DATACLASS_CONFIG, Immutable, dataclass
 from svglab.protocols import CustomSerializable
 from svglab.serialize import serialize
 from svglab.units import Converter, make_converter
@@ -42,7 +42,11 @@ _convert: Final[Converter[Angle, AngleUnit]] = make_converter(
 @final
 @dataclass(frozen=True, config=DATACLASS_CONFIG)
 class Angle(
-    AddSub["Angle"], FloatMulDiv, SupportsFloat, CustomSerializable
+    AddSub["Angle"],
+    FloatMulDiv,
+    SupportsFloat,
+    CustomSerializable,
+    Immutable,
 ):
     """Represents the SVG `<angle>` type.
 
