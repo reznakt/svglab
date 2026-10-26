@@ -15,7 +15,6 @@ from typing_extensions import Final, Literal, Protocol
 
 import svglab
 from svglab import (
-    ArcTo,
     CData,
     Circle,
     ClosePath,
@@ -432,8 +431,8 @@ def test_svg_to_data_uri_roundtrip() -> None:
                 fill=Color("red"),
                 stroke=Color("black"),
             ),
-            3,
-            ArcTo,
+            4,
+            ClosePath,
             id="circle",
         ),
         pytest.param(
@@ -445,8 +444,8 @@ def test_svg_to_data_uri_roundtrip() -> None:
                 fill=Color("green"),
                 stroke=Color("black"),
             ),
-            3,
-            ArcTo,
+            4,
+            ClosePath,
             id="ellipse",
         ),
         pytest.param(
