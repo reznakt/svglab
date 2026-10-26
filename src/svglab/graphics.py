@@ -12,6 +12,7 @@ from typing_extensions import (
     Literal,
     Protocol,
     TypeAlias,
+    TypeIs,
     TypeVar,
     cast,
     runtime_checkable,
@@ -52,6 +53,36 @@ class _SvgElementLike(Protocol):
         width: float | None = None,
         zoom: float = 1,
     ) -> PIL.Image.Image: ...
+
+
+_SVG_ELEMENT_LIKE_CLASSES: Final[set[type]] = set()
+
+
+def _is_svg_element_like(element: object, /) -> TypeIs[_SvgElementLike]:
+    """Check whether an object is an `_SvgElementLike`, but quickly.
+
+    `isinstance` against a runtime-checkable protocol looks every member up
+    with `inspect.getattr_static`, which walks the whole MRO of the class, and
+    an element's many mixins make that take hundreds of microseconds. So the
+    class is checked once, and only the fields, which can be deleted from an
+    element, are checked every time.
+
+    Args:
+        element: The object to check.
+
+    Returns:
+        Whether `isinstance(element, _SvgElementLike)` holds.
+
+    """
+    if type(element) not in _SVG_ELEMENT_LIKE_CLASSES:
+        if not isinstance(element, _SvgElementLike):
+            return False
+
+        _SVG_ELEMENT_LIKE_CLASSES.add(type(element))
+
+    return all(
+        hasattr(element, name) for name in ("width", "height", "viewBox")
+    )
 
 
 def _positive_user_units(value: Length | None, /) -> float | None:
@@ -189,7 +220,7 @@ def _compute_render_size(
         ValueError: Image dimensions must be positive: width=0, height=None
 
     """
-    if not isinstance(svg, _SvgElementLike):
+    if not _is_svg_element_like(svg):
         msg = "Svg must be an instance of _SvgElementLike"
         raise TypeError(msg)
 
@@ -262,7 +293,7 @@ def _serialize_for_render(
         TypeError: If the element is not an SVG element.
 
     """
-    if not isinstance(svg, _SvgElementLike):
+    if not _is_svg_element_like(svg):
         raise TypeError("Element must be an SVG element")
 
     render_size = _compute_render_size(svg, width=width, height=height)
@@ -326,8 +357,8 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
     """
     svg = element.get_root()
 
-    if not isinstance(svg, _SvgElementLike):
-        raise ValueError("Element must be part of an SVG tree")  # ruff: ignore[TRY004]
+    if not _is_svg_element_like(svg):
+        raise ValueError("Element must be part of an SVG tree")
 
     memo: dict[int, object] = {}
     svg = copy.deepcopy(svg, memo)
