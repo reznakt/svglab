@@ -1,9 +1,9 @@
 """Functions related to rendering and other graphics operations."""
 
-import copy
 import itertools
 from collections.abc import Iterator
 
+import bs4
 import numpy as np
 import numpy.typing as npt
 import PIL.Image
@@ -13,8 +13,6 @@ from typing_extensions import (
     Protocol,
     TypeAlias,
     TypeIs,
-    TypeVar,
-    cast,
     runtime_checkable,
 )
 
@@ -24,15 +22,14 @@ from svglab.entities import Element
 from svglab.errors import SvgUnitConversionError
 from svglab.resvg import RenderOptions, render_array
 from svglab.resvg import render as resvg_render
-from svglab.serialize import MINIMAL_FORMATTER
+from svglab.serialize import MINIMAL_FORMATTER, serialize_attr
+from svglab.utils.bsutils import beautifulsoup_to_str
 
 
 Mask: TypeAlias = npt.NDArray[np.bool_]
 BBox: TypeAlias = tuple[int, int, int, int]
 
 _ImageArray: TypeAlias = npt.NDArray[np.uint8]
-
-_ElementT = TypeVar("_ElementT", bound=Element)
 
 
 _BLACK: Final = Color((0, 0, 0))
@@ -276,18 +273,20 @@ def _compute_render_size(
     return width, height
 
 
-def _serialize_for_render(
+def _render_soup(
     svg: Element, *, width: float | None, height: float | None
-) -> str:
-    """Serialize an SVG element with the size it is to be rendered at.
+) -> bs4.Tag:
+    """Convert an SVG element to the tree that is rendered of it.
 
     Args:
-        svg: The SVG element to serialize.
+        svg: The SVG element to convert.
         width: The width of the rendered image, in pixels, or `None`.
         height: The height of the rendered image, in pixels, or `None`.
 
     Returns:
-        The XML of a copy of the element, its size set to the render size.
+        The `BeautifulSoup` tree of the element, its size set to the render
+        size. Editing the tree changes what is rendered without touching the
+        element.
 
     Raises:
         TypeError: If the element is not an SVG element.
@@ -296,13 +295,22 @@ def _serialize_for_render(
     if not _is_svg_element_like(svg):
         raise TypeError("Element must be an SVG element")
 
-    render_size = _compute_render_size(svg, width=width, height=height)
-    svg = copy.copy(svg)
+    render_width, render_height = _compute_render_size(
+        svg, width=width, height=height
+    )
 
-    svg.width = Length(render_size[0])
-    svg.height = Length(render_size[1])
+    with MINIMAL_FORMATTER:
+        soup = svg.to_beautifulsoup_object()
+        soup["width"] = serialize_attr("width", Length(render_width))
+        soup["height"] = serialize_attr("height", Length(render_height))
 
-    return svg.to_xml(formatter=MINIMAL_FORMATTER)
+    return soup
+
+
+def _render_xml(soup: bs4.Tag, /) -> str:
+    """Convert a tree from `_render_soup` to the XML that is rendered."""
+    with MINIMAL_FORMATTER:
+        return beautifulsoup_to_str(soup, pretty=True)
 
 
 def render(  # ruff: ignore[D103]
@@ -314,80 +322,88 @@ def render(  # ruff: ignore[D103]
     width: float | None = None,
     zoom: float = 1,
 ) -> PIL.Image.Image:
-    xml = _serialize_for_render(svg, width=width, height=height)
+    xml = _render_xml(_render_soup(svg, width=width, height=height))
 
     return resvg_render(xml, options, background=background, zoom=zoom)
 
 
-def _render_pixels(
-    svg: Element, *, width: float | None, height: float | None
-) -> _ImageArray:
-    """Render an SVG element with the default options, without a copy.
+def _render_tree_soup(
+    element: Element, *, width: float | None, height: float | None
+) -> tuple[bs4.Tag, bs4.Tag]:
+    """Resolve the root `Svg` element and convert the SVG tree for rendering.
+
+    The tree is converted as `_render_soup` converts it, so what is rendered
+    can be changed without copying or touching the elements. The tag of the
+    source element is identified in the converted tree and returned for easy
+    access.
 
     Args:
-        svg: The SVG element to render.
+        element: The element in the SVG tree to convert.
         width: The width of the rendered image, in pixels, or `None`.
         height: The height of the rendered image, in pixels, or `None`.
 
     Returns:
-        The pixels, as `render_array` returns them.
-
-    """
-    return render_array(
-        _serialize_for_render(svg, width=width, height=height)
-    )
-
-
-def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
-    """Resolve the root `Svg` element and create a deep copy of the SVG tree.
-
-    The source element is identified in the copied tree and returned for easy
-    access.
-
-    Args:
-        element: The element in the SVG tree to copy.
-
-    Returns:
-        A tuple of the copied element and the root `Svg` element of the copied
-        tree.
+        A tuple of the tag of the element and the tag of the root `Svg`
+        element.
 
     Raises:
         ValueError: If the element is not a part of an SVG tree.
 
     """
-    svg = element.get_root()
+    indices: list[int] = []
+    child = element
 
-    if not _is_svg_element_like(svg):
+    while (parent := child.parent) is not None:
+        siblings = (c for c in parent.children if isinstance(c, Element))
+        indices.append(
+            next(i for i, c in enumerate(siblings) if c is child)
+        )
+        child = parent
+
+    if not _is_svg_element_like(child):
         raise ValueError("Element must be part of an SVG tree")
 
-    memo: dict[int, object] = {}
-    svg = copy.deepcopy(svg, memo)
-    this = cast(_ElementT, memo[id(element)])
+    soup = _render_soup(child, width=width, height=height)
+    tag = soup
 
-    return this, svg
+    # each element becomes one tag, in order, among any text and comments
+    for index in reversed(indices):
+        tag = [c for c in tag.children if isinstance(c, bs4.Tag)][index]
 
-
-def _iter_tree(element: Element, /) -> Iterator[Element]:
-    """Iterate over an element and all of its descendant elements."""
-    return itertools.chain([element], element.find_all())
+    return tag, soup
 
 
-def _make_element_visible(element: Element, /) -> None:
-    for elem in _iter_tree(element):
-        del elem.display
-        elem.fill = _BLACK
-        elem.fill_opacity = 1
-        elem.opacity = 1
-        elem.stroke = _BLACK
-        elem.stroke_opacity = 1
-        elem.visibility = "visible"
+def _iter_tags(tag: bs4.Tag, /) -> Iterator[bs4.Tag]:
+    """Iterate over a tag and all of its descendant tags."""
+    return itertools.chain(
+        [tag], (t for t in tag.descendants if isinstance(t, bs4.Tag))
+    )
 
 
-def _set_element_visibility(
-    element: Element, visibility: Literal["visible", "hidden"]
+def _make_tag_visible(tag: bs4.Tag, /) -> None:
+    with MINIMAL_FORMATTER:
+        visible = {
+            name: serialize_attr(name, value)
+            for name, value in (
+                ("fill", _BLACK),
+                ("fill-opacity", 1),
+                ("opacity", 1),
+                ("stroke", _BLACK),
+                ("stroke-opacity", 1),
+                ("visibility", "visible"),
+            )
+        }
+
+    for t in _iter_tags(tag):
+        t.attrs.pop("display", None)
+        t.attrs.update(visible)
+
+
+def _set_tag_visibility(
+    tag: bs4.Tag, visibility: Literal["visible", "hidden"]
 ) -> None:
-    for elem in _iter_tree(element):
-        elem.visibility = visibility
+    for t in _iter_tags(tag):
+        t["visibility"] = visibility
 
 
 def _render_tree(
@@ -426,26 +442,20 @@ def _render_tree(
             "make_element_visible cannot be True if render_this is False"
         )
 
-    element_copy, svg = _copy_tree(element)
-    assert isinstance(svg, Element)
+    tag, soup = _render_tree_soup(element, width=width, height=height)
 
-    for t in svg.find_all():
-        # do not hide the parents of our element as that would make it
-        # invisible
-        # TODO: this is quite suboptimal performance-wise; optimize this
-        if render_other:
-            t.visibility = "visible"
-        else:
-            t.visibility = "hidden"
+    # a descendant can override an inherited visibility, so hiding the
+    # element's ancestors along with everything else does not hide it
+    for t in soup.descendants:
+        if isinstance(t, bs4.Tag):
+            t["visibility"] = "visible" if render_other else "hidden"
 
-    _set_element_visibility(
-        element_copy, "visible" if render_this else "hidden"
-    )
+    _set_tag_visibility(tag, "visible" if render_this else "hidden")
 
     if make_element_visible:
-        _make_element_visible(element_copy)
+        _make_tag_visible(tag)
 
-    return _render_pixels(svg, width=width, height=height)
+    return render_array(_render_xml(soup))
 
 
 def _mask_bbox(mask: Mask, /) -> BBox | None:
@@ -506,14 +516,13 @@ def visible_mask(  # ruff: ignore[D103]
     width: float | None = None,
     height: float | None = None,
 ) -> Mask:
-    element_copy, svg = _copy_tree(element)
-    assert isinstance(svg, Element)
+    tag, soup = _render_tree_soup(element, width=width, height=height)
 
-    with_element = _render_pixels(svg, width=width, height=height)
+    with_element = render_array(_render_xml(soup))
 
-    _set_element_visibility(element_copy, "hidden")
+    _set_tag_visibility(tag, "hidden")
 
-    without_element = _render_pixels(svg, width=width, height=height)
+    without_element = render_array(_render_xml(soup))
 
     # each pixel compared as one 32-bit value rather than channel by channel
     diff: Mask = (
