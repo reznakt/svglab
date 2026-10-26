@@ -21,7 +21,7 @@ from svglab.attrparse.color import Color
 from svglab.attrparse.length import Length
 from svglab.entities import Element
 from svglab.errors import SvgUnitConversionError
-from svglab.resvg import RenderOptions
+from svglab.resvg import RenderOptions, render_array
 from svglab.resvg import render as resvg_render
 from svglab.serialize import MINIMAL_FORMATTER
 
@@ -245,15 +245,23 @@ def _compute_render_size(
     return width, height
 
 
-def render(  # ruff: ignore[D103]
-    svg: Element,
-    options: RenderOptions | None = None,
-    *,
-    background: Color | None = None,
-    height: float | None = None,
-    width: float | None = None,
-    zoom: float = 1,
-) -> PIL.Image.Image:
+def _serialize_for_render(
+    svg: Element, *, width: float | None, height: float | None
+) -> str:
+    """Serialize an SVG element with the size it is to be rendered at.
+
+    Args:
+        svg: The SVG element to serialize.
+        width: The width of the rendered image, in pixels, or `None`.
+        height: The height of the rendered image, in pixels, or `None`.
+
+    Returns:
+        The XML of a copy of the element, its size set to the render size.
+
+    Raises:
+        TypeError: If the element is not an SVG element.
+
+    """
     if not isinstance(svg, _SvgElementLike):
         raise TypeError("Element must be an SVG element")
 
@@ -263,9 +271,40 @@ def render(  # ruff: ignore[D103]
     svg.width = Length(render_size[0])
     svg.height = Length(render_size[1])
 
-    xml = svg.to_xml(formatter=MINIMAL_FORMATTER)
+    return svg.to_xml(formatter=MINIMAL_FORMATTER)
+
+
+def render(  # ruff: ignore[D103]
+    svg: Element,
+    options: RenderOptions | None = None,
+    *,
+    background: Color | None = None,
+    height: float | None = None,
+    width: float | None = None,
+    zoom: float = 1,
+) -> PIL.Image.Image:
+    xml = _serialize_for_render(svg, width=width, height=height)
 
     return resvg_render(xml, options, background=background, zoom=zoom)
+
+
+def _render_pixels(
+    svg: Element, *, width: float | None, height: float | None
+) -> _ImageArray:
+    """Render an SVG element with the default options, without a copy.
+
+    Args:
+        svg: The SVG element to render.
+        width: The width of the rendered image, in pixels, or `None`.
+        height: The height of the rendered image, in pixels, or `None`.
+
+    Returns:
+        The pixels, as `render_array` returns them.
+
+    """
+    return render_array(
+        _serialize_for_render(svg, width=width, height=height)
+    )
 
 
 def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
@@ -328,8 +367,8 @@ def _render_tree(
     make_element_visible: bool,
     width: float | None = None,
     height: float | None = None,
-) -> PIL.Image.Image:
-    """Resolve the root `Svg` element and render the SVG tree to an image.
+) -> _ImageArray:
+    """Resolve the root `Svg` element and render the SVG tree.
 
     Args:
         element: The element in the SVG tree to render.
@@ -344,7 +383,7 @@ def _render_tree(
             height attribute of the SVG element is used.
 
     Returns:
-        The rendered image.
+        The rendered pixels, as `render_array` returns them.
 
     Raises:
         ValueError: If `make_element_visible` is `True` and `render_this`
@@ -375,33 +414,41 @@ def _render_tree(
     if make_element_visible:
         _make_element_visible(element_copy)
 
-    return svg.render(width=width, height=height)
+    return _render_pixels(svg, width=width, height=height)
 
 
-def _mask_to_image(mask: Mask) -> PIL.Image.Image:
-    """Convert boolean mask into an RGBA image.
-
-    Areas where the mask is True are set to solid black. All other areas are
-    fully transparent. This allows convenient use with
-    `PIL.Image.Image.getbbox()`.
+def _mask_bbox(mask: Mask, /) -> BBox | None:
+    """Find the bounding box of the `True` values of a mask.
 
     Args:
-        mask: A boolean mask given as an NDArray of shape (x, y), where x
-            and y are the dimensions of the resulting image.
+        mask: A boolean mask, indexed by row and then by column.
 
     Returns:
-        An RGBA image representing the mask.
+        The bounding box, as `PIL.Image.Image.getbbox` gives it: the left and
+        upper edges, and the right and lower edges exclusive. `None` if no
+        value is `True`.
+
+    Examples:
+        >>> mask = np.zeros((4, 5), dtype=np.bool_)
+        >>> _mask_bbox(mask)
+        >>> mask[1:3, 2] = True
+        >>> _mask_bbox(mask)
+        (2, 1, 3, 3)
 
     """
-    x, y = mask.shape
+    rows = np.flatnonzero(mask.any(axis=1))
 
-    # create fully transparent image
-    rgba: _ImageArray = np.zeros((x, y, 4), dtype=np.uint8)
+    if rows.size == 0:
+        return None
 
-    # set to solid black where mask is True
-    rgba[mask, 3] = 255
+    columns = np.flatnonzero(mask.any(axis=0))
 
-    return PIL.Image.fromarray(rgba)
+    return (
+        int(columns[0]),
+        int(rows[0]),
+        int(columns[-1]) + 1,
+        int(rows[-1]) + 1,
+    )
 
 
 def mask(  # ruff: ignore[D103]
@@ -410,7 +457,7 @@ def mask(  # ruff: ignore[D103]
     width: float | None = None,
     height: float | None = None,
 ) -> Mask:
-    img = _render_tree(
+    pixels = _render_tree(
         element,
         render_this=True,
         render_other=False,
@@ -418,9 +465,8 @@ def mask(  # ruff: ignore[D103]
         width=width,
         height=height,
     )
-    array: _ImageArray = np.array(img)
 
-    return array[:, :, 3] > 0  # alpha channel > 0
+    return pixels[:, :, 3] > 0  # alpha channel > 0
 
 
 def visible_mask(  # ruff: ignore[D103]
@@ -432,34 +478,31 @@ def visible_mask(  # ruff: ignore[D103]
     element_copy, svg = _copy_tree(element)
     assert isinstance(svg, Element)
 
-    with_element: _ImageArray = np.array(
-        svg.render(width=width, height=height)
-    )
+    with_element = _render_pixels(svg, width=width, height=height)
 
     _set_element_visibility(element_copy, "hidden")
 
-    without_element: _ImageArray = np.array(
-        svg.render(width=width, height=height)
-    )
+    without_element = _render_pixels(svg, width=width, height=height)
 
-    diff: Mask = np.any(without_element != with_element, axis=2)
+    # each pixel compared as one 32-bit value rather than channel by channel
+    diff: Mask = (
+        with_element.view(np.uint32) != without_element.view(np.uint32)
+    )[:, :, 0]
 
     return diff
 
 
 def bbox(element: Element) -> BBox | None:  # ruff: ignore[D103]
-    img = _render_tree(
+    pixels = _render_tree(
         element,
         render_this=True,
         render_other=False,
         make_element_visible=True,
     )
 
-    return img.getbbox()
+    # Pillow maps the array, and an RGBA image's box is that of its alpha
+    return PIL.Image.fromarray(pixels).getbbox()
 
 
 def visible_bbox(element: Element) -> BBox | None:  # ruff: ignore[D103]
-    mask = visible_mask(element)
-    img = _mask_to_image(mask)
-
-    return img.getbbox()
+    return _mask_bbox(visible_mask(element))

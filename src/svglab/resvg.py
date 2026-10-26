@@ -3,6 +3,8 @@
 import pathlib
 from collections.abc import Sequence
 
+import numpy as np
+import numpy.typing as npt
 import PIL.Image
 import pydantic
 from typing_extensions import Final, final
@@ -187,6 +189,43 @@ def render(
             because it is malformed.
 
     """
+    # Pillow maps the array instead of copying it
+    return PIL.Image.fromarray(
+        render_array(svg, options, background=background, zoom=zoom)
+    )
+
+
+def render_array(
+    svg: str,
+    options: RenderOptions | None = None,
+    *,
+    background: Color | None = None,
+    zoom: float = 1,
+) -> npt.NDArray[np.uint8]:
+    """Rasterize an SVG document into an array of RGBA pixels.
+
+    Args:
+        svg: The document to render.
+        options: The rendering settings. If `None`, the defaults of
+            `RenderOptions` are used.
+        background: The color to paint under the document. If `None`, the
+            background is transparent.
+        zoom: The factor by which to scale the rendered image.
+
+    Returns:
+        The unpremultiplied pixels, in an array of shape `(height, width, 4)`.
+        The array is a read-only view of the renderer's own buffer, so the
+        image is never copied.
+
+    Raises:
+        ValueError: If an argument is not a valid value for its parameter.
+        OSError: If a font file named by `font_files` cannot be read.
+        MemoryError: If the image does not fit in memory.
+        RuntimeError: If the renderer panics, which is a bug in it.
+        SvgRenderError: If the document cannot be rasterized, for example
+            because it is malformed.
+
+    """
     options = _DEFAULT_OPTIONS if options is None else options
 
     try:
@@ -203,14 +242,6 @@ def render(
     except PanicError as e:
         raise RuntimeError(str(e)) from e
 
-    # Pillow maps the buffer instead of copying it, though its signature only
-    # names `bytes` and `bytearray` among the objects that export one
-    return PIL.Image.frombuffer(
-        "RGBA",
-        (pixels.width, pixels.height),
-        pixels,  # pyright: ignore[reportArgumentType]
-        "raw",
-        "RGBA",
-        0,
-        1,
+    return np.frombuffer(pixels, dtype=np.uint8).reshape(
+        pixels.height, pixels.width, 4
     )

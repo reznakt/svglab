@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from svglab import Color, Length, RawText, Rect, Svg, SvgRenderError, Text
-from svglab.resvg import RenderOptions, render
+from svglab.resvg import RenderOptions, render, render_array
 
 
 EMPTY = '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"/>'
@@ -119,6 +119,21 @@ def test_document_without_a_positive_size_is_rejected() -> None:
 
     with pytest.raises(SvgRenderError):
         render(svg)
+
+
+def test_render_array_is_a_read_only_view_of_the_rendered_pixels() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="3" height="2">'
+        '<rect width="2" height="2" fill="red" fill-opacity="0.5"/></svg>'
+    )
+
+    pixels = render_array(svg)
+
+    assert pixels.shape == (2, 3, 4)
+    assert (pixels == np.asarray(render(svg))).all()
+
+    with pytest.raises(ValueError, match="read-only"):
+        pixels[0, 0, 0] = 0
 
 
 def test_renderer_warnings_reach_python_logging(
