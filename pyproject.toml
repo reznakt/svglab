@@ -225,6 +225,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
+"docs/playground/**/*" = [
+  "INP001",  # File is part of an implicit namespace package
+  "T201",  # `print` found
+]
 "tests/**/*" = [
   "D",  # pydocstyle
   "DOC",  # pydoclint

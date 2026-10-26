@@ -65,7 +65,6 @@
   border-radius: 8px;
   overflow: hidden;
   margin: 1.5rem 0;
-  background: var(--md-code-bg-color);
 }
 
 .playground__bar {
@@ -75,7 +74,6 @@
   flex-wrap: wrap;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--md-default-fg-color--lightest);
-  background: var(--md-default-bg-color);
 }
 
 .playground__spacer {
@@ -102,29 +100,6 @@
   color: #fff;
 }
 
-/* Loading progress */
-.playground__progress {
-  display: block;
-  width: 9rem;
-  height: 0.3rem;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--md-default-fg-color--lightest);
-}
-
-.playground__progress[hidden] {
-  display: none;
-}
-
-.playground__progress-bar {
-  display: block;
-  width: 0;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--md-primary-fg-color);
-  transition: width 0.35s ease;
-}
-
 .playground__picker {
   font-size: 0.68rem;
   padding: 0.2rem 0.4rem;
@@ -134,8 +109,7 @@
   color: var(--md-default-fg-color);
 }
 
-.md-typeset .playground__run,
-.md-typeset .playground__reset {
+.md-typeset .playground__button {
   margin: 0;
   padding: 0.15rem 0.9rem;
   font-size: 0.68rem;
@@ -143,7 +117,7 @@
   border-radius: 999px;
 }
 
-.md-typeset .playground__run[data-state="running"] {
+.md-typeset .playground__button:disabled {
   opacity: 0.6;
 }
 
@@ -151,7 +125,6 @@
 .playground__panes {
   display: grid;
   grid-template-columns: 1fr;
-  min-height: 24rem;
 }
 
 @media screen and (min-width: 60em) {
@@ -160,52 +133,18 @@
   }
 }
 
-.playground__editor-pane {
-  display: flex;
-  min-width: 0;
-  background: var(--md-code-bg-color);
-}
-
 /* Monaco sizes itself to its container, so the container must have one. */
-.playground__monaco {
-  flex: 1;
-  min-width: 0;
-  min-height: 24rem;
-}
-
-.playground__monaco[hidden] {
-  display: none;
-}
-
-/* Monaco draws its own background; let it sit flush in the pane. */
-.playground__monaco .monaco-editor,
-.playground__monaco .monaco-editor .overflow-guard {
-  border-radius: 0;
-}
-
 .playground__editor {
-  flex: 1;
   min-width: 0;
-  resize: none;
-  border: none;
-  outline: none;
-  padding: 0.85rem 0.85rem 0.85rem 0;
-  background: transparent;
-  color: var(--md-default-fg-color);
-  font-family: var(--md-code-font-family, monospace);
-  font-size: 0.72rem;
-  line-height: 1.7;
-  tab-size: 4;
-  overflow: auto;
-  white-space: pre;
+  height: 24rem;
 }
 
 .playground__output {
   min-width: 0;
+  max-height: 24rem;
   overflow: auto;
   padding: 0.85rem 1rem;
   border-top: 1px solid var(--md-default-fg-color--lightest);
-  background: var(--md-default-bg-color);
   font-family: var(--md-code-font-family, monospace);
   font-size: 0.72rem;
   line-height: 1.6;
@@ -237,13 +176,4 @@
   background: repeating-conic-gradient(
       var(--md-default-fg-color--lightest) 0% 25%, transparent 0% 50%)
     50% / 16px 16px;
-}
-
-/* Highlighted output borrows the site's token colors; make sure it does not
-   also inherit the block styling meant for real code blocks. */
-.playground__output .highlight {
-  display: inline;
-  margin: 0;
-  padding: 0;
-  background: none;
 }

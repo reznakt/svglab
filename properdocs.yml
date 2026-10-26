@@ -11,7 +11,7 @@ edit_uri: edit/main/docs/
 nav:
   - Home: index.md
   - Overview: overview.md
-  - Playground: playground.md
+  - Playground: playground/index.md
   - Getting Started:
       - getting-started/index.md
       - Installation: getting-started/installation.md

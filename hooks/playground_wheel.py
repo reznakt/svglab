@@ -1,72 +1,57 @@
 """Build a wheel of the working tree for the playground to install.
 
-The documentation describes the current state of the repository, so the
-playground should run that, not the last release. A wheel is built during the
-documentation build and published alongside the site; the playground installs
-it by default and falls back to PyPI if it is missing.
+The documentation describes the repository as it is, so the playground runs
+that rather than a release. It could not install a release anyway: those
+wheels carry the compiled renderer, which has no WebAssembly build. This
+wheel holds only the Python sources; the playground supplies a renderer.
 """
 
+import importlib.metadata
 import json
 import pathlib
-import shutil
-import subprocess
+import zipfile
 
 from mkdocs.config.defaults import MkDocsConfig
 
 
-_PROJECT_ROOT = pathlib.Path(__file__).parent.parent
-_WHEEL_DIR = "wheels"
-_INDEX = "index.json"
+_PACKAGE = pathlib.Path(__file__).parent.parent / "src" / "svglab"
 
 
 def on_post_build(config: MkDocsConfig, **_kwargs: object) -> None:
-    """Build the wheel and record its name for the playground.
+    """Write the wheel, and a file naming it, next to the playground page.
 
     Args:
         config: The documentation configuration.
         _kwargs: Other arguments passed by the build; unused.
 
     """
-    uv = shutil.which("uv")
-    out_dir = pathlib.Path(config.site_dir) / _WHEEL_DIR
+    distribution = importlib.metadata.distribution("svglab")
+    metadata = distribution.read_text("METADATA")
+    assert metadata is not None, "svglab is installed without metadata"
 
-    if uv is None:
-        print(  # noqa: T201
-            "playground: uv not found; the playground will use PyPI"
+    name = f"svglab-{distribution.version}"
+    wheel = f"{name}-py3-none-any.whl"
+    out_dir = pathlib.Path(config.site_dir) / "playground"
+
+    with zipfile.ZipFile(out_dir / wheel, "w", zipfile.ZIP_DEFLATED) as zf:
+        for path in sorted(_PACKAGE.rglob("*")):
+            # the compiled renderer, its stub, and bytecode stay out
+            if (
+                path.is_file()
+                and "__pycache__" not in path.parts
+                and not path.name.startswith("_resvg.")
+            ):
+                zf.write(
+                    path, path.relative_to(_PACKAGE.parent).as_posix()
+                )
+
+        zf.writestr(f"{name}.dist-info/METADATA", metadata)
+        zf.writestr(
+            f"{name}.dist-info/WHEEL",
+            "Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
         )
+        zf.writestr(f"{name}.dist-info/RECORD", "")
 
-        return
-
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        subprocess.run(  # noqa: S603
-            [uv, "build", "--wheel", "--out-dir", str(out_dir)],
-            cwd=_PROJECT_ROOT,
-            check=True,
-            capture_output=True,
-        )
-    except subprocess.CalledProcessError as error:
-        print(  # noqa: T201
-            f"playground: could not build a wheel ({error}); "
-            f"the playground will use PyPI"
-        )
-
-        return
-
-    wheels = sorted(out_dir.glob("svglab-*.whl"))
-
-    if not wheels:
-        return
-
-    # keep only the newest, so repeated builds do not pile up
-    for stale in wheels[:-1]:
-        stale.unlink()
-
-    wheel = wheels[-1]
-    version = wheel.name.split("-")[1]
-
-    (out_dir / _INDEX).write_text(
-        json.dumps({"wheel": wheel.name, "version": version}),
-        encoding="utf-8",
+    (out_dir / "wheel.json").write_text(
+        json.dumps({"wheel": wheel}), encoding="utf-8"
     )
