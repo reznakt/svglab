@@ -1000,7 +1000,7 @@ class PathData(  # ruff: ignore[PLW1641]
 
         """
         path_data = parse(
-            text, grammar="path_data.lark", transformer=_Transformer()
+            text, grammar="path_data.lark", transformer=_TRANSFORMER
         )
 
         assert isinstance(path_data, cls), (
@@ -1435,7 +1435,9 @@ class _Transformer(lark.Transformer[object, PathData]):
         return path_data
 
 
+_TRANSFORMER: Final = _Transformer()
+
 PathDataType: TypeAlias = Annotated[
     PathData,
-    get_validator(grammar="path_data.lark", transformer=_Transformer()),
+    get_validator(grammar="path_data.lark", transformer=_TRANSFORMER),
 ]

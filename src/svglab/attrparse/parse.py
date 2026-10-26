@@ -49,7 +49,9 @@ def _get_grammar_path(grammar: LiteralString) -> pathlib.Path:
 
 
 @functools.cache
-def _get_parser(*, grammar: LiteralString) -> lark.Lark:
+def _get_parser(
+    *, grammar: LiteralString, transformer: lark.Transformer[Any, Any]
+) -> lark.Lark:
     return lark.Lark.open(
         grammar_filename=str(_get_grammar_path(grammar)),
         rel_to=None,
@@ -58,6 +60,8 @@ def _get_parser(*, grammar: LiteralString) -> lark.Lark:
         ordered_sets=False,
         parser="lalr",
         propagate_positions=False,
+        # applied while parsing, instead of to a parse tree built first
+        transformer=transformer,
     )
 
 
@@ -74,7 +78,9 @@ def parse(
         text: The text to parse.
         grammar: The name of the grammar file.
         transformer: A Lark transformer to use for transforming the parse tree.
-            The transformer must be a subclass of `lark.Transformer`.
+            The transformer must be a subclass of `lark.Transformer`. A parser
+            is built for each grammar and transformer, so pass the same
+            transformer every time.
 
     Returns:
         The parsed and transformed result.
@@ -83,12 +89,13 @@ def parse(
         ValueError: If a parsing error occurs.
 
     """
-    parser = _get_parser(grammar=grammar)
+    parser = _get_parser(grammar=grammar, transformer=transformer)
 
     try:
-        tree = parser.parse(text)
-        return transformer.transform(cast(lark.Tree[_LeafT], tree))
-    except lark.LarkError as e:
+        return cast(_ReturnT, parser.parse(text))
+    # the transformer runs inside the parser, so an error of its own is not
+    # wrapped in a `lark.LarkError`
+    except Exception as e:
         msg = f"Failed to parse text with grammar {grammar!r}. Reason: \n\n{e}"
         raise ValueError(msg) from e
 
