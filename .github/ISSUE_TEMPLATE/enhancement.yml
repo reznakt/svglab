@@ -1,0 +1,27 @@
+name: Feature request
+description: A new feature, or a change to how an existing one works
+labels: [enhancement]
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behavior
+      description: What svglab does today, or what it can't do.
+    validations:
+      required: true
+  - type: textarea
+    id: desired
+    attributes:
+      label: Desired behavior
+      description: What it should do instead. Show the API you have in mind and how the output would change.
+      placeholder: |
+        ```python
+        Formatter(svg_prefix="never")
+        ```
+
+        ```diff
+        -<svg:svg xmlns:svg="http://www.w3.org/2000/svg"><svg:rect/></svg:svg>
+        +<svg xmlns:svg="http://www.w3.org/2000/svg"><rect/></svg>
+        ```
+    validations:
+      required: true

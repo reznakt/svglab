@@ -65,6 +65,8 @@ lint-fix:
 schemacheck:
     uv run check-jsonschema --schemafile https://citation-file-format.github.io/1.2.0/schema.json CITATION.cff
     uv run check-jsonschema --builtin-schema vendor.dependabot .github/dependabot.yml
+    uv run check-jsonschema --builtin-schema vendor.github-issue-forms .github/ISSUE_TEMPLATE/bug.yml .github/ISSUE_TEMPLATE/documentation.yml .github/ISSUE_TEMPLATE/enhancement.yml .github/ISSUE_TEMPLATE/installation.yml
+    uv run check-jsonschema --builtin-schema vendor.github-issue-config .github/ISSUE_TEMPLATE/config.yml
     uv run check-jsonschema --schemafile https://json.schemastore.org/codecov.json codecov.yml
 
 # scan the git history, or with `--pre-commit --staged` just the index, for secrets

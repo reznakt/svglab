@@ -1,0 +1,19 @@
+name: Documentation
+description: Something in the docs or a docstring is wrong, unclear, or missing
+labels: [documentation]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      description: The page URL, or the function or class whose docstring it is.
+      placeholder: https://svglab.rocks/getting-started/quickstart/
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What's wrong, unclear, or missing. To fix a typo on a guide page, use the edit button at the top of the page instead.
+    validations:
+      required: true

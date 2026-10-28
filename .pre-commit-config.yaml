@@ -72,7 +72,7 @@ repos:
         name: schemacheck
         entry: just schemacheck
         language: system
-        files: ^(CITATION\.cff|\.github/dependabot\.yml|codecov\.yml)$
+        files: ^(CITATION\.cff|\.github/(dependabot\.yml|ISSUE_TEMPLATE/.*\.yml)|codecov\.yml)$
         pass_filenames: false
       - id: docs
         priority: 70

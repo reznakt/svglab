@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or something else
+    url: https://github.com/reznakt/svglab/discussions
+    about: Ask a question, or bring up anything the forms don't cover
+  - name: Security vulnerability
+    url: https://github.com/reznakt/svglab/security/advisories/new
+    about: Report a vulnerability privately instead of in a public issue
+  - name: Documentation
+    url: https://svglab.rocks/
+    about: Read the guides and the API reference

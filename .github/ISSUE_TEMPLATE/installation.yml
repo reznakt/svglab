@@ -1,0 +1,27 @@
+name: Installation problem
+description: svglab fails to install or import, or its dependencies conflict with another package
+labels: [bug, "area: packaging"]
+body:
+  - type: textarea
+    id: command
+    attributes:
+      label: Install command
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: The full output, not just the last lines.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: |
+        Paste the output of `python -c "import platform; print(platform.python_version(), platform.platform())"`
+    validations:
+      required: true

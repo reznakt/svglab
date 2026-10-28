@@ -1,0 +1,46 @@
+name: Bug report
+description: svglab raises on valid input, writes wrong output, or is slow
+labels: [bug]
+body:
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What svglab does. Paste the full traceback if it raises.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What it should do instead. Link the part of the SVG specification it breaks, if you know it.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A minimal script that anyone can run as is. Inline the SVG as a string rather than reading a file.
+      placeholder: |
+        from svglab import parse_svg
+
+        svg = parse_svg('<svg><rect width="10" height="10"/></svg>')
+        print(svg.to_xml())
+      render: python
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I'm running the [latest release](https://pypi.org/project/svglab/) of svglab
+          required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: |
+        Paste the output of `python -c "import platform, svglab; print(svglab.__version__, platform.python_version(), platform.platform())"`
+    validations:
+      required: true
