@@ -68,6 +68,7 @@
 }
 
 .playground__bar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -76,11 +77,20 @@
   border-bottom: 1px solid var(--md-default-fg-color--lightest);
 }
 
+/* Markdown, reading the bar for the icons, wraps what is in it in a
+   paragraph, which the bar lays out as if it were not there */
+.playground__bar > p {
+  display: contents;
+}
+
 .playground__spacer {
   flex: 1;
 }
 
 .playground__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
   font-size: 0.7rem;
   font-weight: 600;
   padding: 0.15rem 0.6rem;
@@ -100,6 +110,89 @@
   color: #fff;
 }
 
+/* A spinner while Python starts or runs */
+.playground__status[data-state="busy"]::before {
+  content: "";
+  width: 0.65em;
+  height: 0.65em;
+  border: 0.15em solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: playground-spin 0.8s linear infinite;
+}
+
+@keyframes playground-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* How long a long run has been going */
+.playground__clock {
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--md-default-fg-color--light);
+}
+
+.playground__clock:empty {
+  display: none;
+}
+
+/* Along the bar's bottom edge: the startup, a step at a time, or a sweep
+   while a long run goes on */
+.playground__progress {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.playground__progress[data-active] {
+  opacity: 1;
+}
+
+.playground__progress > span {
+  display: block;
+  height: 100%;
+  background: var(--md-primary-fg-color);
+  transform: scaleX(var(--playground-progress, 0));
+  transform-origin: left;
+  transition: transform 0.2s linear;
+}
+
+.playground__progress[data-mode="spin"] > span {
+  width: 40%;
+  transform: none;
+  animation: playground-sweep 1.2s ease-in-out infinite;
+}
+
+@keyframes playground-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playground__status[data-state="busy"]::before {
+    animation: none;
+  }
+
+  .playground__progress[data-mode="spin"] > span {
+    width: 100%;
+    opacity: 0.5;
+    animation: none;
+  }
+}
+
 .playground__picker {
   font-size: 0.68rem;
   padding: 0.2rem 0.4rem;
@@ -110,11 +203,27 @@
 }
 
 .md-typeset .playground__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
   margin: 0;
-  padding: 0.15rem 0.9rem;
+  padding: 0.15rem 0.9rem 0.15rem 0.7rem;
   font-size: 0.68rem;
   font-weight: 600;
   border-radius: 999px;
+}
+
+/* Each button's icon, from the theme's icon set; a button with two shows
+   one, as the script says: Run's turns into Stop's, and Share's into a check */
+.playground__button [data-icon-for] {
+  display: inline-flex;
+}
+
+.playground__button[data-icon="run"] [data-icon-for="stop"],
+.playground__button[data-icon="stop"] [data-icon-for="run"],
+.playground__button[data-icon="share"] [data-icon-for="done"],
+.playground__button[data-icon="done"] [data-icon-for="share"] {
+  display: none;
 }
 
 .md-typeset .playground__button:disabled {
@@ -127,9 +236,29 @@
   grid-template-columns: 1fr;
 }
 
+/* The divider between them can be dragged; the script sets the split. */
+.playground__splitter {
+  display: none;
+}
+
 @media screen and (min-width: 60em) {
   .playground__panes {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns:
+      minmax(0, var(--playground-split, 2fr)) auto minmax(0, 1fr);
+  }
+
+  .playground__splitter {
+    display: block;
+    width: 0.25rem;
+    cursor: col-resize;
+    touch-action: none;
+    background: var(--md-default-fg-color--lightest);
+  }
+
+  .playground__splitter:hover,
+  .playground__splitter:focus-visible {
+    outline: none;
+    background: var(--md-accent-fg-color);
   }
 }
 
@@ -146,25 +275,73 @@
   padding: 0.85rem 1rem;
   border-top: 1px solid var(--md-default-fg-color--lightest);
   font-family: var(--md-code-font-family, monospace);
-  font-size: 0.72rem;
+  font-size: 13px;  /* the editor's */
   line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 @media screen and (min-width: 60em) {
   .playground__output {
     border-top: none;
-    border-left: 1px solid var(--md-default-fg-color--lightest);
   }
 }
 
 .playground__line {
   display: block;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .playground__line--err {
   color: #d93025;
+}
+
+/* A traceback's reference to a line in the editor, which leads there */
+.playground__jump {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* The mark a run leaves in the transcript as Python restarts */
+.playground__line--restart {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+  white-space: normal;
+  color: var(--md-default-fg-color--lighter);
+}
+
+.playground__line--restart::before,
+.playground__line--restart::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+/* Lines entered into the console, echoed with their prompt */
+.playground__line--in,
+.playground__prompt {
+  color: var(--md-default-fg-color--light);
+}
+
+.playground__prompt {
+  display: flex;
+  gap: 1ch;
+}
+
+.playground__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--md-default-fg-color);
+  font: inherit;
 }
 
 .playground__image {

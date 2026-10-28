@@ -44,6 +44,7 @@
                 just
                 maturin
                 nixfmt
+                nodejs # the playground's smoke test
                 pngquant
                 prek
                 python

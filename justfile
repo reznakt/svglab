@@ -21,6 +21,10 @@ docs *args:
 docs-serve *args:
     uv run properdocs serve {{ args }}
 
+# run the playground's examples in Pyodide under Node, against the site `just docs` built
+docs-test:
+    node tests/playground_smoke.mjs site/playground
+
 format:
     uv run ruff format --diff
     cargo fmt --manifest-path {{ manifest }} --check

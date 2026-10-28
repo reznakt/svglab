@@ -9,8 +9,7 @@ from svglab import Iri, Script, Style, parse_svg
 
 
 svg = parse_svg("""
-<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"
-     xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
     <script>alert(document.cookie)</script>
     <style>@import url(https://evil.example/x.css);</style>
     <rect id="box" width="50" height="50" fill="red" onclick="steal()"/>

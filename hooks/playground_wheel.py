@@ -6,6 +6,7 @@ wheels carry the compiled renderer, which has no WebAssembly build. This
 wheel holds only the Python sources; the playground supplies a renderer.
 """
 
+import hashlib
 import importlib.metadata
 import json
 import pathlib
@@ -18,7 +19,7 @@ _PACKAGE = pathlib.Path(__file__).parent.parent / "src" / "svglab"
 
 
 def on_post_build(config: MkDocsConfig, **_kwargs: object) -> None:
-    """Write the wheel, and a file naming it, next to the playground page.
+    """Write the wheel, and a file naming and hashing it, next to the page.
 
     Args:
         config: The documentation configuration.
@@ -52,6 +53,8 @@ def on_post_build(config: MkDocsConfig, **_kwargs: object) -> None:
         )
         zf.writestr(f"{name}.dist-info/RECORD", "")
 
+    # names the build, which the playground keeps what it resolved under
+    digest = hashlib.sha256((out_dir / wheel).read_bytes()).hexdigest()
     (out_dir / "wheel.json").write_text(
-        json.dumps({"wheel": wheel}), encoding="utf-8"
+        json.dumps({"wheel": wheel, "sha256": digest}), encoding="utf-8"
     )
