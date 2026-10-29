@@ -26,6 +26,7 @@ from svglab.attrs.attrgroups import (
     FilterPrimitivesAttrs,
     GraphicalEventsAttrs,
 )
+from svglab.attrs.typedefs import Number
 from svglab.entities import Element as BaseElement
 from svglab.entities import (
     StrokeWidthScaled,
@@ -150,7 +151,7 @@ class Shape(PathLengthAttr, GraphicsElement):
         ratio = value / self.pathLength
         scale_distance_along_a_path_attrs(self, ratio)
 
-        self.pathLength = value
+        self.pathLength: Attr[Number] = value
 
 
 class _PathLike(Protocol):

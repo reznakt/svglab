@@ -75,6 +75,7 @@ from svglab.attrs.attrdefs import (
 )
 from svglab.attrs.attrgroups import CoreAttrs, PresentationAttrs
 from svglab.attrs.names import ATTR_NAME_TO_NORMALIZED, AttributeName
+from svglab.attrs.typedefs import TransformOrigin
 from svglab.constants import SVG_XMLNS
 from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED, ElementName
 from svglab.errors import (
@@ -82,7 +83,7 @@ from svglab.errors import (
     SvgTransformOriginError,
     SvgTransformSwapError,
 )
-from svglab.models import BaseModel
+from svglab.models import Attr, BaseModel
 from svglab.serialize import (
     Formatter,
     get_current_formatter,
@@ -1582,7 +1583,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         self.main_transform.insert(0, Translate(tx, ty))
         self.main_transform.append(Translate(-tx, -ty))
 
-        self.transform_origin = None
+        self.transform_origin: Attr[TransformOrigin] = None
 
     def apply_transformation(
         self, transformation: TransformFunction, /

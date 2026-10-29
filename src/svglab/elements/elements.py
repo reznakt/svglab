@@ -199,6 +199,7 @@ from svglab.attrs.attrgroups import (
     TransferFunctionAttrs,
     XlinkAttrs,
 )
+from svglab.attrs.typedefs import Number
 from svglab.elements.traits import (
     AnimationElement,
     BasicShape,
@@ -217,7 +218,7 @@ from svglab.elements.traits import (
     TextContentElement,
 )
 from svglab.graphics import render
-from svglab.models import convert
+from svglab.models import Attr, Tuple, convert
 from svglab.protocols import SupportsWrite
 from svglab.resvg import RenderOptions
 from svglab.serialize import MINIMAL_FORMATTER, Formatter
@@ -1441,7 +1442,7 @@ class Svg(
 
             child.reify(limit=2, recursive=False)
 
-        self.viewBox = viewbox
+        self.viewBox: Attr[Tuple[Number, Number, Number, Number]] = viewbox
 
     def render(
         self,
