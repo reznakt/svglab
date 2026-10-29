@@ -97,6 +97,7 @@ from svglab.utils.miscutils import basic_compare
 
 _T = TypeVar("_T")
 _ElementT = TypeVar("_ElementT", bound="Element")
+_EntityT = TypeVar("_EntityT", bound="Entity")
 _TransformT1 = TypeVar("_TransformT1", bound=TransformFunction)
 _TransformT2 = TypeVar("_TransformT2", bound=TransformFunction)
 
@@ -1114,7 +1115,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
         return self
 
-    def remove_child(self, child: Entity, /) -> Entity:
+    def remove_child(self, child: _EntityT, /) -> _EntityT:
         """Remove a child from the element.
 
         The child is compared with the children of the element based on
@@ -1136,7 +1137,9 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
         except ValueError as e:
             raise ValueError("Child not found") from e
 
-        return self.pop_child(index)
+        self.pop_child(index)
+
+        return child
 
     def pop_child(self, index: SupportsIndex = -1, /) -> Entity:
         """Remove a child from the element based on its index.
