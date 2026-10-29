@@ -1273,6 +1273,14 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
                 yield child
 
     @overload
+    def find(self, /, *, recursive: bool = True) -> Element: ...
+
+    @overload
+    def find(
+        self, /, *, recursive: bool = True, default: _T
+    ) -> Element | _T: ...
+
+    @overload
     def find(
         self, *elements: type[_ElementT], recursive: bool = True
     ) -> _ElementT: ...
