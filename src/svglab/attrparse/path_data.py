@@ -35,9 +35,12 @@ from svglab.attrparse.parse import (
 )
 from svglab.attrparse.point import Point
 from svglab.attrparse.transform import (
+    Matrix,
     PointAddSubWithTranslateRMatmul,
     Rotate,
     Scale,
+    SkewX,
+    SkewY,
     TransformFunction,
     Translate,
 )
@@ -113,7 +116,9 @@ class HorizontalLineTo(_PhysicalPathCommand):
     def __rmatmul__(self, other: Translate | Scale) -> Self: ...
 
     @overload
-    def __rmatmul__(self, other: TransformFunction) -> Self: ...
+    def __rmatmul__(
+        self, other: Rotate | SkewX | SkewY | Matrix
+    ) -> LineTo: ...
 
     @override
     def __rmatmul__(self, other: TransformFunction) -> Self | LineTo:
@@ -140,7 +145,9 @@ class VerticalLineTo(_PhysicalPathCommand):
     def __rmatmul__(self, other: Translate | Scale) -> Self: ...
 
     @overload
-    def __rmatmul__(self, other: TransformFunction) -> Self: ...
+    def __rmatmul__(
+        self, other: Rotate | SkewX | SkewY | Matrix
+    ) -> LineTo: ...
 
     @override
     def __rmatmul__(self, other: TransformFunction) -> Self | LineTo:
