@@ -14,9 +14,11 @@ Most traits are defined based on the "1.6 Definitions" section of the SVG 1.1
 specification.
 """
 
+from __future__ import annotations
+
 import abc
 
-from typing_extensions import Protocol
+from typing_extensions import TYPE_CHECKING
 
 from svglab.attrparse.path_data import PathData
 from svglab.attrs.attrdefs import PathLengthAttr
@@ -41,6 +43,10 @@ from svglab.graphics import (
     visible_mask,
 )
 from svglab.models import Attr
+
+
+if TYPE_CHECKING:
+    from svglab.elements.elements import Path
 
 
 # common attributes are defined directly on the Element class
@@ -154,10 +160,6 @@ class Shape(PathLengthAttr, GraphicsElement):
         self.pathLength: Attr[Number] = value
 
 
-class _PathLike(Protocol):
-    d: Attr[PathData]
-
-
 class BasicShape(Shape, metaclass=abc.ABCMeta):
     """A basic shape.
 
@@ -180,7 +182,7 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
         ...
 
     @abc.abstractmethod
-    def to_path(self) -> _PathLike:
+    def to_path(self) -> Path:
         """Convert this basic shape into a `Path` element.
 
         The resulting `Path` element's path data produce the same visual result
