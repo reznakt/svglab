@@ -51,12 +51,12 @@ class PydanticCompatible(Protocol):
 
 @runtime_checkable
 class SupportsRead(Protocol[_AnyStr_co]):
-    def read(self, size: int | None = None, /) -> _AnyStr_co: ...
+    def read(self, size: int = -1, /) -> _AnyStr_co: ...
 
 
 @runtime_checkable
 class SupportsWrite(Protocol[_AnyStr_contra]):
-    def write(self, data: _AnyStr_contra, /) -> int: ...
+    def write(self, data: _AnyStr_contra, /) -> object: ...
 
 
 @runtime_checkable
