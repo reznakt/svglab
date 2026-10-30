@@ -681,7 +681,7 @@ def _serialize(
             result = value.decode()
         # this should go last to avoid classifying strings as iterables, etc.
         case Iterable():
-            items = cast(Iterable[object], value)
+            items: Iterable[object] = value
             separator = (
                 ";"
                 if isinstance(value, SemicolonSeparated)
