@@ -46,10 +46,8 @@ DATACLASS_CONFIG: Final = pydantic.ConfigDict(
 
 
 # Wrapper around pydantic.dataclasses.dataclass with correct type preservation.
-# This is needed because pyright doesn't correctly infer the return type of
-# pydantic's dataclass decorator - it returns PydanticDataclass protocol
-# instead of the actual class type.
-# TODO: Remove this once pyright stops acting up.
+# This is needed because mypy, even with pydantic's plugin, rejects the
+# constructor arguments of classes decorated with pydantic's own decorator.
 if TYPE_CHECKING:
     # At type-checking time, use a properly typed decorator that preserves
     # the class type
