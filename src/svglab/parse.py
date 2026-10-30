@@ -9,7 +9,7 @@ import bs4
 from typing_extensions import Final, Literal, TypeAlias, cast
 
 from svglab.elements.elements import Svg
-from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED, ElementName
+from svglab.elements.names import ELEMENT_NAME_TO_NORMALIZED
 from svglab.entities import (
     CData,
     Comment,
@@ -123,7 +123,7 @@ def _convert_element(backend: bs4.PageElement) -> Entity | None:
             return None if backend.isspace() else cls(backend)
         case bs4.Tag():
             element_class = _ELEMENT_NAME_TO_CLASS.get(
-                cast(ElementName, backend.name), UnknownElement
+                backend.name, UnknownElement
             )
 
             attrs = {"prefix": backend.prefix} | {
