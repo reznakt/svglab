@@ -260,6 +260,12 @@ def render(  # ruff: ignore[D103]
     render_size = _compute_render_size(svg, width=width, height=height)
     svg = copy.copy(svg)
 
+    svg_width = _positive_user_units(svg.width)
+    svg_height = _positive_user_units(svg.height)
+
+    if svg.viewBox is None and svg_width and svg_height:
+        svg.viewBox = (0, 0, svg_width, svg_height)
+
     svg.width = Length(render_size[0])
     svg.height = Length(render_size[1])
 
