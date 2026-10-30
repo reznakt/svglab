@@ -156,6 +156,7 @@ filterwarnings = [
   "ignore:The 'strip_cdata' option of HTMLParser\\(\\) has never done anything and will eventually be removed.",
 ]
 strict = true
+testpaths = ["src", "tests"]
 
 [tool.ruff]
 target-version = "py311"
