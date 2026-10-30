@@ -774,20 +774,8 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
     # region Attribute Handling
 
-    @pydantic.model_validator(mode="after")
-    def __validate_extra(self) -> Element:
-        # model_extra cannot be None because extra is set to "allow"
-        assert self.model_extra is not None, "model_extra is None"
-
-        for key, value in self.model_extra.items():
-            if not isinstance(value, str):
-                msg = (
-                    f"Non-standard attribute {key!r} must be of type str,"
-                    f" got {type(value)}"
-                )
-                raise TypeError(msg)
-
-        return self
+    if not TYPE_CHECKING:
+        __pydantic_extra__: dict[str, str]
 
     def extra_attrs(self) -> Mapping[str, str]:
         """Get the extra attributes of the element.
