@@ -120,7 +120,7 @@ def _convert_element(backend: bs4.PageElement) -> Entity | None:
             if cls is None:
                 return None
 
-            return None if backend.isspace() else cls(backend)
+            return None if not backend.strip(" \t\n\r") else cls(backend)
         case bs4.Tag():
             element_class = _ELEMENT_NAME_TO_CLASS.get(
                 backend.name, UnknownElement
