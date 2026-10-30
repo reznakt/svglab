@@ -339,7 +339,7 @@ ATTRIBUTE_NAMES: Final[frozenset[AttributeName]] = frozenset(
 """A set of all valid SVG attribute names."""
 
 
-ATTR_NAME_TO_NORMALIZED: Final = bidict.frozenbidict(
+ATTR_NAME_TO_NORMALIZED: Final = bidict.frozenbidict[AttributeName, str](
     {attr: _normalize_attr_name(attr) for attr in ATTRIBUTE_NAMES}
 )
 """

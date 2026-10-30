@@ -824,16 +824,16 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             if name in extra or name not in fields:
                 continue
 
-            attr = normalized.inverse.get(name, name)
+            attr = normalized.inverse.get(name)
 
-            if attr not in normalized:
+            if attr is None:
                 continue
 
             # the attribute may have been deleted
             value = getattr(self, name, None)
 
             if value is not None:
-                result[cast(AttributeName, attr)] = value
+                result[attr] = value
 
         return result
 
@@ -847,10 +847,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
             be considered immutable.
 
         """
-        standard = cast(Mapping[str, object], self.standard_attrs())
-        extra = self.extra_attrs()
-
-        return {**standard, **extra}
+        return {**self.standard_attrs(), **self.extra_attrs()}
 
     def __get_attr_or_default(self, attr_name: AttributeName) -> object:
         name = ATTR_NAME_TO_NORMALIZED[attr_name]
