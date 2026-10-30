@@ -25,6 +25,7 @@ from svglab.errors import SvgUnitConversionError
 
 
 _Unit: TypeAlias = LiteralString | None
+_UnitT = TypeVar("_UnitT", bound=_Unit)
 _UnitT_co = TypeVar("_UnitT_co", bound=_Unit, covariant=True)
 
 
@@ -37,9 +38,9 @@ class _HasUnit(Protocol[_UnitT_co]):
 
 
 _HasUnitT = TypeVar("_HasUnitT", bound=_HasUnit[_Unit])
-_ConversionGraph: TypeAlias = Mapping[_UnitT_co, Mapping[_UnitT_co, float]]
+_ConversionGraph: TypeAlias = Mapping[_UnitT, Mapping[_UnitT, float]]
 
-ConversionTable: TypeAlias = Mapping[tuple[_UnitT_co, _UnitT_co], float]
+ConversionTable: TypeAlias = Mapping[tuple[_UnitT, _UnitT], float]
 """
 A table of conversion rates between units.
 
@@ -48,14 +49,14 @@ unit to convert from and `target` is the unit to convert to. The values are
 the conversion rates.
 """
 
-Converter: TypeAlias = Callable[[_HasUnitT, _UnitT_co], _HasUnitT]
+Converter: TypeAlias = Callable[[_HasUnitT, _UnitT], _HasUnitT]
 """A function that converts a value to a different unit."""
 
 
 def _table_to_graph(
-    conversion_table: ConversionTable[_UnitT_co],
-) -> _ConversionGraph[_UnitT_co]:
-    graph: collections.defaultdict[_UnitT_co, dict[_UnitT_co, float]] = (
+    conversion_table: ConversionTable[_UnitT],
+) -> _ConversionGraph[_UnitT]:
+    graph: collections.defaultdict[_UnitT, dict[_UnitT, float]] = (
         collections.defaultdict(dict)
     )
 
@@ -67,10 +68,7 @@ def _table_to_graph(
 
 
 def _get_conversion_rate(
-    source: _UnitT_co,
-    target: _UnitT_co,
-    *,
-    graph: _ConversionGraph[_UnitT_co],
+    source: _UnitT, target: _UnitT, *, graph: _ConversionGraph[_UnitT]
 ) -> float | None:
     if source == target:
         return 1
@@ -97,8 +95,8 @@ def _get_conversion_rate(
 
 
 def make_converter(
-    conversion_table: ConversionTable[_UnitT_co],
-) -> Converter[_HasUnitT, _UnitT_co]:
+    conversion_table: ConversionTable[_UnitT],
+) -> Converter[_HasUnitT, _UnitT]:
     """Create a converter function using the given conversion table.
 
     Args:
@@ -116,11 +114,11 @@ def make_converter(
 
     @functools.cache
     def get_conversion_rate(
-        source: _UnitT_co, target: _UnitT_co
+        source: _UnitT, target: _UnitT
     ) -> float | None:
         return _get_conversion_rate(source, target, graph=graph)
 
-    def convert(obj: _HasUnitT, unit: _UnitT_co) -> _HasUnitT:
+    def convert(obj: _HasUnitT, unit: _UnitT) -> _HasUnitT:
         conversion_rate: float | None = get_conversion_rate(obj.unit, unit)
 
         if conversion_rate is None:
