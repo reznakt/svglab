@@ -1,7 +1,4 @@
-%import common.WS
 %import common.SIGNED_NUMBER
-
-%ignore WS
 
 ?start: angle
 
