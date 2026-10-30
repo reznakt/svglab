@@ -1586,7 +1586,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
 
         Raises:
             ValueError: If the transformation is not supported.
-            SvgLengthConversionError: If a length attribute is not convertible
+            SvgUnitConversionError: If a length attribute is not convertible
                 to user units.
 
         """
@@ -1746,7 +1746,7 @@ class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
                 user units.
             SvgTransformOriginError: If the value of the `transform-origin`
                 attribute is unsupported.
-            SvgLengthConversionError: If a length value cannot be
+            SvgUnitConversionError: If a length value cannot be
                 converted to user units.
 
         Examples:
