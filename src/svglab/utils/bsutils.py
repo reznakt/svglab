@@ -1,7 +1,7 @@
 """Utilities for working with BeautifulSoup."""
 
 import xml.sax.saxutils
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 import bs4
 from typing_extensions import Any, cast, override
@@ -34,7 +34,7 @@ class _BsFormatter(bs4.formatter.XMLFormatter):
     @override
     def attributes(self, tag: bs4.Tag) -> Iterable[tuple[str, Any]]:
         formatter = get_current_formatter()
-        order = []
+        order: Sequence[str] = []
 
         if tag.name in formatter.attribute_order:
             order = formatter.attribute_order[cast(ElementName, tag.name)]
