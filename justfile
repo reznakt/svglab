@@ -78,6 +78,7 @@ test *args:
 
 typecheck *args:
     uv run pyright --warnings {{ args }}
+    uv run pyright --verifytypes svglab --ignoreexternal
 
 versioncheck *args:
     uv run vermin . {{ args }}
