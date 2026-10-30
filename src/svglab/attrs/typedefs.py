@@ -118,7 +118,9 @@ NumericValue: TypeAlias = Number
 NumberOptionalNumber: TypeAlias = Number | Tuple[Number, Number]
 OpacityValue: TypeAlias = Annotated[
     Number,
-    pydantic.AfterValidator(lambda x: clamp(x, min_value=0, max_value=1)),
+    pydantic.AfterValidator(
+        lambda x: clamp(x, min_value=0.0, max_value=1.0)
+    ),
 ]
 Paint: TypeAlias = (
     None_
