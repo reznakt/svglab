@@ -1,13 +1,15 @@
 import os
 from collections.abc import Sequence
 
-from typing_extensions import TypeAlias
+from typing_extensions import Final, TypeAlias
 
 from svglab.attrs.typedefs import (
     ImageRendering,
     ShapeRendering,
     TextRendering,
 )
+
+__all__: Final = ["PanicError", "RenderError", "render"]
 
 _Path: TypeAlias = str | os.PathLike[str]
 
@@ -16,7 +18,6 @@ class PanicError(BaseException): ...
 
 def render(
     svg: str,
-    /,
     *,
     background: tuple[int, int, int, int] | None,
     cursive_family: str | None,
