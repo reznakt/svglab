@@ -146,7 +146,7 @@ class FloatPrecisionSettings:
         return self
 
     @functools.cached_property
-    def __sorted_precision_table(self) -> Iterable[PrecisionInterval]:
+    def __sorted_precision_table(self) -> list[PrecisionInterval]:
         return sorted(
             self.precision_table, key=lambda interval: interval.start
         )
