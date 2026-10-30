@@ -9,7 +9,7 @@ import abc
 
 import pydantic
 import pydantic_core
-from typing_extensions import Any, Literal, Self, TypeVar, override
+from typing_extensions import Literal, Self, TypeVar, override
 
 from svglab.protocols import (
     PydanticCompatible,
@@ -31,7 +31,7 @@ _SupportsNegT_contra = TypeVar(
 )
 _SupportsRTrueDivT_contra = TypeVar(
     "_SupportsRTrueDivT_contra",
-    bound=SupportsRTrueDiv[Any],
+    bound=SupportsRTrueDiv[Literal[1]],
     contravariant=True,
 )
 
