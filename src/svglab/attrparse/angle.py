@@ -106,7 +106,7 @@ class Angle(
 
 
 @inline_args
-class _Transformer(lark.Transformer[object, Angle]):
+class _Transformer(lark.Transformer[lark.Token, Angle]):
     number = FiniteFloat
     angle = Angle
 

@@ -152,7 +152,7 @@ class Length(
 
 
 @inline_args
-class _Transformer(lark.Transformer[object, Length]):
+class _Transformer(lark.Transformer[lark.Token, Length]):
     number = FiniteFloat
     length = Length
 

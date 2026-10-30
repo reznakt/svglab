@@ -23,7 +23,6 @@ from useful_types import ReadableBuffer
 
 
 _T = TypeVar("_T")
-_LeafT = TypeVar("_LeafT")
 _ReturnT = TypeVar("_ReturnT")
 _TransformerT = TypeVar("_TransformerT", bound=lark.Transformer[Any, Any])
 _ConvertibleToFloat: TypeAlias = (
@@ -66,7 +65,7 @@ def parse(
     /,
     *,
     grammar: LiteralString,
-    transformer: lark.Transformer[_LeafT, _ReturnT],
+    transformer: lark.Transformer[lark.Token, _ReturnT],
 ) -> _ReturnT:
     """Parse a string using a Lark grammar.
 
@@ -87,7 +86,7 @@ def parse(
 
     try:
         tree = parser.parse(text)
-        return transformer.transform(cast(lark.Tree[_LeafT], tree))
+        return transformer.transform(tree)
     except lark.LarkError as e:
         msg = f"Failed to parse text with grammar {grammar!r}. Reason: \n\n{e}"
         raise ValueError(msg) from e
@@ -96,7 +95,7 @@ def parse(
 def get_validator(
     *,
     grammar: LiteralString,
-    transformer: lark.Transformer[_LeafT, _ReturnT],
+    transformer: lark.Transformer[lark.Token, _ReturnT],
 ) -> pydantic.BeforeValidator:
     """Get a Pydantic BeforeValidator for parsing with Lark.
 

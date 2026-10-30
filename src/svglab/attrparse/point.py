@@ -164,7 +164,7 @@ class Point(_Point):
 
 
 @inline_args
-class _Transformer(lark.Transformer[object, Point]):
+class _Transformer(lark.Transformer[lark.Token, Point]):
     number = FiniteFloat
     point = Point
 

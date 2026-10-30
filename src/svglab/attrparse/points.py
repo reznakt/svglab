@@ -19,7 +19,7 @@ Points: TypeAlias = list[Point]
 
 
 @inline_args
-class _Transformer(lark.Transformer[object, Points]):
+class _Transformer(lark.Transformer[lark.Token, Points]):
     number = FiniteFloat
     point = Point
 

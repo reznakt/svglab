@@ -1388,7 +1388,7 @@ class PathData(  # ruff: ignore[PLW1641]
 
 @inline_args
 @visit_tokens  # there are a few terminals we want to parse
-class _Transformer(lark.Transformer[object, PathData]):
+class _Transformer(lark.Transformer[lark.Token, PathData]):
     point = Point
     NUMBER = FiniteFloat
 
