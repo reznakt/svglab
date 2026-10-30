@@ -1570,6 +1570,7 @@ class Text(
     TextLengthAttr,
     XListOfCoordinatesAttr,
     YListOfCoordinatesAttr,
+    TextContentBlockElement,
     TextContentElement,
     Element,
 ):
@@ -1634,7 +1635,6 @@ class Tspan(
     TextLengthAttr,
     XListOfCoordinatesAttr,
     YListOfCoordinatesAttr,
-    TextContentBlockElement,
     TextContentChildElement,
     TextContentElement,
     Element,
