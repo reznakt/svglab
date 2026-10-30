@@ -6,7 +6,7 @@ import dataclasses
 import functools
 
 import pydantic
-import rfc3986
+import rfc3986.misc
 from typing_extensions import Annotated, Self, TypeAlias, final, override
 
 from svglab.models import DATACLASS_CONFIG, dataclass
@@ -105,7 +105,9 @@ class Iri(CustomSerializable):
             return cls(fragment=iri[1:])
 
         try:
-            parsed = rfc3986.iri_reference(iri)
+            match = rfc3986.misc.IRI_MATCHER.match(iri)
+            assert match is not None  # every component is optional
+            parsed = rfc3986.IRIReference(**match.groupdict())
 
             return cls(
                 scheme=parsed.scheme,
