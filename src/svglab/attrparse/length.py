@@ -112,7 +112,9 @@ class Length(
     def serialize(self) -> str:
         formatter = get_current_formatter()
         units: Iterator[LengthUnit | Literal["preserve"]] = (
-            more_itertools.always_iterable(formatter.length_unit)
+            iter((None,))
+            if formatter.length_unit is None
+            else more_itertools.always_iterable(formatter.length_unit)
         )
         converted = self
 
