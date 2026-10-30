@@ -24,7 +24,9 @@ from useful_types import ReadableBuffer
 
 _T = TypeVar("_T")
 _ReturnT = TypeVar("_ReturnT")
-_TransformerT = TypeVar("_TransformerT", bound=lark.Transformer[Any, Any])
+_TransformerT = TypeVar(
+    "_TransformerT", bound=lark.Transformer[lark.Token, Any]
+)
 _ConvertibleToFloat: TypeAlias = (
     str | ReadableBuffer | SupportsFloat | SupportsIndex
 )
