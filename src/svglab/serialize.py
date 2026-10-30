@@ -34,6 +34,7 @@ from typing_extensions import (
     override,
 )
 
+from svglab.attrparse.iri import Iri
 from svglab.attrs.names import AttributeName
 from svglab.constants import FLOAT_ABSOLUTE_TOLERANCE
 from svglab.elements.names import ElementName
@@ -658,6 +659,7 @@ def _serialize(
 
             if (
                 formatter.spaces_around_function_args
+                and type(value) is not Iri
                 and (fn_call := extract_function_name_and_args(result))
                 is not None
             ):
