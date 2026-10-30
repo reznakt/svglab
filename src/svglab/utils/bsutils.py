@@ -4,7 +4,7 @@ import xml.sax.saxutils
 from collections.abc import Iterable, Sequence
 
 import bs4
-from typing_extensions import Any, cast, override
+from typing_extensions import cast, override
 
 from svglab.elements.names import ElementName
 from svglab.serialize import get_current_formatter
@@ -32,7 +32,7 @@ class _BsFormatter(bs4.formatter.XMLFormatter):
         return xml.sax.saxutils.quoteattr(value)
 
     @override
-    def attributes(self, tag: bs4.Tag) -> Iterable[tuple[str, Any]]:
+    def attributes(self, tag: bs4.Tag) -> Iterable[tuple[str, str]]:
         formatter = get_current_formatter()
         order: Sequence[str] = []
 
