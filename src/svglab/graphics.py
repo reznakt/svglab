@@ -1,5 +1,7 @@
 """Functions related to rendering and other graphics operations."""
 
+from __future__ import annotations
+
 import copy
 import itertools
 from collections.abc import Iterator
@@ -8,22 +10,26 @@ import numpy as np
 import numpy.typing as npt
 import PIL.Image
 from typing_extensions import (
+    TYPE_CHECKING,
     Final,
     Literal,
-    Protocol,
     TypeAlias,
+    TypeIs,
     TypeVar,
     cast,
-    runtime_checkable,
 )
 
 from svglab.attrparse.color import Color
 from svglab.attrparse.length import Length
-from svglab.entities import Element
+from svglab.entities import Element, element_name
 from svglab.errors import SvgUnitConversionError
 from svglab.resvg import RenderOptions
 from svglab.resvg import render as resvg_render
 from svglab.serialize import MINIMAL_FORMATTER
+
+
+if TYPE_CHECKING:
+    from svglab.elements.elements import Svg
 
 
 Mask: TypeAlias = npt.NDArray[np.bool_]
@@ -37,21 +43,8 @@ _ElementT = TypeVar("_ElementT", bound=Element)
 _BLACK: Final = Color((0, 0, 0))
 
 
-@runtime_checkable
-class _SvgElementLike(Protocol):
-    width: Length | None
-    height: Length | None
-    viewBox: tuple[float, float, float, float] | None  # ruff: ignore[N815]
-
-    def render(
-        self,
-        options: RenderOptions | None = None,
-        *,
-        background: Color | None = None,
-        height: float | None = None,
-        width: float | None = None,
-        zoom: float = 1,
-    ) -> PIL.Image.Image: ...
+def _is_svg(element: Element, /) -> TypeIs[Svg]:
+    return element_name(element) == "svg"
 
 
 def _positive_user_units(value: Length | None, /) -> float | None:
@@ -147,8 +140,7 @@ def _compute_render_size(
         in pixels.
 
     Raises:
-        TypeError: If the provided `svg` is not an instance of
-            `_SvgElementLike`.
+        TypeError: If the provided `svg` is not an `svg` element.
         ValueError: If the width and height cannot be determined from the SVG
             element or the provided parameters.
 
@@ -189,8 +181,8 @@ def _compute_render_size(
         ValueError: Image dimensions must be positive: width=0, height=None
 
     """
-    if not isinstance(svg, _SvgElementLike):
-        msg = "Svg must be an instance of _SvgElementLike"
+    if not _is_svg(svg):
+        msg = "Element must be an SVG element"
         raise TypeError(msg)
 
     if (width is not None and width <= 0) or (
@@ -254,7 +246,7 @@ def render(  # ruff: ignore[D103]
     width: float | None = None,
     zoom: float = 1,
 ) -> PIL.Image.Image:
-    if not isinstance(svg, _SvgElementLike):
+    if not _is_svg(svg):
         raise TypeError("Element must be an SVG element")
 
     render_size = _compute_render_size(svg, width=width, height=height)
@@ -274,7 +266,7 @@ def render(  # ruff: ignore[D103]
     return resvg_render(xml, options, background=background, zoom=zoom)
 
 
-def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
+def _copy_tree(element: _ElementT) -> tuple[_ElementT, Svg]:
     """Resolve the root `Svg` element and create a deep copy of the SVG tree.
 
     The source element is identified in the copied tree and returned for easy
@@ -293,8 +285,8 @@ def _copy_tree(element: _ElementT) -> tuple[_ElementT, _SvgElementLike]:
     """
     svg = element.get_root()
 
-    if not isinstance(svg, _SvgElementLike):
-        raise ValueError("Element must be part of an SVG tree")  # ruff: ignore[TRY004]
+    if not _is_svg(svg):
+        raise ValueError("Element must be part of an SVG tree")
 
     memo: dict[int, object] = {}
     svg = copy.deepcopy(svg, memo)
@@ -363,7 +355,6 @@ def _render_tree(
         )
 
     element_copy, svg = _copy_tree(element)
-    assert isinstance(svg, Element)
 
     for t in svg.find_all():
         # do not hide the parents of our element as that would make it
@@ -436,7 +427,6 @@ def visible_mask(  # ruff: ignore[D103]
     height: float | None = None,
 ) -> Mask:
     element_copy, svg = _copy_tree(element)
-    assert isinstance(svg, Element)
 
     with_element: _ImageArray = np.array(
         svg.render(width=width, height=height)
