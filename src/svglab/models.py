@@ -22,7 +22,6 @@ from typing_extensions import (
 
 
 _T = TypeVar("_T")
-_T_co = TypeVar("_T_co", covariant=True)
 _ListOrTupleT = TypeVar("_ListOrTupleT", list[str], tuple[str, ...])
 _BaseModelT = TypeVar("_BaseModelT", bound=pydantic.BaseModel)
 _ClsT = TypeVar("_ClsT", bound=type)
@@ -30,7 +29,7 @@ _ClsT = TypeVar("_ClsT", bound=type)
 _Ts = TypeVarTuple("_Ts")
 
 
-Attr: TypeAlias = _T_co | None
+Attr: TypeAlias = _T | None
 """Pydantic field for an attribute."""
 
 
