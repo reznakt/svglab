@@ -128,17 +128,29 @@ class FuncIri(Iri):
     """Represents the SVG `<FuncIRI>` type.
 
     <FuncIRI> represents the functional notation for an IRI. The format is
-    `url(<IRI>)`, where `<IRI>` is an IRI.
+    `url(<IRI>)`, where `<IRI>` is an IRI. A paint may name a fallback after
+    it, as in `url(#gradient) red`, to be used if the reference cannot be
+    resolved.
     """
+
+    fallback: str | None = None
+    """What follows the reference, as written: the paint to fall back on."""
 
     @functools.cached_property
     def func_iri(self) -> str:
-        """The full functional IRI as a string."""
-        return f"url({self.iri})"
+        """The full functional IRI as a string, fallback included."""
+        return (
+            f"url({self.iri}) {self.fallback}"
+            if self.fallback
+            else f"url({self.iri})"
+        )
 
     def to_iri(self) -> Iri:
-        """Convert this FuncIri to an Iri."""
-        return Iri(**dataclasses.asdict(self))
+        """Convert this FuncIri to an Iri, dropping any fallback."""
+        fields = dataclasses.asdict(self)
+        del fields["fallback"]
+
+        return Iri(**fields)
 
     @override
     def serialize(self) -> str:
@@ -147,17 +159,63 @@ class FuncIri(Iri):
     @classmethod
     @override
     def from_str(cls, iri: str, /) -> Self:
-        if not iri.lower().startswith("url(") or not iri.endswith(")"):
+        """Parse a functional IRI from a string.
+
+        Args:
+            iri: The string to parse, such as `url(#id)` or `url(#id) red`.
+
+        Returns:
+            An instance of the FuncIri class with the parsed components.
+
+        Raises:
+            ValueError: If the string is not a functional IRI.
+
+        Examples:
+            >>> paint = FuncIri.from_str("url(#a) rgb(0, 0, 0)")
+            >>> paint.fragment, paint.fallback
+            ('a', 'rgb(0, 0, 0)')
+            >>> FuncIri.from_str("url(#a)").func_iri
+            'url(#a)'
+
+        """
+        inside, closed, rest = iri[4:].partition(")")
+        fallback = rest.strip() or None
+
+        if (
+            not iri.lower().startswith("url(")
+            or not closed
+            or (fallback is not None and not _is_paint(fallback))
+        ):
             msg = f"Invalid FuncIri: {iri}"
             raise ValueError(msg)
 
-        # Remove the url() part
-        iri = iri[4:-1].strip()
+        inside = inside.strip()
 
-        if len(iri) > 1 and iri[0] == iri[-1] and iri[0] in "'\"":
-            iri = iri[1:-1]
+        if (
+            len(inside) > 1
+            and inside[0] == inside[-1]
+            and inside[0] in "'\""
+        ):
+            inside = inside[1:-1]
 
-        return super().from_str(iri)
+        return dataclasses.replace(
+            super().from_str(inside), fallback=fallback
+        )
+
+
+def _is_paint(text: str, /) -> bool:
+    """Check whether the text names a paint a reference may fall back on."""
+    from svglab.attrparse.color import Color  # ruff: ignore[PLC0415]
+
+    if text in {"none", "currentColor"}:
+        return True
+
+    try:
+        Color(text)
+    except ValueError:
+        return False
+
+    return True
 
 
 IriType: TypeAlias = Annotated[

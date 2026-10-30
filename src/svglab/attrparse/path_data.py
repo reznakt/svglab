@@ -54,7 +54,7 @@ from svglab.serialize import (
     serialize_point,
 )
 from svglab.utils.iterutils import is_first_index, pairwise
-from svglab.utils.mathutils import cos, is_close, sin
+from svglab.utils.mathutils import is_close
 from svglab.utils.miscutils import basic_compare
 
 
@@ -275,43 +275,37 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
         radii = self.radii
         angle = self.angle
         sweep = self.sweep
-        end = self.end
+        end = other @ self.end
+
+        if is_close(radii.x, 0) or is_close(radii.y, 0):
+            # a degenerate arc is rendered as a straight line, and a line
+            # stays a line under any transformation
+            return type(self)(
+                radii=radii,
+                angle=angle,
+                large=self.large,
+                sweep=sweep,
+                end=end,
+            )
 
         match other:
             case Translate():
-                end = other @ end
-            case Scale(sx, sy):
-                # a tilted ellipse changes shape, not just size, so the new
-                # radii and rotation cannot be expressed in terms of the old
-                if not is_close(abs(sx), abs(sy)) and not is_close(
-                    sin(2 * angle), 0
-                ):
-                    msg = (
-                        "Unable to scale a tilted arc by differing"
-                        f" factors: {other}"
-                    )
-                    raise NotImplementedError(msg)
+                pass
+            case Rotate(a):
+                angle += a
+            case Scale(sx, sy) if is_close(abs(sx), abs(sy)):
+                # a uniform scaling only resizes the ellipse; handling it
+                # here keeps the radii and the tilt in their original form
+                # instead of routing them through a decomposition
+                radii = Point(abs(sx) * radii.x, abs(sy) * radii.y)
 
-                # a quarter turn swaps the axes of the ellipse, and with
-                # them the factors that apply to each radius
-                scaled_radii = (
-                    Point(radii.x * sy, radii.y * sx)
-                    if is_close(cos(angle), 0)
-                    else other @ radii
-                )
-                radii = Point(abs(scaled_radii.x), abs(scaled_radii.y))
-                end = other @ end
-
-                # a mirroring scale flips the ellipse over
                 if sx * sy < 0:
                     angle = -angle
                     sweep = not sweep
-            case Rotate(a):
-                angle += a
-                end = other @ end
             case _:
-                msg = f"Unsupported transform: {other}"
-                raise NotImplementedError(msg)
+                radii, angle, sweep = self.__transform_ellipse(
+                    other.to_matrix()
+                )
 
         return type(self)(
             radii=radii,
@@ -320,6 +314,35 @@ class ArcTo(_HasEnd, _PhysicalPathCommand):
             sweep=sweep,
             end=end,
         )
+
+    def __transform_ellipse(
+        self, matrix: Matrix
+    ) -> tuple[Point, float, bool]:
+        """Map the arc's ellipse through an arbitrary affine transformation.
+
+        An affine map takes an ellipse to another ellipse, so the arc can
+        always be rewritten -- but the new radii and tilt are not a function
+        of the old ones alone. They come out of the matrix that generates the
+        ellipse, `matrix @ rotate(angle) @ scale(rx, ry)`, which maps the unit
+        circle onto it.
+
+        Returns:
+            A 3-tuple of the new radii, the new x-axis rotation in degrees,
+            and the new sweep flag.
+
+        """
+        generator = (
+            matrix.linear()
+            @ Rotate(self.angle)
+            @ Scale(self.radii.x, self.radii.y)
+        )
+        new_angle, rx, ry, _ = generator.svd_decompose()
+
+        # a reflection turns the arc inside out, which is the one thing the
+        # radii and the tilt cannot express
+        sweep = not self.sweep if matrix.determinant() < 0 else self.sweep
+
+        return Point(abs(rx), abs(ry)), new_angle, sweep
 
 
 PathCommand: TypeAlias = (

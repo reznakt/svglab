@@ -212,9 +212,20 @@ print(image)
 
 ### Transformations
 
+Reification folds `transform` attributes into the geometry they act on, so
+that the document looks the same without them. Each element takes on as much
+as its own attributes can express -- a `path` anything, a `rect` nothing that
+would tilt it, a `text` no mirroring -- and a group hands its transformation
+to its children.
+Whatever cannot be absorbed without changing the picture stays where it is.
+
 ```python
 svg.reify()
 print(svg.to_xml())
+
+# Turn a rotated rect into the path drawing the same shape, and lift the
+# children of groups left with nothing to say
+svg.reify(convert_shapes_to_paths=True, unwrap_groups=True)
 
 # Change the view box
 svg.set_viewbox((0, 0, 50, 50))

@@ -20,6 +20,7 @@ import abc
 
 from typing_extensions import TYPE_CHECKING
 
+from svglab.attrparse.length import Length
 from svglab.attrparse.path_data import PathData
 from svglab.attrs.attrdefs import PathLengthAttr
 from svglab.attrs.attrgroups import (
@@ -30,10 +31,6 @@ from svglab.attrs.attrgroups import (
 )
 from svglab.attrs.typedefs import Number
 from svglab.entities import Element as BaseElement
-from svglab.entities import (
-    StrokeWidthScaled,
-    scale_distance_along_a_path_attrs,
-)
 from svglab.graphics import (
     BBox,
     Mask,
@@ -43,6 +40,17 @@ from svglab.graphics import (
     visible_mask,
 )
 from svglab.models import Attr
+from svglab.reify import (
+    Animation,
+    Descriptive,
+    FontSizeScaled,
+    Markable,
+    PercentageDefaults,
+    RenderedIndirectly,
+    StrokeWidthScaled,
+    TransformInheritedByChildren,
+    UniformlyScalableGeometry,
+)
 
 
 if TYPE_CHECKING:
@@ -107,9 +115,7 @@ class _GraphicalOperations(Element):
         )
 
 
-class GraphicsElement(
-    _GraphicalOperations, GraphicalEventsAttrs, StrokeWidthScaled, Element
-):
+class GraphicsElement(_GraphicalOperations, GraphicalEventsAttrs, Element):
     """A graphics element.
 
     From the SVG 1.1 specification:
@@ -118,7 +124,7 @@ class GraphicsElement(
     """
 
 
-class Shape(PathLengthAttr, GraphicsElement):
+class Shape(PathLengthAttr, Markable, StrokeWidthScaled, GraphicsElement):
     """A shape.
 
     From the SVG 1.1 specification:
@@ -155,7 +161,19 @@ class Shape(PathLengthAttr, GraphicsElement):
             raise RuntimeError("Current pathLength must not be None")
 
         ratio = value / self.pathLength
-        scale_distance_along_a_path_attrs(self, ratio)
+
+        # distances along the path are measured against `pathLength`, so
+        # they scale with it; a percentage is of the length already
+        if isinstance(self.stroke_dasharray, list):
+            self.stroke_dasharray = [
+                dash if dash.unit == "%" else dash * ratio
+                for dash in self.stroke_dasharray
+            ]
+        if (
+            isinstance(self.stroke_dashoffset, Length)
+            and self.stroke_dashoffset.unit != "%"
+        ):
+            self.stroke_dashoffset = self.stroke_dashoffset * ratio
 
         self.pathLength: Attr[Number] = value
 
@@ -200,7 +218,11 @@ class BasicShape(Shape, metaclass=abc.ABCMeta):
 
 
 class AnimationElement(
-    AnimationEventsAttrs, AnimationTimingAttrs, Element
+    AnimationEventsAttrs,
+    AnimationTimingAttrs,
+    Animation,
+    RenderedIndirectly,
+    Element,
 ):
     """An animation element.
 
@@ -221,7 +243,7 @@ class ContainerElement(
     """
 
 
-class DescriptiveElement(Element):
+class DescriptiveElement(Descriptive, RenderedIndirectly, Element):
     """A descriptive element.
 
     From the SVG 1.1 specification:
@@ -230,7 +252,9 @@ class DescriptiveElement(Element):
     """
 
 
-class FilterPrimitiveElement(FilterPrimitivesAttrs, Element):
+class FilterPrimitiveElement(
+    FilterPrimitivesAttrs, RenderedIndirectly, Element
+):
     """A filter primitive element.
 
     From the SVG 1.1 specification:
@@ -239,7 +263,7 @@ class FilterPrimitiveElement(FilterPrimitivesAttrs, Element):
     """
 
 
-class GradientElement(Element):
+class GradientElement(PercentageDefaults, RenderedIndirectly, Element):
     """A gradient element.
 
     From the SVG 1.1 specification:
@@ -256,7 +280,7 @@ class GraphicsReferencingElement(Element):
     """
 
 
-class LightSourceElement(Element):
+class LightSourceElement(RenderedIndirectly, Element):
     """A light source element.
 
     From the SVG 1.1 specification:
@@ -274,7 +298,13 @@ class StructuralElement(Element):
     """
 
 
-class TextContentElement(GraphicsElement):
+class TextContentElement(
+    UniformlyScalableGeometry,
+    TransformInheritedByChildren,
+    FontSizeScaled,
+    StrokeWidthScaled,
+    GraphicsElement,
+):
     """A text content element.
 
     From the SVG 1.1 specification:

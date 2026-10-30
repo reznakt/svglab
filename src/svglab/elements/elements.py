@@ -19,13 +19,19 @@ import os
 import pathlib
 
 import PIL.Image
-from typing_extensions import final, overload, override
+from typing_extensions import Final, final, overload, override
 
 from svglab.attrparse.color import Color
 from svglab.attrparse.length import Length
 from svglab.attrparse.path_data import PathData
 from svglab.attrparse.point import Point
-from svglab.attrparse.transform import Scale, Translate
+from svglab.attrparse.transform import (
+    Matrix,
+    Scale,
+    Transform,
+    Translate,
+    compose,
+)
 from svglab.attrs.attrdefs import (
     AccentHeightAttr,
     AlphabeticAttr,
@@ -217,9 +223,31 @@ from svglab.elements.traits import (
     TextContentChildElement,
     TextContentElement,
 )
+from svglab.entities import element_name, referenced_elements
+from svglab.errors import SvgUnitConversionError
 from svglab.graphics import render
 from svglab.models import Attr, Tuple, convert
 from svglab.protocols import SupportsWrite
+from svglab.reify import (
+    AffineGeometry,
+    DocumentFragmentRoot,
+    Grouping,
+    ImplicitlyOrientedShape,
+    PositionDefaultsToOrigin,
+    PositionedByReference,
+    RectilinearGeometry,
+    RenderedIndirectly,
+    SelectsAChild,
+    SimilarityGeometry,
+    Stylesheet,
+    TransformIgnored,
+    TransformInheritedByChildren,
+    TranslatableGeometry,
+    UniformlyScalableGeometry,
+    ViewportEstablishing,
+    spell_out_gradient,
+    style_declarations,
+)
 from svglab.resvg import RenderOptions
 from svglab.serialize import MINIMAL_FORMATTER, Formatter
 from svglab.utils.mathutils import is_close
@@ -234,6 +262,7 @@ def _length_or_zero(value: Length | None, /) -> Length:
 
 @final
 class Path(
+    AffineGeometry,
     ConditionalProcessingAttrs,
     ClassAttr,
     DAttr,
@@ -296,11 +325,15 @@ def _ellipse_to_path_data(
         ry: The y-radius of the ellipse.
 
     Returns:
-        A `PathData` instance representing the ellipse.
+        A `PathData` instance representing the ellipse. It starts at the
+        point `(cx + rx, cy)` and runs in the positive angle direction, the
+        way the specification says the outline of an ellipse is drawn, so a
+        dash pattern falls where it did on the ellipse. An ellipse without a
+        radius is not rendered, and neither is its path.
 
     References:
         https://stackoverflow.com/a/10477334
-        https://aleen42.gitbooks.io/wiki/content/Programming/JavaScript/webgl/SVG/convert_shapes_to_path/convert_shapes_to_path.html
+        https://www.w3.org/TR/SVG11/shapes.html#EllipseElement
 
     """
     if rx.value <= 0 or ry.value <= 0:
@@ -308,21 +341,21 @@ def _ellipse_to_path_data(
 
     return (
         PathData()
-        .move_to(Point(cx - rx, cy))
-        .arc_to(
-            Point(rx, ry),
-            0,
-            Point(2 * rx, 0),
-            large=True,
-            sweep=False,
-            relative=True,
-        )
+        .move_to(Point(cx + rx, cy))
         .arc_to(
             Point(rx, ry),
             0,
             Point(-2 * rx, 0),
             large=True,
-            sweep=False,
+            sweep=True,
+            relative=True,
+        )
+        .arc_to(
+            Point(rx, ry),
+            0,
+            Point(2 * rx, 0),
+            large=True,
+            sweep=True,
             relative=True,
         )
     )
@@ -330,6 +363,7 @@ def _ellipse_to_path_data(
 
 @final
 class A(
+    TransformInheritedByChildren,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -343,6 +377,7 @@ class A(
 
 @final
 class AltGlyph(
+    TransformIgnored,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -363,12 +398,12 @@ class AltGlyph(
 
 
 @final
-class AltGlyphDef(Element):
+class AltGlyphDef(RenderedIndirectly, Element):
     pass
 
 
 @final
-class AltGlyphItem(Element):
+class AltGlyphItem(RenderedIndirectly, Element):
     pass
 
 
@@ -433,6 +468,8 @@ class AnimateTransform(
 
 @final
 class Circle(
+    SimilarityGeometry,
+    ImplicitlyOrientedShape,
     ConditionalProcessingAttrs,
     ClassAttr,
     CxAttr,
@@ -458,6 +495,8 @@ class Circle(
 
 @final
 class ClipPath(
+    TransformInheritedByChildren,
+    RenderedIndirectly,
     ConditionalProcessingAttrs,
     ClassAttr,
     ClipPathUnitsAttr,
@@ -470,13 +509,19 @@ class ClipPath(
 
 @final
 class ColorProfile(
-    XlinkAttrs, LocalAttr, NameNameAttr, RenderingIntentAttr, Element
+    RenderedIndirectly,
+    XlinkAttrs,
+    LocalAttr,
+    NameNameAttr,
+    RenderingIntentAttr,
+    Element,
 ):
     pass
 
 
 @final
 class Cursor(
+    RenderedIndirectly,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ExternalResourcesRequiredAttr,
@@ -489,6 +534,7 @@ class Cursor(
 
 @final
 class Defs(
+    RenderedIndirectly,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -506,6 +552,8 @@ class Desc(ClassAttr, StyleAttr, DescriptiveElement, Element):
 
 @final
 class Ellipse(
+    RectilinearGeometry,
+    ImplicitlyOrientedShape,
     ConditionalProcessingAttrs,
     ClassAttr,
     CxAttr,
@@ -521,10 +569,13 @@ class Ellipse(
     def to_path_data(self) -> PathData:
         cx = _length_or_zero(self.cx)
         cy = _length_or_zero(self.cy)
-        rx = _length_or_zero(self.rx)
-        ry = _length_or_zero(self.ry)
+        # a radius left out follows the other, as SVG 2 has it
+        rx = self.rx if self.rx is not None else self.ry
+        ry = self.ry if self.ry is not None else self.rx
 
-        return _ellipse_to_path_data(cx=cx, cy=cy, rx=rx, ry=ry)
+        return _ellipse_to_path_data(
+            cx=cx, cy=cy, rx=_length_or_zero(rx), ry=_length_or_zero(ry)
+        )
 
     @override
     def to_path(self) -> Path:
@@ -785,6 +836,7 @@ class FeTurbulence(
 
 @final
 class Filter(
+    RenderedIndirectly,
     XlinkAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -803,6 +855,7 @@ class Filter(
 
 @final
 class Font(
+    RenderedIndirectly,
     ClassAttr,
     ExternalResourcesRequiredAttr,
     HorizAdvXAttr,
@@ -819,6 +872,7 @@ class Font(
 
 @final
 class FontFace(
+    RenderedIndirectly,
     AccentHeightAttr,
     AlphabeticAttr,
     AscentAttr,
@@ -852,27 +906,29 @@ class FontFace(
 
 
 @final
-class FontFaceFormat(StringAttr, Element):
+class FontFaceFormat(RenderedIndirectly, StringAttr, Element):
     pass
 
 
 @final
-class FontFaceName(StringAttr, Element):
+class FontFaceName(RenderedIndirectly, StringAttr, Element):
     pass
 
 
 @final
-class FontFaceSrc(Element):
+class FontFaceSrc(RenderedIndirectly, Element):
     pass
 
 
 @final
-class FontFaceUri(XlinkAttrs, Element):
+class FontFaceUri(RenderedIndirectly, XlinkAttrs, Element):
     pass
 
 
 @final
 class ForeignObject(
+    TranslatableGeometry,
+    ViewportEstablishing,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -888,6 +944,8 @@ class ForeignObject(
 
 @final
 class G(
+    Grouping,
+    TransformInheritedByChildren,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -900,6 +958,7 @@ class G(
 
 @final
 class Glyph(
+    RenderedIndirectly,
     ArabicFormAttr,
     ClassAttr,
     DAttr,
@@ -919,6 +978,7 @@ class Glyph(
 
 @final
 class GlyphRef(
+    RenderedIndirectly,
     XlinkAttrs,
     ClassAttr,
     DxNumberAttr,
@@ -934,12 +994,16 @@ class GlyphRef(
 
 
 @final
-class Hkern(G1Attr, G2Attr, KAttr, U1Attr, U2Attr, Element):
+class Hkern(
+    RenderedIndirectly, G1Attr, G2Attr, KAttr, U1Attr, U2Attr, Element
+):
     pass
 
 
 @final
 class Image(
+    UniformlyScalableGeometry,
+    ViewportEstablishing,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -959,6 +1023,7 @@ class Image(
 
 @final
 class Line(
+    AffineGeometry,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -986,6 +1051,7 @@ class Line(
 
 @final
 class LinearGradient(
+    AffineGeometry,
     XlinkAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1005,6 +1071,8 @@ class LinearGradient(
 
 @final
 class Marker(
+    RenderedIndirectly,
+    ViewportEstablishing,
     ClassAttr,
     ExternalResourcesRequiredAttr,
     MarkerHeightAttr,
@@ -1023,6 +1091,7 @@ class Marker(
 
 @final
 class Mask(
+    RenderedIndirectly,
     ClassAttr,
     ExternalResourcesRequiredAttr,
     HeightAttr,
@@ -1044,6 +1113,7 @@ class Metadata(DescriptiveElement, Element):
 
 @final
 class MissingGlyph(
+    RenderedIndirectly,
     ClassAttr,
     DAttr,
     HorizAdvXAttr,
@@ -1057,12 +1127,16 @@ class MissingGlyph(
 
 
 @final
-class Mpath(XlinkAttrs, ExternalResourcesRequiredAttr, Element):
+class Mpath(
+    RenderedIndirectly, XlinkAttrs, ExternalResourcesRequiredAttr, Element
+):
     pass
 
 
 @final
 class Pattern(
+    RenderedIndirectly,
+    ViewportEstablishing,
     XlinkAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1083,6 +1157,7 @@ class Pattern(
 
 @final
 class Polygon(
+    AffineGeometry,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1104,6 +1179,7 @@ class Polygon(
 
 @final
 class Polyline(
+    AffineGeometry,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1123,6 +1199,7 @@ class Polyline(
 
 @final
 class RadialGradient(
+    SimilarityGeometry,
     XlinkAttrs,
     ClassAttr,
     CxAttr,
@@ -1144,6 +1221,8 @@ class RadialGradient(
 
 @final
 class Rect(
+    RectilinearGeometry,
+    ImplicitlyOrientedShape,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1233,7 +1312,11 @@ class Rect(
 
 @final
 class Script(
-    XlinkAttrs, ExternalResourcesRequiredAttr, TypeContentTypeAttr, Element
+    RenderedIndirectly,
+    XlinkAttrs,
+    ExternalResourcesRequiredAttr,
+    TypeContentTypeAttr,
+    Element,
 ):
     pass
 
@@ -1251,17 +1334,115 @@ class Set(
 
 
 @final
-class Stop(ClassAttr, OffsetNumberPercentageAttr, StyleAttr, Element):
+class Stop(
+    RenderedIndirectly,
+    ClassAttr,
+    OffsetNumberPercentageAttr,
+    StyleAttr,
+    Element,
+):
     pass
 
 
 @final
-class Style(MediaAttr, TitleAttr, TypeContentTypeAttr, Element):
+class Style(
+    Stylesheet,
+    RenderedIndirectly,
+    MediaAttr,
+    TitleAttr,
+    TypeContentTypeAttr,
+    Element,
+):
     pass
+
+
+_STYLED_TRANSFORM: Final = frozenset({"transform", "transform-origin"})
+"""Style properties that override what prepending to `transform` would do."""
+
+_NOT_OF_THE_VIEWPORT: Final = frozenset(
+    {"font-size", "offset", "startOffset", "baseline-shift", "opacity"}
+)
+"""Attributes whose percentages are of something other than the viewport."""
+
+
+def _normalize(transform: Transform, /) -> Transform | None:
+    """Write a transform list in its shortest equivalent form.
+
+    Returns:
+        The list, or `None` if it does nothing.
+
+    """
+    matrix = compose(transform)
+
+    return None if matrix == Matrix.identity() else matrix.decompose()
+
+
+def _is_viewport_percentage(value: object, /) -> bool:
+    match value:
+        case Length(_, "%"):
+            return True
+        case list() | tuple():
+            return any(_is_viewport_percentage(item) for item in value)
+        case _:
+            return False
+
+
+def _refuse_viewport_percentages(svg: Svg, /) -> None:
+    """Refuse a document whose lengths are percentages of the viewport.
+
+    Raises:
+        SvgUnitConversionError: If any element below the svg has one.
+
+    """
+    for element in svg.find_all():
+        for name, value in element.standard_attrs().items():
+            if (
+                name not in _NOT_OF_THE_VIEWPORT
+                and _is_viewport_percentage(value)
+            ):
+                # a percentage of the viewport cannot be converted to the
+                # user units the mapping is expressed in
+                raise SvgUnitConversionError(
+                    original_unit=f"{name}={value!r}", target_unit=None
+                )
+
+
+def _spell_out_user_space_gradients(
+    svg: Svg, viewport: tuple[float, float], /
+) -> None:
+    """Write out the percentages of every user-space gradient.
+
+    Raises:
+        SvgUnitConversionError: If the document has viewports of its own,
+            against which the percentages of a gradient painting something
+            inside them would resolve instead.
+
+    """
+    gradients = [
+        element
+        for element in svg.find_all()
+        if isinstance(element, GradientUnitsAttr)
+        and element.gradientUnits == "userSpaceOnUse"
+    ]
+
+    if gradients and any(
+        isinstance(element, ViewportEstablishing)
+        and element_name(element) not in {"image", "foreignObject"}
+        for element in svg.find_all()
+    ):
+        # the percentages resolve against whichever viewport a painted
+        # shape sits in
+        raise SvgUnitConversionError(original_unit="%", target_unit=None)
+
+    for gradient in gradients:
+        spell_out_gradient(gradient, viewport=viewport)
 
 
 @final
 class Svg(
+    DocumentFragmentRoot,
+    TranslatableGeometry,
+    ViewportEstablishing,
     ConditionalProcessingAttrs,
     DocumentEventsAttrs,
     BaseProfileAttr,
@@ -1383,9 +1564,19 @@ class Svg(
         If the new `viewBox` is equal to the current one, the content is left
         untouched.
 
-        Any attributes of type `Length` in the SVG must be convertible to
-        user units. If an attribute is not convertible, the method raises an
-        exception.
+        Children that are not drawn where they sit, such as `clipPath` or
+        `defs`, are left alone: they are drawn in the coordinate system of
+        whatever uses them. A child whose own transformation is seen elsewhere
+        -- one a `use` references, one an animation targets, or one whose
+        `style` sets its transformation -- is wrapped in a new `g` that
+        carries the scaling and translation instead.
+
+        A length given as a percentage of the viewport would resolve against
+        the new `viewBox` once the mapping is applied, so the method refuses
+        a document with one. The coordinates of a gradient in user space
+        default to such percentages; they are written out against the old
+        viewport first, which is possible as long as the document has a
+        single viewport.
 
         Args:
             viewbox: A tuple of four numbers representing the new viewBox.
@@ -1394,8 +1585,9 @@ class Svg(
             ValueError: If `viewBox` is not set and `width` and `height` are
                 not set or if the aspect ratios of the old and new viewBox
                 differ.
-            SvgUnitConversionError: If an attribute is not convertible to user
-                units.
+            SvgUnitConversionError: If a length is a percentage of the
+                viewport, or a user-space gradient's percentages cannot be
+                written out.
 
         """
         if self.viewBox is None:
@@ -1427,22 +1619,40 @@ class Svg(
         tx = min_x - sx * old_min_x
         ty = min_y - sy * old_min_y
 
-        # skip self; this can be done in a single for loop because the
-        # SVG is a tree (probably)
-        for child in self.find_all(recursive=False):
+        _refuse_viewport_percentages(self)
+        _spell_out_user_space_gradients(self, (old_width, old_height))
+
+        mapping: Transform = [Translate(tx, ty), Scale(sx, sy)]
+        referenced = referenced_elements(self.get_root())
+
+        # skip self; the mapping is handed to the children, each of which
+        # folds as much of it as it can into its own geometry
+        for child in list(self.find_all(recursive=False)):
+            if isinstance(child, RenderedIndirectly):
+                # drawn in the coordinate system of whatever uses it, which
+                # the mapping reaches already
+                continue
+
+            styled = style_declarations(child).keys()
+
+            if id(child) in referenced or _STYLED_TRANSFORM & styled:
+                # the child's own transformation has to stay as it is, so the
+                # mapping goes around it instead
+                index = self.get_child_index(child)
+                self.remove_child(child)
+                wrapper = G(transform=_normalize(mapping)).add_child(child)
+                self.add_child(wrapper, index=index)
+                continue
+
             # this is normally done in the reify method, but we need to do it
             # before we prepend the new transformations
             child.decompose_transform_origin()
+            child.transform = [*mapping, *(child.transform or [])]
 
-            child.transform = [
-                Translate(tx, ty),
-                Scale(sx, sy),
-                *(child.transform or []),
-            ]
-
-            child.reify(limit=2, recursive=False)
-
+        # the svg's own transformation is applied in pixels, after the new
+        # viewBox is fitted into its box, so it is reified under that one
         self.viewBox: Attr[Tuple[Number, Number, Number, Number]] = viewbox
+        self.reify()
 
     def render(
         self,
@@ -1533,6 +1743,8 @@ class Svg(
 
 @final
 class Switch(
+    SelectsAChild,
+    TransformInheritedByChildren,
     ConditionalProcessingAttrs,
     ClassAttr,
     ExternalResourcesRequiredAttr,
@@ -1544,6 +1756,8 @@ class Switch(
 
 @final
 class Symbol(
+    RenderedIndirectly,
+    ViewportEstablishing,
     ClassAttr,
     ExternalResourcesRequiredAttr,
     PreserveAspectRatioAttr,
@@ -1559,6 +1773,7 @@ class Symbol(
 
 @final
 class Text(
+    PositionDefaultsToOrigin,
     ConditionalProcessingAttrs,
     ClassAttr,
     DxListOfLengthsAttr,
@@ -1579,6 +1794,8 @@ class Text(
 
 @final
 class TextPath(
+    PositionedByReference,
+    TransformIgnored,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -1603,6 +1820,7 @@ class Title(ClassAttr, StyleAttr, DescriptiveElement, Element):
 
 @final
 class Tref(
+    TransformIgnored,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -1624,6 +1842,7 @@ class Tref(
 
 @final
 class Tspan(
+    TransformIgnored,
     ConditionalProcessingAttrs,
     ClassAttr,
     DxListOfLengthsAttr,
@@ -1644,6 +1863,7 @@ class Tspan(
 
 @final
 class Use(
+    TranslatableGeometry,
     ConditionalProcessingAttrs,
     XlinkAttrs,
     ClassAttr,
@@ -1663,6 +1883,7 @@ class Use(
 
 @final
 class View(
+    RenderedIndirectly,
     ExternalResourcesRequiredAttr,
     PreserveAspectRatioAttr,
     ViewBoxAttr,
@@ -1674,5 +1895,7 @@ class View(
 
 
 @final
-class Vkern(G1Attr, G2Attr, KAttr, U1Attr, U2Attr, Element):
+class Vkern(
+    RenderedIndirectly, G1Attr, G2Attr, KAttr, U1Attr, U2Attr, Element
+):
     pass
