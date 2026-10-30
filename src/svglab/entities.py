@@ -13,6 +13,7 @@ from collections.abc import Generator, Mapping
 import bs4
 import pydantic
 from typing_extensions import (
+    TYPE_CHECKING,
     ClassVar,
     Final,
     Literal,
@@ -712,21 +713,23 @@ class Entity(BaseModel, metaclass=abc.ABCMeta):
 
     # an attribute set to `None` or deleted is no longer set, so it must not
     # linger in `model_fields_set` either
-    @override
-    def __setattr__(self, name: str, value: object) -> None:
-        super().__setattr__(name, value)
+    if not TYPE_CHECKING:
 
-        if value is None:
+        @override
+        def __setattr__(self, name: str, value: object) -> None:
+            super().__setattr__(name, value)
+
+            if value is None:
+                self.__pydantic_fields_set__.discard(name)
+
+        @override
+        def __delattr__(self, name: str) -> None:
+            if name in type(self).model_fields:
+                setattr(self, name, None)
+                return
+
+            super().__delattr__(name)
             self.__pydantic_fields_set__.discard(name)
-
-    @override
-    def __delattr__(self, name: str) -> None:
-        if name in type(self).model_fields:
-            setattr(self, name, None)
-            return
-
-        super().__delattr__(name)
-        self.__pydantic_fields_set__.discard(name)
 
 
 class Element(Entity, CoreAttrs, PresentationAttrs, metaclass=abc.ABCMeta):
