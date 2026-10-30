@@ -3,7 +3,7 @@
 import re
 from collections.abc import Generator
 
-from typing_extensions import TypeIs, TypeVar
+from typing_extensions import TypeGuard, TypeVar
 
 
 _T = TypeVar("_T")
@@ -35,7 +35,7 @@ def get_all_subclasses(cls: type[_T], /) -> Generator[type[_T]]:
         yield from get_all_subclasses(subclass)
 
 
-def basic_compare(other: object, /, *, self: _T) -> TypeIs[_T]:
+def basic_compare(other: object, /, *, self: _T) -> TypeGuard[_T]:
     """Perform a basic comparison between two objects.
 
     This is a helper function for implementing the `__eq__` method.
