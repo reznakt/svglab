@@ -152,7 +152,7 @@ from svglab.attrs.attrdefs import (
     TypeAnimateTransformAttr,
     TypeContentTypeAttr,
     TypeFeColorMatrixAttr,
-    TypeFeTurbluenceAttr,
+    TypeFeTurbulenceAttr,
     U1Attr,
     U2Attr,
     UnderlinePositionAttr,
@@ -776,7 +776,7 @@ class FeTurbulence(
     SeedAttr,
     StitchTilesAttr,
     StyleAttr,
-    TypeFeTurbluenceAttr,
+    TypeFeTurbulenceAttr,
     FilterPrimitiveElement,
     Element,
 ):

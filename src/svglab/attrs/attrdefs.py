@@ -1269,7 +1269,7 @@ class TypeFeFuncAttr(_Attr):
     ] = None
 
 
-class TypeFeTurbluenceAttr(_Attr):
+class TypeFeTurbulenceAttr(_Attr):
     type: Attr[Literal["fractalNoise", "turbulence"]] = None
 
 
