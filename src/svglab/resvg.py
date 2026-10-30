@@ -71,7 +71,7 @@ class RenderOptions:
     """Extra font files to load."""
 
     font_size: Number = 12.0
-    """The font size, in points, to use where the document specifies none."""
+    """The font size, in pixels, to use where the document specifies none."""
 
     image_rendering: ImageRendering = "optimizeQuality"
     """The image rendering method to use where the document specifies none."""
