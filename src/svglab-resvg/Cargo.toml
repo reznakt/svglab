@@ -26,6 +26,9 @@ doc_markdown = "allow"
 pedantic = { level = "warn", priority = -1 }
 too_many_arguments = "allow"
 
+[lints.rust]
+unsafe_code = "deny"
+
 [profile.dist]
 inherits = "release"
 strip = true
