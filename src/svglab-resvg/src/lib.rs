@@ -7,10 +7,9 @@ use std::str::FromStr;
 
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
-use pyo3::wrap_pyfunction;
 use resvg::usvg;
 
-use crate::errors::{Error, RenderError};
+use crate::errors::Error;
 use crate::fonts::{FontOptions, build_fonts, default_family};
 use crate::raster::rasterize;
 
@@ -116,16 +115,21 @@ fn render(
 }
 
 #[pymodule]
-fn _resvg(module: &Bound<'_, PyModule>) -> PyResult<()> {
-    let _ = pyo3_log::try_init();
+mod _resvg {
+    use pyo3::prelude::*;
 
-    module.add("RenderError", module.py().get_type::<RenderError>())?;
-    module.add(
-        "PanicError",
-        module.py().get_type::<pyo3::panic::PanicException>(),
-    )?;
+    #[pymodule_export]
+    use super::render;
+    #[pymodule_export]
+    use crate::errors::RenderError;
 
-    module.add_function(wrap_pyfunction!(render, module)?)?;
+    #[pymodule_init]
+    fn init(module: &Bound<'_, PyModule>) -> PyResult<()> {
+        let _ = pyo3_log::try_init();
 
-    Ok(())
+        module.add(
+            "PanicError",
+            module.py().get_type::<pyo3::panic::PanicException>(),
+        )
+    }
 }
