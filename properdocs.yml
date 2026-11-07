@@ -76,6 +76,12 @@ theme:
     - toc.follow
     - toc.integrate
 
+exclude_docs: |
+  /hooks/
+
+hooks:
+  - docs/hooks/griffe_mro_cache.py
+
 plugins:
   - optimize
   - privacy
