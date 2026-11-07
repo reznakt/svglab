@@ -77,7 +77,9 @@ theme:
     - toc.integrate
 
 exclude_docs: |
+  /assets/wordmark-*.svg
   /hooks/
+  /overrides/
 
 hooks:
   - docs/hooks/griffe_mro_cache.py
