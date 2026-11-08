@@ -8,6 +8,7 @@ from typing_extensions import Final
 from svglab import (
     Circle,
     Color,
+    Element,
     G,
     Length,
     Line,
@@ -29,6 +30,20 @@ from svglab import (
 
 THIS_DIR: Final = pathlib.Path(__file__).parent
 ASSETS_DIR: Final = THIS_DIR / "assets"
+
+
+def transforms_left(root: Element) -> list[Element]:
+    """The elements of a reified tree still carrying a transformation.
+
+    Reification is free to leave what it cannot fold in on any element that
+    renders the same picture, so tests say *whether* something is left over
+    rather than where it ended up.
+    """
+    return [
+        element
+        for element in (root, *root.find_all())
+        if element.main_transform
+    ]
 
 
 def mean_squared_error(a: PIL.Image.Image, b: PIL.Image.Image) -> float:
